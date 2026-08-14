@@ -1,4 +1,4 @@
-module github.com/reqly/reqly
+module github.com/Its-Satyajit/reqly
 
 go 1.25.0
 

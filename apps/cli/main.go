@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/reqly/reqly/apps/cli/cmd"
+	"github.com/Its-Satyajit/reqly/apps/cli/cmd"
 )
 
 func main() {

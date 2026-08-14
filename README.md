@@ -60,7 +60,7 @@ internal/                 Go core packages
 - **Node 20+ / nub** — frontend (nub is the package manager; see `nubjs.com`).
 - **Wails v3** — desktop builds (`wails3 install`), which additionally requires the system WebView/WebKit development packages for your platform. If `wails3` is not on your `PATH`, install it to `~/go/bin` and export it (e.g. `export PATH="$PATH:$HOME/go/bin"`).
 
-> The Go module path is `github.com/reqly/reqly`. Update it to the real repository path before publishing if it differs.
+> The Go module path is `github.com/Its-Satyajit/reqly`, matching the repository at <https://github.com/Its-Satyajit/reqly>.
 
 ## Development
 
