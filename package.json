@@ -1,0 +1,31 @@
+{
+  "name": "api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local-first, Git-native API development environment",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "frontend",
+    "apps/desktop/backend/frontend"
+  ],
+  "scripts": {
+    "dev": "nub run --filter @api-client/desktop dev",
+    "build": "nub run --filter @api-client/desktop build",
+    "typecheck": "nub run --recursive --if-present typecheck"
+  },
+  "allowBuilds": {
+    "esbuild": true
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "nub",
+      "version": "^0.7.5",
+      "onFail": "ignore"
+    }
+  }
+}

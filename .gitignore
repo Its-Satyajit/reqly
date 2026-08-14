@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build_out/
+*.exe
+*.dll
+*.so
+*.dylib
+# Go binaries built at repo root (e.g. `go build ./apps/desktop/backend/...`)
+/api-client
+/backend
+/cli
+
+# Wails v3
+apps/desktop/backend/bin/
+apps/desktop/backend/frontend/dist/
+apps/desktop/backend/frontend/bindings/
+apps/desktop/backend/frontend/node_modules/
+
+# Go
+*.test
+*.out
+coverage/
+coverage.html
+coverage.txt
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
