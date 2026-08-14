@@ -14,6 +14,16 @@ jobs:
       - uses: nubjs/setup-nub@v0
         with:
           cache-dependency-path: nub.lock
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Generate Wails bindings
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.8
+          cd apps/desktop/backend
+          $HOME/go/bin/wails3 generate bindings -clean=true -ts -i
       - run: nub ci
       - run: nub run -r --if-present typecheck
       - run: nub run --filter @reqly/desktop build
