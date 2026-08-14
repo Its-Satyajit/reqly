@@ -1,5 +1,5 @@
 {
-  "name": "@api-client/frontend",
+  "name": "@reqly/frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,9 @@
   "imports": {
     "#lib/*": "./src/lib/*.ts",
     "#components/*": "./src/components/*.tsx",
-    "#hooks/*": "./src/hooks/*.ts"
+    "#hooks/*": "./src/hooks/*.ts",
+    "#stores": "./src/stores/index.ts",
+    "#stores/*": "./src/stores/*.ts"
   },
   "scripts": {
     "dev": "vite",

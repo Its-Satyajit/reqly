@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Task cache
+.task/
+
 # Build output
 dist/
 build_out/
@@ -15,6 +18,7 @@ build_out/
 
 # Wails v3
 apps/desktop/backend/bin/
+apps/desktop/backend/build/linux/*.desktop
 apps/desktop/backend/frontend/dist/
 apps/desktop/backend/frontend/bindings/
 apps/desktop/backend/frontend/node_modules/

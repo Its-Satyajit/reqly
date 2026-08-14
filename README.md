@@ -1,9 +1,9 @@
-# API Client
+# Reqly
 
 A local-first, Git-native API development environment — collections, environments, tests, scripts, schemas, mocks, and documentation living together as version-controlled project files.
 
 > **Status:** Scaffold / Work in progress
-> **Product Name:** TBD
+> **Product Name:** Reqly
 > **Docs:** see [`FeatureSet.md`](FeatureSet.md), [`API Client — Technology Stack.md`](API%20Client%20—%20Technology%20Stack.md), and [`API Client — Testing Strategy & TDD.md`](API%20Client%20—%20Testing%20Strategy%20&%20TDD.md)
 
 ## Architecture
@@ -31,7 +31,7 @@ apps/
 │       ├── app.go        AppService (thin Go ↔ JS bindings)
 │       ├── build/        Wails v3 build config & platform Taskfiles
 │       └── frontend/     Wails-bound Vite host app (embed all:frontend/dist)
-│           ├── src/      Host entry (main.tsx imports @api-client/frontend)
+│           ├── src/      Host entry (main.tsx imports @reqly/frontend)
 │           └── bindings/ Generated Go ↔ TypeScript bindings (wails3 generate bindings)
 └── cli/                  Go CLI (cobra) using the same core
 
@@ -60,7 +60,7 @@ internal/                 Go core packages
 - **Node 20+ / nub** — frontend (nub is the package manager; see `nubjs.com`).
 - **Wails v3** — desktop builds (`wails3 install`), which additionally requires the system WebView/WebKit development packages for your platform. If `wails3` is not on your `PATH`, install it to `~/go/bin` and export it (e.g. `export PATH="$PATH:$HOME/go/bin"`).
 
-> The Go module path is a placeholder (`github.com/api-client/api-client`). Update it to the real repository path before publishing.
+> The Go module path is `github.com/reqly/reqly`. Update it to the real repository path before publishing if it differs.
 
 ## Development
 
@@ -76,7 +76,7 @@ go test -race ./...   # race detector
 
 cd apps/desktop/backend
 wails3 generate bindings -d frontend/bindings -i -ts   # regenerate Go ↔ TS bindings after changing services
-wails3 build          # build the desktop binary (bin/api-client)
+wails3 build          # build the desktop binary (bin/reqly)
 wails3 dev            # run the full desktop app (requires Wails v3 + Go)
 ```
 
@@ -88,15 +88,15 @@ All scripts run through **nub** from the repository root. The root package orche
 
 | Command | Where | What it does |
 | --- | --- | --- |
-| `nub run dev` | root | Runs the desktop host app in dev mode (`@api-client/desktop`), plain Vite — browser-only, no Wails bridge |
-| `nub run build` | root | Production build of the desktop host app (`@api-client/desktop`), output to `apps/desktop/backend/frontend/dist` for the Wails embed |
+| `nub run dev` | root | Runs the desktop host app in dev mode (`@reqly/desktop`), plain Vite — browser-only, no Wails bridge |
+| `nub run build` | root | Production build of the desktop host app (`@reqly/desktop`), output to `apps/desktop/backend/frontend/dist` for the Wails embed |
 | `nub run -r --if-present typecheck` | root | `tsc --noEmit` across every workspace package |
-| `nub run --filter @api-client/frontend dev` | root | Dev server for the **shared** UI package (`frontend/`) |
-| `nub run --filter @api-client/frontend build` | root | Production build of the shared UI package |
-| `nub run --filter @api-client/desktop dev` | root | Dev server for the desktop host app (`vite`, port 9245) |
-| `nub run --filter @api-client/desktop build` | root | Host app production build (`tsc && vite build --mode production`) |
-| `nub run --filter @api-client/desktop build:dev` | root | Host app dev-mode build (`vite build --minify false --mode development`), used by `wails3 dev` |
-| `nub run --filter @api-client/desktop typecheck` | root | Type-check the host app (incl. generated bindings) |
+| `nub run --filter @reqly/frontend dev` | root | Dev server for the **shared** UI package (`frontend/`) |
+| `nub run --filter @reqly/frontend build` | root | Production build of the shared UI package |
+| `nub run --filter @reqly/desktop dev` | root | Dev server for the desktop host app (`vite`, port 9245) |
+| `nub run --filter @reqly/desktop build` | root | Host app production build (`tsc && vite build --mode production`) |
+| `nub run --filter @reqly/desktop build:dev` | root | Host app dev-mode build (`vite build --minify false --mode development`), used by `wails3 dev` |
+| `nub run --filter @reqly/desktop typecheck` | root | Type-check the host app (incl. generated bindings) |
 
 Package-level scripts (run from the respective directory or via `nub run`):
 

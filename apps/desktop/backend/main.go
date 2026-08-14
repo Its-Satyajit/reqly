@@ -13,7 +13,7 @@ var assets embed.FS
 
 func main() {
 	app := application.New(application.Options{
-		Name:        "api-client",
+		Name:        "reqly",
 		Description: "A local-first, Git-native API development environment",
 		Services: []application.Service{
 			application.NewService(&AppService{}),
@@ -24,12 +24,12 @@ func main() {
 	})
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:            "API Client",
+		Title:            "Reqly",
 		Width:            1280,
 		Height:           800,
 		MinWidth:         940,
 		MinHeight:        600,
-		BackgroundColour: application.NewRGB(15, 17, 21),
+		BackgroundColour: application.NewRGB(14, 15, 18),
 	})
 
 	err := app.Run()

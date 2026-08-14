@@ -1,4 +1,4 @@
-module github.com/api-client/api-client
+module github.com/reqly/reqly
 
 go 1.25.0
 

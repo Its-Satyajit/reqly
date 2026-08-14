@@ -11,8 +11,8 @@
     "apps/desktop/backend/frontend"
   ],
   "scripts": {
-    "dev": "nub run --filter @api-client/desktop dev",
-    "build": "nub run --filter @api-client/desktop build",
+    "dev": "nub run --filter @reqly/desktop dev",
+    "build": "nub run --filter @reqly/desktop build",
     "typecheck": "nub run --recursive --if-present typecheck"
   },
   "allowBuilds": {

@@ -10,7 +10,7 @@ importers:
 
   apps/desktop/backend/frontend:
     dependencies:
-      '@api-client/frontend':
+      '@reqly/frontend':
         specifier: workspace:*
         version: link:../../../../frontend
       '@wailsio/runtime':

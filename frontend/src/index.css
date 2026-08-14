@@ -1,21 +1,59 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --color-background: #0f1115;
-  --color-foreground: #e6e8eb;
-  --color-muted: #1b1e26;
-  --color-muted-foreground: #9aa3b2;
-  --color-primary: #4f7cff;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #1b1e26;
-  --color-secondary-foreground: #e6e8eb;
-  --color-accent: #232833;
-  --color-accent-foreground: #e6e8eb;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #2a2f3a;
-  --color-input: #2a2f3a;
-  --color-ring: #4f7cff;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #151b24;
+  --muted: #f4f5f7;
+  --muted-foreground: #5a6270;
+  --primary: #f7624b;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f5f7;
+  --secondary-foreground: #151b24;
+  --accent: #fff0ee;
+  --accent-foreground: #c23a24;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #f7624b;
+}
+
+.dark {
+  --background: #0e0f12;
+  --foreground: #fcf8f4;
+  --muted: #1a1c20;
+  --muted-foreground: #9ba1ab;
+  --primary: #f86248;
+  --primary-foreground: #ffffff;
+  --secondary: #1a1c20;
+  --secondary-foreground: #fcf8f4;
+  --accent: #2a1f1c;
+  --accent-foreground: #f86248;
+  --destructive: #e5533d;
+  --destructive-foreground: #ffffff;
+  --border: #26292e;
+  --input: #26292e;
+  --ring: #f86248;
 }
 
 html,
@@ -31,4 +69,7 @@ body {
   font-size: 14px;
   background-color: var(--color-background);
   color: var(--color-foreground);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }

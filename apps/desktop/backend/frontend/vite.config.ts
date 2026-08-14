@@ -21,6 +21,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['@api-client/frontend'],
+    exclude: ['@reqly/frontend'],
   },
 })

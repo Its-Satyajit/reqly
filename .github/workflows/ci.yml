@@ -16,7 +16,7 @@ jobs:
           cache-dependency-path: nub.lock
       - run: nub ci
       - run: nub run -r --if-present typecheck
-      - run: nub run --filter @api-client/desktop build
+      - run: nub run --filter @reqly/desktop build
 
   go:
     name: Go core (vet + tests + race)
