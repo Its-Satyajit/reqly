@@ -19,18 +19,87 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/testing"
+	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
 var testCmd = &cobra.Command{
-	Use:   "test",
-	Short: "Run project tests",
-	Long:  "Execute the test suites defined in the current project.",
+	Use:   "test <file.json>",
+	Short: "Run assertions against a request",
+	Long: `Execute the request defined in a test file and run its assertions.
+
+A test file is JSON that couples a request definition with the assertions that
+run against its response:
+
+  {
+    "name": "users",
+    "request": { "method": "GET", "url": "https://api.example.com/users" },
+    "tests": [
+      { "name": "ok", "assertions": [
+        { "kind": "status", "expected": 200 },
+        { "kind": "json", "path": "$.count", "exact": true, "value": "2" }
+      ]}
+    ]
+  }
+
+Supported assertion kinds: status, header, body_contains, body_equals, json,
+response_time. The command exits non-zero when any assertion fails.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO(core): dispatch to the shared testing engine (internal/testing).
-		fmt.Fprintln(cmd.OutOrStdout(), "test: not implemented yet")
+		tf, err := testing.LoadTestFile(args[0])
+		if err != nil {
+			return err
+		}
+
+		client := request.NewClient()
+		resp, err := client.Execute(context.Background(), &tf.Request, variables.NewSet())
+		if err != nil {
+			return fmt.Errorf("request failed: %w", err)
+		}
+
+		results := tf.Suite().Run(resp)
+
+		allPassed := true
+		for _, tr := range results {
+			mark := "\x1b[32m✓\x1b[0m"
+			if !tr.Passed {
+				mark = "\x1b[31m✗\x1b[0m"
+				allPassed = false
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", mark, tr.Name)
+			for _, r := range tr.Results {
+				prefix := "  "
+				if r.Passed {
+					prefix += "\x1b[32m✓\x1b[0m "
+				} else {
+					prefix += "\x1b[31m✗\x1b[0m "
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "%s%s\n", prefix, r.Message)
+			}
+		}
+
+		fmt.Fprintf(cmd.OutOrStdout(), "\n%d/%d tests passed\n",
+			countPassed(results), len(results))
+
+		if !allPassed {
+			return fmt.Errorf("test suite %q failed", tf.Name)
+		}
 		return nil
 	},
+}
+
+func countPassed(results []testing.TestResult) int {
+	n := 0
+	for _, tr := range results {
+		if tr.Passed {
+			n++
+		}
+	}
+	return n
 }

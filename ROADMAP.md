@@ -1,7 +1,7 @@
 # Reqly — Development Roadmap
 
 > **Status:** Scaffold / Work in progress
-> **Overall completion:** ~6% (Foundation + request engine + CLI `run`)
+> **Overall completion:** ~8% (Foundation + request engine + CLI `run`/`test`)
 > **Source of truth:** [`Docs/FeatureSet.md`](Docs/FeatureSet.md) (features), [`Docs/API Client — Technology Stack.md`](Docs/API%20Client%20—%20Technology%20Stack.md) (stack), [`Docs/API Client — Testing Strategy & TDD.md`](Docs/API%20Client%20—%20Testing%20Strategy%20&%20TDD.md) (quality)
 >
 > Checkboxes below track real, working code — not scaffolding. A box is only ticked when the feature ships end-to-end (core logic **and** UI/CLI wiring **and** tests) per the Definition of Done in the Testing Strategy doc.
@@ -46,11 +46,12 @@ The project skeleton, build system, and the first two core primitives.
 ### 0.4 Core primitives (first implementations, TDD)
 - [~] `internal/variables` — scope-precedence resolution + interpolation (7 tests) — **missing** 5 of 6 scopes, env files, `.env`, validation, diff
 - [~] `internal/scripting` — lazy Goja runtime (4 tests) — **missing** request/response API, pre/post-request wiring, dynamic values
-- [x] `internal/request` + `internal/response` — request engine + response model (see §1.1)
+- [~] `internal/request` + `internal/response` — request engine + response model (see §1.1)
+- [~] `internal/testing` — assertion engine + JSONPath + suite runner + test-file loader (see §1.11)
 
 ### 0.5 CLI skeleton
 - [x] Cobra command tree: `run`, `test`, `collection run`, `mock`, `validate`, `diff`, `docs`
-- [~] 7 CLI commands wired to the Go core — `run` done; `test`, `collection run`, `mock`, `validate`, `diff`, `docs` still stubs
+- [~] 7 CLI commands wired to the Go core — `run` + `test` done; `collection run`, `mock`, `validate`, `diff`, `docs` still stubs
 
 ---
 
@@ -63,7 +64,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Request engine: HTTP/1.1 transport, timeouts, redirects, compression
 - [x] Request execution shared by Desktop + CLI (single engine, no duplication)
 - [x] Response model: status, headers, cookies, timing, size, raw body
-- [ ] Response body parsing (JSON, XML, HTML, text, CSV, binary)
+- [~] Response body parsing (JSON done via `JSON()`/`JSONValue`; XML, HTML, text, CSV, binary pending)
 - [ ] File upload / multipart / file download
 - [ ] SQLite local metadata (history, search index, execution results, cache) + request replay
 
@@ -103,7 +104,7 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.7 Scripting & automation
 - [ ] Pre-request / post-request scripts (Goja)
-- [ ] Test scripts + assertion library (status, headers, body, JSON/XML values, response time, schema)
+- [~] Test scripts + assertion library (core assertion engine shipped: status, header, body, JSON, response-time)
 - [ ] Request chaining (login → extract token → next request)
 - [ ] Chain runner (sequential/conditional execution, variable passing, assertions, failure handling)
 - [ ] Collection runner (sequential/parallel, variable passing, failure handling)
@@ -130,7 +131,7 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.11 CLI (P0 commands)
 - [x] `reqly run` — send a request from the CLI
-- [ ] `reqly test` — run tests against a request
+- [x] `reqly test` — run tests against a request
 - [ ] `reqly collection run` — run a collection
 - [ ] `reqly validate` — validate a project/spec
 - [ ] `reqly diff` — diff specs/requests
@@ -248,7 +249,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run` shipped; storage, auth, env, UI wiring pending | ~5% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` shipped; storage, auth, env, UI wiring pending | ~8% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -256,8 +257,8 @@ Every checked feature must pass the full checklist:
 | Quality | DoD + release gates | Fast checks green; Vitest/E2E/integration TBD | ~20% |
 
 ### Next milestones (suggested order)
-1. **CLI `run`/`test`** — first real end-to-end feature: request file → execute → assert, via CLI (`run` shipped; `test` next)
-2. **Request file loading** — `reqly run path/to/request.json` + plain-text request format
+1. **Request file loading** — `reqly run`/`test` from a plain-text request file (JSON/YAML request format + vars)
+2. **Core → Desktop bridge** — replace `Greet` with real service bindings; wire `RequestEditor` Send → core
 3. **Core → Desktop bridge** — replace `Greet` with real service bindings; wire `RequestEditor` Send → core
 4. **Workspaces & collections on disk** — Git-native storage + inheritance
 5. **Import/export** — cURL/OpenAPI import + collection export
