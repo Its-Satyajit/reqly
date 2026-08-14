@@ -46,11 +46,11 @@ The project skeleton, build system, and the first two core primitives.
 ### 0.4 Core primitives (first implementations, TDD)
 - [~] `internal/variables` — scope-precedence resolution + interpolation (7 tests) — **missing** 5 of 6 scopes, env files, `.env`, validation, diff
 - [~] `internal/scripting` — lazy Goja runtime (4 tests) — **missing** request/response API, pre/post-request wiring, dynamic values
-- [~] `internal/request` — data model only (no engine, no transport, no tests)
+- [x] `internal/request` + `internal/response` — request engine + response model (see §1.1)
 
 ### 0.5 CLI skeleton
 - [x] Cobra command tree: `run`, `test`, `collection run`, `mock`, `validate`, `diff`, `docs`
-- [ ] All 7 CLI commands wired to the Go core **(stub — all print "not implemented yet")**
+- [~] 7 CLI commands wired to the Go core — `run` done; `test`, `collection run`, `mock`, `validate`, `diff`, `docs` still stubs
 
 ---
 
@@ -65,10 +65,10 @@ The minimum set to make Reqly a serious API client.
 - [x] Response model: status, headers, cookies, timing, size, raw body
 - [ ] Response body parsing (JSON, XML, HTML, text, CSV, binary)
 - [ ] File upload / multipart / file download
-- [ ] Request history (SQLite) + replay
+- [ ] SQLite local metadata (history, search index, execution results, cache) + request replay
 
 ### 1.2 Variables & environments
-- [ ] All 6 variable scopes (global, environment, collection, folder, request, runtime)
+- [ ] All 8 variable scopes (global, environment, collection, folder, request, runtime, prompt, process env)
 - [ ] `{{key}}` interpolation wired through request builder + scripting
 - [ ] Environment management (create/edit/switch) — UI + core
 - [ ] Environment validation (missing/invalid/unused/secrets)
@@ -97,6 +97,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] Body editors: JSON, XML, form-data, URL-encoded, raw, binary, GraphQL
 - [ ] Send request → real response data flow (currently `console.log` only)
 - [ ] Response viewer: metadata, raw/pretty/tree/table views, search
+- [ ] JSONPath / XPath response querying
 - [ ] Response actions: copy, download, format, save-as-example
 - [ ] Cookies: view/edit/delete, persistence, domain/path matching
 
@@ -104,6 +105,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] Pre-request / post-request scripts (Goja)
 - [ ] Test scripts + assertion library (status, headers, body, JSON/XML values, response time, schema)
 - [ ] Request chaining (login → extract token → next request)
+- [ ] Chain runner (sequential/conditional execution, variable passing, assertions, failure handling)
 - [ ] Collection runner (sequential/parallel, variable passing, failure handling)
 
 ### 1.8 Protocols (P0: REST-first, then extended)
@@ -123,6 +125,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] OpenAPI 2.x/3.x/3.1 parse + validate
 - [ ] Endpoint explorer + generate requests from spec
 - [ ] JSON Schema: edit, validate, inspect, generate
+- [ ] XML/XSD schema validation where applicable
 - [ ] Generate mocks + docs from OpenAPI (see P1)
 
 ### 1.11 CLI (P0 commands)
@@ -147,6 +150,8 @@ Features that make Reqly more capable than a basic API client.
 
 - [ ] OpenAPI editor (spec authoring in-app)
 - [ ] Schema validation + contract testing
+- [ ] Schema visualization (relationships between types, objects, endpoints, schemas)
+- [ ] Code generation (request → cURL, JS, Python, Go snippets)
 - [ ] Mock server (from OpenAPI/examples, request matching, dynamic responses, delay/error simulation, stateful mocks)
 - [ ] API diff + breaking-change detection (endpoints, params, schemas, auth, response types)
 - [ ] Request/response diff (JSON structural)
@@ -159,6 +164,7 @@ Features that make Reqly more capable than a basic API client.
 - [ ] Proxy & TLS controls: system/HTTP/HTTPS/SOCKS5, per-env/per-request, cert inspection, mTLS, custom CAs
 - [ ] Pagination runner (page/offset/cursor/link-header, stop conditions, aggregation)
 - [ ] Bulk request execution (CSV/JSON inputs, sequential/parallel, concurrency)
+- [ ] Data-driven testing (same test suite against multiple datasets)
 - [ ] Retry & resilience (count, delay, backoff, status/network error, 429)
 - [ ] API documentation generation (REST + GraphQL + realtime)
 - [ ] CI/CD support (run collections/tests in CI, mock deployment, env validation, docs generation)
@@ -177,6 +183,7 @@ Advanced functionality for experienced developers and teams.
 - [ ] Request replay (exact / modified vars / other env / captured traffic)
 - [ ] API changelog (from specs + Git changes)
 - [ ] Browser integrations (DevTools import, cURL copy, Chrome/Firefox/Safari)
+- [ ] In-app developer tools (app-level debugging: request/auth/variables/script/runtime/network inspection)
 - [ ] Advanced mock state (multi-scenario state machines)
 - [ ] Visual workflow builder
 - [ ] Advanced network interception (capture/inspect/import/modify/replay)
@@ -241,7 +248,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine, storage, auth, env, UI wiring, CLI — all **not started** | ~2% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run` shipped; storage, auth, env, UI wiring pending | ~5% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -249,8 +256,8 @@ Every checked feature must pass the full checklist:
 | Quality | DoD + release gates | Fast checks green; Vitest/E2E/integration TBD | ~20% |
 
 ### Next milestones (suggested order)
-1. **Request engine end-to-end** — `internal/request` engine + transport + response parsing, with tests (the foundation everything else builds on)
-2. **CLI `run`/`test`** — first real end-to-end feature: request file → execute → assert, via CLI
+1. **CLI `run`/`test`** — first real end-to-end feature: request file → execute → assert, via CLI (`run` shipped; `test` next)
+2. **Request file loading** — `reqly run path/to/request.json` + plain-text request format
 3. **Core → Desktop bridge** — replace `Greet` with real service bindings; wire `RequestEditor` Send → core
 4. **Workspaces & collections on disk** — Git-native storage + inheritance
 5. **Import/export** — cURL/OpenAPI import + collection export
