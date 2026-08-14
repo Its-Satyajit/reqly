@@ -25,17 +25,17 @@ package request
 // The transport remains abstract so additional protocols (WebSocket, gRPC,
 // SSE, MQTT, ...) can be added without changing the application architecture.
 type Request struct {
-	ID     string
-	Name   string
-	Method Method
-	URL    string
+	ID     string `json:"id,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Method Method `json:"method,omitempty"`
+	URL    string `json:"url,omitempty"`
 
-	Headers []Header
-	Query   []Parameter
-	Body    string
+	Headers []Header    `json:"headers,omitempty"`
+	Query   []Parameter `json:"query,omitempty"`
+	Body    string      `json:"body,omitempty"`
 
-	Auth    Auth
-	Timeout int64 // milliseconds; 0 means "no explicit timeout"
+	Auth    Auth  `json:"auth,omitempty"`
+	Timeout int64 `json:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
 }
 
 // Method is an HTTP method.
@@ -53,19 +53,19 @@ const (
 
 // Header is a single request header.
 type Header struct {
-	Key   string
-	Value string
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // Parameter is a query or path parameter.
 type Parameter struct {
-	Key   string
-	Value string
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // Auth describes the authentication configuration attached to a request.
 // Implementations live in the auth package and are dispatched by type.
 type Auth struct {
-	Type   string
-	Config map[string]string
+	Type   string            `json:"type,omitempty"`
+	Config map[string]string `json:"config,omitempty"`
 }
