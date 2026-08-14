@@ -115,4 +115,4 @@ Development follows **TDD** (see the testing strategy doc). The initial Go core 
 
 ## License
 
-TBD
+[GPL-3.0](LICENSE) — this program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, either version 3 or (at your option) any later version.
