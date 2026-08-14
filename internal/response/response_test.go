@@ -16,35 +16,39 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package cmd
+package response
 
-import (
-	"github.com/spf13/cobra"
-)
+import "testing"
 
-var rootCmd = &cobra.Command{
-	Use:   "reqly",
-	Short: "A local-first API development environment",
-	Long: `A local-first, Git-native API development environment.
-
-Requests, tests, schemas, mocks, environments, and documentation live together
-as version-controlled project files. The CLI shares the same Go core as the
-desktop application.`,
+func TestResponseOK(t *testing.T) {
+	for _, tc := range []struct {
+		code int
+		ok   bool
+	}{
+		{199, false},
+		{200, true},
+		{204, true},
+		{299, true},
+		{300, false},
+		{404, false},
+		{500, false},
+	} {
+		if got := (&Response{StatusCode: tc.code}).OK(); got != tc.ok {
+			t.Fatalf("expected OK()=%v for %d, got %v", tc.ok, tc.code, got)
+		}
+	}
 }
 
-// Execute runs the root command.
-func Execute() error {
-	return rootCmd.Execute()
+func TestResponseText(t *testing.T) {
+	resp := &Response{Body: []byte("hello world")}
+	if got := resp.Text(); got != "hello world" {
+		t.Fatalf("expected 'hello world', got %q", got)
+	}
 }
 
-func init() {
-	rootCmd.AddCommand(
-		runCmd,
-		testCmd,
-		collectionCmd,
-		mockCmd,
-		validateCmd,
-		diffCmd,
-		docsCmd,
-	)
+func TestResponseEmptyText(t *testing.T) {
+	resp := &Response{}
+	if got := resp.Text(); got != "" {
+		t.Fatalf("expected empty text, got %q", got)
+	}
 }

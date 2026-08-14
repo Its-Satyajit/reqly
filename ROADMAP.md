@@ -1,7 +1,7 @@
 # Reqly — Development Roadmap
 
 > **Status:** Scaffold / Work in progress
-> **Overall completion:** ~4% (Foundation + core primitives only)
+> **Overall completion:** ~6% (Foundation + request engine + CLI `run`)
 > **Source of truth:** [`Docs/FeatureSet.md`](Docs/FeatureSet.md) (features), [`Docs/API Client — Technology Stack.md`](Docs/API%20Client%20—%20Technology%20Stack.md) (stack), [`Docs/API Client — Testing Strategy & TDD.md`](Docs/API%20Client%20—%20Testing%20Strategy%20&%20TDD.md) (quality)
 >
 > Checkboxes below track real, working code — not scaffolding. A box is only ticked when the feature ships end-to-end (core logic **and** UI/CLI wiring **and** tests) per the Definition of Done in the Testing Strategy doc.
@@ -59,10 +59,10 @@ The project skeleton, build system, and the first two core primitives.
 The minimum set to make Reqly a serious API client.
 
 ### 1.1 Request engine (foundation for everything)
-- [ ] `internal/request` — full HTTP request model (URL, method, path/query params, headers, body, auth, certs, proxy, settings)
-- [ ] Request engine: HTTP/1.1 transport, timeouts, redirects, compression
-- [ ] Request execution shared by Desktop + CLI (single engine, no duplication)
-- [ ] Response model: status, headers, cookies, timing, size, raw body
+- [x] `internal/request` — full HTTP request model (URL, method, path/query params, headers, body, auth, certs, proxy, settings)
+- [x] Request engine: HTTP/1.1 transport, timeouts, redirects, compression
+- [x] Request execution shared by Desktop + CLI (single engine, no duplication)
+- [x] Response model: status, headers, cookies, timing, size, raw body
 - [ ] Response body parsing (JSON, XML, HTML, text, CSV, binary)
 - [ ] File upload / multipart / file download
 - [ ] Request history (SQLite) + replay
@@ -126,7 +126,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] Generate mocks + docs from OpenAPI (see P1)
 
 ### 1.11 CLI (P0 commands)
-- [ ] `reqly run` — send a request from the CLI
+- [x] `reqly run` — send a request from the CLI
 - [ ] `reqly test` — run tests against a request
 - [ ] `reqly collection run` — run a collection
 - [ ] `reqly validate` — validate a project/spec

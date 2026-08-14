@@ -19,19 +19,102 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/variables"
+)
+
+var (
+	runMethod  string
+	runHeaders []string
+	runBody    string
+	runTimeout time.Duration
 )
 
 var runCmd = &cobra.Command{
-	Use:   "run <request>",
-	Short: "Execute a single request",
-	Long:  "Execute a single request by name or ID from the current project.",
-	Args:  cobra.ExactArgs(1),
+	Use:   "run <url>",
+	Short: "Execute a single HTTP request",
+	Long: `Execute a single HTTP request and print the status line, headers, and body.
+
+By default a GET request is sent. Use --method, --header, and --data to build
+richer requests:
+
+  reqly run https://api.example.com/users
+  reqly run -m POST -H 'Content-Type: application/json' -d '{"name":"reqly"}' https://api.example.com/users`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO(core): dispatch to the shared request engine (internal/request).
-		fmt.Fprintf(cmd.OutOrStdout(), "run %s: not implemented yet\n", args[0])
+		url := args[0]
+
+		vars := variables.NewSet()
+		headers, err := parseHeaders(runHeaders)
+		if err != nil {
+			return err
+		}
+
+		req := &request.Request{
+			Method:  request.Method(strings.ToUpper(runMethod)),
+			URL:     url,
+			Headers: headers,
+			Body:    runBody,
+			Timeout: runTimeout.Milliseconds(),
+		}
+
+		client := request.NewClient()
+		resp, err := client.Execute(context.Background(), req, vars)
+		if err != nil {
+			return fmt.Errorf("request failed: %w", err)
+		}
+
+		status := resp.StatusCode
+		color := ""
+		if !resp.OK() {
+			color = "\x1b[31m" // red
+		} else {
+			color = "\x1b[32m" // green
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "%s%d %s\x1b[0m (%s)\n",
+			color, status, resp.StatusText, resp.Duration.Round(time.Millisecond))
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %d %s\n", resp.Proto, status, resp.StatusText)
+
+		for key, values := range resp.Headers {
+			for _, value := range values {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, value)
+			}
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout())
+		if len(resp.Body) > 0 {
+			fmt.Fprintln(cmd.OutOrStdout(), string(resp.Body))
+		}
 		return nil
 	},
+}
+
+func init() {
+	runCmd.Flags().StringVarP(&runMethod, "method", "m", "GET", "HTTP method to use")
+	runCmd.Flags().StringArrayVarP(&runHeaders, "header", "H", nil, "request header in 'Key: Value' form (repeatable)")
+	runCmd.Flags().StringVarP(&runBody, "data", "d", "", "request body")
+	runCmd.Flags().DurationVarP(&runTimeout, "timeout", "t", 30*time.Second, "request timeout")
+}
+
+// parseHeaders converts CLI "Key: Value" strings into request.Header values.
+func parseHeaders(raw []string) ([]request.Header, error) {
+	var headers []request.Header
+	for _, item := range raw {
+		key, value, ok := strings.Cut(item, ":")
+		if !ok {
+			return nil, fmt.Errorf("invalid header %q: expected 'Key: Value'", item)
+		}
+		headers = append(headers, request.Header{
+			Key:   strings.TrimSpace(key),
+			Value: strings.TrimSpace(value),
+		})
+	}
+	return headers, nil
 }
