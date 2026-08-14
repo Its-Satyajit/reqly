@@ -4,6 +4,7 @@ A local-first, Git-native API development environment — collections, environme
 
 > **Status:** Scaffold / Work in progress
 > **Product Name:** Reqly
+> **Roadmap:** see [`ROADMAP.md`](ROADMAP.md)
 > **Docs:** see [`FeatureSet.md`](FeatureSet.md), [`API Client — Technology Stack.md`](API%20Client%20—%20Technology%20Stack.md), and [`API Client — Testing Strategy & TDD.md`](API%20Client%20—%20Testing%20Strategy%20&%20TDD.md)
 
 ## Architecture
