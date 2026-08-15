@@ -32,6 +32,7 @@ jobs:
           key: wails3-${{ env.WAILS_VERSION }}-${{ runner.os }}
       - uses: nubjs/setup-nub@v0
         with:
+          node-version-file: .node-version
           cache-dependency-path: nub.lock
       - name: Generate Wails bindings
         run: |

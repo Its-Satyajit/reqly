@@ -5,7 +5,7 @@
   "description": "A local-first, Git-native API development environment",
   "license": "GPL-3.0-only",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "workspaces": [
     "frontend",
