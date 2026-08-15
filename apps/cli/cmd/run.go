@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/requestfile"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
@@ -38,31 +39,67 @@ var (
 )
 
 var runCmd = &cobra.Command{
-	Use:   "run <url>",
+	Use:   "run <url|file>",
 	Short: "Execute a single HTTP request",
 	Long: `Execute a single HTTP request and print the status line, headers, and body.
 
-By default a GET request is sent. Use --method, --header, and --data to build
-richer requests:
+The argument is either a URL or a plain-text request file (JSON or YAML):
 
   reqly run https://api.example.com/users
+  reqly run request.yaml
+
+No public API? Point Reqly at the companion mock API (reqly-test-api, hosted
+on Vercel) or run a local test server:
+
+  reqly run https://reqly-test-api.vercel.app/api/users
+  reqly run http://localhost:3123/api/status/404
+
+A request file couples a request definition with its variables:
+
+  name: users
+  variables:
+    token: abc123
+  request:
+    method: GET
+    url: https://api.example.com/users
+    headers:
+      - key: Authorization
+        value: Bearer {{token}}
+
+When a file is used, flags override the file's fields. Use --method, --header,
+and --data to build requests directly on the CLI:
+
   reqly run -m POST -H 'Content-Type: application/json' -d '{"name":"reqly"}' https://api.example.com/users`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		url := args[0]
+		target := args[0]
 
-		vars := variables.NewSet()
-		headers, err := parseHeaders(runHeaders)
-		if err != nil {
-			return err
-		}
+		var req *request.Request
+		var vars *variables.Set
 
-		req := &request.Request{
-			Method:  request.Method(strings.ToUpper(runMethod)),
-			URL:     url,
-			Headers: headers,
-			Body:    runBody,
-			Timeout: runTimeout.Milliseconds(),
+		if requestfile.LooksLikeFile(target) {
+			f, err := requestfile.LoadFile(target)
+			if err != nil {
+				return err
+			}
+			req = &f.Request
+			vars = f.VariablesSet()
+			if err := applyRunOverrides(cmd, req); err != nil {
+				return err
+			}
+		} else {
+			headers, err := parseHeaders(runHeaders)
+			if err != nil {
+				return err
+			}
+			req = &request.Request{
+				Method:  request.Method(strings.ToUpper(runMethod)),
+				URL:     target,
+				Headers: headers,
+				Body:    runBody,
+				Timeout: runTimeout.Milliseconds(),
+			}
+			vars = variables.NewSet()
 		}
 
 		client := request.NewClient()
@@ -101,6 +138,29 @@ func init() {
 	runCmd.Flags().StringArrayVarP(&runHeaders, "header", "H", nil, "request header in 'Key: Value' form (repeatable)")
 	runCmd.Flags().StringVarP(&runBody, "data", "d", "", "request body")
 	runCmd.Flags().DurationVarP(&runTimeout, "timeout", "t", 30*time.Second, "request timeout")
+}
+
+// applyRunOverrides copies explicitly-set CLI flags onto a request loaded from
+// a file. Flags that were not changed keep the file's values.
+func applyRunOverrides(cmd *cobra.Command, req *request.Request) error {
+	flags := cmd.Flags()
+	if flags.Changed("method") {
+		req.Method = request.Method(strings.ToUpper(runMethod))
+	}
+	if flags.Changed("header") {
+		headers, err := parseHeaders(runHeaders)
+		if err != nil {
+			return err
+		}
+		req.Headers = headers
+	}
+	if flags.Changed("data") {
+		req.Body = runBody
+	}
+	if flags.Changed("timeout") {
+		req.Timeout = runTimeout.Milliseconds()
+	}
+	return nil
 }
 
 // parseHeaders converts CLI "Key: Value" strings into request.Header values.

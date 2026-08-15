@@ -26,19 +26,19 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/testing"
-	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
 var testCmd = &cobra.Command{
-	Use:   "test <file.json>",
+	Use:   "test <file.json|file.yaml>",
 	Short: "Run assertions against a request",
 	Long: `Execute the request defined in a test file and run its assertions.
 
-A test file is JSON that couples a request definition with the assertions that
-run against its response:
+A test file is JSON or YAML that couples a request definition (with optional
+variables) to the assertions that run against its response:
 
   {
     "name": "users",
+    "variables": { "token": "abc123" },
     "request": { "method": "GET", "url": "https://api.example.com/users" },
     "tests": [
       { "name": "ok", "assertions": [
@@ -47,6 +47,11 @@ run against its response:
       ]}
     ]
   }
+
+The equivalent YAML form is also accepted. No public API? Point tests at the
+companion mock API (reqly-test-api) or a local test server, e.g.:
+
+  {"request": {"method": "GET", "url": "https://reqly-test-api.vercel.app/api/users"}, ...}
 
 Supported assertion kinds: status, header, body_contains, body_equals, json,
 response_time. The command exits non-zero when any assertion fails.`,
@@ -58,7 +63,7 @@ response_time. The command exits non-zero when any assertion fails.`,
 		}
 
 		client := request.NewClient()
-		resp, err := client.Execute(context.Background(), &tf.Request, variables.NewSet())
+		resp, err := client.Execute(context.Background(), &tf.Request, tf.VariablesSet())
 		if err != nil {
 			return fmt.Errorf("request failed: %w", err)
 		}

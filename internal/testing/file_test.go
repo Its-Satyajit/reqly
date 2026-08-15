@@ -90,6 +90,41 @@ func TestParseTestFileInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestParseTestFileYAMLWithVariables(t *testing.T) {
+	data := `
+name: users
+variables:
+  token: abc123
+request:
+  method: GET
+  url: https://api.example.com/users
+  headers:
+    - key: Authorization
+      value: Bearer {{token}}
+tests:
+  - name: ok
+    assertions:
+      - kind: status
+        expected: 200
+`
+	tf, err := ParseTestFile([]byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tf.Name != "users" {
+		t.Fatalf("name: got %q", tf.Name)
+	}
+	if v, ok := tf.Variables["token"]; !ok || v != "abc123" {
+		t.Fatalf("variable token: got %q, %v", v, ok)
+	}
+	if tf.Request.Method != "GET" || len(tf.Request.Headers) != 1 {
+		t.Fatalf("unexpected request %+v", tf.Request)
+	}
+	if len(tf.Tests) != 1 {
+		t.Fatalf("unexpected tests %+v", tf.Tests)
+	}
+}
+
 func TestParseTestFileUnknownAssertionStillParses(t *testing.T) {
 	data := `{"name":"x","request":{"url":"https://x.com"},"tests":[
 		{"name":"t","assertions":[{"kind":"bogus"}]}

@@ -6,6 +6,7 @@ require (
 	github.com/dop251/goja v0.0.0-20260806115107-493f22071ef6
 	github.com/spf13/cobra v1.8.1
 	github.com/wailsapp/wails/v3 v3.0.0-beta.8
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
