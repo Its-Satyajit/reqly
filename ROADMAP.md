@@ -51,7 +51,7 @@ The project skeleton, build system, and the first two core primitives.
 
 ### 0.5 CLI skeleton
 - [x] Cobra command tree: `run`, `test`, `collection run`, `mock`, `validate`, `diff`, `docs`
-- [~] 7 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list` done (incl. JSON/YAML request files + workspace inheritance); `mock`, `validate`, `diff`, `docs` still stubs
+- [~] 9 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list`, `import curl`, `import openapi`, `export postman` done; `mock`, `validate`, `diff`, `docs` still stubs
 
 ---
 
@@ -135,8 +135,11 @@ The minimum set to make Reqly a serious API client.
 - [ ] **SOAP** — WSDL import, operation discovery, XML builder
 
 ### 1.9 Import / export
-- [ ] Import: Postman, Insomnia, OpenAPI, Swagger, cURL, HAR
-- [ ] Export: collections, requests, OpenAPI, responses, test results, docs
+- [x] Import cURL — `reqly import curl` (method, headers, JSON/raw/data bodies, basic auth, user-agent, cookies, GET-style query data; unsupported features reported)
+- [x] Import OpenAPI 3.x — `reqly import openapi` (servers, paths, operations, params, JSON bodies; writes a Git-native workspace)
+- [x] Export Postman collection v2.1 — `reqly export postman` (flat list, inherited base URL/headers applied)
+- [ ] Import: Postman, Insomnia, Swagger, HAR
+- [ ] Export: requests, OpenAPI, responses, test results, docs
 - [ ] Import preservation (env/auth/scripts) + unsupported-feature reporting
 
 ### 1.10 OpenAPI & JSON Schema
@@ -266,7 +269,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance shipped; storage, auth, env, full UI pending | ~20% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export shipped; auth, env, full UI pending | ~22% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -277,7 +280,7 @@ Every checked feature must pass the full checklist:
 1. ~~**Request file loading**~~ — `reqly run`/`test` from a plain-text request file (JSON/YAML request format + vars) — ✅ shipped
 2. ~~**Core → Desktop bridge**~~ — `AppService.SendRequest` → core `RequestService`; `RequestEditor` Send wired to `useRequestStore` — ✅ shipped
 3. ~~**Workspaces & collections on disk**~~ — Git-native storage + inheritance (build on `requestfile`) — ✅ shipped
-4. **Import/export** — cURL/OpenAPI import + collection export
+4. ~~**Import/export**~~ — cURL/OpenAPI import + Postman collection export — ✅ shipped
 5. **WebSocket + SSE** — first realtime protocols
 6. **Collection runner + scripting** — pre/post scripts + tests in the runner
 7. **Mock server + OpenAPI** — generate mocks from specs
