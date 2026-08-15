@@ -51,7 +51,7 @@ The project skeleton, build system, and the first two core primitives.
 
 ### 0.5 CLI skeleton
 - [x] Cobra command tree: `run`, `test`, `collection run`, `mock`, `validate`, `diff`, `docs`
-- [~] 7 CLI commands wired to the Go core — `run` + `test` done (incl. JSON/YAML request files); `collection run`, `mock`, `validate`, `diff`, `docs` still stubs
+- [~] 7 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list` done (incl. JSON/YAML request files + workspace inheritance); `mock`, `validate`, `diff`, `docs` still stubs
 
 ---
 
@@ -79,7 +79,7 @@ The minimum set to make Reqly a serious API client.
 - [x] `internal/requestfile` — JSON/YAML request file format (`name`, `variables`, `request`)
 - [x] `reqly run <file>` — load request + variables from file, flags override file fields
 - [x] `reqly test <file>` — test files accept YAML and `variables` (interpolated at runtime)
-- [ ] Shared file format for collections/folders (extend `requestfile`)
+- [x] Shared file format for collections/folders (`internal/collections` descriptor format, see §1.5)
 
 ### 1.3 Authentication
 - [ ] Basic, Bearer, API key
@@ -94,10 +94,13 @@ The minimum set to make Reqly a serious API client.
 - [ ] `.env` support + external managers (Vault, AWS, Azure) — P3
 
 ### 1.5 Workspaces, collections & storage
-- [ ] `internal/collections` — workspaces, collections, nested folders
-- [ ] Plain-text, Git-native project files (mirror workspace → filesystem)
+- [x] `internal/collections` — workspaces, collections, nested folders
+- [x] Plain-text, Git-native project files (mirror workspace → filesystem)
 - [x] `internal/core` — application services layer shared by Desktop/CLI/MCP (`RequestService.Send`)
-- [ ] Inheritance: Workspace → Collection → Folder → Request (base URL, headers, auth, vars)
+- [x] Inheritance: Workspace → Collection → Folder → Request (base URL, headers, auth, vars)
+- [x] `reqly collection run <path>` + `reqly collection list` (CLI wired to the Go core)
+- [ ] Environments: resolve the `environment` scope from `environments/` on disk
+- [ ] Save/export a workspace (write descriptors + request files back to disk)
 
 ### 1.5a Core → Desktop bridge (from 0.2 `Greet` proof)
 - [x] `internal/core` `RequestService` — wraps `request.Client`, bridge-friendly `SendResponse` DTO
@@ -146,7 +149,7 @@ The minimum set to make Reqly a serious API client.
 ### 1.11 CLI (P0 commands)
 - [x] `reqly run` — send a request from the CLI (URL or JSON/YAML request file, flags override file)
 - [x] `reqly test` — run tests against a request (JSON or YAML test file, variables interpolated)
-- [ ] `reqly collection run` — run a collection
+- [x] `reqly collection run` — run a request in a collection with inherited config (workspace/collection/folder resolution); `collection list` shows the tree
 - [ ] `reqly validate` — validate a project/spec
 - [ ] `reqly diff` — diff specs/requests
 - [ ] `reqly mock` — serve a mock server
@@ -263,7 +266,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge shipped; storage, auth, env, full UI pending | ~15% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance shipped; storage, auth, env, full UI pending | ~20% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -273,7 +276,7 @@ Every checked feature must pass the full checklist:
 ### Next milestones (suggested order)
 1. ~~**Request file loading**~~ — `reqly run`/`test` from a plain-text request file (JSON/YAML request format + vars) — ✅ shipped
 2. ~~**Core → Desktop bridge**~~ — `AppService.SendRequest` → core `RequestService`; `RequestEditor` Send wired to `useRequestStore` — ✅ shipped
-3. **Workspaces & collections on disk** — Git-native storage + inheritance (build on `requestfile`)
+3. ~~**Workspaces & collections on disk**~~ — Git-native storage + inheritance (build on `requestfile`) — ✅ shipped
 4. **Import/export** — cURL/OpenAPI import + collection export
 5. **WebSocket + SSE** — first realtime protocols
 6. **Collection runner + scripting** — pre/post scripts + tests in the runner
