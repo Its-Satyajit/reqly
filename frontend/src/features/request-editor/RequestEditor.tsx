@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
+import { useRequestStore } from '../../stores'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
 
@@ -8,10 +9,11 @@ export function RequestEditor() {
   const [method, setMethod] = useState<string>('GET')
   const [url, setUrl] = useState('')
   const [body, setBody] = useState('{\n  \n}')
+  const send = useRequestStore((s) => s.send)
+  const loading = useRequestStore((s) => s.loading)
 
-  const send = () => {
-    // TODO(core): dispatch to the Go request engine over the Wails bridge.
-    console.log({ method, url, body })
+  const handleSend = () => {
+    void send({ method, url, body })
   }
 
   return (
@@ -34,8 +36,8 @@ export function RequestEditor() {
           placeholder="https://reqly-test-api.vercel.app/api/users — mock API for testing"
           className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
         />
-        <Button size="sm" onClick={send}>
-          Send
+        <Button size="sm" onClick={handleSend} disabled={loading}>
+          {loading ? 'Sending…' : 'Send'}
         </Button>
       </div>
       <div className="min-h-0 flex-1 p-2">

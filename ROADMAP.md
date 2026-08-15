@@ -31,7 +31,7 @@ The project skeleton, build system, and the first two core primitives.
 
 ### 0.2 Desktop shell (Wails v3)
 - [x] `main.go` — Wails v3 `application.New`, window (1280×800), dark background
-- [x] `AppService` binding registered + `Greet` bridge proof
+- [x] `AppService` binding registered + `Greet` bridge proof → replaced by real `SendRequest` binding (see §1.5)
 - [x] Go ↔ TypeScript bindings generated (`wails3 generate bindings`)
 - [x] Host app (`apps/desktop/backend/frontend`) — Vite + React + Tailwind, wails vite plugin, port 9245
 - [x] `wails3 build` produces `bin/reqly`
@@ -96,13 +96,21 @@ The minimum set to make Reqly a serious API client.
 ### 1.5 Workspaces, collections & storage
 - [ ] `internal/collections` — workspaces, collections, nested folders
 - [ ] Plain-text, Git-native project files (mirror workspace → filesystem)
-- [ ] `internal/core` — application services layer shared by Desktop/CLI/MCP
+- [x] `internal/core` — application services layer shared by Desktop/CLI/MCP (`RequestService.Send`)
 - [ ] Inheritance: Workspace → Collection → Folder → Request (base URL, headers, auth, vars)
 
+### 1.5a Core → Desktop bridge (from 0.2 `Greet` proof)
+- [x] `internal/core` `RequestService` — wraps `request.Client`, bridge-friendly `SendResponse` DTO
+- [x] Desktop `AppService.SendRequest` delegates to core (thin Wails boundary; `Greet` removed)
+- [x] Regenerated Wails bindings → `appservice.ts` `SendRequest` + `models.ts` (`Request`, `SendResponse`)
+- [x] Shared `useRequestStore` + pluggable `RequestSender` (Wails bridge in host; `fetchSender` fallback in browser dev)
+- [x] `RequestEditor` Send → core; `ResponseViewer` renders status/headers/pretty body
+- [ ] Per-tab request/response state (multiple tabs), cancel in-flight request
+
 ### 1.6 Request builder & response viewer (UI)
-- [ ] Method select, URL bar, params/headers/body tabs
+- [x] Method select, URL bar, Send → real response data flow
+- [ ] Params/headers/body tabs in the builder
 - [ ] Body editors: JSON, XML, form-data, URL-encoded, raw, binary, GraphQL
-- [ ] Send request → real response data flow (currently `console.log` only)
 - [ ] Response viewer: metadata, raw/pretty/tree/table views, search
 - [ ] JSONPath / XPath response querying
 - [ ] Response actions: copy, download, format, save-as-example
@@ -255,7 +263,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files shipped; storage, auth, env, UI wiring pending | ~10% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge shipped; storage, auth, env, full UI pending | ~15% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -264,11 +272,11 @@ Every checked feature must pass the full checklist:
 
 ### Next milestones (suggested order)
 1. ~~**Request file loading**~~ — `reqly run`/`test` from a plain-text request file (JSON/YAML request format + vars) — ✅ shipped
-2. **Core → Desktop bridge** — replace `Greet` with real service bindings; wire `RequestEditor` Send → core
+2. ~~**Core → Desktop bridge**~~ — `AppService.SendRequest` → core `RequestService`; `RequestEditor` Send wired to `useRequestStore` — ✅ shipped
 3. **Workspaces & collections on disk** — Git-native storage + inheritance (build on `requestfile`)
 4. **Import/export** — cURL/OpenAPI import + collection export
 5. **WebSocket + SSE** — first realtime protocols
 6. **Collection runner + scripting** — pre/post scripts + tests in the runner
 7. **Mock server + OpenAPI** — generate mocks from specs
 
-> **Companion:** `reqly-test-api` (sibling repo, not yet pushed) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.
+> **Companion:** [**reqly-test-api**](https://reqly-test-api.vercel.app) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.
