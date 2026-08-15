@@ -23,15 +23,18 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/runner"
 )
 
 var collectionWorkspace string
+var collectionFailFast bool
 
 var collectionCmd = &cobra.Command{
 	Use:   "collection",
@@ -201,8 +204,77 @@ func findCollectionRequest(path string) (*collections.Workspace, *collections.Co
 	return ws, coll, chain, entry, nil
 }
 
+// collectionTestCmd runs every request in a collection, evaluating pre/post
+// scripts and reqly.test() assertions, with a summary report.
+var collectionTestCmd = &cobra.Command{
+	Use:   "test <collection>",
+	Short: "Run every request in a collection with scripts and tests",
+	Long: `Run every request in a collection in order, executing pre-request and
+post-request scripts and evaluating reqly.test() assertions.
+
+Variables set by a post-request script (reqly.setVariable) are available to
+later requests, so a login step can feed a token into the next request.
+
+  reqly collection test users
+  reqly collection test users --fail-fast
+
+Use --workspace to point at a workspace directory other than the current one.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ws, err := collections.LoadWorkspace(collectionWorkspace)
+		if err != nil {
+			return err
+		}
+
+		coll := findCollection(ws, args[0])
+		if coll == nil {
+			return fmt.Errorf("collection %q not found in workspace %s", args[0], collectionWorkspace)
+		}
+
+		report, err := runner.RunCollection(context.Background(), ws, coll, nil, runner.Options{
+			FailFast: collectionFailFast,
+		})
+		if err != nil {
+			return err
+		}
+
+		for _, step := range report.Steps {
+			status := "\x1b[32mPASS\x1b[0m"
+			if !step.Passed {
+				status = "\x1b[31mFAIL\x1b[0m"
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", status, step.Name)
+			if step.RequestError != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "  error: %v\n", step.RequestError)
+			}
+			if step.Response != nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "  %d %s (%s)\n",
+					step.Response.StatusCode, step.Response.StatusText,
+					step.Response.Duration.Round(time.Millisecond))
+			}
+			for _, tr := range step.Tests {
+				mark := "ok"
+				if !tr.Passed {
+					mark = "FAIL"
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "  [%s] %s\n", mark, tr.Name)
+			}
+			if len(step.Logs) > 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "  script output: %s\n", strings.Join(step.Logs, "; "))
+			}
+		}
+
+		fmt.Fprintf(cmd.OutOrStdout(), "\n%d passed, %d failed (%d total, %s)\n",
+			report.Passed, report.Failed, report.Total, report.Duration.Round(time.Millisecond))
+		if !report.OK() {
+			return fmt.Errorf("collection %q: %d step(s) failed", args[0], report.Failed)
+		}
+		return nil
+	},
+}
+
 func init() {
-	collectionCmd.AddCommand(collectionRunCmd, collectionListCmd)
+	collectionCmd.AddCommand(collectionRunCmd, collectionListCmd, collectionTestCmd)
 
 	pwd, err := filepath.Abs(".")
 	if err != nil {
@@ -210,4 +282,6 @@ func init() {
 	}
 	collectionRunCmd.Flags().StringVar(&collectionWorkspace, "workspace", pwd, "workspace directory")
 	collectionListCmd.Flags().StringVar(&collectionWorkspace, "workspace", pwd, "workspace directory")
+	collectionTestCmd.Flags().StringVar(&collectionWorkspace, "workspace", pwd, "workspace directory")
+	collectionTestCmd.Flags().BoolVar(&collectionFailFast, "fail-fast", false, "stop after the first failing step")
 }

@@ -51,7 +51,7 @@ The project skeleton, build system, and the first two core primitives.
 
 ### 0.5 CLI skeleton
 - [x] Cobra command tree: `run`, `test`, `collection run`, `mock`, `validate`, `diff`, `docs`
-- [~] 11 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list`, `import curl`, `import openapi`, `export postman`, `ws`, `sse` done; `mock`, `validate`, `diff`, `docs` still stubs
+- [~] 12 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list`, `collection test`, `import curl`, `import openapi`, `export postman`, `ws`, `sse` done; `mock`, `validate`, `diff`, `docs` still stubs
 
 ---
 
@@ -120,11 +120,11 @@ The minimum set to make Reqly a serious API client.
 - [ ] Cookies: view/edit/delete, persistence, domain/path matching
 
 ### 1.7 Scripting & automation
-- [ ] Pre-request / post-request scripts (Goja)
+- [x] Pre-request / post-request scripts (Goja) — `reqly` sandbox (request/response access, variable get/set, `reqly.test()`, console)
 - [~] Test scripts + assertion library (core assertion engine shipped: status, header, body, JSON, response-time)
-- [ ] Request chaining (login → extract token → next request)
-- [ ] Chain runner (sequential/conditional execution, variable passing, assertions, failure handling)
-- [ ] Collection runner (sequential/parallel, variable passing, failure handling)
+- [x] Request chaining (login → extract token → next request) — runtime variables persist across collection steps
+- [~] Chain runner (sequential/conditional execution, variable passing, assertions, failure handling)
+- [x] Collection runner (sequential, variable passing, assertions, fail-fast) — `reqly collection test`
 
 ### 1.8 Protocols (P0: REST-first, then extended)
 - [ ] **REST** — complete builder (see §1.1/§1.6)
@@ -153,6 +153,7 @@ The minimum set to make Reqly a serious API client.
 - [x] `reqly run` — send a request from the CLI (URL or JSON/YAML request file, flags override file)
 - [x] `reqly test` — run tests against a request (JSON or YAML test file, variables interpolated)
 - [x] `reqly collection run` — run a request in a collection with inherited config (workspace/collection/folder resolution); `collection list` shows the tree
+- [x] `reqly collection test` — run every request in a collection with pre/post scripts and `reqly.test()` assertions; runtime variables chain across steps; `--fail-fast`
 - [x] `reqly ws` — interactive WebSocket client (stdin sends text frames, incoming frames timestamped)
 - [x] `reqly sse` — stream Server-Sent Events (named/ID'd events, multi-line data, retry hints, `--count`)
 - [ ] `reqly validate` — validate a project/spec
@@ -271,7 +272,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients shipped; auth, env, full UI pending | ~25% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner shipped; auth, env, full UI pending | ~28% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -284,7 +285,7 @@ Every checked feature must pass the full checklist:
 3. ~~**Workspaces & collections on disk**~~ — Git-native storage + inheritance (build on `requestfile`) — ✅ shipped
 4. ~~**Import/export**~~ — cURL/OpenAPI import + Postman collection export — ✅ shipped
 5. ~~**WebSocket + SSE**~~ — realtime protocols: `internal/websocket` (connection mgmt, text/binary messages) + `internal/sse` (event stream parser) + CLI `reqly ws`/`reqly sse` — ✅ shipped
-6. **Collection runner + scripting** — pre/post scripts + tests in the runner
+6. ~~**Collection runner + scripting**~~ — pre/post scripts (Goja `reqly` sandbox), request chaining via runtime variables, tests in the runner, CLI `reqly collection test` — ✅ shipped
 7. **Mock server + OpenAPI** — generate mocks from specs
 
 > **Companion:** [**reqly-test-api**](https://reqly-test-api.vercel.app) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.
