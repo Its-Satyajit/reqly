@@ -44,6 +44,8 @@ func init() {
 		collectionCmd,
 		importCmd,
 		exportCmd,
+		wsCmd,
+		sseCmd,
 		mockCmd,
 		validateCmd,
 		diffCmd,

@@ -51,7 +51,7 @@ The project skeleton, build system, and the first two core primitives.
 
 ### 0.5 CLI skeleton
 - [x] Cobra command tree: `run`, `test`, `collection run`, `mock`, `validate`, `diff`, `docs`
-- [~] 9 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list`, `import curl`, `import openapi`, `export postman` done; `mock`, `validate`, `diff`, `docs` still stubs
+- [~] 11 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list`, `import curl`, `import openapi`, `export postman`, `ws`, `sse` done; `mock`, `validate`, `diff`, `docs` still stubs
 
 ---
 
@@ -128,8 +128,8 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.8 Protocols (P0: REST-first, then extended)
 - [ ] **REST** — complete builder (see §1.1/§1.6)
-- [ ] **WebSocket** — connection mgmt, message composer, in/out inspection
-- [ ] **SSE** — live event stream, inspection, event history
+- [x] **WebSocket** — connection mgmt, message composer, in/out inspection (`internal/websocket` + `reqly ws`)
+- [x] **SSE** — live event stream, inspection, event history (`internal/sse` + `reqly sse`)
 - [ ] **GraphQL** — query editor, variables, introspection, autocomplete, schema browser
 - [ ] **gRPC** — proto files, reflection, service/method discovery, unary + streaming
 - [ ] **SOAP** — WSDL import, operation discovery, XML builder
@@ -153,6 +153,8 @@ The minimum set to make Reqly a serious API client.
 - [x] `reqly run` — send a request from the CLI (URL or JSON/YAML request file, flags override file)
 - [x] `reqly test` — run tests against a request (JSON or YAML test file, variables interpolated)
 - [x] `reqly collection run` — run a request in a collection with inherited config (workspace/collection/folder resolution); `collection list` shows the tree
+- [x] `reqly ws` — interactive WebSocket client (stdin sends text frames, incoming frames timestamped)
+- [x] `reqly sse` — stream Server-Sent Events (named/ID'd events, multi-line data, retry hints, `--count`)
 - [ ] `reqly validate` — validate a project/spec
 - [ ] `reqly diff` — diff specs/requests
 - [ ] `reqly mock` — serve a mock server
@@ -269,7 +271,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export shipped; auth, env, full UI pending | ~22% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients shipped; auth, env, full UI pending | ~25% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -281,7 +283,7 @@ Every checked feature must pass the full checklist:
 2. ~~**Core → Desktop bridge**~~ — `AppService.SendRequest` → core `RequestService`; `RequestEditor` Send wired to `useRequestStore` — ✅ shipped
 3. ~~**Workspaces & collections on disk**~~ — Git-native storage + inheritance (build on `requestfile`) — ✅ shipped
 4. ~~**Import/export**~~ — cURL/OpenAPI import + Postman collection export — ✅ shipped
-5. **WebSocket + SSE** — first realtime protocols
+5. ~~**WebSocket + SSE**~~ — realtime protocols: `internal/websocket` (connection mgmt, text/binary messages) + `internal/sse` (event stream parser) + CLI `reqly ws`/`reqly sse` — ✅ shipped
 6. **Collection runner + scripting** — pre/post scripts + tests in the runner
 7. **Mock server + OpenAPI** — generate mocks from specs
 
