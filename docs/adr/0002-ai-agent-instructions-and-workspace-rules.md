@@ -6,25 +6,25 @@
 
 ## Context & Problem Statement
 
-As AI coding agents (Antigravity, Gemini, Cursor, Claude, Copilot) become primary contributors to the codebase, we need a single, authoritative, plain-text instruction source that guides AI behavior, enforces architectural principles (local-first, Git-native, dual GUI/CLI parity), and enforces test-driven development (TDD) gates.
+Multiple AI coding assistants (Antigravity, Gemini, Cursor, Claude, Copilot) contribute to the codebase. We require a single source of truth for repository principles (local-first, Git-native, dual GUI/CLI parity), test-driven development (TDD) quality gates, and the 5-stage skill pipeline.
 
 ## Decision Drivers
 
-1. Different AI tools look for different convention files (`AGENTS.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`).
-2. Duplicating rules across multiple files risks documentation drift and outdated guidance.
-3. Feature development must align with existing domain concepts documented in `CONTEXT.md` and undergo interactive grilling (`grill-with-docs`).
+1. AI tools inspect distinct configuration file paths (`AGENTS.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`).
+2. Duplicating rules across tool-specific files causes documentation drift.
+3. Feature execution requires domain model alignment ([`CONTEXT.md`](../../CONTEXT.md)) and the 5-stage skill pipeline (`~/.agents/skills/`).
 
 ## Considered Options
 
-1. **Option 1:** Add separate inline documentation in each tool's specific file format.
-2. **Option 2:** Use `AGENTS.md` as the root single source of truth, with thin pointer files (`GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`) delegating to `AGENTS.md`.
+- **Option 1:** Duplicate full rule sets inside each tool-specific file.
+- **Option 2:** Establish `AGENTS.md` as the single source of truth, with thin pointer files delegating to `AGENTS.md`.
 
 ## Decision Outcome
 
-Chosen **Option 2**. `AGENTS.md` is established at the root of the repository as the canonical AI guidelines document. Other AI tool configuration files point back to `AGENTS.md`.
+Chosen **Option 2**. `AGENTS.md` is established at the repository root as the canonical AI guidelines document. Tool-specific files point directly to `AGENTS.md`.
 
 ### Consequences
 
-- **Positive:** Single place to update AI rules, preventing drift across tools.
-- **Positive:** Clear instructions on testing (`go test ./...`), domain model usage (`CONTEXT.md`), and codebase directory structure.
-- **Negative:** AI tools that do not resolve markdown hyperlinks rely on reading the root `AGENTS.md` file explicitly.
+- **Positive:** Single-file maintenance prevents instruction drift.
+- **Positive:** Clear execution bounds for TDD (`go test ./...`) and skill pipeline invocation.
+- **Negative:** AI tools unable to resolve markdown links must read `AGENTS.md` directly.

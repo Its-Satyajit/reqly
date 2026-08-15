@@ -17,7 +17,7 @@
 
 ---
 
-## Phase 0 — Foundation (✅ ~95% complete)
+## Phase 0 — Foundation ( ~95% complete)
 
 The project skeleton, build system, and the first two core primitives.
 
@@ -75,7 +75,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] Environment validation (missing/invalid/unused/secrets)
 - [ ] Dynamic values & template tags (UUID, timestamp, random, runtime)
 
-### 1.2a Request files (plain-text, Git-native) 
+### 1.2a Request files (plain-text, Git-native)
 - [x] `internal/requestfile` — JSON/YAML request file format (`name`, `variables`, `request`)
 - [x] `reqly run <file>` — load request + variables from file, flags override file fields
 - [x] `reqly test <file>` — test files accept YAML and `variables` (interpolated at runtime)
