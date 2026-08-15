@@ -14,3 +14,8 @@ The event-driven GitHub Actions workflow triggered by pushing semver tags (`git 
 
 ### Multi-Distro Install Script
 The POSIX-compliant installation one-liner (`curl -fsSL https://raw.githubusercontent.com/Its-Satyajit/reqly/main/install.sh | sh`). Detects operating system and Linux package manager (`pacman`, `apt`, `dnf`, `zypper`), installing appropriate binaries or system packages to `/usr/local/bin/reqly`.
+
+### AI Agent Protocol & Workspace Rules
+The standardized instruction setup (`AGENTS.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`) governing AI coding assistant contributions to Reqly. Enforces TDD verification (`go test ./...`), domain model alignment via the `grill-with-docs` skill, and local-first/Git-native architectural constraints.
+
+
