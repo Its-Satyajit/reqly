@@ -3,6 +3,7 @@ module github.com/Its-Satyajit/reqly
 go 1.25.0
 
 require (
+	github.com/coder/websocket v1.8.14
 	github.com/dop251/goja v0.0.0-20260806115107-493f22071ef6
 	github.com/spf13/cobra v1.8.1
 	github.com/wailsapp/wails/v3 v3.0.0-beta.8
@@ -11,7 +12,6 @@ require (
 
 require (
 	github.com/adrg/xdg v0.5.3 // indirect
-	github.com/coder/websocket v1.8.14 // indirect
 	github.com/dlclark/regexp2/v2 v2.5.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
