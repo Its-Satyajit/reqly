@@ -1,14 +1,28 @@
-import { useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
+import { useRequestStore } from '../../stores'
 
-export interface ResponseViewerProps {
-  value?: string
+function formatBody(body: string): string {
+  try {
+    return JSON.stringify(JSON.parse(body), null, 2)
+  } catch {
+    return body
+  }
 }
 
-export function ResponseViewer({ value }: ResponseViewerProps) {
-  const [draft, setDraft] = useState('// Send a request to see the response')
+export function ResponseViewer() {
+  const response = useRequestStore((s) => s.response)
+  const loading = useRequestStore((s) => s.loading)
+  const error = useRequestStore((s) => s.error)
 
-  const response = value ?? draft
+  const content = loading
+    ? '// Sending request…'
+    : error
+      ? `// Error: ${error}`
+      : response
+        ? `${response.proto ? `${response.proto} ` : ''}${response.statusCode} ${response.statusText} (${response.durationMs}ms)\n\n${Object.entries(response.headers)
+            .map(([key, values]) => `${key}: ${values.join(', ')}`)
+            .join('\n')}\n\n${formatBody(response.body)}`
+        : '// Send a request to see the response'
 
   return (
     <div className="flex h-full flex-col">
@@ -17,10 +31,9 @@ export function ResponseViewer({ value }: ResponseViewerProps) {
       </p>
       <div className="min-h-0 flex-1 p-2">
         <CodeMirrorEditor
-          value={response}
+          value={content}
           language="json"
           readOnly
-          onChange={setDraft}
           className="h-full overflow-hidden rounded-md border border-border"
         />
       </div>

@@ -18,17 +18,26 @@
 
 package main
 
+import (
+	"github.com/Its-Satyajit/reqly/internal/core"
+	"github.com/Its-Satyajit/reqly/internal/request"
+)
+
 // AppService is a Wails v3 service exposing the Go core to the frontend.
-// It should stay thin: business logic belongs in the Go core (internal/).
-type AppService struct{}
+// It should stay thin: business logic belongs in the Go core (internal/core).
+type AppService struct {
+	requests *core.RequestService
+}
 
 // NewAppService creates a new AppService.
 func NewAppService() *AppService {
-	return &AppService{}
+	return &AppService{
+		requests: core.NewRequestService(),
+	}
 }
 
-// Greet is a placeholder binding proving the Go ↔ JavaScript bridge works.
-// Remove once real core bindings exist.
-func (s *AppService) Greet(name string) string {
-	return "Hello, " + name
+// SendRequest executes an HTTP request through the core and returns the
+// bridge-friendly response for the frontend to render.
+func (s *AppService) SendRequest(r request.Request) (*core.SendResponse, error) {
+	return s.requests.Send(r)
 }
