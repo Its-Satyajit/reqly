@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+
+env:
+  GOBIN: /home/runner/go/bin
+  WAILS_VERSION: v3.0.0-beta.8
 
 jobs:
   frontend:
@@ -11,19 +16,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: nubjs/setup-nub@v0
-        with:
-          cache-dependency-path: nub.lock
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
+      - name: Install system dependencies (GTK4 + WebKitGTK 6.0)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgtk-4-dev libwebkitgtk-6.0-dev
+      - name: Cache wails3 CLI
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.GOBIN }}/wails3
+          key: wails3-${{ env.WAILS_VERSION }}-${{ runner.os }}
+      - uses: nubjs/setup-nub@v0
+        with:
+          node-version-file: .node-version
+          cache-dependency-path: nub.lock
       - name: Generate Wails bindings
         run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.8
+          if [ ! -x "$GOBIN/wails3" ]; then
+            go install github.com/wailsapp/wails/v3/cmd/wails3@$WAILS_VERSION
+          fi
           cd apps/desktop/backend
-          $HOME/go/bin/wails3 generate bindings -clean=true -ts -i
+          $GOBIN/wails3 generate bindings -clean=true -ts -i
       - run: nub ci
       - run: nub run -r --if-present typecheck
       - run: nub run --filter @reqly/desktop build
@@ -37,11 +54,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-      - name: Install system dependencies (Wails)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc libgtk-3-dev libwebkit2gtk-4.1-dev
       - run: go mod tidy
-      - run: gofmt -l internal apps
-      - run: go vet ./...
-      - run: go test -race -cover ./...
+      - run: gofmt -l internal apps/cli
+      - run: go vet ./internal/... ./apps/cli/...
+      - run: go test -race -cover ./internal/... ./apps/cli/...
