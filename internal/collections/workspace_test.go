@@ -399,3 +399,25 @@ func TestEffectiveURLInvalidBase(t *testing.T) {
 		t.Fatal("expected error for invalid base URL")
 	}
 }
+
+func TestEffectiveURLPreservesPlaceholders(t *testing.T) {
+	i := Inherited{BaseURL: "https://api.example.com"}
+	got, err := i.EffectiveURL("/api/users/{{userId}}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "https://api.example.com/api/users/{{userId}}"; got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+}
+
+func TestEffectiveURLJoinsRelativeBase(t *testing.T) {
+	i := Inherited{BaseURL: "/v1"}
+	got, err := i.EffectiveURL("users")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "/v1/users"; got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+}

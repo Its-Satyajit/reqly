@@ -41,6 +41,14 @@ type File struct {
 	Name      string            `json:"name,omitempty" yaml:"name,omitempty"`
 	Variables map[string]string `json:"variables,omitempty" yaml:"variables,omitempty"`
 	Request   request.Request   `json:"request" yaml:"request"`
+
+	// PreRequest is a JavaScript snippet run before the request is sent. It
+	// runs in a sandbox with a `reqly` global for reading/writing variables
+	// and mutating the outgoing request.
+	PreRequest string `json:"preRequest,omitempty" yaml:"preRequest,omitempty"`
+	// PostRequest is a JavaScript snippet run after the response arrives. It
+	// can inspect reqly.response, set variables, and register reqly.test()s.
+	PostRequest string `json:"postRequest,omitempty" yaml:"postRequest,omitempty"`
 }
 
 // LoadFile reads and parses a request file from disk.

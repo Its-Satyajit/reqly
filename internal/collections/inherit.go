@@ -119,7 +119,8 @@ func resolveBaseURL(parent, child string) string {
 }
 
 // EffectiveURL joins the request's URL onto the inherited base URL. An
-// absolute request URL is used as-is.
+// absolute request URL is used as-is. The join is performed as raw strings so
+// {{variable}} placeholders survive until interpolation.
 func (i *Inherited) EffectiveURL(requestURL string) (string, error) {
 	if requestURL == "" {
 		return "", fmt.Errorf("request has no URL")
@@ -130,12 +131,11 @@ func (i *Inherited) EffectiveURL(requestURL string) (string, error) {
 	if i.BaseURL == "" {
 		return requestURL, nil
 	}
-	u, err := url.Parse(i.BaseURL)
-	if err != nil {
+	if _, err := url.Parse(i.BaseURL); err != nil {
 		return "", fmt.Errorf("invalid base URL %q: %w", i.BaseURL, err)
 	}
-	u.Path = strings.TrimSuffix(u.Path, "/") + "/" + strings.TrimPrefix(requestURL, "/")
-	return u.String(), nil
+	base := strings.TrimSuffix(i.BaseURL, "/")
+	return base + "/" + strings.TrimPrefix(requestURL, "/"), nil
 }
 
 // applyTo copies the inherited base URL and auth onto a request, and merges

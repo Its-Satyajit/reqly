@@ -64,6 +64,24 @@ func (s *Set) Get(scope Scope, key string) (string, bool) {
 	return value, ok
 }
 
+// Range calls fn for every key in scope. Iteration order is unspecified.
+func (s *Set) Range(scope Scope, fn func(key, value string)) {
+	for key, value := range s.values[scope] {
+		fn(key, value)
+	}
+}
+
+// Clone returns a deep copy of the set.
+func (s *Set) Clone() *Set {
+	clone := NewSet()
+	for scope, values := range s.values {
+		for key, value := range values {
+			clone.Set(scope, key, value)
+		}
+	}
+	return clone
+}
+
 // Resolve looks up key respecting scope precedence (highest priority wins).
 func (s *Set) Resolve(key string) (string, bool) {
 	precedence := Precedence()
@@ -77,27 +95,47 @@ func (s *Set) Resolve(key string) (string, bool) {
 }
 
 // Interpolate replaces {{key}} placeholders using resolved scope precedence.
+// Placeholders inside substituted values are also resolved, so variables can
+// reference other variables ({{a}} → "Bearer {{b}}" → "Bearer tok").
 func (s *Set) Interpolate(input string) (string, error) {
+	const maxPasses = 16
+	for pass := 0; pass < maxPasses; pass++ {
+		output, changed, err := s.interpolateOnce(input)
+		if err != nil {
+			return "", err
+		}
+		input = output
+		if !changed {
+			return input, nil
+		}
+	}
+	return input, nil
+}
+
+// interpolateOnce performs a single replacement pass, reporting whether any
+// placeholder was substituted.
+func (s *Set) interpolateOnce(input string) (string, bool, error) {
 	var result strings.Builder
+	changed := false
 	for {
 		start := strings.Index(input, "{{")
 		if start == -1 {
 			result.WriteString(input)
-			break
+			return result.String(), changed, nil
 		}
 		result.WriteString(input[:start])
 		rest := input[start+2:]
 		end := strings.Index(rest, "}}")
 		if end == -1 {
-			return "", fmt.Errorf("unclosed variable reference in %q", input)
+			return "", changed, fmt.Errorf("unclosed variable reference in %q", input)
 		}
 		key := rest[:end]
 		value, ok := s.Resolve(key)
 		if !ok {
-			return "", fmt.Errorf("undefined variable %q", key)
+			return "", changed, fmt.Errorf("undefined variable %q", key)
 		}
 		result.WriteString(value)
+		changed = true
 		input = rest[end+2:]
 	}
-	return result.String(), nil
 }

@@ -81,6 +81,20 @@ func TestInterpolateUndefinedVariable(t *testing.T) {
 	}
 }
 
+func TestInterpolateNestedVariables(t *testing.T) {
+	set := NewSet()
+	set.Set(ScopeGlobal, "AUTH", "Bearer {{TOKEN}}")
+	set.Set(ScopeEnvironment, "TOKEN", "tok-42")
+
+	got, err := set.Interpolate("{{AUTH}}")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if want := "Bearer tok-42"; got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+}
+
 func TestInterpolateUnclosedReference(t *testing.T) {
 	set := NewSet()
 	set.Set(ScopeGlobal, "A", "x")
