@@ -53,7 +53,7 @@ func WithDelay(d time.Duration) Option {
 
 // WithFailureRate makes the server return a 500 error for roughly every nth
 // request, which is useful for exercising retry and error-handling paths.
-// Values of n <= 1 disable failure simulation.
+// Values of everyN less than or equal to 1 leave failure simulation unchanged.
 func WithFailureRate(everyN int) Option {
 	return func(s *Server) {
 		if everyN > 1 {
@@ -67,7 +67,8 @@ func WithLogger(l *log.Logger) Option {
 	return func(s *Server) { s.logger = l }
 }
 
-// NewServer builds a mock Server from an OpenAPI document.
+// NewServer builds a mock server from an OpenAPI document.
+// It returns an error if the document is nil or invalid.
 func NewServer(doc *openapi3.T, opts ...Option) (*Server, error) {
 	if doc == nil {
 		return nil, errors.New("mocking: nil OpenAPI document")
@@ -189,6 +190,7 @@ type matchResult struct {
 	Params    map[string]string
 }
 
+// cleanPath ensures a path begins with a slash.
 func cleanPath(p string) string {
 	if p == "" || p[0] != '/' {
 		return "/" + p
@@ -198,7 +200,8 @@ func cleanPath(p string) string {
 
 // matchTemplate reports whether an OpenAPI path template matches a concrete
 // request path, returning the captured path parameters. Non-template segments
-// must match literally; {name} segments match any single non-empty segment.
+// matchTemplate matches a path against a template and captures values from parameter segments.
+// It returns the captured parameters and whether the path matches the template.
 func matchTemplate(tmpl, path string) (map[string]string, bool) {
 	ts := strings.Split(tmpl, "/")
 	ps := strings.Split(path, "/")
@@ -227,7 +230,8 @@ func matchTemplate(tmpl, path string) (map[string]string, bool) {
 }
 
 // templateSpecificity orders templates so that literal paths are tried before
-// templated ones, and templates with more literal segments come first.
+// templateSpecificity scores a path template based on its literal segments.
+// Each literal segment contributes 10 points.
 func templateSpecificity(tmpl string) int {
 	score := 0
 	for _, seg := range strings.Split(tmpl, "/") {
@@ -239,7 +243,9 @@ func templateSpecificity(tmpl string) int {
 }
 
 // pickResponseStatus selects which response to serve: the first 2xx code,
-// falling back to "default" then the first defined status.
+// pickResponseStatus selects the HTTP status code for an OpenAPI response set.
+// It prefers 200, then the lowest 2xx status, then the lowest numeric status, and
+// defaults to 200 when no responses or numeric status codes are defined.
 func pickResponseStatus(responses *openapi3.Responses) int {
 	if responses == nil {
 		return http.StatusOK
@@ -341,6 +347,7 @@ func (s *Server) maybeLog(format string, args ...any) {
 	}
 }
 
+// writeJSON writes a JSON error response with the specified status, error code, and message.
 func writeJSON(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
