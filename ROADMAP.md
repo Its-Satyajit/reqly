@@ -1,7 +1,7 @@
 # Reqly — Development Roadmap
 
 > **Status:** Scaffold / Work in progress
-> **Overall completion:** ~8% (Foundation + request engine + CLI `run`/`test`)
+> **Overall completion:** ~9% (Foundation + request engine + CLI `run`/`test` + request files)
 > **Source of truth:** [`Docs/FeatureSet.md`](Docs/FeatureSet.md) (features), [`Docs/API Client — Technology Stack.md`](Docs/API%20Client%20—%20Technology%20Stack.md) (stack), [`Docs/API Client — Testing Strategy & TDD.md`](Docs/API%20Client%20—%20Testing%20Strategy%20&%20TDD.md) (quality)
 >
 > Checkboxes below track real, working code — not scaffolding. A box is only ticked when the feature ships end-to-end (core logic **and** UI/CLI wiring **and** tests) per the Definition of Done in the Testing Strategy doc.
@@ -51,7 +51,7 @@ The project skeleton, build system, and the first two core primitives.
 
 ### 0.5 CLI skeleton
 - [x] Cobra command tree: `run`, `test`, `collection run`, `mock`, `validate`, `diff`, `docs`
-- [~] 7 CLI commands wired to the Go core — `run` + `test` done; `collection run`, `mock`, `validate`, `diff`, `docs` still stubs
+- [~] 7 CLI commands wired to the Go core — `run` + `test` done (incl. JSON/YAML request files); `collection run`, `mock`, `validate`, `diff`, `docs` still stubs
 
 ---
 
@@ -69,11 +69,17 @@ The minimum set to make Reqly a serious API client.
 - [ ] SQLite local metadata (history, search index, execution results, cache) + request replay
 
 ### 1.2 Variables & environments
-- [ ] All 8 variable scopes (global, environment, collection, folder, request, runtime, prompt, process env)
-- [ ] `{{key}}` interpolation wired through request builder + scripting
+- [~] All 8 variable scopes (global, environment, collection, folder, request, runtime, prompt, process env) — core has 6 scopes; request files carry `variables` maps
+- [~] `{{key}}` interpolation wired through request builder + scripting — works in `run`/`test` via request files
 - [ ] Environment management (create/edit/switch) — UI + core
 - [ ] Environment validation (missing/invalid/unused/secrets)
 - [ ] Dynamic values & template tags (UUID, timestamp, random, runtime)
+
+### 1.2a Request files (plain-text, Git-native) 
+- [x] `internal/requestfile` — JSON/YAML request file format (`name`, `variables`, `request`)
+- [x] `reqly run <file>` — load request + variables from file, flags override file fields
+- [x] `reqly test <file>` — test files accept YAML and `variables` (interpolated at runtime)
+- [ ] Shared file format for collections/folders (extend `requestfile`)
 
 ### 1.3 Authentication
 - [ ] Basic, Bearer, API key
@@ -130,8 +136,8 @@ The minimum set to make Reqly a serious API client.
 - [ ] Generate mocks + docs from OpenAPI (see P1)
 
 ### 1.11 CLI (P0 commands)
-- [x] `reqly run` — send a request from the CLI
-- [x] `reqly test` — run tests against a request
+- [x] `reqly run` — send a request from the CLI (URL or JSON/YAML request file, flags override file)
+- [x] `reqly test` — run tests against a request (JSON or YAML test file, variables interpolated)
 - [ ] `reqly collection run` — run a collection
 - [ ] `reqly validate` — validate a project/spec
 - [ ] `reqly diff` — diff specs/requests
@@ -249,7 +255,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` shipped; storage, auth, env, UI wiring pending | ~8% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files shipped; storage, auth, env, UI wiring pending | ~10% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -257,11 +263,12 @@ Every checked feature must pass the full checklist:
 | Quality | DoD + release gates | Fast checks green; Vitest/E2E/integration TBD | ~20% |
 
 ### Next milestones (suggested order)
-1. **Request file loading** — `reqly run`/`test` from a plain-text request file (JSON/YAML request format + vars)
+1. ~~**Request file loading**~~ — `reqly run`/`test` from a plain-text request file (JSON/YAML request format + vars) — ✅ shipped
 2. **Core → Desktop bridge** — replace `Greet` with real service bindings; wire `RequestEditor` Send → core
-3. **Core → Desktop bridge** — replace `Greet` with real service bindings; wire `RequestEditor` Send → core
-4. **Workspaces & collections on disk** — Git-native storage + inheritance
-5. **Import/export** — cURL/OpenAPI import + collection export
-6. **WebSocket + SSE** — first realtime protocols
-7. **Collection runner + scripting** — pre/post scripts + tests in the runner
-8. **Mock server + OpenAPI** — generate mocks from specs
+3. **Workspaces & collections on disk** — Git-native storage + inheritance (build on `requestfile`)
+4. **Import/export** — cURL/OpenAPI import + collection export
+5. **WebSocket + SSE** — first realtime protocols
+6. **Collection runner + scripting** — pre/post scripts + tests in the runner
+7. **Mock server + OpenAPI** — generate mocks from specs
+
+> **Companion:** `reqly-test-api` (sibling repo, not yet pushed) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.

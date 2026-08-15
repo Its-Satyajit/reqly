@@ -22,6 +22,8 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -111,6 +113,128 @@ func TestRunCommandNetworkError(t *testing.T) {
 	}
 }
 
+func TestRunCommandFromJSONFile(t *testing.T) {
+	resetRunFlags()
+	var gotHeader, gotBody, gotURL, gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotHeader = r.Header.Get("Authorization")
+		gotMethod = r.Method
+		gotURL = r.URL.String()
+		buf := make([]byte, r.ContentLength)
+		r.Body.Read(buf)
+		gotBody = string(buf)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	path := filepath.Join(t.TempDir(), "req.json")
+	content := `{
+		"name": "create",
+		"variables": {"token": "abc123"},
+		"request": {
+			"method": "POST",
+			"url": "` + srv.URL + `/items?page=1",
+			"headers": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+			"body": "{\"name\":\"reqly\"}"
+		}
+	}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"run", path})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if gotMethod != "POST" {
+		t.Fatalf("method: got %q", gotMethod)
+	}
+	if gotHeader != "Bearer abc123" {
+		t.Fatalf("authorization (interpolated): got %q", gotHeader)
+	}
+	if gotBody != `{"name":"reqly"}` {
+		t.Fatalf("body: got %q", gotBody)
+	}
+	if gotURL != "/items?page=1" {
+		t.Fatalf("url: got %q", gotURL)
+	}
+}
+
+func TestRunCommandFromYAMLFile(t *testing.T) {
+	resetRunFlags()
+	var gotMethod, gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		buf := make([]byte, r.ContentLength)
+		r.Body.Read(buf)
+		gotBody = string(buf)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	path := filepath.Join(t.TempDir(), "req.yaml")
+	content := "name: ping\nrequest:\n  method: PUT\n  url: " + srv.URL + "/ping\n  body: '{\"p\":1}'\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"run", path})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if gotMethod != "PUT" || gotBody != `{"p":1}` {
+		t.Fatalf("got method %q body %q", gotMethod, gotBody)
+	}
+}
+
+func TestRunCommandFileWithFlagOverrides(t *testing.T) {
+	resetRunFlags()
+	var gotMethod, gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		buf := make([]byte, r.ContentLength)
+		r.Body.Read(buf)
+		gotBody = string(buf)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	path := filepath.Join(t.TempDir(), "req.json")
+	content := `{"request": {"method": "GET", "url": "` + srv.URL + `"}}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"run", "-m", "DELETE", "-d", `{"x":1}`, path})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if gotMethod != "DELETE" || gotBody != `{"x":1}` {
+		t.Fatalf("overrides not applied: method %q body %q", gotMethod, gotBody)
+	}
+}
+
+func TestRunCommandFileMissing(t *testing.T) {
+	resetRunFlags()
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"run", filepath.Join(t.TempDir(), "nope.json")})
+	err := rootCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "read request file") {
+		t.Fatalf("expected read error, got %v", err)
+	}
+}
+
 func TestParseHeaders(t *testing.T) {
 	headers, err := parseHeaders([]string{"Content-Type: application/json", " X-A : b "})
 	if err != nil {
@@ -139,4 +263,9 @@ func resetRunFlags() {
 	runHeaders = nil
 	runBody = ""
 	runTimeout = 30 * time.Second
+	for _, name := range []string{"method", "header", "data", "timeout"} {
+		if flag := runCmd.Flags().Lookup(name); flag != nil {
+			flag.Changed = false
+		}
+	}
 }

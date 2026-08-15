@@ -114,6 +114,25 @@ Development follows **TDD** (see the testing strategy doc). The initial Go core 
 - Frontend: Vitest (TBD)
 - E2E: Playwright (TBD)
 
+### Mock API (`reqly-test-api`)
+
+For manual testing and CLI/demo runs against a real (but harmless) endpoint, use the companion **reqly-test-api** — a small ElysiaJS mock server with hardcoded data, hosted on Vercel.
+
+- **Repo:** <https://github.com/Its-Satyajit/reqly-test-api> (separate repo)
+- **Stack:** ElysiaJS + TypeBox, Bun runtime, Vercel serverless, nub
+- **Local:** `bun run --hot src/index.ts` → `http://localhost:3123`
+- **Deployed:** <https://reqly-test-api.vercel.app> (import the repo into Vercel; Bun is auto-detected)
+
+Endpoints: `GET /api/users`, `POST /api/users`, `GET /api/users/:id` (PUT/DELETE), `GET /api/json`, `ANY /api/echo`, `GET /api/headers`, `GET /api/delay?ms=`, `GET /api/status/:code`, `GET /api/auth/me` (Bearer `admin-token` / `user-token`), `GET /api/health`. All responses include `X-Reqly-Mock: true` and CORS headers.
+
+Try it:
+
+```bash
+reqly run https://reqly-test-api.vercel.app/api/users
+reqly run https://reqly-test-api.vercel.app/api/status/404
+reqly run -H "Authorization: Bearer admin-token" https://reqly-test-api.vercel.app/api/auth/me
+```
+
 ## License
 
 [GPL-3.0](LICENSE) — this program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, either version 3 or (at your option) any later version.

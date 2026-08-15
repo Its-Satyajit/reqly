@@ -651,6 +651,8 @@ Mock Server
 
 Integration tests should use deterministic local test servers instead of public APIs.
 
+For **manual / exploratory / demo testing** against a real endpoint, the project provides a companion **reqly-test-api** — a small ElysiaJS mock server with hardcoded data (users CRUD, echo, headers, delay, status, auth), hosted on Vercel. See the `reqly-test-api` repo and the "Mock API" section of the README.
+
 ---
 
 # 20. Test Servers

@@ -132,6 +132,53 @@ func TestTestCommandMissingFile(t *testing.T) {
 	}
 }
 
+func TestTestCommandYAMLWithVariables(t *testing.T) {
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	content := fmt.Sprintf(`
+name: yaml suite
+variables:
+  token: abc123
+request:
+  method: GET
+  url: %s
+  headers:
+    - key: Authorization
+      value: Bearer {{token}}
+tests:
+  - name: ok
+    assertions:
+      - kind: status
+        expected: 200
+`, srv.URL)
+
+	path := filepath.Join(t.TempDir(), "test.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"test", path})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("expected success, got %v", err)
+	}
+	if gotAuth != "Bearer abc123" {
+		t.Fatalf("variable not interpolated: auth header %q", gotAuth)
+	}
+	if !strings.Contains(out.String(), "1/1 tests passed") {
+		t.Fatalf("expected pass summary, got:\n%s", out.String())
+	}
+}
+
 func TestTestCommandRequestError(t *testing.T) {
 	content := fmt.Sprintf(`{
 		"name": "suite",

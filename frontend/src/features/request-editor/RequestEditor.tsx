@@ -31,7 +31,7 @@ export function RequestEditor() {
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://api.example.com/users"
+          placeholder="https://reqly-test-api.vercel.app/api/users — mock API for testing"
           className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
         />
         <Button size="sm" onClick={send}>
