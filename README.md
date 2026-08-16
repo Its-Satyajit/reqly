@@ -5,6 +5,7 @@
 </p>
 
 <p align="center">
+  <a href="#overview">Overview</a> •
   <a href="#key-features">Key Features</a> •
   <a href="#why-reqly">Why Reqly?</a> •
   <a href="#architecture">Architecture</a> •
@@ -15,7 +16,7 @@
 
 ---
 
-## ⚡ API Development, Built for Engineers
+## Overview
 
 **Reqly** is a high-performance, local-first API client designed for developers who demand privacy, speed, and Git integration. 
 
@@ -23,20 +24,20 @@ Unlike traditional cloud-locked API tools, **Reqly stores your entire workflow a
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-- 📁 **Git-Native Project Files** — Plain-text JSON/YAML formats designed to be reviewed, diffed, and merged seamlessly in your existing pull request workflow.
-- 🔒 **Zero Telemetry & 100% Privacy** — Your request payloads, headers, tokens, secrets, and traffic data stay entirely on your local machine.
-- 🚀 **Unified Engine Across 3 Interfaces** — A single, high-speed Go core drives all interfaces:
-  - 🖥️ **Desktop App** — Sleek, reactive GUI powered by Wails v3 + React + Vite.
-  - 💻 **CLI** — Powerful Cobra-based CLI for developer workflows and CI/CD pipelines.
-  - 🤖 **MCP Server** — Built-in Model Context Protocol server enabling direct AI assistant integration.
-- 🌐 **Multi-Protocol & Spec Support** — Built to handle REST, GraphQL, gRPC, WebSockets, SSE, SOAP, and OpenAPI 2.0/3.0/3.1 specs out of the box.
-- 🛠️ **Mocking & Contract Validation** — Serve instant mock servers from OpenAPI definitions and enforce response schema validation effortlessly.
+- **Git-Native Project Files** — Plain-text JSON/YAML formats designed to be reviewed, diffed, and merged seamlessly in your existing pull request workflow.
+- **Zero Telemetry & 100% Privacy** — Your request payloads, headers, tokens, secrets, and traffic data stay entirely on your local machine.
+- **Unified Engine Across 3 Interfaces** — A single, high-speed Go core drives all interfaces:
+  - **Desktop App** — Sleek, reactive GUI powered by Wails v3 + React + Vite.
+  - **CLI** — Powerful Cobra-based CLI for developer workflows and CI/CD pipelines.
+  - **MCP Server** — Built-in Model Context Protocol server enabling direct AI assistant integration.
+- **Multi-Protocol & Spec Support** — Built to handle REST, GraphQL, gRPC, WebSockets, SSE, SOAP, and OpenAPI 2.0/3.0/3.1 specs out of the box.
+- **Mocking & Contract Validation** — Serve instant mock servers from OpenAPI definitions and enforce response schema validation effortlessly.
 
 ---
 
-## 💡 Why Reqly?
+## Why Reqly?
 
 | Feature | Standard Cloud Clients | **Reqly** |
 | :--- | :--- | :--- |
@@ -48,7 +49,7 @@ Unlike traditional cloud-locked API tools, **Reqly stores your entire workflow a
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
                     ┌─────────────────────────┐
@@ -65,7 +66,7 @@ The Go core ([`internal/`](./internal/)) acts as the single source of truth, del
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -101,17 +102,17 @@ wails3 dev
 
 ---
 
-## 📚 Documentation & Resources
+## Documentation & Resources
 
-- 🎯 **Roadmap & Milestones:** [`ROADMAP.md`](./ROADMAP.md)
-- 📖 **Domain Glossary:** [`CONTEXT.md`](./CONTEXT.md)
-- 🛠️ **Agent Guidelines:** [`AGENTS.md`](./AGENTS.md)
-- 🏗️ **Architecture & Tech Stack:** [`docs/technology-stack.md`](./docs/technology-stack.md)
-- 🧪 **Testing Strategy:** [`docs/testing-strategy.md`](./docs/testing-strategy.md)
-- 📋 **Full Feature Set:** [`docs/features.md`](./docs/features.md)
+- **Roadmap & Milestones:** [`ROADMAP.md`](./ROADMAP.md)
+- **Domain Glossary:** [`CONTEXT.md`](./CONTEXT.md)
+- **Agent Guidelines:** [`AGENTS.md`](./AGENTS.md)
+- **Architecture & Tech Stack:** [`docs/technology-stack.md`](./docs/technology-stack.md)
+- **Testing Strategy:** [`docs/testing-strategy.md`](./docs/testing-strategy.md)
+- **Full Feature Set:** [`docs/features.md`](./docs/features.md)
 
 ---
 
-## 📜 License
+## License
 
 Distributed under the **[GPL-3.0 License](./LICENSE)**. Built for developers who care about code ownership.
