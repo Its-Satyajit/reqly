@@ -1,4 +1,4 @@
-# API Client — Technology Stack
+# Reqly — Technology Stack
 
 > **Status:** Proposed / Selected
 > **Architecture Goal:** Small footprint, fast startup, low memory usage, native desktop performance, and a shared core for Desktop, CLI, automation, and MCP.

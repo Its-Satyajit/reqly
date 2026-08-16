@@ -1,4 +1,4 @@
-# API Client — Testing Strategy & TDD
+# Reqly — Testing Strategy & TDD
 
 > **Status:** Draft
 > **Development Methodology:** Test-Driven Development (TDD)

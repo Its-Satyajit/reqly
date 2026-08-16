@@ -1,4 +1,4 @@
-# API Client — Feature Set
+# Reqly — Feature Set
 
 > **Status:** Draft
 > **Product Name:** TBD

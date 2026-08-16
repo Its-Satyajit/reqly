@@ -1,40 +1,39 @@
-# Reqly — AI Agent & Developer Guidelines
+# Reqly — Agent & Developer Guidelines
 
-Local-first, Git-native API development environment built with Go (`internal/`, `apps/cli`) and Wails v3 Desktop (`apps/desktop`).
+Local-first, Git-native API development environment. Go core (`internal/` + `apps/cli`), Wails v3 desktop (`apps/desktop`).
 
 ## 1. Non-Negotiable Boundaries
 
-- **Local-first & Git-native:** Store all collections, environments, request files, and tests in plain-text (JSON/YAML) versioned with Git. Cloud backends and accounts are forbidden.
-- **Zero telemetry:** Payload, header, credential, secret, and traffic data strictly remains local.
-- **Dual parity:** Implement core features in Go (`internal/`) and expose via CLI (`apps/cli`) and Desktop (`apps/desktop`).
+- **Local-first & Git-native:** Collections, environments, request files, and tests are plain-text (JSON/YAML) versioned with Git. No cloud backends or accounts.
+- **Zero telemetry:** Payload, header, credential, secret, and traffic data stays local, always.
+- **Dual parity:** Core features live in Go (`internal/`) and are exposed via CLI (`apps/cli`) and Desktop (`apps/desktop`).
 
-## 2. Directory Layout
+## 2. Layout
 
-- `apps/cli`: Cobra CLI commands.
-- `apps/desktop`: Wails v3 desktop (backend Go, frontend Svelte/TypeScript).
-- `internal/`: Shared domain logic (core HTTP engine, runner, auth, mocking, mcp, requestfile parser).
-- `docs/`: Specs, ADRs, and references.
-- `CONTEXT.md`: Canonical domain glossary.
+- `internal/` — shared domain logic (request engine, runner, auth, mocking, openapi, importer/exporter, websocket, sse, validation, diffing, mcp, requestfile parser).
+- `apps/cli` — Cobra CLI. `apps/cli/cmd/*.go` is one command per file; `root.go` holds the root command.
+- `apps/desktop` — Wails v3. Go backend in `backend/`; React frontend in `backend/frontend` (Vite + TS, **no test script** — use `npm run typecheck`).
+- `docs/` — specs, ADRs (`docs/adr/`), and references (`docs/reference/`). `CONTEXT.md` is the canonical glossary; `ROADMAP.md` tracks milestone status.
 
-## 3. Skill Pipeline & Development Execution
+## 3. Skill Pipeline
 
-When implementing features or architectural changes, execute the 5-stage pipeline in order (`~/.agents/skills/`):
+For features or architecture changes, run the 5-stage pipeline in order (`~/.agents/skills/`):
 
-1. `grill-with-docs`: Stress-test requirements against [`CONTEXT.md`](./CONTEXT.md) in an interactive session (one question per turn with recommended answer). Update [`CONTEXT.md`](./CONTEXT.md) and `docs/adr/` inline.
-2. `to-spec`: Generate technical specification and design document.
-3. `to-tickets`: Split specification into actionable, trackable task tickets.
-4. `implement`: Execute tickets using strict TDD (write tests first).
-5. `code-review`: Audit Go and Svelte/TypeScript code against conventions and verify clean test output.
+1. `/grill-with-docs` — stress-test requirements against `CONTEXT.md` (one question per turn); update `CONTEXT.md` and `docs/adr/` inline.
+2. `/to-spec` — produce the technical spec/design doc.
+3. `/to-tickets` — split the spec into actionable tickets.
+4. `/implement` — execute tickets with strict TDD (tests first). For frontend work (`apps/desktop/backend/frontend`), always follow `/frontend-design`.
+5. `/code-review` — audit against conventions; verify clean test output.
 
 ## 4. Verification & Quality Gates
 
-Completion criterion for any change: all unit and integration tests pass cleanly with zero dummy fallbacks or skipped assertions.
+A change is done only when all unit and integration tests pass with no dummy fallbacks or skipped assertions.
 
-- **Go core & CLI:** `go test ./...`
-- **CLI binary build:** `go build -o reqly ./apps/cli`
-- **Frontend desktop:** `cd apps/desktop/frontend && npm test`
-- **Go conventions:** Follow [`docs/Referance/go.md`](./docs/Referance/go.md).
+- **Go core & CLI:** `go test ./...` (use `go test -race ./...` before shipping)
+- **CLI binary:** `go build -o reqly ./apps/cli`
+- **Frontend:** `cd apps/desktop/backend/frontend && npm run typecheck` (no test suite exists)
+- **Style:** gofmt; follow [`docs/reference/go.md`](./docs/reference/go.md)
 
 ## 5. Domain Glossary
 
-Consult [`CONTEXT.md`](./CONTEXT.md) for canonical terms before naming entities or creating abstractions.
+Consult [`CONTEXT.md`](./CONTEXT.md) before naming entities or creating abstractions.
