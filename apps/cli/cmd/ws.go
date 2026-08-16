@@ -26,12 +26,26 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/Its-Satyajit/reqly/internal/websocket"
 )
+
+// lockedWriter serializes writes to an underlying writer, safe for concurrent
+// use from multiple goroutines (the incoming-frame goroutine and the stdin loop).
+type lockedWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+func (l *lockedWriter) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.w.Write(p)
+}
 
 var (
 	wsHeaderFlags []string
@@ -81,7 +95,9 @@ A message can be piped in instead:
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "connected to %s\n", args[0])
 
-		// Incoming frames are printed as they arrive.
+		// Incoming frames are printed as they arrive. Both this goroutine and
+		// the stdin loop below write to the same writer, so serialize them.
+		out := &lockedWriter{w: cmd.OutOrStdout()}
 		done := make(chan error, 1)
 		go func() {
 			for {
@@ -90,7 +106,7 @@ A message can be piped in instead:
 					done <- err
 					return
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "[%s] %s\n", time.Now().Format("15:04:05"), msg.Data)
+				fmt.Fprintf(out, "[%s] %s\n", time.Now().Format("15:04:05"), msg.Data)
 			}
 		}()
 
@@ -104,7 +120,7 @@ A message can be piped in instead:
 			if err := client.SendText(ctx, line); err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "send: %v\n", err)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "> %s\n", line)
+			fmt.Fprintf(out, "> %s\n", line)
 		}
 
 		select {
@@ -116,7 +132,7 @@ A message can be piped in instead:
 		}
 
 		_ = client.Close(context.Background())
-		fmt.Fprintln(cmd.OutOrStdout(), "\nclosed")
+		fmt.Fprintf(out, "\nclosed")
 		return nil
 	},
 }

@@ -20,6 +20,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -110,6 +111,35 @@ func TestRunCommandNetworkError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "request failed") {
 		t.Fatalf("unexpected error %q", err)
+	}
+}
+
+func TestRunCommandMasksSecretsInRequestError(t *testing.T) {
+	resetRunFlags()
+	secret := "sup3r-s3cr3t-key"
+	dir := t.TempDir()
+	writeEnv(t, dir, "dev", "secrets:\n  API_KEY: "+secret+"\n")
+	t.Chdir(dir)
+	requestPath := filepath.Join(dir, "req.yaml")
+	// The secret is interpolated into the URL; the connection to the host
+	// fails, so the resulting *url.Error embeds the URL.
+	if err := os.WriteFile(requestPath, []byte(`
+environment: dev
+request:
+  method: GET
+  url: http://127.0.0.1:1/{{API_KEY}}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"run", requestPath})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected error for unreachable host")
+	} else if strings.Contains(err.Error(), secret) {
+		t.Fatalf("secret leaked in request error: %q", err)
 	}
 }
 
@@ -263,9 +293,230 @@ func resetRunFlags() {
 	runHeaders = nil
 	runBody = ""
 	runTimeout = 30 * time.Second
-	for _, name := range []string{"method", "header", "data", "timeout"} {
+	envFlag = ""
+	for _, name := range []string{"method", "header", "data", "timeout", "env"} {
 		if flag := runCmd.Flags().Lookup(name); flag != nil {
 			flag.Changed = false
 		}
+	}
+}
+
+func TestRunCommandResolvesEnvironmentViaREQLYEnv(t *testing.T) {
+	resetRunFlags()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer dev-secret" {
+			t.Errorf("expected environment-interpolated header, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	envDir := filepath.Join(dir, "environments")
+	if err := os.MkdirAll(envDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "dev.yaml"), []byte(`
+variables:
+  API_URL: `+srv.URL+`
+secrets:
+  API_KEY: dev-secret
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("REQLY_ENV", "dev")
+	t.Chdir(dir)
+
+	requestPath := filepath.Join(dir, "req.yaml")
+	if err := os.WriteFile(requestPath, []byte(`
+request:
+  method: GET
+  url: `+srv.URL+`
+  headers:
+    - key: Authorization
+      value: Bearer {{API_KEY}}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"run", requestPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRunCommandErrorsOnMissingSelectedEnvironment(t *testing.T) {
+	resetRunFlags()
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "environments"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("REQLY_ENV", "staging")
+	t.Chdir(dir)
+
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"run", "https://example.com"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected error for selected-but-missing environment")
+	}
+}
+
+func TestRunCommandUsesFileEnvironmentField(t *testing.T) {
+	resetRunFlags()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Env"); got != "from-file-env" {
+			t.Errorf("expected file-selected environment, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	envDir := filepath.Join(dir, "environments")
+	if err := os.MkdirAll(envDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "prod.yaml"), []byte(`
+variables:
+  REGION: from-file-env
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Chdir(dir)
+	requestPath := filepath.Join(dir, "req.yaml")
+	if err := os.WriteFile(requestPath, []byte(`
+environment: prod
+request:
+  method: GET
+  url: `+srv.URL+`
+  headers:
+    - key: X-Env
+      value: "{{REGION}}"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"run", requestPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRunCommandEnvFlagOverridesFileEnvironment(t *testing.T) {
+	resetRunFlags()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Env"); got != "flag-wins" {
+			t.Errorf("expected --env to override file field, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	envDir := filepath.Join(dir, "environments")
+	if err := os.MkdirAll(envDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "prod.yaml"), []byte("variables:\n  REGION: file-field\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "staging.yaml"), []byte("variables:\n  REGION: flag-wins\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Chdir(dir)
+	requestPath := filepath.Join(dir, "req.yaml")
+	if err := os.WriteFile(requestPath, []byte(`
+environment: prod
+request:
+  method: GET
+  url: `+srv.URL+`
+  headers:
+    - key: X-Env
+      value: "{{REGION}}"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"run", "--env", "staging", requestPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	envFlag = ""
+}
+
+func TestRunCommandMasksSecretsInResponseBody(t *testing.T) {
+	resetRunFlags()
+	secret := "super-secret-token-value"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"api_key": %q}`, secret)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	writeEnv(t, dir, "dev", "secrets:\n  API_KEY: "+secret+"\n")
+	t.Chdir(dir)
+	requestPath := filepath.Join(dir, "req.yaml")
+	if err := os.WriteFile(requestPath, []byte(`
+environment: dev
+request:
+  method: GET
+  url: `+srv.URL+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"run", requestPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), secret) {
+		t.Fatalf("secret leaked in run output:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "[SECRET]") {
+		t.Fatalf("expected [SECRET] masking:\n%s", out.String())
+	}
+}
+
+func TestRunCommandWithoutEnvironmentLeavesBodyUnmasked(t *testing.T) {
+	resetRunFlags()
+	body := "no-secret-here"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"value": %q}`, body)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	t.Chdir(dir)
+	requestPath := filepath.Join(dir, "req.yaml")
+	if err := os.WriteFile(requestPath, []byte(`
+request:
+  method: GET
+  url: `+srv.URL+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"run", requestPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), body) {
+		t.Fatalf("body should be printed unchanged when no environment is active:\n%s", out.String())
 	}
 }

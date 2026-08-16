@@ -21,6 +21,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -62,10 +63,17 @@ response_time. The command exits non-zero when any assertion fails.`,
 			return err
 		}
 
-		client := request.NewClient()
-		resp, err := client.Execute(context.Background(), &tf.Request, tf.VariablesSet())
+		vars := tf.VariablesSet()
+		masker, envSet, err := activeEnvironment(filepath.Dir(args[0]), tf.Environment)
 		if err != nil {
-			return fmt.Errorf("request failed: %w", err)
+			return err
+		}
+		mergeEnvScope(vars, envSet)
+
+		client := request.NewClient()
+		resp, err := client.Execute(context.Background(), &tf.Request, vars)
+		if err != nil {
+			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
 		}
 
 		results := tf.Suite().Run(resp)
@@ -85,7 +93,8 @@ response_time. The command exits non-zero when any assertion fails.`,
 				} else {
 					prefix += "\x1b[31m✗\x1b[0m "
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s%s\n", prefix, r.Message)
+				message := masker.Mask(r.Message)
+				fmt.Fprintf(cmd.OutOrStdout(), "%s%s\n", prefix, message)
 			}
 		}
 
@@ -107,4 +116,8 @@ func countPassed(results []testing.TestResult) int {
 		}
 	}
 	return n
+}
+
+func init() {
+	testCmd.Flags().StringVar(&envFlag, "env", "", "environment to use (falls back to the file's environment field; REQLY_ENV wins)")
 }

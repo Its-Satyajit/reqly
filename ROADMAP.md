@@ -2,7 +2,7 @@
 
 > **Status:** Scaffold / Work in progress
 > **Overall completion:** ~9% (Foundation + request engine + CLI `run`/`test` + request files)
-> **Source of truth:** [`Docs/FeatureSet.md`](Docs/FeatureSet.md) (features), [`Docs/API Client — Technology Stack.md`](Docs/API%20Client%20—%20Technology%20Stack.md) (stack), [`Docs/API Client — Testing Strategy & TDD.md`](Docs/API%20Client%20—%20Testing%20Strategy%20&%20TDD.md) (quality)
+> **Source of truth:** [`docs/features.md`](docs/features.md) (features), [`docs/technology-stack.md`](docs/technology-stack.md) (stack), [`docs/testing-strategy.md`](docs/testing-strategy.md) (quality)
 >
 > Checkboxes below track real, working code — not scaffolding. A box is only ticked when the feature ships end-to-end (core logic **and** UI/CLI wiring **and** tests) per the Definition of Done in the Testing Strategy doc.
 
@@ -17,7 +17,7 @@
 
 ---
 
-## Phase 0 — Foundation (✅ ~95% complete)
+## Phase 0 — Foundation ( ~95% complete)
 
 The project skeleton, build system, and the first two core primitives.
 
@@ -51,7 +51,7 @@ The project skeleton, build system, and the first two core primitives.
 
 ### 0.5 CLI skeleton
 - [x] Cobra command tree: `run`, `test`, `collection run`, `mock`, `validate`, `diff`, `docs`
-- [~] 12 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list`, `collection test`, `import curl`, `import openapi`, `export postman`, `ws`, `sse` done; `mock`, `validate`, `diff`, `docs` still stubs
+- [~] 12 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list`, `collection test`, `import curl`, `import openapi`, `export postman`, `ws`, `sse`, `mock` done; `validate`, `diff`, `docs` still stubs
 
 ---
 
@@ -75,7 +75,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] Environment validation (missing/invalid/unused/secrets)
 - [ ] Dynamic values & template tags (UUID, timestamp, random, runtime)
 
-### 1.2a Request files (plain-text, Git-native) 
+### 1.2a Request files (plain-text, Git-native)
 - [x] `internal/requestfile` — JSON/YAML request file format (`name`, `variables`, `request`)
 - [x] `reqly run <file>` — load request + variables from file, flags override file fields
 - [x] `reqly test <file>` — test files accept YAML and `variables` (interpolated at runtime)
@@ -143,11 +143,11 @@ The minimum set to make Reqly a serious API client.
 - [ ] Import preservation (env/auth/scripts) + unsupported-feature reporting
 
 ### 1.10 OpenAPI & JSON Schema
-- [ ] OpenAPI 2.x/3.x/3.1 parse + validate
+- [~] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); OpenAPI 2.x import via hand-rolled parser; 3.1 partial
 - [ ] Endpoint explorer + generate requests from spec
 - [ ] JSON Schema: edit, validate, inspect, generate
 - [ ] XML/XSD schema validation where applicable
-- [ ] Generate mocks + docs from OpenAPI (see P1)
+- [~] Generate mocks from OpenAPI (see P1) — `reqly mock` serves schema/example-driven responses
 
 ### 1.11 CLI (P0 commands)
 - [x] `reqly run` — send a request from the CLI (URL or JSON/YAML request file, flags override file)
@@ -156,9 +156,9 @@ The minimum set to make Reqly a serious API client.
 - [x] `reqly collection test` — run every request in a collection with pre/post scripts and `reqly.test()` assertions; runtime variables chain across steps; `--fail-fast`
 - [x] `reqly ws` — interactive WebSocket client (stdin sends text frames, incoming frames timestamped)
 - [x] `reqly sse` — stream Server-Sent Events (named/ID'd events, multi-line data, retry hints, `--count`)
-- [ ] `reqly validate` — validate a project/spec
-- [ ] `reqly diff` — diff specs/requests
-- [ ] `reqly mock` — serve a mock server
+- [x] `reqly validate` — validate a project/spec (`internal/validation` + `reqly validate`)
+- [x] `reqly diff` — diff specs/requests/responses (`internal/diffing` + `reqly diff`)
+- [x] `reqly mock` — serve a mock API from an OpenAPI spec (kin-openapi parsing, path/method matching, schema/example response generation, `--delay`, `--fail-every`)
 - [ ] `reqly docs` — generate documentation
 
 ### 1.12 Cross-platform desktop
@@ -176,7 +176,7 @@ Features that make Reqly more capable than a basic API client.
 - [ ] Schema validation + contract testing
 - [ ] Schema visualization (relationships between types, objects, endpoints, schemas)
 - [ ] Code generation (request → cURL, JS, Python, Go snippets)
-- [ ] Mock server (from OpenAPI/examples, request matching, dynamic responses, delay/error simulation, stateful mocks)
+- [~] Mock server (from OpenAPI/examples, request matching, dynamic responses, delay/error simulation, stateful mocks) — CLI `reqly mock` with path/method matching, schema/example generation, `--delay`, `--fail-every`; stateful mocks pending
 - [ ] API diff + breaking-change detection (endpoints, params, schemas, auth, response types)
 - [ ] Request/response diff (JSON structural)
 - [ ] Environment diff
@@ -272,7 +272,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner shipped; auth, env, full UI pending | ~28% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner + OpenAPI parsing + mock server shipped; auth, env, full UI pending | ~32% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -286,6 +286,7 @@ Every checked feature must pass the full checklist:
 4. ~~**Import/export**~~ — cURL/OpenAPI import + Postman collection export — ✅ shipped
 5. ~~**WebSocket + SSE**~~ — realtime protocols: `internal/websocket` (connection mgmt, text/binary messages) + `internal/sse` (event stream parser) + CLI `reqly ws`/`reqly sse` — ✅ shipped
 6. ~~**Collection runner + scripting**~~ — pre/post scripts (Goja `reqly` sandbox), request chaining via runtime variables, tests in the runner, CLI `reqly collection test` — ✅ shipped
-7. **Mock server + OpenAPI** — generate mocks from specs
+7. ~~**Mock server + OpenAPI**~~ — `internal/openapi` (kin-openapi load/validate) + `internal/mocking` (path/method matching, schema/example response generation, delay + error simulation) + CLI `reqly mock <spec>` — ✅ shipped
+8. ~~**Validate + diff**~~ — `reqly validate` (spec/project checks) and `reqly diff` (specs/requests/responses) — ✅ shipped
 
 > **Companion:** [**reqly-test-api**](https://reqly-test-api.vercel.app) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.

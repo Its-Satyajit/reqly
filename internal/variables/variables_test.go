@@ -116,3 +116,27 @@ func TestInterpolateEmptyValue(t *testing.T) {
 		t.Fatalf("expected empty interpolation, got %q", got)
 	}
 }
+
+// TestResolveProcessEnvLowestPrecedence mirrors the TDD example: a global
+// variable must override the process-env scope, which sits at the very bottom
+// of the precedence chain.
+func TestResolveGlobalOverridesProcessEnv(t *testing.T) {
+	set := NewSet()
+	set.Set(ScopeProcessEnv, "API_URL", "https://process.example.com")
+	set.Set(ScopeGlobal, "API_URL", "https://global.example.com")
+
+	got, ok := set.Resolve("API_URL")
+	if !ok {
+		t.Fatal("expected API_URL to resolve")
+	}
+	if got != "https://global.example.com" {
+		t.Fatalf("expected global value, got %q", got)
+	}
+}
+
+func TestPrecedenceIncludesProcessEnvFirst(t *testing.T) {
+	got := Precedence()
+	if len(got) == 0 || got[0] != ScopeProcessEnv {
+		t.Fatalf("expected ScopeProcessEnv at lowest precedence, got %v", got)
+	}
+}

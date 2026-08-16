@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
 func TestSendReturnsBridgeFriendlyResponse(t *testing.T) {
@@ -100,5 +101,30 @@ func TestSendReturnsErrorForInvalidURL(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for invalid URL")
+	}
+}
+
+func TestSendUsesProvidedVariableSet(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer env-token" {
+			t.Errorf("expected interpolated env token, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	vars := variables.NewSet()
+	vars.Set(variables.ScopeEnvironment, "TOKEN", "env-token")
+
+	svc := NewRequestService()
+	_, err := svc.Send(request.Request{
+		Method: request.MethodGet,
+		URL:    srv.URL,
+		Headers: []request.Header{
+			{Key: "Authorization", Value: "Bearer {{TOKEN}}"},
+		},
+	}, vars)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

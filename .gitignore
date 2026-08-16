@@ -15,6 +15,7 @@ build_out/
 /api-client
 /backend
 /cli
+/reqly
 
 # Wails v3
 apps/desktop/backend/bin/

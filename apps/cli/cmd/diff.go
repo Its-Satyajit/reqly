@@ -2,34 +2,46 @@
 // Copyright (C) 2026 It's Satyajit
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Its-Satyajit/reqly/internal/diffing"
 )
 
 var diffCmd = &cobra.Command{
-	Use:   "diff",
+	Use:   "diff <file1> <file2>",
 	Short: "Diff API definitions, requests, or responses",
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO(core): dispatch to the API diff engine.
-		fmt.Fprintln(cmd.OutOrStdout(), "diff: not implemented yet")
+		bytes1, err := os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("read %s: %w", args[0], err)
+		}
+		bytes2, err := os.ReadFile(args[1])
+		if err != nil {
+			return fmt.Errorf("read %s: %w", args[1], err)
+		}
+
+		res, err := diffing.JSON(bytes1, bytes2)
+		if err != nil {
+			return err
+		}
+
+		if !res.HasChanges {
+			fmt.Fprintln(cmd.OutOrStdout(), "No structural changes found.")
+			return nil
+		}
+
+		fmt.Fprintf(cmd.OutOrStdout(), "Found %d change(s):\n", len(res.Changes))
+		for _, c := range res.Changes {
+			fmt.Fprintf(cmd.OutOrStdout(), "  [%s] %v: %v -> %v\n", c.Type, c.Path, c.From, c.To)
+		}
 		return nil
 	},
 }

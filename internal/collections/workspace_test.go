@@ -421,3 +421,71 @@ func TestEffectiveURLJoinsRelativeBase(t *testing.T) {
 		t.Fatalf("expected %q, got %q", want, got)
 	}
 }
+
+func TestWorkspaceConfigParsesEnvironmentField(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "collections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "reqly.yaml"), []byte(`
+name: workspace
+environment: prod
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	ws, err := LoadWorkspace(dir)
+	if err != nil {
+		t.Fatalf("LoadWorkspace: %v", err)
+	}
+	if ws.Config.Environment != "prod" {
+		t.Fatalf("environment: got %q, want %q", ws.Config.Environment, "prod")
+	}
+}
+
+func TestSetWorkspaceEnvironmentPersistsField(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "collections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "reqly.yaml"), []byte(`
+name: workspace
+environment: dev
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SetWorkspaceEnvironment(dir, "prod"); err != nil {
+		t.Fatalf("SetWorkspaceEnvironment: %v", err)
+	}
+
+	ws, err := LoadWorkspace(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ws.Config.Environment != "prod" {
+		t.Fatalf("environment: got %q, want %q", ws.Config.Environment, "prod")
+	}
+	// Other fields are preserved.
+	if ws.Config.Name != "workspace" {
+		t.Fatalf("name: got %q, want preserved", ws.Config.Name)
+	}
+}
+
+func TestSetWorkspaceEnvironmentCreatesDescriptor(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "collections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SetWorkspaceEnvironment(dir, "dev"); err != nil {
+		t.Fatalf("SetWorkspaceEnvironment: %v", err)
+	}
+	ws, err := LoadWorkspace(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ws.Config.Environment != "dev" {
+		t.Fatalf("environment: got %q, want %q", ws.Config.Environment, "dev")
+	}
+}

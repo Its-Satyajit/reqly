@@ -41,6 +41,9 @@ type File struct {
 	Name      string            `json:"name,omitempty" yaml:"name,omitempty"`
 	Variables map[string]string `json:"variables,omitempty" yaml:"variables,omitempty"`
 	Request   request.Request   `json:"request" yaml:"request"`
+	// Environment selects the environment to apply to this request. It is
+	// overridden by the --env flag and REQLY_ENV at runtime.
+	Environment string `json:"environment,omitempty" yaml:"environment,omitempty"`
 
 	// PreRequest is a JavaScript snippet run before the request is sent. It
 	// runs in a sandbox with a `reqly` global for reading/writing variables

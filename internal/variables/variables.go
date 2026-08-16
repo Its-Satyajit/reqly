@@ -27,6 +27,7 @@ import (
 type Scope string
 
 const (
+	ScopeProcessEnv  Scope = "process-env"
 	ScopeGlobal      Scope = "global"
 	ScopeEnvironment Scope = "environment"
 	ScopeCollection  Scope = "collection"
@@ -37,7 +38,7 @@ const (
 
 // Precedence returns the scopes ordered from lowest to highest priority.
 func Precedence() []Scope {
-	return []Scope{ScopeGlobal, ScopeEnvironment, ScopeCollection, ScopeFolder, ScopeRequest, ScopeRuntime}
+	return []Scope{ScopeProcessEnv, ScopeGlobal, ScopeEnvironment, ScopeCollection, ScopeFolder, ScopeRequest, ScopeRuntime}
 }
 
 // Set holds variables grouped by scope.

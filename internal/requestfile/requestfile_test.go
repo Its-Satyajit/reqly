@@ -141,3 +141,34 @@ func TestLooksLikeFile(t *testing.T) {
 		t.Fatal("expected missing .yaml path to look like a file")
 	}
 }
+
+func TestParseEnvironmentField(t *testing.T) {
+	f, err := Parse([]byte(`
+environment: prod
+variables:
+  token: abc
+request:
+  method: GET
+  url: https://api.example.com/users
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Environment != "prod" {
+		t.Fatalf("environment: got %q, want %q", f.Environment, "prod")
+	}
+}
+
+func TestParseEnvironmentFieldOptional(t *testing.T) {
+	f, err := Parse([]byte(`
+request:
+  method: GET
+  url: https://api.example.com/users
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Environment != "" {
+		t.Fatalf("environment: got %q, want empty", f.Environment)
+	}
+}

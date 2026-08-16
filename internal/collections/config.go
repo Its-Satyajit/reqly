@@ -47,6 +47,10 @@ type Config struct {
 	Auth request.Auth `json:"auth,omitempty" yaml:"auth,omitempty"`
 	// Variables feed the scope chain (workspace=global, collection, folder).
 	Variables map[string]string `json:"variables,omitempty" yaml:"variables,omitempty"`
+	// Environment is the active environment name for the workspace. It is
+	// overridden by a file's environment: field, the --env flag, and
+	// REQLY_ENV at runtime.
+	Environment string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
 // loadConfig reads a Config from dir/reqly.yaml (JSON or YAML). It returns a
@@ -74,4 +78,40 @@ func loadConfig(dir string) (Config, bool, error) {
 // joinConfigPath returns the path to a container's config file.
 func joinConfigPath(dir string) string {
 	return dir + string(os.PathSeparator) + configFileName
+}
+
+// WorkspaceEnvironment returns the environment: field of the workspace
+// descriptor nearest to dir, or "" when no workspace is present.
+func WorkspaceEnvironment(dir string) string {
+	ws, err := LoadWorkspace(dir)
+	if err != nil || ws == nil {
+		return ""
+	}
+	return ws.Config.Environment
+}
+
+// IsWorkspace reports whether dir contains a workspace descriptor (reqly.yaml).
+func IsWorkspace(dir string) bool {
+	_, ok, err := loadConfig(dir)
+	return err == nil && ok
+}
+
+// SetWorkspaceEnvironment persists name as the active environment in the
+// workspace descriptor at dir, preserving all other fields. It creates the
+// descriptor when it does not exist.
+func SetWorkspaceEnvironment(dir string, name string) error {
+	cfg, _, err := loadConfig(dir)
+	if err != nil {
+		return err
+	}
+	cfg.Environment = name
+	data, err := yaml.Marshal(&cfg)
+	if err != nil {
+		return fmt.Errorf("encode config: %w", err)
+	}
+	path := joinConfigPath(dir)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("write config %q: %w", path, err)
+	}
+	return nil
 }
