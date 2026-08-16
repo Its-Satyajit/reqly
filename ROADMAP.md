@@ -1,7 +1,7 @@
 # Reqly — Development Roadmap
 
 > **Status:** Scaffold / Work in progress
-> **Overall completion:** ~9% (Foundation + request engine + CLI `run`/`test` + request files)
+> **Overall completion:** ~11% (Foundation + request engine + CLI `run`/`test` + request files + environments)
 > **Source of truth:** [`docs/features.md`](docs/features.md) (features), [`docs/technology-stack.md`](docs/technology-stack.md) (stack), [`docs/testing-strategy.md`](docs/testing-strategy.md) (quality)
 >
 > Checkboxes below track real, working code — not scaffolding. A box is only ticked when the feature ships end-to-end (core logic **and** UI/CLI wiring **and** tests) per the Definition of Done in the Testing Strategy doc.
@@ -71,8 +71,8 @@ The minimum set to make Reqly a serious API client.
 ### 1.2 Variables & environments
 - [~] All 8 variable scopes (global, environment, collection, folder, request, runtime, prompt, process env) — core has 6 scopes; request files carry `variables` maps
 - [~] `{{key}}` interpolation wired through request builder + scripting — works in `run`/`test` via request files
-- [ ] Environment management (create/edit/switch) — UI + core
-- [ ] Environment validation (missing/invalid/unused/secrets)
+- [~] Environment management — `internal/environments` + `reqly env list/show/use` (Git-native `environments/<name>.yaml`, `REQLY_ENV`/`--env`/file/descriptor selection precedence); UI pending
+- [x] Environment validation — `reqly env validate` (file syntax, secret-name + duplicate-key warnings, undefined-variable detection across workspace request/test files)
 - [ ] Dynamic values & template tags (UUID, timestamp, random, runtime)
 
 ### 1.2a Request files (plain-text, Git-native)
@@ -90,8 +90,8 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.4 Secrets
 - [ ] Encrypted-at-rest secret storage + OS keychain
-- [ ] Secret variables + masking (UI, logs, test output, docs)
-- [ ] `.env` support + external managers (Vault, AWS, Azure) — P3
+- [x] Secret variables + masking (CLI output, logs, test output) — `environments/<name>.yaml` `secrets:` maps render as `[SECRET]`; masking wired through run/test/collection/validate/diff
+- [~] `.env` support — dotenv parsing (process-env scope, OS env wins); external managers (Vault, AWS, Azure) — P3
 
 ### 1.5 Workspaces, collections & storage
 - [x] `internal/collections` — workspaces, collections, nested folders
@@ -99,7 +99,7 @@ The minimum set to make Reqly a serious API client.
 - [x] `internal/core` — application services layer shared by Desktop/CLI/MCP (`RequestService.Send`)
 - [x] Inheritance: Workspace → Collection → Folder → Request (base URL, headers, auth, vars)
 - [x] `reqly collection run <path>` + `reqly collection list` (CLI wired to the Go core)
-- [ ] Environments: resolve the `environment` scope from `environments/` on disk
+- [x] Environments: resolve the `environment` scope from `environments/` on disk (workspace + file resolution, selection precedence)
 - [ ] Save/export a workspace (write descriptors + request files back to disk)
 
 ### 1.5a Core → Desktop bridge (from 0.2 `Greet` proof)
@@ -158,6 +158,7 @@ The minimum set to make Reqly a serious API client.
 - [x] `reqly sse` — stream Server-Sent Events (named/ID'd events, multi-line data, retry hints, `--count`)
 - [x] `reqly validate` — validate a project/spec (`internal/validation` + `reqly validate`)
 - [x] `reqly diff` — diff specs/requests/responses (`internal/diffing` + `reqly diff`)
+- [x] `reqly env` — manage environments (`internal/environments`): `list`, `show`, `use`, `validate`, `diff`
 - [x] `reqly mock` — serve a mock API from an OpenAPI spec (kin-openapi parsing, path/method matching, schema/example response generation, `--delay`, `--fail-every`)
 - [ ] `reqly docs` — generate documentation
 
@@ -272,7 +273,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner + OpenAPI parsing + mock server shipped; auth, env, full UI pending | ~32% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner + OpenAPI parsing + mock server + env management/validation/masking/diff shipped; auth, env UI, full request-builder UI pending | ~38% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -288,5 +289,6 @@ Every checked feature must pass the full checklist:
 6. ~~**Collection runner + scripting**~~ — pre/post scripts (Goja `reqly` sandbox), request chaining via runtime variables, tests in the runner, CLI `reqly collection test` — ✅ shipped
 7. ~~**Mock server + OpenAPI**~~ — `internal/openapi` (kin-openapi load/validate) + `internal/mocking` (path/method matching, schema/example response generation, delay + error simulation) + CLI `reqly mock <spec>` — ✅ shipped
 8. ~~**Validate + diff**~~ — `reqly validate` (spec/project checks) and `reqly diff` (specs/requests/responses) — ✅ shipped
+9. ~~**Environments & secrets**~~ — Git-native `environments/<name>.yaml` with `variables:`/`secrets:`, selection precedence (`REQLY_ENV`/`--env`/file/descriptor), `.env` process-env scope, `[SECRET]` masking in CLI output, `reqly env list/show/use/validate/diff` — ✅ shipped
 
 > **Companion:** [**reqly-test-api**](https://reqly-test-api.vercel.app) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.
