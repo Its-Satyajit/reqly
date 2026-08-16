@@ -16,40 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package cmd
+// Package version holds the release version string for Reqly.
+package version
 
-import (
-	"github.com/spf13/cobra"
-)
-
-var rootCmd = &cobra.Command{
-	Use:   "reqly",
-	Short: "A local-first API development environment",
-	Long: `A local-first, Git-native API development environment.
-
-Requests, tests, schemas, mocks, environments, and documentation live together
-as version-controlled project files. The CLI shares the same Go core as the
-desktop application.`,
-}
-
-// Execute runs the root command.
-func Execute() error {
-	return rootCmd.Execute()
-}
-
-func init() {
-	rootCmd.AddCommand(
-		runCmd,
-		testCmd,
-		collectionCmd,
-		importCmd,
-		exportCmd,
-		wsCmd,
-		sseCmd,
-		mockCmd,
-		validateCmd,
-		diffCmd,
-		docsCmd,
-		versionCmd,
-	)
-}
+// Version is the current release version. release-please bumps it on release
+// PRs via the x-release-please-version annotation.
+const Version = "0.1.0" // x-release-please-version
