@@ -24,3 +24,24 @@ Static verification subsystem (`internal/validation`) backing `reqly validate`. 
 ### Structural Diff Engine
 AST and JSON/YAML key-aware diffing engine (`internal/diffing`) backing `reqly diff`. Computes semantic differences between API specifications (`reqly diff spec <spec1> <spec2>`), request descriptors (`reqly diff request <file1> <file2>`), and JSON/YAML response payloads (`reqly diff response <file1> <file2>`).
 
+### Environment
+A named set of variables (plus optional secrets) selectable per workspace and applied to requests through the variable precedence chain between the global and collection scopes.
+
+### Active Environment
+The environment currently selected for a workspace; resolved with the following precedence (highest wins): `REQLY_ENV` process variable, then the `--env` CLI flag, then a request/test file's `environment:` field, then the workspace descriptor's `environment:` field.
+
+### Environment File
+A YAML file under `environments/<name>.yaml` holding an environment's `variables:` and `secrets:` maps. Resolved from the nearest `environments/` directory — CWD (or the request file's directory) for standalone `run`/`test`, the workspace root for collection commands. The filesystem is the source of truth.
+
+### Secret
+An environment variable marked as sensitive; its value is masked in CLI and test output and never printed by `reqly env show`.
+
+### Process Environment Scope
+The lowest-precedence variable scope fed by the OS environment and the nearest-directory `.env` file, mirroring Node's `process.env`. When both define a key, the OS environment wins, so CI can override local `.env` values.
+
+### Environment Validation
+Workspace-aware static checks (`reqly env validate <name>`) over an environment: file syntax, secret-exposure warnings (name-heuristic for `key/token/secret/password/credential` plus duplicate keys in both `variables:` and `secrets:`), and undefined-variable detection across the workspace's requests under the active env.
+
+### Environment Diff
+Secret-aware comparison of two environments (`reqly env diff <nameA> <nameB>`): added/removed/changed keys via the structural diff engine, with changed secret values rendered as `[SECRET]` so the diff shows *which* secret changed without leaking it.
+
