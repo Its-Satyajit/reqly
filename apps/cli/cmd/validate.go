@@ -2,34 +2,52 @@
 // Copyright (C) 2026 It's Satyajit
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Its-Satyajit/reqly/internal/validation"
 )
 
 var validateCmd = &cobra.Command{
-	Use:   "validate",
-	Short: "Validate the project and its specifications",
+	Use:   "validate [path]",
+	Short: "Validate OpenAPI specifications or Git-native project descriptors",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO(core): dispatch to OpenAPI / schema validation.
-		fmt.Fprintln(cmd.OutOrStdout(), "validate: not implemented yet")
+		target := "."
+		if len(args) > 0 {
+			target = args[0]
+		}
+
+		info, err := os.Stat(target)
+		if err != nil {
+			return fmt.Errorf("stat %s: %w", target, err)
+		}
+
+		var res *validation.Result
+		if info.IsDir() {
+			res, err = validation.ValidateProject(target)
+		} else {
+			res, err = validation.ValidateOpenAPIFile(target)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if !res.Valid {
+			fmt.Fprintln(cmd.OutOrStdout(), "Validation failed:")
+			for _, e := range res.Errors {
+				fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", e)
+			}
+			return fmt.Errorf("validation failed with %d error(s)", len(res.Errors))
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), "Validation passed cleanly.")
 		return nil
 	},
 }

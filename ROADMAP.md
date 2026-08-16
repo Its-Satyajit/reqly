@@ -156,8 +156,8 @@ The minimum set to make Reqly a serious API client.
 - [x] `reqly collection test` — run every request in a collection with pre/post scripts and `reqly.test()` assertions; runtime variables chain across steps; `--fail-fast`
 - [x] `reqly ws` — interactive WebSocket client (stdin sends text frames, incoming frames timestamped)
 - [x] `reqly sse` — stream Server-Sent Events (named/ID'd events, multi-line data, retry hints, `--count`)
-- [ ] `reqly validate` — validate a project/spec
-- [ ] `reqly diff` — diff specs/requests
+- [x] `reqly validate` — validate a project/spec (`internal/validation` + `reqly validate`)
+- [x] `reqly diff` — diff specs/requests/responses (`internal/diffing` + `reqly diff`)
 - [x] `reqly mock` — serve a mock API from an OpenAPI spec (kin-openapi parsing, path/method matching, schema/example response generation, `--delay`, `--fail-every`)
 - [ ] `reqly docs` — generate documentation
 
@@ -287,6 +287,6 @@ Every checked feature must pass the full checklist:
 5. ~~**WebSocket + SSE**~~ — realtime protocols: `internal/websocket` (connection mgmt, text/binary messages) + `internal/sse` (event stream parser) + CLI `reqly ws`/`reqly sse` — ✅ shipped
 6. ~~**Collection runner + scripting**~~ — pre/post scripts (Goja `reqly` sandbox), request chaining via runtime variables, tests in the runner, CLI `reqly collection test` — ✅ shipped
 7. ~~**Mock server + OpenAPI**~~ — `internal/openapi` (kin-openapi load/validate) + `internal/mocking` (path/method matching, schema/example response generation, delay + error simulation) + CLI `reqly mock <spec>` — ✅ shipped
-8. **Validate + diff** — `reqly validate` (spec/project checks) and `reqly diff` (specs/requests/responses)
+8. ~~**Validate + diff**~~ — `reqly validate` (spec/project checks) and `reqly diff` (specs/requests/responses) — ✅ shipped
 
 > **Companion:** [**reqly-test-api**](https://reqly-test-api.vercel.app) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.

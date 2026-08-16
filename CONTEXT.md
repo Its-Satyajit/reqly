@@ -17,3 +17,10 @@ POSIX-compliant installation script (`curl -fsSL https://raw.githubusercontent.c
 
 ### AI Agent Protocol & Workspace Rules
 Standardized instruction configuration (`AGENTS.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`) governing AI coding assistant contributions to Reqly. Enforces TDD verification (`go test ./...`), local-first/Git-native constraints, and the 5-stage skill pipeline (`/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement` → `/code-review`) in `~/.agents/skills/`.
+
+### Specification & Project Validation Engine
+Static verification subsystem (`internal/validation`) backing `reqly validate`. Audits OpenAPI 2.x/3.x specifications (`reqly validate openapi <path>`) and local Git-native project descriptors (`reqly validate project [path]`) for broken schema references, missing required attributes, and invalid descriptor syntax.
+
+### Structural Diff Engine
+AST and JSON/YAML key-aware diffing engine (`internal/diffing`) backing `reqly diff`. Computes semantic differences between API specifications (`reqly diff spec <spec1> <spec2>`), request descriptors (`reqly diff request <file1> <file2>`), and JSON/YAML response payloads (`reqly diff response <file1> <file2>`).
+
