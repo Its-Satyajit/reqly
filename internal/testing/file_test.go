@@ -155,3 +155,25 @@ func TestLoadTestFileMissing(t *testing.T) {
 		t.Fatalf("expected read error, got %v", err)
 	}
 }
+
+func TestParseTestFileEnvironmentField(t *testing.T) {
+	data := `
+name: users
+environment: staging
+request:
+  method: GET
+  url: https://api.example.com/users
+tests:
+  - name: ok
+    assertions:
+      - kind: status
+        expected: 200
+`
+	tf, err := ParseTestFile([]byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tf.Environment != "staging" {
+		t.Fatalf("environment: got %q, want %q", tf.Environment, "staging")
+	}
+}

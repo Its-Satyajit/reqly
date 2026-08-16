@@ -165,10 +165,10 @@ func (r *Runner) runStep(ctx context.Context, ws *collections.Workspace, coll *c
 	req := resolved.Request
 
 	// The execution variable set is the full scope chain plus the shared
-	// environment and runtime variables provided to the run or set by earlier
-	// steps (chaining).
+	// process-env, environment, and runtime variables provided to the run or
+	// set by earlier steps (chaining).
 	execVars := resolved.Vars.Clone()
-	for _, scope := range []variables.Scope{variables.ScopeEnvironment, variables.ScopeRuntime} {
+	for _, scope := range []variables.Scope{variables.ScopeProcessEnv, variables.ScopeEnvironment, variables.ScopeRuntime} {
 		r.vars.Range(scope, func(key, value string) {
 			execVars.Set(scope, key, value)
 		})

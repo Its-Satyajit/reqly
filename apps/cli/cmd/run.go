@@ -21,6 +21,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -76,6 +77,8 @@ and --data to build requests directly on the CLI:
 
 		var req *request.Request
 		var vars *variables.Set
+		baseDir := "."
+		var fileEnv string
 
 		if requestfile.LooksLikeFile(target) {
 			f, err := requestfile.LoadFile(target)
@@ -83,7 +86,9 @@ and --data to build requests directly on the CLI:
 				return err
 			}
 			req = &f.Request
+			baseDir = filepath.Dir(target)
 			vars = f.VariablesSet()
+			fileEnv = f.Environment
 			if err := applyRunOverrides(cmd, req); err != nil {
 				return err
 			}
@@ -102,10 +107,16 @@ and --data to build requests directly on the CLI:
 			vars = variables.NewSet()
 		}
 
+		masker, envSet, err := activeEnvironment(baseDir, fileEnv)
+		if err != nil {
+			return err
+		}
+		mergeEnvScope(vars, envSet)
+
 		client := request.NewClient()
 		resp, err := client.Execute(context.Background(), req, vars)
 		if err != nil {
-			return fmt.Errorf("request failed: %w", err)
+			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
 		}
 
 		status := resp.StatusCode
@@ -121,13 +132,13 @@ and --data to build requests directly on the CLI:
 
 		for key, values := range resp.Headers {
 			for _, value := range values {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, value)
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, masker.Mask(value))
 			}
 		}
 
 		fmt.Fprintln(cmd.OutOrStdout())
 		if len(resp.Body) > 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), string(resp.Body))
+			fmt.Fprintln(cmd.OutOrStdout(), masker.Mask(string(resp.Body)))
 		}
 		return nil
 	},
@@ -138,6 +149,7 @@ func init() {
 	runCmd.Flags().StringArrayVarP(&runHeaders, "header", "H", nil, "request header in 'Key: Value' form (repeatable)")
 	runCmd.Flags().StringVarP(&runBody, "data", "d", "", "request body")
 	runCmd.Flags().DurationVarP(&runTimeout, "timeout", "t", 30*time.Second, "request timeout")
+	runCmd.Flags().StringVar(&envFlag, "env", "", "environment to use (falls back to the file's environment field; REQLY_ENV wins)")
 }
 
 // applyRunOverrides copies explicitly-set CLI flags onto a request loaded from

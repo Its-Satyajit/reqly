@@ -52,9 +52,14 @@ type SendResponse struct {
 }
 
 // Send executes the request and returns a SendResponse, or an error when the
-// request could not be sent.
-func (s *RequestService) Send(r request.Request) (*SendResponse, error) {
-	resp, err := s.client.Execute(context.Background(), &r, variables.NewSet())
+// request could not be sent. An optional variable set is used for
+// interpolation; when omitted, an empty set is used.
+func (s *RequestService) Send(r request.Request, vars ...*variables.Set) (*SendResponse, error) {
+	set := variables.NewSet()
+	if len(vars) > 0 && vars[0] != nil {
+		set = vars[0]
+	}
+	resp, err := s.client.Execute(context.Background(), &r, set)
 	if err != nil {
 		return nil, err
 	}

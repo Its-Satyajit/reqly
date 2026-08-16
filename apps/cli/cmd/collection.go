@@ -72,10 +72,16 @@ Use --workspace to point at a workspace directory other than the current one.`,
 			return err
 		}
 
+		masker, envSet, err := activeEnvironment(ws.Root, entry.File.Environment)
+		if err != nil {
+			return err
+		}
+		mergeEnvScope(resolved.Vars, envSet)
+
 		client := request.NewClient()
 		resp, err := client.Execute(context.Background(), &resolved.Request, resolved.Vars)
 		if err != nil {
-			return fmt.Errorf("request failed: %w", err)
+			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
 		}
 
 		status := resp.StatusCode
@@ -91,13 +97,13 @@ Use --workspace to point at a workspace directory other than the current one.`,
 
 		for key, values := range resp.Headers {
 			for _, value := range values {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, value)
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, masker.Mask(value))
 			}
 		}
 
 		fmt.Fprintln(cmd.OutOrStdout())
 		if len(resp.Body) > 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), string(resp.Body))
+			fmt.Fprintln(cmd.OutOrStdout(), masker.Mask(string(resp.Body)))
 		}
 		return nil
 	},
@@ -231,7 +237,13 @@ Use --workspace to point at a workspace directory other than the current one.`,
 			return fmt.Errorf("collection %q not found in workspace %s", args[0], collectionWorkspace)
 		}
 
-		report, err := runner.RunCollection(context.Background(), ws, coll, nil, runner.Options{
+		// Collection runs use a single environment for the whole run and ignore
+		// per-file environment: fields.
+		masker, envSet, err := activeEnvironment(ws.Root, "")
+		if err != nil {
+			return err
+		}
+		report, err := runner.RunCollection(context.Background(), ws, coll, envSet, runner.Options{
 			FailFast: collectionFailFast,
 		})
 		if err != nil {
@@ -245,7 +257,7 @@ Use --workspace to point at a workspace directory other than the current one.`,
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", status, step.Name)
 			if step.RequestError != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "  error: %v\n", step.RequestError)
+				fmt.Fprintf(cmd.ErrOrStderr(), "  error: %s\n", masker.Mask(step.RequestError.Error()))
 			}
 			if step.Response != nil {
 				fmt.Fprintf(cmd.OutOrStdout(), "  %d %s (%s)\n",
@@ -260,7 +272,7 @@ Use --workspace to point at a workspace directory other than the current one.`,
 				fmt.Fprintf(cmd.OutOrStdout(), "  [%s] %s\n", mark, tr.Name)
 			}
 			if len(step.Logs) > 0 {
-				fmt.Fprintf(cmd.OutOrStdout(), "  script output: %s\n", strings.Join(step.Logs, "; "))
+				fmt.Fprintf(cmd.OutOrStdout(), "  script output: %s\n", masker.Mask(strings.Join(step.Logs, "; ")))
 			}
 		}
 
@@ -281,7 +293,9 @@ func init() {
 		pwd = "."
 	}
 	collectionRunCmd.Flags().StringVar(&collectionWorkspace, "workspace", pwd, "workspace directory")
+	collectionRunCmd.Flags().StringVar(&envFlag, "env", "", "environment to use (falls back to the collection's environment field; REQLY_ENV wins)")
 	collectionListCmd.Flags().StringVar(&collectionWorkspace, "workspace", pwd, "workspace directory")
 	collectionTestCmd.Flags().StringVar(&collectionWorkspace, "workspace", pwd, "workspace directory")
 	collectionTestCmd.Flags().BoolVar(&collectionFailFast, "fail-fast", false, "stop after the first failing step")
+	collectionTestCmd.Flags().StringVar(&envFlag, "env", "", "environment to use for the whole collection run (REQLY_ENV wins)")
 }

@@ -19,8 +19,14 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
+	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/core"
+	"github.com/Its-Satyajit/reqly/internal/environments"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
 // AppService is a Wails v3 service exposing the Go core to the frontend.
@@ -37,7 +43,34 @@ func NewAppService() *AppService {
 }
 
 // SendRequest executes an HTTP request through the core and returns the
-// bridge-friendly response for the frontend to render.
+// bridge-friendly response for the frontend to render. The active environment
+// is resolved from the workspace rooted at the app's working directory and its
+// variables are layered under the request for interpolation.
 func (s *AppService) SendRequest(r request.Request) (*core.SendResponse, error) {
-	return s.requests.Send(r)
+	vars, err := resolveAppEnvironment()
+	if err != nil {
+		return nil, err
+	}
+	return s.requests.Send(r, vars)
+}
+
+// resolveAppEnvironment loads the process-env scope plus the environment
+// selected from the working directory by REQLY_ENV or the workspace
+// descriptor's environment: field (the --env CLI flag is not available to the
+// desktop). When no workspace or environment is present, the returned set
+// still carries the process-env scope so OS variables always interpolate.
+func resolveAppEnvironment() (*variables.Set, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("resolve working directory: %w", err)
+	}
+	sel := environments.Selection{
+		EnvFlag:   os.Getenv("REQLY_ENV"),
+		ConfigEnv: collections.WorkspaceEnvironment(dir),
+	}
+	set, _, err := environments.ResolveSet(dir, sel)
+	if err != nil {
+		return nil, err
+	}
+	return set, nil
 }

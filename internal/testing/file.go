@@ -37,6 +37,9 @@ type TestFile struct {
 	Request   request.Request   `json:"request" yaml:"request"`
 	Variables map[string]string `json:"variables,omitempty" yaml:"variables,omitempty"`
 	Tests     []Test            `json:"tests" yaml:"tests"`
+	// Environment selects the environment to apply to this test. It is
+	// overridden by the --env flag and REQLY_ENV at runtime.
+	Environment string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
 // Suite converts a TestFile into a Suite for evaluation.

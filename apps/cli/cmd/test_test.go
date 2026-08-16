@@ -122,6 +122,52 @@ func TestTestCommandPartialPass(t *testing.T) {
 	}
 }
 
+func TestTestCommandMasksSecretsInAssertionMessages(t *testing.T) {
+	secret := "top-secret-value"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte(`{"api_key":"` + secret + `"}`))
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	writeEnv(t, dir, "dev", "secrets:\n  API_KEY: "+secret+"\n")
+	envDir := filepath.Join(dir, "environments")
+	t.Chdir(dir)
+
+	content := fmt.Sprintf(`{
+		"name": "suite",
+		"environment": "dev",
+		"request": {"method": "GET", "url": %q},
+		"tests": [
+			{"name": "secret-echo", "assertions": [
+				{"kind": "status", "expected": 200},
+				{"kind": "json", "path": "$.api_key", "exact": true, "value": "wrong-value"}
+			]}
+		]
+	}`, srv.URL)
+	testPath := filepath.Join(dir, "test.json")
+	if err := os.WriteFile(testPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_ = envDir
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"test", testPath})
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected failure for failing assertion")
+	}
+	if strings.Contains(out.String(), secret) {
+		t.Fatalf("secret leaked in test output:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "[SECRET]") {
+		t.Fatalf("expected [SECRET] masking:\n%s", out.String())
+	}
+}
+
 func TestTestCommandMissingFile(t *testing.T) {
 	var out bytes.Buffer
 	rootCmd.SetOut(&out)
