@@ -27,7 +27,8 @@ import (
 )
 
 // Load parses an OpenAPI 3.x document (JSON or YAML) from raw bytes, resolves
-// internal $refs, and validates the resulting document.
+// Load parses, resolves internal references in, and validates an OpenAPI document.
+// It returns the document or an error describing the parsing or validation failure.
 func Load(data []byte) (*openapi3.T, error) {
 	loader := openapi3.NewLoader()
 	doc, err := loader.LoadFromData(data)
@@ -41,7 +42,8 @@ func Load(data []byte) (*openapi3.T, error) {
 }
 
 // LoadFile reads an OpenAPI 3.x document from a file (JSON or YAML), resolves
-// internal $refs, and validates the resulting document.
+// LoadFile reads and parses an OpenAPI document from the specified file.
+// It returns an error if the file cannot be read or the document cannot be parsed or validated.
 func LoadFile(path string) (*openapi3.T, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

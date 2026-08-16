@@ -29,11 +29,15 @@ import (
 const maxExampleDepth = 6
 
 // generateExample produces a deterministic mock value for an OpenAPI schema.
-// Precedence: explicit example > default > const > first enum > structural shape.
+// generateExample generates a deterministic example value from an OpenAPI schema.
+// It prioritizes an explicit example, default, constant, or first enum value
+// before generating a value from the schema structure.
 func generateExample(schema *openapi3.Schema) any {
 	return generateExampleDepth(schema, 0)
 }
 
+// generateExampleDepth generates a deterministic example value from an OpenAPI schema,
+// honoring explicit values and limiting recursive traversal to the maximum example depth.
 func generateExampleDepth(schema *openapi3.Schema, depth int) any {
 	if schema == nil {
 		return nil
@@ -97,6 +101,7 @@ func generateExampleDepth(schema *openapi3.Schema, depth int) any {
 	}
 }
 
+// generateObjectProperties creates deterministic example values for a schema's properties, using an additional property example when no regular properties are available. Unresolved property references receive nil.
 func generateObjectProperties(schema *openapi3.Schema, depth int) map[string]any {
 	out := map[string]any{}
 	keys := make([]string, 0, len(schema.Properties))
@@ -118,6 +123,7 @@ func generateObjectProperties(schema *openapi3.Schema, depth int) map[string]any
 	return out
 }
 
+// stringExample returns a deterministic example string based on the schema format.
 func stringExample(schema *openapi3.Schema) any {
 	switch schema.Format {
 	case "date":
@@ -135,6 +141,7 @@ func stringExample(schema *openapi3.Schema) any {
 	}
 }
 
+// integerExample returns the schema minimum as an integer, or zero when no minimum is defined.
 func integerExample(schema *openapi3.Schema) any {
 	if schema.Min != nil {
 		return int(*schema.Min)
@@ -142,6 +149,7 @@ func integerExample(schema *openapi3.Schema) any {
 	return 0
 }
 
+// numberExample returns the schema's minimum value when specified, or 0.0 otherwise.
 func numberExample(schema *openapi3.Schema) any {
 	if schema.Min != nil {
 		return *schema.Min

@@ -97,7 +97,9 @@ func init() {
 }
 
 // serveMock serves handler on the bound listener and blocks until the context
-// is cancelled or the listener fails. Split out for testability.
+// serveMock serves handler on listener until the context is cancelled or serving fails.
+// It gracefully shuts down the HTTP server when the context is cancelled. Returns a
+// serving error, or nil after graceful shutdown.
 func serveMock(ctx context.Context, cmd *cobra.Command, handler http.Handler, listener net.Listener) error {
 	url := fmt.Sprintf("http://%s", listener.Addr().String())
 	fmt.Fprintf(cmd.OutOrStdout(), "mock server listening on %s (Ctrl-C to stop)\n", url)
