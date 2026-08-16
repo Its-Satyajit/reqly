@@ -45,3 +45,18 @@ Workspace-aware static checks (`reqly env validate <name>`) over an environment:
 ### Environment Diff
 Secret-aware comparison of two environments (`reqly env diff <nameA> <nameB>`): added/removed/changed keys via the structural diff engine, with changed secret values rendered as `[SECRET]` so the diff shows *which* secret changed without leaking it.
 
+### Authentication Scheme
+A named credential-application strategy (`internal/auth`) that mutates an outgoing request. Dispatched by a request's `auth.type` string through a registered `Scheme` interface; each scheme owns its `config` keys and applies them to the request before send.
+
+### Auth Config
+The flat string map on a request/collection descriptor (`auth.config`) holding a scheme's fields (e.g. `token`, `username`, `password`, `key`, `in`). Values are interpolated like variables and fed to the environment masker so secrets never leak in output.
+
+### Auth Inheritance
+A request resolves its auth from the nearest enclosing collection/folder that defines one; a request's own non-empty `auth.type` overrides it, and `auth.type: none` explicitly disables inherited auth for that request.
+
+### No Auth
+The `none` scheme: clears any inherited auth on a request so it is sent unauthenticated, even under an auth-bearing collection/folder.
+
+### JWT Auth
+A scheme that signs a JSON Web Token per request from `config` (secret, algorithm, claims) and sends it as `Authorization: Bearer <token>`. Distinct from JWT *tooling* (decode/claims viewer), which is a separate CLI feature.
+
