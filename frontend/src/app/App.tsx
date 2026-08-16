@@ -1,5 +1,5 @@
-import logoDark from "../assets/logo-dark.png";
-import logoLight from "../assets/logo-light.png";
+import logoDark from "../assets/logo-dark.svg";
+import logoLight from "../assets/logo-light.svg";
 import { ThemeToggle, WorkspaceSidebar } from "../components";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
