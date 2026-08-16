@@ -1,6 +1,14 @@
 # Reqly
 
 <p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="frontend/src/assets/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="frontend/src/assets/logo-light.svg">
+    <img alt="Reqly Logo" src="frontend/src/assets/logo-light.svg" width="180">
+  </picture>
+</p>
+
+<p align="center">
   <b>The Local-First, Git-Native API Development Environment</b>
 </p>
 
