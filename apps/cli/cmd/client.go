@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
 )
@@ -82,22 +83,9 @@ var warnf = func(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format, args...)
 }
 
-// findWorkspaceRoot walks up from dir to the nearest directory containing a
-// reqly.yaml descriptor, returning its absolute path, or "" when none exists.
+// findWorkspaceRoot walks up from dir to the nearest workspace descriptor. It
+// delegates to collections.FindWorkspaceRoot — the shared home for workspace
+// discovery used by the CLI and the desktop app.
 func findWorkspaceRoot(dir string) string {
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		return ""
-	}
-	for {
-		descriptor := filepath.Join(abs, "reqly.yaml")
-		if info, err := os.Stat(descriptor); err == nil && !info.IsDir() {
-			return abs
-		}
-		parent := filepath.Dir(abs)
-		if parent == abs {
-			return ""
-		}
-		abs = parent
-	}
+	return collections.FindWorkspaceRoot(dir)
 }

@@ -513,3 +513,28 @@ func TestSetWorkspaceEnvironmentCreatesDescriptor(t *testing.T) {
 		t.Fatalf("environment: got %q, want %q", ws.Config.Environment, "dev")
 	}
 }
+
+func TestFindWorkspaceRootWalksUp(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "reqly.yaml"), []byte("name: test\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	nested := filepath.Join(dir, "a", "b", "c")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := FindWorkspaceRoot(nested); got != dir {
+		t.Fatalf("FindWorkspaceRoot(%s) = %q, want %q", nested, got, dir)
+	}
+	if got := FindWorkspaceRoot(dir); got != dir {
+		t.Fatalf("FindWorkspaceRoot(root) = %q, want %q", got, dir)
+	}
+}
+
+func TestFindWorkspaceRootNone(t *testing.T) {
+	dir := t.TempDir() // no descriptor anywhere
+	if got := FindWorkspaceRoot(dir); got != "" {
+		t.Fatalf("FindWorkspaceRoot = %q, want empty", got)
+	}
+}

@@ -51,7 +51,7 @@ type AppService struct {
 // reqly:// custom-scheme receiver is registered so auth-code logins can
 // complete via deep links (feed them with DeliverCustomSchemeCallback).
 func NewAppService() *AppService {
-	root := findAppWorkspaceRoot(".")
+	root := collections.FindWorkspaceRoot(".")
 	store, backend := openAppTokenStore(root)
 
 	svc := &AppService{requests: core.NewCachedRequestService(store, root), authBackend: backend}
@@ -152,26 +152,6 @@ func resolveAppEnvironment() (*variables.Set, error) {
 		return nil, err
 	}
 	return set, nil
-}
-
-// findAppWorkspaceRoot walks up from dir to the nearest directory containing a
-// reqly.yaml descriptor, returning its absolute path, or "" when none exists.
-func findAppWorkspaceRoot(dir string) string {
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		return ""
-	}
-	for {
-		descriptor := filepath.Join(abs, "reqly.yaml")
-		if info, err := os.Stat(descriptor); err == nil && !info.IsDir() {
-			return abs
-		}
-		parent := filepath.Dir(abs)
-		if parent == abs {
-			return ""
-		}
-		abs = parent
-	}
 }
 
 // openAppTokenStore opens the token store for a workspace root. The desktop

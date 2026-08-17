@@ -89,6 +89,27 @@ type RequestEntry struct {
 	File *requestfile.File
 }
 
+// FindWorkspaceRoot walks up from dir to the nearest directory containing a
+// workspace descriptor (reqly.yaml), returning its absolute path, or "" when
+// none exists. It is the single home for workspace discovery shared by the
+// CLI and the desktop app.
+func FindWorkspaceRoot(dir string) string {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return ""
+	}
+	for {
+		if IsWorkspace(abs) {
+			return abs
+		}
+		parent := filepath.Dir(abs)
+		if parent == abs {
+			return ""
+		}
+		abs = parent
+	}
+}
+
 // LoadWorkspace reads a workspace rooted at dir. dir must contain a
 // reqly.yaml descriptor; collections live in dir/collections.
 func LoadWorkspace(dir string) (*Workspace, error) {
