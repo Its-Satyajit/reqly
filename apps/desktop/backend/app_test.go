@@ -19,8 +19,11 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -90,5 +93,172 @@ func TestResolveAppEnvironmentWithoutWorkspaceIsNotAnError(t *testing.T) {
 	}
 	if set == nil {
 		t.Fatal("expected a variable set (with process-env scope)")
+	}
+}
+
+// fakeAppDeviceEndpoints returns fake device-flow endpoints for the bridge
+// tests: the device endpoint answers with a verification URI + code, and the
+// token endpoint answers authorization_pending once, then grants.
+func fakeAppDeviceEndpoints(t *testing.T) (*httptest.Server, *httptest.Server) {
+	t.Helper()
+	deviceSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"device_code":"dev-code","user_code":"AB-1234","verification_uri":"https://idp.example.com/device","interval":1}`))
+	}))
+	var polls int
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		polls++
+		if polls == 1 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"authorization_pending"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"desktop-device-tok","token_type":"Bearer","expires_in":3600,"refresh_token":"desktop-device-rt"}`))
+	}))
+	t.Cleanup(deviceSrv.Close)
+	t.Cleanup(tokenSrv.Close)
+	return deviceSrv, tokenSrv
+}
+
+func TestAuthLoginDeviceFlowPersistsAndStatus(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+	t.Setenv("REQLY_TOKEN_STORE", "file") // hermetic: never touch the OS keychain
+
+	deviceSrv, tokenSrv := fakeAppDeviceEndpoints(t)
+	svc := NewAppService()
+
+	cfg := map[string]string{
+		"grant_type":               "device_code",
+		"device_authorization_url": deviceSrv.URL,
+		"token_url":                tokenSrv.URL,
+		"client_id":                "desktop-client",
+		"client_secret":            "desktop-secret",
+	}
+	tok, err := svc.AuthLogin(cfg, "device_code")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tok.AccessToken != "desktop-device-tok" || tok.RefreshToken != "desktop-device-rt" {
+		t.Fatalf("tok = %+v", tok)
+	}
+
+	status, err := svc.AuthStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Backend != "file" {
+		t.Fatalf("backend = %q, want file", status.Backend)
+	}
+	if len(status.Tokens) != 1 {
+		t.Fatalf("status tokens = %d, want 1", len(status.Tokens))
+	}
+	s := status.Tokens[0]
+	if s.GrantType != "device_code" || !s.HasRefresh || s.State != "cached" {
+		t.Fatalf("token status = %+v", s)
+	}
+	if strings.Contains(s.AccessToken, "desktop-device-tok") {
+		t.Fatalf("status leaked the full token: %q", s.AccessToken)
+	}
+
+	cleared, err := svc.AuthLogout()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cleared != 1 {
+		t.Fatalf("cleared %d, want 1", cleared)
+	}
+	status, err = svc.AuthStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Tokens) != 0 {
+		t.Fatalf("status tokens after logout = %d, want 0", len(status.Tokens))
+	}
+}
+
+func TestAuthLoginAuthCodeOpensBrowser(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+	t.Setenv("REQLY_TOKEN_STORE", "file")
+
+	authSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		state := r.URL.Query().Get("state")
+		cb := r.URL.Query().Get("redirect_uri")
+		q := strings.SplitN(cb, "?", 2)[0] + "?code=desktop-code&state=" + state
+		http.Redirect(w, r, q, http.StatusFound)
+	}))
+	defer authSrv.Close()
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"desktop-authcode-tok","token_type":"Bearer","expires_in":3600,"refresh_token":"desktop-authcode-rt"}`))
+	}))
+	defer tokenSrv.Close()
+
+	// The Open hook must launch the browser at the authorization URL; the
+	// fake drives the callback like a browser would.
+	var opened string
+	oldLaunch := launchAppBrowser
+	launchAppBrowser = func(url string) error {
+		opened = url
+		client := &http.Client{}
+		resp, err := client.Get(url)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		return nil
+	}
+	t.Cleanup(func() { launchAppBrowser = oldLaunch })
+
+	svc := NewAppService()
+	tok, err := svc.AuthLogin(map[string]string{
+		"authorization_url": authSrv.URL,
+		"token_url":         tokenSrv.URL,
+		"client_id":         "desktop-client",
+		"client_secret":     "desktop-secret",
+	}, "authorization_code")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tok.AccessToken != "desktop-authcode-tok" {
+		t.Fatalf("AccessToken = %q", tok.AccessToken)
+	}
+	if !strings.Contains(opened, authSrv.URL) {
+		t.Fatalf("browser opened at %q, want the authorization URL", opened)
+	}
+}
+
+func TestAuthStatusWithoutWorkspaceErrors(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if _, err := svc.AuthStatus(); err == nil || !strings.Contains(err.Error(), "no workspace found") {
+		t.Fatalf("AuthStatus err = %v, want no-workspace error", err)
+	}
+	if _, err := svc.AuthLogin(map[string]string{}, "device_code"); err == nil {
+		t.Fatal("AuthLogin without workspace: err = nil, want error")
+	}
+	if _, err := svc.AuthLogout(); err == nil {
+		t.Fatal("AuthLogout without workspace: err = nil, want error")
+	}
+}
+
+func TestDeliverCustomSchemeCallbackBridge(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+	t.Setenv("REQLY_TOKEN_STORE", "file")
+
+	// No flow is waiting: the bridge surfaces the auth package's error.
+	svc := NewAppService()
+	err := svc.DeliverCustomSchemeCallback("reqly://callback?code=x&state=y")
+	if err == nil || !strings.Contains(err.Error(), "no authorization flow waiting") {
+		t.Fatalf("err = %v, want no-waiting-flow error", err)
 	}
 }

@@ -19,13 +19,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 
+	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/environments"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
@@ -33,13 +39,27 @@ import (
 // It should stay thin: business logic belongs in the Go core (internal/core).
 type AppService struct {
 	requests *core.RequestService
+	auth     *core.AuthService
+	// authBackend is the active token-store backend name ("file"/"keychain").
+	authBackend string
 }
 
-// NewAppService creates a new AppService.
+// NewAppService creates a new AppService. It resolves the workspace rooted at
+// the app's working directory, opens the token store (keychain by default,
+// falling back to the file store with a warning), and wires store-backed OAuth
+// token caching so desktop requests authenticate exactly like the CLI. The
+// reqly:// custom-scheme receiver is registered so auth-code logins can
+// complete via deep links (feed them with DeliverCustomSchemeCallback).
 func NewAppService() *AppService {
-	return &AppService{
-		requests: core.NewRequestService(),
+	root := findAppWorkspaceRoot(".")
+	store, backend := openAppTokenStore(root)
+
+	svc := &AppService{requests: core.NewCachedRequestService(store, root), authBackend: backend}
+	if store != nil {
+		svc.auth = core.NewAuthService(store, root)
 	}
+	auth.RegisterCustomSchemeReceiver("reqly")
+	return svc
 }
 
 // SendRequest executes an HTTP request through the core and returns the
@@ -52,6 +72,65 @@ func (s *AppService) SendRequest(r request.Request) (*core.SendResponse, error) 
 		return nil, err
 	}
 	return s.requests.Send(r, vars)
+}
+
+// AuthLogin runs an interactive OAuth 2.0 login (authorization_code or
+// device_code) and caches the token. For authorization_code flows the
+// system browser is opened at the provider's authorization page; for
+// device_code flows the caller surfaces the verification URI from the
+// returned token acquisition steps (the core reports it via the token
+// endpoint poll, so this bridge method returns once approved).
+func (s *AppService) AuthLogin(config map[string]string, flow string) (*auth.Token, error) {
+	if s.auth == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to log in")
+	}
+	tok, err := s.auth.Login(context.Background(), core.LoginRequest{
+		Config: config,
+		Flow:   flow,
+		Open: func(_ context.Context, authorizationURL string) error {
+			return launchAppBrowser(authorizationURL)
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &tok, nil
+}
+
+// AuthStatusResponse is the bridge-friendly auth status: the active store
+// backend plus the masked cached tokens.
+type AuthStatusResponse struct {
+	Backend string                 `json:"backend"`
+	Tokens  []core.AuthTokenStatus `json:"tokens"`
+}
+
+// AuthStatus lists the cached OAuth tokens for the app's workspace with
+// masked values, plus the active store backend.
+func (s *AppService) AuthStatus() (*AuthStatusResponse, error) {
+	if s.auth == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to see auth status")
+	}
+	tokens, err := s.auth.Status()
+	if err != nil {
+		return nil, err
+	}
+	return &AuthStatusResponse{Backend: s.authBackend, Tokens: tokens}, nil
+}
+
+// AuthLogout clears every cached OAuth token for the app's workspace and
+// returns how many were removed.
+func (s *AppService) AuthLogout() (int, error) {
+	if s.auth == nil {
+		return 0, fmt.Errorf("no workspace found: nothing to clear")
+	}
+	return s.auth.Logout()
+}
+
+// DeliverCustomSchemeCallback feeds a reqly:// (or other registered) deep
+// link into the waiting authorization-code flow. The host calls this when the
+// OS delivers a registered URL to the app.
+func (s *AppService) DeliverCustomSchemeCallback(uri string) error {
+	return auth.DeliverCustomSchemeCallback(uri)
 }
 
 // resolveAppEnvironment loads the process-env scope plus the environment
@@ -73,4 +152,76 @@ func resolveAppEnvironment() (*variables.Set, error) {
 		return nil, err
 	}
 	return set, nil
+}
+
+// findAppWorkspaceRoot walks up from dir to the nearest directory containing a
+// reqly.yaml descriptor, returning its absolute path, or "" when none exists.
+func findAppWorkspaceRoot(dir string) string {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return ""
+	}
+	for {
+		descriptor := filepath.Join(abs, "reqly.yaml")
+		if info, err := os.Stat(descriptor); err == nil && !info.IsDir() {
+			return abs
+		}
+		parent := filepath.Dir(abs)
+		if parent == abs {
+			return ""
+		}
+		abs = parent
+	}
+}
+
+// openAppTokenStore opens the token store for a workspace root. The desktop
+// defaults to the OS keychain (REQLY_TOKEN_STORE overrides), falling back to
+// the file store with a warning when no keychain is available. Without a
+// workspace, a nil store is returned.
+func openAppTokenStore(root string) (secrets.Store, string) {
+	if root == "" {
+		return nil, ""
+	}
+	backend := os.Getenv("REQLY_TOKEN_STORE")
+	if backend == "" {
+		backend = "keychain"
+	}
+	switch backend {
+	case "keychain":
+		store, err := secrets.NewKeychainStore("reqly", filepath.Join(root, ".reqly", "keychain.index"))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: %v; falling back to the file store\n", err)
+			backend = "file"
+			break
+		}
+		return store, "keychain"
+	case "file":
+	default:
+		fmt.Fprintf(os.Stderr, "warning: unknown token store %q; using the file store\n", backend)
+		backend = "file"
+	}
+	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: %v; token caching disabled\n", err)
+		return nil, ""
+	}
+	return store, backend
+}
+
+// launchAppBrowser opens url in the system default browser. It is a package
+// variable so tests can substitute a fake driver.
+var launchAppBrowser = func(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("open browser: %w", err)
+	}
+	return nil
 }

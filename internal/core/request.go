@@ -22,6 +22,7 @@ import (
 	"context"
 
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
@@ -32,9 +33,22 @@ type RequestService struct {
 	client *request.Client
 }
 
-// NewRequestService returns a RequestService backed by a fresh request client.
+// NewRequestService returns a RequestService backed by a fresh request client
+// without token caching.
 func NewRequestService() *RequestService {
 	return &RequestService{client: request.NewClient()}
+}
+
+// NewCachedRequestService returns a RequestService whose client caches OAuth
+// tokens in store, scoped to root — the same store-backed wiring the CLI
+// uses, so the desktop authenticates like the CLI. store may be nil, in which
+// case no caching is configured.
+func NewCachedRequestService(store secrets.Store, root string) *RequestService {
+	client := request.NewClient()
+	if store != nil {
+		client = request.NewClient(request.WithTokenCache(store, root))
+	}
+	return &RequestService{client: client}
 }
 
 // SendResponse is the bridge-friendly result of executing a request. It uses
