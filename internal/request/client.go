@@ -149,11 +149,14 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 			}
 		} else if s, ok := auth.Lookup(r.Auth.Type); ok {
 			// Reactive refresh: a 401 on a TokenSource scheme with caching
-			// enabled forces the cached token out, re-acquires, and retries
-			// exactly once. A second 401 is returned as-is (no retry loop).
-			if _, isTokenSource := s.(auth.TokenSource); isTokenSource && c.tokens != nil {
+			// enabled forces the cached token out and renews it — via the
+			// refresh-token grant when a refresh token is cached (no second
+			// browser flow), otherwise by re-acquiring — then retries exactly
+			// once. A second 401 is returned as-is (no retry loop).
+			if ts, isTokenSource := s.(auth.TokenSource); isTokenSource && c.tokens != nil {
 				key := auth.TokenCacheKey(c.tokens.root, r.Auth.Config)
-				if err := c.tokens.store.Delete(key); err != nil {
+				cached := auth.NewCachedTokenSource(ts, c.tokens.store, key)
+				if _, err := cached.ForceRefresh(ctx, r.Auth.Config, vars); err != nil {
 					return nil, err
 				}
 				retryReq, refreshedToken, err := c.build(ctx, r, vars)

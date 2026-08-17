@@ -17,4 +17,4 @@ The roadmap (§1.3) requires OAuth 2.0. ADR 0005 deferred it, noting that the fl
 ## Consequences
 - **Positive:** no secrets in Git-tracked descriptors; token reuse across CLI invocations and collection steps; bounded, self-healing refresh with no retry loops; additive — Auth Code + PKCE plugs into the same `TokenSource` + store seams; masking covers both `client_secret` and the acquired token.
 - **Trade-off:** plain-text (0600) token files at rest until the keychain backend ships; `token_name` indirection adds a config knob; the flat-config shape persists (no nested OAuth payloads in descriptors).
-- **Deferred:** Authorization Code + PKCE, Password/ROPC, OS keychain, refresh-token reuse beyond Client Credentials.
+- **Deferred:** Password/ROPC, OS keychain, custom redirect schemes, device flow. Authorization Code + PKCE and refresh-token reuse shipped in [ADR 0007](0007-oauth2-authorization-code-pkce.md).

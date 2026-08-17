@@ -86,7 +86,7 @@ The minimum set to make Reqly a serious API client.
 - [~] JWT — HS256/384/512 per-request signing shipped; decode/claims-viewer CLI (`reqly jwt`) deferred (per ADR 0005)
 - [~] Digest — challenge/response shipped (SHA-256 fallback, request-body aware); NTLM deferred
 - [x] OAuth 2.0 Client Credentials — RFC 6749 §4.4 with store-backed token caching (`TokenSource` + `secrets.Store`, ADR 0006), expiry-skewed proactive refresh, reactive 401 refresh+retry-once, `reqly auth status`/`auth logout`
-- [ ] OAuth 2.0 Authorization Code + PKCE — next milestone (system-browser flow, state/verifier handling)
+- [x] OAuth 2.0 Authorization Code + PKCE — RFC 6749 §4.1 + RFC 7636 (`AuthorizationCodeSource`, one-shot loopback callback, state/verifier, [ADR 0007](docs/adr/0007-oauth2-authorization-code-pkce.md)), `reqly auth login`, first-request auto-login, refresh-token reuse (RFC 6749 §6, proactive + 401, rotation) — spec [#52](https://github.com/Its-Satyajit/reqly/issues/52), tickets [#53–#57](https://github.com/Its-Satyajit/reqly/issues/53)
 - [ ] OAuth 1.0, AWS Signature, Akamai EdgeGrid, custom auth + auth inheritance
 
 ### 1.4 Secrets
@@ -274,7 +274,7 @@ Every checked feature must pass the full checklist:
 | Phase | Scope | Status | Est. complete |
 | --- | --- | --- | --- |
 | Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner + OpenAPI parsing + mock server + env management/validation/masking/diff + auth schemes (basic/bearer/apikey/jwt/digest/none + masking) shipped + OAuth 2.0 Client Credentials with cached tokens + `reqly auth status`/`logout`; OAuth Auth Code/PKCE, AWS/EdgeGrid auth, env UI, full request-builder UI pending | ~45% |
+| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner + OpenAPI parsing + mock server + env management/validation/masking/diff + auth schemes (basic/bearer/apikey/jwt/digest/none + masking) shipped + OAuth 2.0 Client Credentials + Authorization Code/PKCE with cached tokens, refresh-token reuse, `reqly auth login`/`status`/`logout`, auto-login; AWS/EdgeGrid auth, env UI, full request-builder UI pending | ~50% |
 | Phase 2 | Differentiating (P1) | Not started | 0% |
 | Phase 3 | Power-User (P2) | Not started | 0% |
 | Phase 4 | Ecosystem (P3) | Not started | 0% |
@@ -293,6 +293,7 @@ Every checked feature must pass the full checklist:
 9. ~~**Environments & secrets**~~ — Git-native `environments/<name>.yaml` with `variables:`/`secrets:`, selection precedence (`REQLY_ENV`/`--env`/file/descriptor), `.env` process-env scope, `[SECRET]` masking in CLI output, `reqly env list/show/use/validate/diff` — ✅ shipped
 10. ~~**Auth schemes**~~ — `internal/auth` scheme registry + `request.Auth` dispatch (basic, bearer, apikey, jwt HS256/384/512, digest challenge/response, none) with secret masking ([ADR 0005](docs/adr/0005-git-native-auth-schemes.md)) — ✅ shipped
 11. ~~**OAuth 2.0 Client Credentials**~~ — `auth.TokenSource` acquisition split from application, store-backed token cache in `<workspace>/.reqly/tokens.json` (`secrets.Store` + `CachedTokenSource`, ADR 0006), expiry-skewed proactive refresh, reactive 401 refresh + retry-once, per-config concurrency lock, masking of acquired tokens in `run`/`test`/`collection run`/`collection test`, `reqly auth status`/`auth logout` — ✅ shipped ([PR #58](https://github.com/Its-Satyajit/reqly/pull/58))
-12. **OAuth 2.0 Authorization Code + PKCE** — in progress: [Spec #52](https://github.com/Its-Satyajit/reqly/issues/52) + tickets [#53–#57](https://github.com/Its-Satyajit/reqly/issues/53) (system-browser flow with state/verifier handling, refresh-token reuse, callback server — plugs into the `TokenSource` + `secrets.Store` seams from milestone 11)
+12. ~~**OAuth 2.0 Authorization Code + PKCE**~~ — [Spec #52](https://github.com/Its-Satyajit/reqly/issues/52) + tickets [#53–#57](https://github.com/Its-Satyajit/reqly/issues/53): `AuthorizationCodeSource` (PKCE S256 + state, one-shot loopback callback, code exchange), `reqly auth login`, first-request auto-login, refresh-token reuse with rotation, ADR 0007 — ✅ shipped
+13. **OAuth 2.0 / auth leftovers** — Password/ROPC (deferred per OAuth 2.1), OS-keychain token backend (`secrets.Store` drop-in), custom redirect schemes, device flow, desktop auth UI
 
 > **Companion:** [**reqly-test-api**](https://reqly-test-api.vercel.app) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.

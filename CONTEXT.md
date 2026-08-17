@@ -61,7 +61,7 @@ The `none` scheme: clears any inherited auth on a request so it is sent unauthen
 A scheme that signs a JSON Web Token per request from `config` (secret, algorithm, claims) and sends it as `Authorization: Bearer <token>`. Distinct from JWT *tooling* (decode/claims viewer), which is a separate CLI feature.
 
 ### OAuth 2.0 Auth Scheme
-An authentication scheme (`internal/auth`) implementing the OAuth 2.0 Client Credentials grant (RFC 6749 §4.4): a form-encoded POST to `token_url` with HTTP Basic client auth, applied as `Authorization: Bearer <access_token>`. Configured via flat `auth.config` keys (`grant_type`, `token_url`, `client_id`, `client_secret`, `scope`, `audience`, `token_name`). Acquisition is automatic on first use — there is no interactive login.
+An authentication scheme (`internal/auth`) implementing OAuth 2.0 grants dispatched on `grant_type`: **Client Credentials** (RFC 6749 §4.4, form-encoded POST to `token_url` with HTTP Basic client auth) and **Authorization Code + PKCE** (RFC 6749 §4.1, RFC 7636 — see below). Applied as `Authorization: Bearer <access_token>`. Configured via flat `auth.config` keys (`grant_type`, `token_url`, `authorization_url`, `client_id`, `client_secret`, `redirect_uri`, `scope`, `audience`, `token_name`). Client Credentials acquisition is automatic on first use; Authorization Code is interactive (`reqly auth login`) or auto-login on first request.
 
 ### Token Source
 An optional capability (`auth.TokenSource`) a scheme may implement to acquire a token ahead of request application. The request engine invokes it before `Apply` and injects the resolved token into a copy of the auth config under `token`; the request's own config is never mutated. The raw token is returned on the response as `AuthToken` for post-request masking.
@@ -73,5 +73,14 @@ A key/value secret backend (`internal/secrets`) persisting acquired OAuth tokens
 A `CachedTokenSource` decorating a `TokenSource` with store-backed reuse: a persisted token is reused while fresh (30s expiry skew absorbs clock drift), otherwise re-acquired and persisted. The engine serializes acquisition per config so concurrent requests do not double-acquire.
 
 ### Token Refresh
-Self-healing token lifetime: expiry-driven re-acquisition before send, plus a reactive path where a 401 forces the cached token out, re-acquires, and retries exactly once (a second 401 is returned as-is).
+Self-healing token lifetime: expiry-driven re-acquisition before send, plus a reactive path where a 401 forces the cached token out, renews, and retries exactly once (a second 401 is returned as-is). When the cached token carries a refresh token, renewal uses the refresh-token grant (RFC 6749 §6) via the optional `RefreshingTokenSource` capability — the browser flow is never re-run while a refresh token exists.
+
+### Authorization Code + PKCE Flow
+The browser-based grant (`AuthorizationCodeSource`, RFC 6749 §4.1 + RFC 7636): validate config, generate a `code_verifier` (32 random bytes, base64url) and its S256 `code_challenge` plus a per-flow `state`, build the authorization URL, start a one-shot loopback callback listener on an ephemeral `127.0.0.1` port, open the browser (via an injectable `Open` hook — the CLI's platform launcher), wait for the redirect, verify `state`, and exchange the code (`code`, `redirect_uri`, `client_id`, `code_verifier`, Basic client auth) for a token with an optional `refresh_token`. A config-provided `redirect_uri` must be loopback; the default is `http://127.0.0.1:<ephemeral>/callback`.
+
+### Loopback Callback
+The one-shot local HTTP listener that receives the provider's authorization redirect: a single GET is accepted, `state` is verified against the flow, the `code` (or `error`/`error_description`) is extracted, a small page is rendered, and the listener shuts down. `WaitCode` blocks with a 10-minute hard cap when the caller's context carries no deadline.
+
+### Refresh Token Grant
+RFC 6749 §6 renewal: a form POST to `token_url` with `grant_type=refresh_token` and the stored `refresh_token`, using the cached credentials. The response yields a new access token and may carry a new refresh token (rotation — persisted when present; the previous one is kept otherwise). `reqly auth login` and the engine's refresh paths use it so expired tokens recover without reopening the browser.
 

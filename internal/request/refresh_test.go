@@ -20,14 +20,18 @@ package request
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
@@ -227,5 +231,112 @@ func TestExecuteOAuth2ConcurrentNoDoubleAcquire(t *testing.T) {
 
 	if calls := tokenCalls.Load(); calls != 1 {
 		t.Fatalf("token endpoint called %d times for %d concurrent requests, want 1", calls, n)
+	}
+}
+
+// TestExecuteOAuth2Reactive401UsesRefreshTokenGrant verifies the reactive
+// path renews a stale auth-code token via the refresh-token grant — never
+// re-running the browser flow — and retries exactly once.
+func TestExecuteOAuth2Reactive401UsesRefreshTokenGrant(t *testing.T) {
+	// Token endpoint: serves the refresh-token grant with a fresh token and
+	// records every grant_type it sees.
+	var grants []string
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		form, _ := url.ParseQuery(string(body))
+		grants = append(grants, form.Get("grant_type"))
+		if form.Get("grant_type") != "refresh_token" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"tok-refreshed","token_type":"Bearer","expires_in":3600,"refresh_token":"rt-2"}`))
+	}))
+	defer tokenSrv.Close()
+
+	// API server: rejects the stale token once, accepts the refreshed one.
+	var apiCalls int
+	var gotAuth []string
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCalls++
+		gotAuth = append(gotAuth, r.Header.Get("Authorization"))
+		if r.Header.Get("Authorization") == "Bearer tok-stale" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiSrv.Close()
+
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	cfg := map[string]string{
+		"grant_type":    "authorization_code",
+		"token_url":     tokenSrv.URL,
+		"client_id":     "client-123",
+		"client_secret": "s3cr3t",
+	}
+	// Seed a fresh-but-stale auth-code token: the proactive path keeps it
+	// (fresh expiry), the API 401 forces the refresh-token grant.
+	blob, err := json.Marshal(map[string]any{
+		"access_token":  "tok-stale",
+		"token_type":    "Bearer",
+		"expiry":        time.Now().Add(1 * time.Hour),
+		"refresh_token": "rt-1",
+		"grant_type":    "authorization_code",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set(auth.TokenCacheKey(dir, cfg), string(blob)); err != nil {
+		t.Fatal(err)
+	}
+
+	client := NewClient(WithTokenCache(store, dir))
+	req := &Request{
+		Method: MethodGet,
+		URL:    apiSrv.URL,
+		Auth: Auth{
+			Type:   "oauth2",
+			Config: cfg,
+		},
+	}
+	resp, err := client.Execute(context.Background(), req, variables.NewSet())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200 after refresh-token renewal", resp.StatusCode)
+	}
+	if apiCalls != 2 {
+		t.Fatalf("api called %d times, want 2 (original + retry)", apiCalls)
+	}
+	if len(gotAuth) != 2 || gotAuth[0] != "Bearer tok-stale" || gotAuth[1] != "Bearer tok-refreshed" {
+		t.Fatalf("authorizations = %v", gotAuth)
+	}
+	for _, g := range grants {
+		if g != "refresh_token" {
+			t.Fatalf("token endpoint saw grant_type %q, want only refresh_token (no browser/exchange)", g)
+		}
+	}
+	if len(grants) != 1 {
+		t.Fatalf("token endpoint called %d times, want 1 (exactly one refresh)", len(grants))
+	}
+
+	// The store must hold the refreshed token with the rotated refresh token.
+	raw, err := store.Get(auth.TokenCacheKey(dir, cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cached, err := auth.ParseCachedToken(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cached.AccessToken != "tok-refreshed" || cached.RefreshToken != "rt-2" {
+		t.Fatalf("stored = %q/%q, want tok-refreshed/rt-2", cached.AccessToken, cached.RefreshToken)
 	}
 }

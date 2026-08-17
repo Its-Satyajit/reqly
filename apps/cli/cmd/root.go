@@ -19,7 +19,11 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+
+	"github.com/Its-Satyajit/reqly/internal/auth"
 )
 
 var rootCmd = &cobra.Command{
@@ -38,6 +42,12 @@ func Execute() error {
 }
 
 func init() {
+	// Automatic authorization_code acquisition (a first request with no
+	// usable cached token) opens the system browser via the shared launcher,
+	// so reqly run/test/collection work without a separate login step.
+	auth.SetOAuth2BrowserOpener(func(_ context.Context, authorizationURL string) error {
+		return launchBrowser(authorizationURL)
+	})
 	rootCmd.AddCommand(
 		runCmd,
 		testCmd,

@@ -22,13 +22,17 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/response"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/variables"
@@ -748,5 +752,237 @@ func TestExecuteConcurrent(t *testing.T) {
 		if err := <-errs; err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+// TestExecuteOAuth2AuthorizationCodeFlow drives a full Authorization Code +
+// PKCE exchange through the request engine: a registered TokenSource scheme
+// (test-only name, browser driver injected via the Open hook) acquires a
+// token from a loopback callback and Bearer-attaches it to the API request.
+func TestExecuteOAuth2AuthorizationCodeFlow(t *testing.T) {
+	// Fake provider: authorization endpoint redirects to the flow's callback
+	// with a code and the echoed state.
+	authSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if got := q.Get("response_type"); got != "code" {
+			t.Errorf("response_type = %q, want code", got)
+		}
+		if got := q.Get("code_challenge_method"); got != "S256" {
+			t.Errorf("code_challenge_method = %q, want S256", got)
+		}
+		if got := q.Get("code_challenge"); got == "" {
+			t.Error("code_challenge is empty")
+		}
+		if got := q.Get("state"); got == "" {
+			t.Error("state is empty")
+		}
+		cb, err := url.Parse(q.Get("redirect_uri"))
+		if err != nil {
+			http.Error(w, "bad redirect_uri", http.StatusBadRequest)
+			return
+		}
+		cbq := cb.Query()
+		cbq.Set("code", "engine-code")
+		cbq.Set("state", q.Get("state"))
+		cb.RawQuery = cbq.Encode()
+		http.Redirect(w, r, cb.String(), http.StatusFound)
+	}))
+	defer authSrv.Close()
+
+	// Fake token endpoint: records the exchange and issues a token.
+	var gotUser, gotPass string
+	var gotForm url.Values
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUser, gotPass, _ = r.BasicAuth()
+		body, _ := io.ReadAll(r.Body)
+		gotForm, _ = url.ParseQuery(string(body))
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"engine-tok","token_type":"Bearer","expires_in":3600,"refresh_token":"engine-rt"}`))
+	}))
+	defer tokenSrv.Close()
+
+	// The API server records the Authorization header it receives.
+	var gotAuth string
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiSrv.Close()
+
+	// A test-only scheme name lets the engine exercise the auth-code flow
+	// with the browser driver injected (no global state).
+	if _, ok := auth.Lookup("oauth2-authcode-test"); !ok {
+		auth.Register("oauth2-authcode-test", authCodeTestScheme{
+			src: &auth.AuthorizationCodeSource{
+				Open: func(_ context.Context, authorizationURL string) error {
+					// Simulate the browser: follow the provider redirect back
+					// to the loopback callback.
+					client := &http.Client{Timeout: 10 * time.Second}
+					resp, err := client.Get(authorizationURL)
+					if err != nil {
+						return err
+					}
+					defer resp.Body.Close()
+					_, _ = io.Copy(io.Discard, resp.Body)
+					return nil
+				},
+			},
+		})
+	}
+
+	client := NewClient()
+	req := &Request{
+		Method: MethodGet,
+		URL:    apiSrv.URL,
+		Auth: Auth{
+			Type: "oauth2-authcode-test",
+			Config: map[string]string{
+				"authorization_url": authSrv.URL,
+				"token_url":         tokenSrv.URL,
+				"client_id":         "engine-client",
+				"client_secret":     "engine-secret",
+			},
+		},
+	}
+	resp, err := client.Execute(context.Background(), req, variables.NewSet())
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	if gotAuth != "Bearer engine-tok" {
+		t.Fatalf("Authorization = %q, want %q", gotAuth, "Bearer engine-tok")
+	}
+	if gotUser != "engine-client" || gotPass != "engine-secret" {
+		t.Fatalf("token Basic auth = %q/%q, want engine-client/engine-secret", gotUser, gotPass)
+	}
+	if gotForm.Get("grant_type") != "authorization_code" {
+		t.Errorf("grant_type = %q, want authorization_code", gotForm.Get("grant_type"))
+	}
+	if gotForm.Get("code") != "engine-code" {
+		t.Errorf("code = %q, want engine-code", gotForm.Get("code"))
+	}
+	if v := gotForm.Get("code_verifier"); len(v) < 43 || len(v) > 128 {
+		t.Errorf("code_verifier length %d outside 43-128", len(v))
+	}
+	if gotForm.Get("client_id") != "engine-client" {
+		t.Errorf("client_id = %q, want engine-client", gotForm.Get("client_id"))
+	}
+	if gotForm.Get("redirect_uri") == "" {
+		t.Error("redirect_uri missing from exchange body")
+	}
+}
+
+// authCodeTestScheme wraps an AuthorizationCodeSource as a full Scheme so
+// the engine integration test can register it (the product AuthorizationCode
+// Source stays a pure TokenSource; oauth2Scheme provides Apply in production).
+type authCodeTestScheme struct {
+	src *auth.AuthorizationCodeSource
+}
+
+func (s authCodeTestScheme) Token(ctx context.Context, cfg map[string]string, vars auth.Interpolator) (auth.Token, error) {
+	return s.src.Token(ctx, cfg, vars)
+}
+
+func (authCodeTestScheme) Apply(req *http.Request, cfg map[string]string, _ auth.Interpolator) error {
+	token := cfg["token"]
+	if token == "" {
+		return fmt.Errorf("oauth2 auth requires a token; was a token acquired before apply?")
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	return nil
+}
+
+func (authCodeTestScheme) SecretKeys() []string { return []string{"client_secret"} }
+
+// TestExecuteOAuth2AuthorizationCodeAutoLogin verifies first-request
+// auto-login: with the CLI-style browser opener installed, a request with
+// grant_type authorization_code and no cached token completes the browser
+// flow end to end, and a second request reuses the cached token without
+// re-running the flow.
+func TestExecuteOAuth2AuthorizationCodeAutoLogin(t *testing.T) {
+	authSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		cb, err := url.Parse(q.Get("redirect_uri"))
+		if err != nil {
+			http.Error(w, "bad redirect_uri", http.StatusBadRequest)
+			return
+		}
+		cbq := cb.Query()
+		cbq.Set("code", "auto-code")
+		cbq.Set("state", q.Get("state"))
+		cb.RawQuery = cbq.Encode()
+		http.Redirect(w, r, cb.String(), http.StatusFound)
+	}))
+	defer authSrv.Close()
+
+	var tokenCalls int
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenCalls++
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"auto-tok","token_type":"Bearer","expires_in":3600,"refresh_token":"auto-rt"}`))
+	}))
+	defer tokenSrv.Close()
+
+	var gotAuth []string
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = append(gotAuth, r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiSrv.Close()
+
+	// Install the browser opener the CLI would; restore after.
+	prev := auth.SetOAuth2BrowserOpener(func(_ context.Context, authorizationURL string) error {
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Get(authorizationURL)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return nil
+	})
+	defer auth.SetOAuth2BrowserOpener(prev)
+
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := NewClient(WithTokenCache(store, dir))
+	req := &Request{
+		Method: MethodGet,
+		URL:    apiSrv.URL,
+		Auth: Auth{
+			Type: "oauth2",
+			Config: map[string]string{
+				"grant_type":        "authorization_code",
+				"authorization_url": authSrv.URL,
+				"token_url":         tokenSrv.URL,
+				"client_id":         "auto-client",
+				"client_secret":     "auto-secret",
+			},
+		},
+	}
+
+	// First request: cold cache triggers the browser flow automatically.
+	resp, err := client.Execute(context.Background(), req, variables.NewSet())
+	if err != nil {
+		t.Fatalf("first Execute: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("first status = %d, want 200", resp.StatusCode)
+	}
+	// Second request: reuses the cached token — no browser flow re-run.
+	if _, err := client.Execute(context.Background(), req, variables.NewSet()); err != nil {
+		t.Fatalf("second Execute: %v", err)
+	}
+
+	if tokenCalls != 1 {
+		t.Fatalf("token endpoint called %d times across two requests, want 1 (auto-login then reuse)", tokenCalls)
+	}
+	if len(gotAuth) != 2 || gotAuth[0] != "Bearer auto-tok" || gotAuth[1] != "Bearer auto-tok" {
+		t.Fatalf("authorizations = %v, want Bearer auto-tok on both requests", gotAuth)
 	}
 }

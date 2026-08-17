@@ -20,7 +20,6 @@ package auth_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -206,17 +205,5 @@ func TestOAuth2MaskValuesIncludesSecret(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("MaskValues = %v, want it to include the client secret", values)
-	}
-}
-
-// Ensure the token payload encodes the fields we parse (guards the parser
-// against field drift).
-func TestOAuth2TokenJSONShape(t *testing.T) {
-	var payload map[string]any
-	if err := json.Unmarshal([]byte(`{"access_token":"t","token_type":"Bearer","expires_in":120}`), &payload); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if payload["access_token"] != "t" {
-		t.Fatalf("access_token = %v", payload["access_token"])
 	}
 }

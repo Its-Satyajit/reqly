@@ -21,12 +21,18 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
 )
 
@@ -176,5 +182,240 @@ func TestAuthLogoutEmpty(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "cleared 0 cached token(s)") {
 		t.Fatalf("expected 'cleared 0 cached token(s)', got:\n%s", out.String())
+	}
+}
+
+// fakeAuthCodeProvider returns a fake provider: an authorization endpoint
+// that redirects to the flow's callback with a code and the echoed state,
+// plus a token endpoint that issues an access + refresh token.
+func fakeAuthCodeProvider(t *testing.T) (*httptest.Server, *httptest.Server) {
+	t.Helper()
+	authSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		state := r.URL.Query().Get("state")
+		cb, err := url.Parse(r.URL.Query().Get("redirect_uri"))
+		if err != nil {
+			http.Error(w, "bad redirect_uri", http.StatusBadRequest)
+			return
+		}
+		q := cb.Query()
+		q.Set("code", "cli-code")
+		q.Set("state", state)
+		cb.RawQuery = q.Encode()
+		http.Redirect(w, r, cb.String(), http.StatusFound)
+	}))
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"tok-auth-code","token_type":"Bearer","expires_in":3600,"refresh_token":"cli-rt"}`))
+	}))
+	t.Cleanup(authSrv.Close)
+	t.Cleanup(tokenSrv.Close)
+	return authSrv, tokenSrv
+}
+
+// writeAuthConfig writes a flat OAuth config file under dir and returns its
+// path.
+func writeAuthConfig(t *testing.T, dir string, cfg map[string]string) string {
+	t.Helper()
+	var b strings.Builder
+	for _, k := range []string{"authorization_url", "token_url", "client_id", "client_secret", "redirect_uri", "scope"} {
+		if v, ok := cfg[k]; ok {
+			fmt.Fprintf(&b, "%s: %s\n", k, v)
+		}
+	}
+	path := filepath.Join(dir, "auth-config.yaml")
+	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// fakeLaunchBrowser drives the callback like a real browser would.
+func fakeLaunchBrowser(authorizationURL string) error {
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(authorizationURL)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
+}
+
+func TestAuthLoginCompletesFlowAndPersists(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+
+	authSrv, tokenSrv := fakeAuthCodeProvider(t)
+	cfgPath := writeAuthConfig(t, root, map[string]string{
+		"authorization_url": authSrv.URL,
+		"token_url":         tokenSrv.URL,
+		"client_id":         "cli-client",
+		"client_secret":     "cli-secret",
+	})
+
+	oldBrowser := launchBrowser
+	launchBrowser = fakeLaunchBrowser
+	t.Cleanup(func() { launchBrowser = oldBrowser })
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "login", cfgPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	output := out.String()
+	for _, want := range []string{"login complete", "tok", "yes"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected output to contain %q, got:\n%s", want, output)
+		}
+	}
+	if strings.Contains(output, "cli-secret") || strings.Contains(output, "tok-auth-code") {
+		t.Fatalf("login output leaked a secret:\n%s", output)
+	}
+
+	// The token must be cached with the refresh token and grant type so
+	// later requests reuse it and status reports it.
+	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := store.Keys()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("cached %d tokens, want 1", len(keys))
+	}
+	raw, err := store.Get(keys[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	tok, err := auth.ParseCachedToken(raw)
+	if err != nil {
+		t.Fatalf("ParseCachedToken: %v", err)
+	}
+	if tok.RefreshToken != "cli-rt" {
+		t.Fatalf("RefreshToken = %q, want cli-rt", tok.RefreshToken)
+	}
+	if tok.GrantType != "authorization_code" {
+		t.Fatalf("GrantType = %q, want authorization_code", tok.GrantType)
+	}
+	if tok.AccessToken != "tok-auth-code" {
+		t.Fatalf("AccessToken = %q, want tok-auth-code", tok.AccessToken)
+	}
+}
+
+func TestAuthLoginTimeout(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+
+	authSrv, tokenSrv := fakeAuthCodeProvider(t)
+	cfgPath := writeAuthConfig(t, root, map[string]string{
+		"authorization_url": authSrv.URL,
+		"token_url":         tokenSrv.URL,
+		"client_id":         "cli-client",
+		"client_secret":     "cli-secret",
+	})
+
+	oldBrowser := launchBrowser
+	launchBrowser = func(string) error { return nil } // never hits the callback
+	t.Cleanup(func() { launchBrowser = oldBrowser })
+
+	oldTimeout := authLoginTimeoutSeconds
+	authLoginTimeoutSeconds = 1
+	t.Cleanup(func() { authLoginTimeoutSeconds = oldTimeout })
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "login", cfgPath})
+	err := rootCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "authorization callback") {
+		t.Fatalf("err = %v, want authorization callback wait failure", err)
+	}
+}
+
+func TestAuthLoginValidatesConfig(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+
+	cfgPath := writeAuthConfig(t, root, map[string]string{
+		"token_url":     "https://token.example.com",
+		"client_id":     "cli-client",
+		"client_secret": "cli-secret",
+		// authorization_url intentionally missing
+	})
+
+	called := false
+	oldBrowser := launchBrowser
+	launchBrowser = func(string) error { called = true; return nil }
+	t.Cleanup(func() { launchBrowser = oldBrowser })
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "login", cfgPath})
+	err := rootCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "authorization_url") {
+		t.Fatalf("err = %v, want authorization_url validation error", err)
+	}
+	if called {
+		t.Fatal("browser launched despite invalid config")
+	}
+}
+
+// writeCachedAuthCodeToken seeds a token store entry with an auth-code token
+// (grant type + refresh token) for the auth-code status assertions.
+func writeCachedAuthCodeToken(t *testing.T, root, token string, expiry time.Time) {
+	t.Helper()
+	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob, err := json.Marshal(map[string]any{
+		"access_token":  token,
+		"token_type":    "Bearer",
+		"endpoint":      "https://auth.example.com/token",
+		"expiry":        expiry,
+		"refresh_token": "rt-secret",
+		"grant_type":    "authorization_code",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set("some-workspace:some-config", string(blob)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuthStatusShowsGrantAndRefresh(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	writeCachedAuthCodeToken(t, root, "very-secret-access-token", time.Now().Add(1*time.Hour))
+	chdirWorkspace(t, root)
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "status"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	output := out.String()
+	for _, want := range []string{
+		"authorization_code", // grant type
+		"yes",                // refresh token cached
+		"cached",             // state
+		"very",               // masked prefix
+		"oken",               // masked suffix
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected output to contain %q, got:\n%s", want, output)
+		}
+	}
+	if strings.Contains(output, "rt-secret") || strings.Contains(output, "very-secret-access-token") {
+		t.Fatalf("status leaked a secret:\n%s", output)
 	}
 }

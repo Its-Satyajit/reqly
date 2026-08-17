@@ -1,0 +1,376 @@
+// Reqly - A local-first, Git-native API development environment.
+// Copyright (C) 2026 It's Satyajit
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+package auth
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"net/url"
+	"strconv"
+	"sync"
+	"time"
+)
+
+// Authorization Code + PKCE (RFC 6749 §4.1, RFC 7636). The flow is split so
+// the browser-driving caller (CLI login, auto-login) can launch the
+// authorization page and the loopback callback can be tested without one:
+// StartAuthorizationFlow validates config and starts the one-shot listener,
+// WaitCode blocks until the redirect delivers a code (or an error), and
+// ExchangeCode trades the code for a token at the token endpoint.
+
+// PKCEVerifier returns a code_verifier for RFC 7636: 32 random bytes
+// base64url-encoded (43 characters, within the required 43–128 range).
+func PKCEVerifier() (string, error) {
+	return randToken(32)
+}
+
+// PKCEChallenge returns the S256 code_challenge for verifier (RFC 7636 §4.2).
+func PKCEChallenge(verifier string) string {
+	sum := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// randToken returns n cryptographically random bytes as a base64url string.
+func randToken(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("oauth2: generate random: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// BuildAuthorizationURL assembles the provider authorization URL for an
+// authorization_code grant (RFC 6749 §4.1.1) with PKCE (RFC 7636 §4.3) and
+// the caller-supplied state.
+func BuildAuthorizationURL(cfg map[string]string, vars Interpolator, redirectURI, verifier, state string) (string, error) {
+	authURL, err := requiredConfig(cfg, vars, "authorization_url")
+	if err != nil {
+		return "", err
+	}
+	clientID, err := requiredConfig(cfg, vars, "client_id")
+	if err != nil {
+		return "", err
+	}
+
+	u, err := url.Parse(authURL)
+	if err != nil {
+		return "", fmt.Errorf("oauth2 invalid authorization_url %q: %w", authURL, err)
+	}
+	q := u.Query()
+	q.Set("response_type", "code")
+	q.Set("client_id", clientID)
+	q.Set("redirect_uri", redirectURI)
+	q.Set("code_challenge", PKCEChallenge(verifier))
+	q.Set("code_challenge_method", "S256")
+	q.Set("state", state)
+	if scope, err := vars.Interpolate(cfg["scope"]); err != nil {
+		return "", fmt.Errorf("oauth2 scope: %w", err)
+	} else if scope != "" {
+		q.Set("scope", scope)
+	}
+	u.RawQuery = q.Encode()
+	return u.String(), nil
+}
+
+// AuthorizationFlow is an in-progress authorization_code flow: the
+// authorization URL the user must approve, plus the one-shot loopback
+// callback listener waiting for the provider redirect.
+type AuthorizationFlow struct {
+	// AuthorizationURL is the page the user approves in their browser.
+	AuthorizationURL string
+	// RedirectURI is the exact redirect_uri sent in the authorization
+	// request and the token exchange.
+	RedirectURI string
+
+	state    string
+	verifier string
+	server   *http.Server
+	ln       net.Listener
+	result   chan callbackResult
+	handled  sync.Once
+	closed   sync.Once
+}
+
+type callbackResult struct {
+	code string
+	err  error
+}
+
+// StartAuthorizationFlow validates the authorization_code config, generates
+// PKCE (S256) and a state value, and starts the one-shot loopback callback
+// listener. The redirect URI defaults to an ephemeral 127.0.0.1 port; a
+// config-provided redirect_uri must also be loopback (127.0.0.1/localhost).
+func StartAuthorizationFlow(cfg map[string]string, vars Interpolator) (*AuthorizationFlow, error) {
+	for _, key := range []string{"authorization_url", "token_url", "client_id", "client_secret"} {
+		if _, err := requiredConfig(cfg, vars, key); err != nil {
+			return nil, err
+		}
+	}
+
+	verifier, err := PKCEVerifier()
+	if err != nil {
+		return nil, err
+	}
+	state, err := randToken(16)
+	if err != nil {
+		return nil, err
+	}
+
+	redirectURI, host, err := loopbackRedirect(cfg, vars)
+	if err != nil {
+		return nil, err
+	}
+	ln, err := net.Listen("tcp", host)
+	if err != nil {
+		return nil, fmt.Errorf("oauth2: start callback listener on %s: %w", host, err)
+	}
+
+	// Substitute the actual ephemeral port when the URI asked for port 0.
+	if u, err := url.Parse(redirectURI); err == nil && u.Port() == "0" {
+		port := ln.Addr().(*net.TCPAddr).Port
+		u.Host = net.JoinHostPort(u.Hostname(), strconv.Itoa(port))
+		redirectURI = u.String()
+	}
+
+	flow := &AuthorizationFlow{
+		AuthorizationURL: "",
+		RedirectURI:      redirectURI,
+		state:            state,
+		verifier:         verifier,
+		ln:               ln,
+		result:           make(chan callbackResult, 1),
+	}
+	flow.server = &http.Server{Handler: http.HandlerFunc(flow.serveHTTP)}
+
+	authURL, err := BuildAuthorizationURL(cfg, vars, redirectURI, verifier, state)
+	if err != nil {
+		ln.Close()
+		return nil, err
+	}
+	flow.AuthorizationURL = authURL
+
+	go func() {
+		// The listener serves a single flow; ServeHTTP delivers the result
+		// and the deferred Close in Token() shuts the server down.
+		if err := flow.server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			select {
+			case flow.result <- callbackResult{err: fmt.Errorf("oauth2: callback server: %w", err)}:
+			default:
+			}
+		}
+	}()
+
+	return flow, nil
+}
+
+// loopbackRedirect resolves the redirect_uri and the listen address. The
+// default is an ephemeral 127.0.0.1 port; a config-provided redirect_uri
+// must be a loopback URL (providers require an exact registered redirect,
+// and custom schemes cannot be received by a local listener).
+func loopbackRedirect(cfg map[string]string, vars Interpolator) (redirectURI, listenAddr string, err error) {
+	raw := cfg["redirect_uri"]
+	if raw == "" {
+		return "http://127.0.0.1:0/callback", "127.0.0.1:0", nil
+	}
+	interpolated, err := vars.Interpolate(raw)
+	if err != nil {
+		return "", "", fmt.Errorf("oauth2 redirect_uri: %w", err)
+	}
+	u, err := url.Parse(interpolated)
+	if err != nil {
+		return "", "", fmt.Errorf("oauth2 invalid redirect_uri %q: %w", interpolated, err)
+	}
+	if host := u.Hostname(); host != "127.0.0.1" && host != "localhost" {
+		return "", "", fmt.Errorf("oauth2 redirect_uri %q is not loopback; only 127.0.0.1/localhost callbacks are supported", interpolated)
+	}
+	if u.Port() == "" {
+		return "", "", fmt.Errorf("oauth2 redirect_uri %q must include a port", interpolated)
+	}
+	return interpolated, u.Host, nil
+}
+
+// WaitCode blocks until the provider redirect delivers an authorization code
+// (or an error), or ctx is done. It returns the code for ExchangeCode. When
+// ctx carries no deadline, a hard cap bounds the wait so an abandoned flow
+// cannot block forever.
+func (f *AuthorizationFlow) WaitCode(ctx context.Context) (string, error) {
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, maxCallbackWait)
+		defer cancel()
+	}
+	select {
+	case <-ctx.Done():
+		return "", fmt.Errorf("oauth2: waiting for authorization callback: %w", ctx.Err())
+	case r := <-f.result:
+		if r.err != nil {
+			return "", r.err
+		}
+		return r.code, nil
+	}
+}
+
+// Close shuts down the callback listener. Safe to call more than once.
+func (f *AuthorizationFlow) Close() error {
+	var err error
+	f.closed.Do(func() {
+		if f.server != nil {
+			err = f.server.Close()
+		}
+	})
+	return err
+}
+
+// serveHTTP is the one-shot callback handler: it verifies state, extracts the
+// code (or surfaces the provider error), delivers the result, and renders a
+// small page for the browser. Any request after the first is rejected.
+func (f *AuthorizationFlow) serveHTTP(w http.ResponseWriter, r *http.Request) {
+	first := false
+	f.handled.Do(func() { first = true })
+	if !first {
+		http.Error(w, "authorization flow already completed", http.StatusBadRequest)
+		return
+	}
+
+	q := r.URL.Query()
+	if state := q.Get("state"); state != f.state {
+		f.deliver(callbackResult{err: fmt.Errorf("oauth2: authorization callback state mismatch")})
+		http.Error(w, "state mismatch", http.StatusBadRequest)
+		return
+	}
+	if errStr := q.Get("error"); errStr != "" {
+		err := fmt.Errorf("oauth2: authorization failed: %s", errStr)
+		if desc := q.Get("error_description"); desc != "" {
+			err = fmt.Errorf("%w: %s", err, desc)
+		}
+		f.deliver(callbackResult{err: err})
+		http.Error(w, "authorization failed", http.StatusBadRequest)
+		return
+	}
+	code := q.Get("code")
+	if code == "" {
+		f.deliver(callbackResult{err: fmt.Errorf("oauth2: authorization callback missing code")})
+		http.Error(w, "missing code", http.StatusBadRequest)
+		return
+	}
+	f.deliver(callbackResult{code: code})
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprint(w, "<!doctype html><html><body><h3>Authorization complete</h3><p>You can close this tab and return to Reqly.</p></body></html>")
+}
+
+func (f *AuthorizationFlow) deliver(r callbackResult) {
+	select {
+	case f.result <- r:
+	default:
+	}
+}
+
+// ExchangeCode performs the token-endpoint exchange (RFC 6749 §4.1.3) with
+// the PKCE code_verifier (RFC 7636 §4.5) and Basic client auth.
+func ExchangeCode(ctx context.Context, cfg map[string]string, vars Interpolator, redirectURI, code, verifier string) (Token, error) {
+	tokenURL, err := requiredConfig(cfg, vars, "token_url")
+	if err != nil {
+		return Token{}, err
+	}
+	clientID, err := requiredConfig(cfg, vars, "client_id")
+	if err != nil {
+		return Token{}, err
+	}
+	clientSecret, err := requiredConfig(cfg, vars, "client_secret")
+	if err != nil {
+		return Token{}, err
+	}
+
+	form := url.Values{}
+	form.Set("grant_type", "authorization_code")
+	form.Set("code", code)
+	form.Set("redirect_uri", redirectURI)
+	form.Set("client_id", clientID)
+	form.Set("code_verifier", verifier)
+	if scope, err := vars.Interpolate(cfg["scope"]); err != nil {
+		return Token{}, fmt.Errorf("oauth2 scope: %w", err)
+	} else if scope != "" {
+		form.Set("scope", scope)
+	}
+
+	return postTokenForm(ctx, tokenURL, clientID, clientSecret, form, tokenName(cfg))
+}
+
+// AuthorizationCodeSource is a TokenSource implementing the Authorization
+// Code + PKCE grant end to end: it starts the one-shot loopback flow, calls
+// Open with the authorization URL (when set) so the caller can launch the
+// system browser, waits for the callback, and exchanges the code. When Open
+// is nil the flow runs but nothing drives the callback — tests and the CLI
+// login command supply their own driver.
+type AuthorizationCodeSource struct {
+	// Open is called with the authorization URL so the caller can launch
+	// the system browser. It runs before the flow waits for the callback.
+	Open func(ctx context.Context, authorizationURL string) error
+}
+
+// Token runs the full authorization code flow and returns the exchanged
+// token (access token, expiry, and refresh token).
+func (s *AuthorizationCodeSource) Token(ctx context.Context, cfg map[string]string, vars Interpolator) (Token, error) {
+	flow, err := StartAuthorizationFlow(cfg, vars)
+	if err != nil {
+		return Token{}, err
+	}
+	defer flow.Close()
+
+	if s.Open != nil {
+		if err := s.Open(ctx, flow.AuthorizationURL); err != nil {
+			return Token{}, fmt.Errorf("oauth2: open authorization page: %w", err)
+		}
+	}
+
+	code, err := flow.WaitCode(ctx)
+	if err != nil {
+		return Token{}, err
+	}
+	return ExchangeCode(ctx, cfg, vars, flow.RedirectURI, code, flow.verifier)
+}
+
+// maxCallbackWait bounds how long a callback may take so an abandoned flow
+// cannot block forever even when the request context has no deadline.
+const maxCallbackWait = 10 * time.Minute
+
+// oauth2BrowserOpener launches the system browser when the engine acquires an
+// authorization_code token automatically (first request with no cached
+// token). The CLI installs a real launcher via SetOAuth2BrowserOpener; the
+// default fails fast with a clear error so an unconfigured flow never hangs.
+var oauth2BrowserOpener = func(_ context.Context, _ string) error {
+	return errors.New("oauth2: authorization_code flow needs a browser opener; configure it (CLI) or run reqly auth login first")
+}
+
+// SetOAuth2BrowserOpener installs the browser launcher used for automatic
+// authorization_code acquisition, returning the previous launcher so callers
+// (and tests) can restore it.
+func SetOAuth2BrowserOpener(open func(ctx context.Context, authorizationURL string) error) func(ctx context.Context, authorizationURL string) error {
+	prev := oauth2BrowserOpener
+	if open != nil {
+		oauth2BrowserOpener = open
+	}
+	return prev
+}

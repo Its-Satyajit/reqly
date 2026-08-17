@@ -20,6 +20,7 @@ package auth_test
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"testing"
 	"time"
@@ -232,5 +233,163 @@ func TestCachedTokenSourceCorruptEntryReacquires(t *testing.T) {
 	}
 	if _, err := auth.ParseCachedToken(raw); err != nil {
 		t.Fatalf("stored entry still unreadable: %v", err)
+	}
+}
+
+// refreshingCounter is a TokenSource that also implements
+// RefreshingTokenSource, so the cache can renew without re-running the
+// original grant.
+type refreshingCounter struct {
+	tokenCalls   int
+	refreshCalls int
+	// newRefresh is the refresh token returned by RefreshToken; empty means
+	// the refresh response omits one (RFC 6749 §6 allows this).
+	newRefresh string
+}
+
+func (a *refreshingCounter) Token(context.Context, map[string]string, auth.Interpolator) (auth.Token, error) {
+	a.tokenCalls++
+	return auth.Token{AccessToken: "fresh-token", TokenType: "Bearer", ExpiresIn: 3600, Expiry: time.Now().Add(1 * time.Hour)}, nil
+}
+
+func (a *refreshingCounter) RefreshToken(_ context.Context, _ map[string]string, _ auth.Interpolator, _ string) (auth.Token, error) {
+	a.refreshCalls++
+	return auth.Token{AccessToken: "refreshed-token", TokenType: "Bearer", ExpiresIn: 3600, Expiry: time.Now().Add(1 * time.Hour), RefreshToken: a.newRefresh}, nil
+}
+
+func authCodeCfg() map[string]string {
+	return map[string]string{"grant_type": "authorization_code", "token_url": "https://token.example.com"}
+}
+
+func seedCachedToken(t *testing.T, store *secrets.FileStore, key, access, refresh string, expiry time.Time) {
+	t.Helper()
+	blob, err := json.Marshal(map[string]any{
+		"access_token":  access,
+		"token_type":    "Bearer",
+		"expiry":        expiry,
+		"refresh_token": refresh,
+		"grant_type":    "authorization_code",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set(key, string(blob)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCachedTokenSourceRenewsExpiredViaRefreshToken(t *testing.T) {
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	cfg := authCodeCfg()
+	key := auth.TokenCacheKey(dir, cfg)
+	seedCachedToken(t, store, key, "old", "rt-1", time.Now().Add(-1*time.Hour))
+
+	src := &refreshingCounter{newRefresh: "rt-2"}
+	tok, err := auth.NewCachedTokenSource(src, store, key).Token(context.Background(), cfg, variables.NewSet())
+	if err != nil {
+		t.Fatalf("Token: %v", err)
+	}
+	if tok.AccessToken != "refreshed-token" {
+		t.Fatalf("AccessToken = %q, want refreshed-token", tok.AccessToken)
+	}
+	if src.tokenCalls != 0 {
+		t.Fatalf("original grant re-run %d times, want 0 (refresh-token grant used)", src.tokenCalls)
+	}
+	if src.refreshCalls != 1 {
+		t.Fatalf("RefreshToken called %d times, want 1", src.refreshCalls)
+	}
+	if tok.RefreshToken != "rt-2" {
+		t.Fatalf("RefreshToken = %q, want rotated rt-2", tok.RefreshToken)
+	}
+
+	raw, err := store.Get(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := auth.ParseCachedToken(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.AccessToken != "refreshed-token" || parsed.RefreshToken != "rt-2" {
+		t.Fatalf("stored = %q/%q, want refreshed-token/rt-2", parsed.AccessToken, parsed.RefreshToken)
+	}
+}
+
+func TestCachedTokenSourceRefreshKeepsOldRefreshToken(t *testing.T) {
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	cfg := authCodeCfg()
+	key := auth.TokenCacheKey(dir, cfg)
+	seedCachedToken(t, store, key, "old", "rt-1", time.Now().Add(-1*time.Hour))
+
+	src := &refreshingCounter{} // refresh response omits a new refresh token
+	tok, err := auth.NewCachedTokenSource(src, store, key).Token(context.Background(), cfg, variables.NewSet())
+	if err != nil {
+		t.Fatalf("Token: %v", err)
+	}
+	if tok.RefreshToken != "rt-1" {
+		t.Fatalf("RefreshToken = %q, want kept rt-1", tok.RefreshToken)
+	}
+}
+
+func TestCachedTokenSourceForceRefreshViaRefreshToken(t *testing.T) {
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	cfg := authCodeCfg()
+	key := auth.TokenCacheKey(dir, cfg)
+	seedCachedToken(t, store, key, "old", "rt-1", time.Now().Add(1*time.Hour))
+
+	src := &refreshingCounter{newRefresh: "rt-3"}
+	tok, err := auth.NewCachedTokenSource(src, store, key).ForceRefresh(context.Background(), cfg, variables.NewSet())
+	if err != nil {
+		t.Fatalf("ForceRefresh: %v", err)
+	}
+	if tok.AccessToken != "refreshed-token" {
+		t.Fatalf("AccessToken = %q, want refreshed-token", tok.AccessToken)
+	}
+	if src.tokenCalls != 0 {
+		t.Fatalf("original grant re-run %d times, want 0", src.tokenCalls)
+	}
+	if src.refreshCalls != 1 {
+		t.Fatalf("RefreshToken called %d times, want 1", src.refreshCalls)
+	}
+	if tok.RefreshToken != "rt-3" {
+		t.Fatalf("RefreshToken = %q, want rotated rt-3", tok.RefreshToken)
+	}
+}
+
+func TestCachedTokenSourceForceRefreshReacquiresWithoutRefreshToken(t *testing.T) {
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	cfg := map[string]string{"grant_type": "client_credentials", "token_url": "https://token.example.com"}
+	key := auth.TokenCacheKey(dir, cfg)
+	seedCachedToken(t, store, key, "old", "", time.Now().Add(1*time.Hour))
+
+	src := &refreshingCounter{}
+	tok, err := auth.NewCachedTokenSource(src, store, key).ForceRefresh(context.Background(), cfg, variables.NewSet())
+	if err != nil {
+		t.Fatalf("ForceRefresh: %v", err)
+	}
+	if tok.AccessToken != "fresh-token" {
+		t.Fatalf("AccessToken = %q, want fresh-token (re-acquired)", tok.AccessToken)
+	}
+	if src.tokenCalls != 1 {
+		t.Fatalf("original grant re-run %d times, want 1", src.tokenCalls)
+	}
+	if src.refreshCalls != 0 {
+		t.Fatalf("RefreshToken called %d times, want 0 (no refresh token cached)", src.refreshCalls)
 	}
 }

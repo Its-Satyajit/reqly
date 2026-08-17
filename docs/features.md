@@ -674,19 +674,20 @@ Support common OAuth 2.0 flows.
 
 ### Flows
 
-* Authorization Code + PKCE
-* Client Credentials
+* Authorization Code + PKCE — shipped (RFC 6749 §4.1 + RFC 7636, ADR 0007)
+* Client Credentials — shipped
 * Password Credentials (deprecated in OAuth 2.1 — deferred)
 
 ### Features
 
-* System browser authentication
+* System browser authentication (`reqly auth login`, one-shot loopback callback on an ephemeral `127.0.0.1` port)
+* First-request auto-login (a request with `grant_type: authorization_code` and no cached token opens the browser)
 * Token storage (per-workspace `.reqly/tokens.json`, 0600, behind `secrets.Store`)
 * Token refresh (expiry-skewed proactive + reactive 401 retry-once)
-* Automatic token refresh
-* Refresh-token handling (Client Credentials re-acquires; refresh-token reuse deferred)
+* Automatic token refresh via the refresh-token grant (RFC 6749 §6) — the browser is never re-opened while a refresh token exists
+* Refresh-token handling (rotation when the server returns a new refresh token; kept otherwise)
 * Token expiration detection
-* OAuth configuration (`grant_type`, `token_url`, `client_id`, `client_secret`, `scope`, `audience`, `token_name`)
+* OAuth configuration (`grant_type`, `token_url`, `authorization_url`, `client_id`, `client_secret`, `redirect_uri`, `scope`, `audience`, `token_name`)
 * Certificate management
 
 ---
