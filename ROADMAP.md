@@ -82,9 +82,9 @@ The minimum set to make Reqly a serious API client.
 - [x] Shared file format for collections/folders (`internal/collections` descriptor format, see §1.5)
 
 ### 1.3 Authentication
-- [ ] Basic, Bearer, API key
-- [ ] JWT (encode/decode/claims viewer)
-- [ ] Digest, NTLM
+- [x] Basic, Bearer, API key — `internal/auth` scheme registry, `request.Auth` dispatch, secret masking ([ADR 0005](docs/adr/0005-git-native-auth-schemes.md))
+- [~] JWT — HS256/384/512 per-request signing shipped; decode/claims-viewer CLI (`reqly jwt`) deferred (per ADR 0005)
+- [~] Digest — challenge/response shipped (SHA-256 fallback, request-body aware); NTLM deferred
 - [ ] OAuth 1.0 / OAuth 2.0 (Auth Code, Client Credentials, Password) with token storage/refresh/expiry
 - [ ] AWS Signature, Akamai EdgeGrid, custom auth + auth inheritance
 
