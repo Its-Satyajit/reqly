@@ -676,18 +676,22 @@ Support common OAuth 2.0 flows.
 
 * Authorization Code + PKCE — shipped (RFC 6749 §4.1 + RFC 7636, ADR 0007)
 * Client Credentials — shipped
+* Device flow — shipped (RFC 8628, ADR 0008): headless approval via a printed verification URI + code, RFC poll semantics (`interval`, `authorization_pending`, `slow_down`, `expired_token`/`access_denied`)
 * Password Credentials (deprecated in OAuth 2.1 — deferred)
 
 ### Features
 
 * System browser authentication (`reqly auth login`, one-shot loopback callback on an ephemeral `127.0.0.1` port)
-* First-request auto-login (a request with `grant_type: authorization_code` and no cached token opens the browser)
-* Token storage (per-workspace `.reqly/tokens.json`, 0600, behind `secrets.Store`)
+* Device-flow login (`reqly auth login --flow device` — verification URI + code, waits for approval, no browser)
+* Custom-scheme callbacks (`reqly://` deep links for the desktop app; loopback remains the CLI default)
+* First-request auto-login (a request with `grant_type: authorization_code` and no cached token opens the browser; device flows print the verification URI to stderr)
+* Token storage behind `secrets.Store`: per-workspace `.reqly/tokens.json` (0600, default) or the OS keychain (`--store keychain` / `REQLY_TOKEN_STORE`; keychain default on desktop, file fallback with a warning)
 * Token refresh (expiry-skewed proactive + reactive 401 retry-once)
 * Automatic token refresh via the refresh-token grant (RFC 6749 §6) — the browser is never re-opened while a refresh token exists
 * Refresh-token handling (rotation when the server returns a new refresh token; kept otherwise)
 * Token expiration detection
-* OAuth configuration (`grant_type`, `token_url`, `authorization_url`, `client_id`, `client_secret`, `redirect_uri`, `scope`, `audience`, `token_name`)
+* Desktop auth panel (login/status/logout in the sidebar; masked token list, flow picker, JSON config editor)
+* OAuth configuration (`grant_type`, `token_url`, `authorization_url`, `device_authorization_url`, `client_id`, `client_secret`, `redirect_uri`, `scope`, `audience`, `token_name`)
 * Certificate management
 
 ---
@@ -715,7 +719,7 @@ Encrypt sensitive values at rest.
 
 ## 19.2 OS Keychain
 
-Use the operating system's secure credential storage.
+Use the operating system's secure credential storage — shipped (KeychainStore behind `secrets.Store` via go-keyring: Secret Service / Keychain / WinCred; 0600 key index for enumeration; `--store keychain` / `REQLY_TOKEN_STORE` selection with file-store fallback).
 
 ## 19.3 Secret Variables
 
