@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Its-Satyajit/reqly/internal/auth"
-	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/testing"
 )
 
@@ -72,10 +71,13 @@ response_time. The command exits non-zero when any assertion fails.`,
 		mergeEnvScope(vars, envSet)
 		masker.Add(auth.MaskValues(tf.Request.Auth.Type, tf.Request.Auth.Config, vars)...)
 
-		client := request.NewClient()
+		client := newRequestClient(filepath.Dir(args[0]))
 		resp, err := client.Execute(context.Background(), &tf.Request, vars)
 		if err != nil {
 			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
+		}
+		if resp.AuthToken != "" {
+			masker.Add(resp.AuthToken)
 		}
 
 		results := tf.Suite().Run(resp)

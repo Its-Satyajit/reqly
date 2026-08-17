@@ -27,10 +27,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/response"
+	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
@@ -39,6 +41,22 @@ import (
 type Client struct {
 	http    *http.Client
 	timeout time.Duration
+	// tokens enables store-backed caching of tokens acquired by TokenSource
+	// schemes (e.g. oauth2). When set, tokens are reused across requests
+	// until they near expiry instead of being re-acquired each time.
+	tokens *TokenCache
+}
+
+// TokenCache configures store-backed caching of tokens acquired by TokenSource
+// schemes. Root scopes the cache keys so tokens from different workspaces do
+// not collide.
+type TokenCache struct {
+	store secrets.Store
+	root  string
+
+	// mu serializes acquisition for a given cache key so concurrent requests
+	// for the same config do not double-acquire.
+	mu sync.Mutex
 }
 
 // Option configures a Client.
@@ -57,6 +75,19 @@ func WithTimeout(timeout time.Duration) Option {
 func WithHTTPClient(client *http.Client) Option {
 	return func(c *Client) {
 		c.http = client
+	}
+}
+
+// WithTokenCache enables store-backed caching of tokens acquired by
+// TokenSource schemes (e.g. oauth2 Client Credentials). Root scopes cache
+// keys to the workspace. A nil store disables caching.
+func WithTokenCache(store secrets.Store, root string) Option {
+	return func(c *Client) {
+		if store == nil {
+			c.tokens = nil
+			return
+		}
+		c.tokens = &TokenCache{store: store, root: root}
 	}
 }
 
@@ -115,6 +146,27 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 				if err != nil {
 					return nil, err
 				}
+			}
+		} else if s, ok := auth.Lookup(r.Auth.Type); ok {
+			// Reactive refresh: a 401 on a TokenSource scheme with caching
+			// enabled forces the cached token out, re-acquires, and retries
+			// exactly once. A second 401 is returned as-is (no retry loop).
+			if _, isTokenSource := s.(auth.TokenSource); isTokenSource && c.tokens != nil {
+				key := auth.TokenCacheKey(c.tokens.root, r.Auth.Config)
+				if err := c.tokens.store.Delete(key); err != nil {
+					return nil, err
+				}
+				retryReq, refreshedToken, err := c.build(ctx, r, vars)
+				if err != nil {
+					return nil, err
+				}
+				_, _ = io.Copy(io.Discard, resp.Body)
+				_ = resp.Body.Close()
+				resp, err = c.http.Do(retryReq)
+				if err != nil {
+					return nil, err
+				}
+				authToken = refreshedToken
 			}
 		}
 	}
@@ -219,7 +271,7 @@ func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) 
 		// config so the request's own config is never mutated.
 		if s, ok := auth.Lookup(r.Auth.Type); ok {
 			if ts, ok := s.(auth.TokenSource); ok {
-				tok, err := ts.Token(ctx, r.Auth.Config, vars)
+				tok, err := c.acquireToken(ctx, ts, r.Auth.Config, vars)
 				if err != nil {
 					return nil, "", err
 				}
@@ -238,6 +290,21 @@ func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) 
 	}
 
 	return req, authToken, nil
+}
+
+// acquireToken resolves a token for a TokenSource scheme. When caching is
+// enabled, the cache lock serializes the lookup+acquire+store critical section
+// so concurrent requests for the same config do not double-acquire; the defer
+// guarantees the lock is released even if acquisition panics or grows an early
+// return later.
+func (c *Client) acquireToken(ctx context.Context, s auth.TokenSource, cfg map[string]string, vars auth.Interpolator) (auth.Token, error) {
+	if c.tokens == nil {
+		return s.Token(ctx, cfg, vars)
+	}
+	c.tokens.mu.Lock()
+	defer c.tokens.mu.Unlock()
+	ts := auth.NewCachedTokenSource(s, c.tokens.store, auth.TokenCacheKey(c.tokens.root, cfg))
+	return ts.Token(ctx, cfg, vars)
 }
 
 // detectContentType returns a best-effort content type for the request body

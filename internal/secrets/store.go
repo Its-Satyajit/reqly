@@ -40,6 +40,8 @@ type Store interface {
 	Set(key, value string) error
 	// Delete removes key. Deleting an absent key is not an error.
 	Delete(key string) error
+	// Keys returns all stored keys, or nil when the store is empty.
+	Keys() ([]string, error)
 }
 
 // FileStore is a Store backed by a single JSON file. Values are keyed by
@@ -130,6 +132,32 @@ func (s *FileStore) Delete(key string) error {
 	delete(entries, key)
 
 	return s.write(entries)
+}
+
+// Keys returns all stored keys, or nil when the store is empty.
+func (s *FileStore) Keys() ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	data, err := os.ReadFile(s.path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("secrets: read store: %w", err)
+	}
+
+	var entries map[string]string
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &entries); err != nil {
+			return nil, fmt.Errorf("secrets: parse store: %w", err)
+		}
+	}
+	keys := make([]string, 0, len(entries))
+	for k := range entries {
+		keys = append(keys, k)
+	}
+	return keys, nil
 }
 
 // write atomically replaces the store file with entries.

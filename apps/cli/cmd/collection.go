@@ -30,7 +30,6 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/collections"
-	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/runner"
 )
 
@@ -80,10 +79,13 @@ Use --workspace to point at a workspace directory other than the current one.`,
 		mergeEnvScope(resolved.Vars, envSet)
 		masker.Add(auth.MaskValues(resolved.Request.Auth.Type, resolved.Request.Auth.Config, resolved.Vars)...)
 
-		client := request.NewClient()
+		client := newRequestClient(ws.Root)
 		resp, err := client.Execute(context.Background(), &resolved.Request, resolved.Vars)
 		if err != nil {
 			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
+		}
+		if resp.AuthToken != "" {
+			masker.Add(resp.AuthToken)
 		}
 
 		status := resp.StatusCode
@@ -247,6 +249,7 @@ Use --workspace to point at a workspace directory other than the current one.`,
 		}
 		report, err := runner.RunCollection(context.Background(), ws, coll, envSet, runner.Options{
 			FailFast: collectionFailFast,
+			Client:   newRequestClient(ws.Root),
 		})
 		if err != nil {
 			return err

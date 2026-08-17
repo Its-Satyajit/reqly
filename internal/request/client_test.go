@@ -24,11 +24,13 @@ import (
 	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Its-Satyajit/reqly/internal/response"
+	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
@@ -241,6 +243,100 @@ func TestExecuteOAuth2ClientCredentials(t *testing.T) {
 	}
 	if tokenCalls != 1 {
 		t.Fatalf("token endpoint called %d times, want 1", tokenCalls)
+	}
+}
+
+func TestExecuteOAuth2TokenCachedAcrossRequests(t *testing.T) {
+	var tokenCalls int
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenCalls++
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"tok-cached","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer tokenSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiSrv.Close()
+
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	client := NewClient(WithTokenCache(store, dir))
+
+	req := &Request{
+		Method: MethodGet,
+		URL:    apiSrv.URL,
+		Auth: Auth{
+			Type: "oauth2",
+			Config: map[string]string{
+				"grant_type":    "client_credentials",
+				"token_url":     tokenSrv.URL,
+				"client_id":     "client-123",
+				"client_secret": "s3cr3t",
+			},
+		},
+	}
+
+	if _, err := client.Execute(context.Background(), req, variables.NewSet()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Execute(context.Background(), req, variables.NewSet()); err != nil {
+		t.Fatal(err)
+	}
+	if tokenCalls != 1 {
+		t.Fatalf("token endpoint called %d times across two requests, want 1 (cached)", tokenCalls)
+	}
+}
+
+func TestExecuteOAuth2CacheKeyScopedToConfig(t *testing.T) {
+	var tokenCalls int
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenCalls++
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"tok","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer tokenSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiSrv.Close()
+
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	client := NewClient(WithTokenCache(store, dir))
+
+	base := func(clientID string) *Request {
+		return &Request{
+			Method: MethodGet,
+			URL:    apiSrv.URL,
+			Auth: Auth{
+				Type: "oauth2",
+				Config: map[string]string{
+					"grant_type":    "client_credentials",
+					"token_url":     tokenSrv.URL,
+					"client_id":     clientID,
+					"client_secret": "s3cr3t",
+				},
+			},
+		}
+	}
+
+	if _, err := client.Execute(context.Background(), base("client-a"), variables.NewSet()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Execute(context.Background(), base("client-b"), variables.NewSet()); err != nil {
+		t.Fatal(err)
+	}
+	if tokenCalls != 2 {
+		t.Fatalf("token endpoint called %d times for distinct client_ids, want 2", tokenCalls)
 	}
 }
 

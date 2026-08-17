@@ -136,18 +136,16 @@ func (oauth2Scheme) Token(ctx context.Context, cfg map[string]string, vars Inter
 	// token_name selects an alternate field when the provider returns the
 	// token under a non-standard key.
 	if tokenName != "access_token" {
-		var alt struct {
-			Value string `json:"-"`
-		}
 		var raw map[string]json.RawMessage
 		if err := json.Unmarshal(body, &raw); err != nil {
 			return Token{}, fmt.Errorf("oauth2: parse token response: %w", err)
 		}
 		if rawVal, ok := raw[tokenName]; ok {
-			if err := json.Unmarshal(rawVal, &alt.Value); err != nil {
+			var value string
+			if err := json.Unmarshal(rawVal, &value); err != nil {
 				return Token{}, fmt.Errorf("oauth2: token_name %q is not a string: %w", tokenName, err)
 			}
-			payload.AccessToken = alt.Value
+			payload.AccessToken = value
 		}
 	}
 

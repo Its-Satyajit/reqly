@@ -17,4 +17,4 @@ Reqly needs first-class authentication. Today `request.Auth{Type, Config}` exist
 ## Consequences
 - **Positive:** matches the minimal-dependency posture; flat string config stays diffable and Git-native; a registry makes future schemes (OAuth, AWS SigV4) additive; masking keeps secrets out of output everywhere.
 - **Trade-off:** `map[string]string` config can't express nested/typed values (OAuth token responses, refresh flows) — those land with the OAuth milestone; Digest is request-body aware and needs care with streaming bodies.
-- **Deferred:** NTLM, OAuth 1.0/2.0, AWS SigV4, Akamai, auth plugins, and the JWT tooling CLI.
+- **Deferred:** NTLM, OAuth 1.0, AWS SigV4, Akamai, auth plugins, and the JWT tooling CLI. OAuth 2.0 Client Credentials shipped in [ADR 0006](0006-oauth2-client-credentials.md); Authorization Code + PKCE and Password/ROPC remain deferred.

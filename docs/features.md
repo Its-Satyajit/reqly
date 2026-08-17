@@ -674,19 +674,19 @@ Support common OAuth 2.0 flows.
 
 ### Flows
 
-* Authorization Code
+* Authorization Code + PKCE
 * Client Credentials
-* Password Credentials
+* Password Credentials (deprecated in OAuth 2.1 — deferred)
 
 ### Features
 
 * System browser authentication
-* Token storage
-* Token refresh
+* Token storage (per-workspace `.reqly/tokens.json`, 0600, behind `secrets.Store`)
+* Token refresh (expiry-skewed proactive + reactive 401 retry-once)
 * Automatic token refresh
-* Refresh-token handling
+* Refresh-token handling (Client Credentials re-acquires; refresh-token reuse deferred)
 * Token expiration detection
-* OAuth configuration
+* OAuth configuration (`grant_type`, `token_url`, `client_id`, `client_secret`, `scope`, `audience`, `token_name`)
 * Certificate management
 
 ---

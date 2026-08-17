@@ -115,7 +115,7 @@ and --data to build requests directly on the CLI:
 		mergeEnvScope(vars, envSet)
 		masker.Add(auth.MaskValues(req.Auth.Type, req.Auth.Config, vars)...)
 
-		client := request.NewClient()
+		client := newRequestClient(baseDir)
 		resp, err := client.Execute(context.Background(), req, vars)
 		if err != nil {
 			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))

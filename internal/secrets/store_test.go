@@ -162,3 +162,51 @@ func TestFileStoreScopesKeysIndependently(t *testing.T) {
 		t.Fatalf("Get 2 = %q, want %q", b, "token-b")
 	}
 }
+
+func TestFileStoreKeys(t *testing.T) {
+	dir := tempStoreDir(t)
+	s, err := NewFileStore(filepath.Join(dir, ".reqly", "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+
+	keys, err := s.Keys()
+	if err != nil {
+		t.Fatalf("Keys on empty store: %v", err)
+	}
+	if len(keys) != 0 {
+		t.Fatalf("Keys on empty store = %v, want none", keys)
+	}
+
+	if err := s.Set("ws:one", "a"); err != nil {
+		t.Fatalf("Set 1: %v", err)
+	}
+	if err := s.Set("ws:two", "b"); err != nil {
+		t.Fatalf("Set 2: %v", err)
+	}
+
+	keys, err = s.Keys()
+	if err != nil {
+		t.Fatalf("Keys: %v", err)
+	}
+	want := map[string]bool{"ws:one": true, "ws:two": true}
+	if len(keys) != 2 {
+		t.Fatalf("Keys = %v, want 2 entries", keys)
+	}
+	for _, k := range keys {
+		if !want[k] {
+			t.Fatalf("unexpected key %q", k)
+		}
+	}
+
+	if err := s.Delete("ws:one"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	keys, err = s.Keys()
+	if err != nil {
+		t.Fatalf("Keys after delete: %v", err)
+	}
+	if len(keys) != 1 || keys[0] != "ws:two" {
+		t.Fatalf("Keys after delete = %v, want [ws:two]", keys)
+	}
+}

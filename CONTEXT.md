@@ -60,3 +60,18 @@ The `none` scheme: clears any inherited auth on a request so it is sent unauthen
 ### JWT Auth
 A scheme that signs a JSON Web Token per request from `config` (secret, algorithm, claims) and sends it as `Authorization: Bearer <token>`. Distinct from JWT *tooling* (decode/claims viewer), which is a separate CLI feature.
 
+### OAuth 2.0 Auth Scheme
+An authentication scheme (`internal/auth`) implementing the OAuth 2.0 Client Credentials grant (RFC 6749 §4.4): a form-encoded POST to `token_url` with HTTP Basic client auth, applied as `Authorization: Bearer <access_token>`. Configured via flat `auth.config` keys (`grant_type`, `token_url`, `client_id`, `client_secret`, `scope`, `audience`, `token_name`). Acquisition is automatic on first use — there is no interactive login.
+
+### Token Source
+An optional capability (`auth.TokenSource`) a scheme may implement to acquire a token ahead of request application. The request engine invokes it before `Apply` and injects the resolved token into a copy of the auth config under `token`; the request's own config is never mutated. The raw token is returned on the response as `AuthToken` for post-request masking.
+
+### Token Store
+A key/value secret backend (`internal/secrets`) persisting acquired OAuth tokens per workspace at `<workspace>/.reqly/tokens.json` (0600, atomic temp-file writes). The `secrets.Store` interface (Get/Set/Delete/Keys) keeps the storage location swappable — an OS-keychain backend is a drop-in implementation. Cache keys are a hash of the workspace root and the canonicalized auth config.
+
+### Token Cache
+A `CachedTokenSource` decorating a `TokenSource` with store-backed reuse: a persisted token is reused while fresh (30s expiry skew absorbs clock drift), otherwise re-acquired and persisted. The engine serializes acquisition per config so concurrent requests do not double-acquire.
+
+### Token Refresh
+Self-healing token lifetime: expiry-driven re-acquisition before send, plus a reactive path where a 401 forces the cached token out, re-acquires, and retries exactly once (a second 401 is returned as-is).
+
