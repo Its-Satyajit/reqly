@@ -87,13 +87,16 @@ func (apikeyScheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 	if value == "" {
 		return fmt.Errorf("apikey auth requires a value")
 	}
-	if cfg["in"] == "query" {
+	switch in := cfg["in"]; in {
+	case "", "header":
+		req.Header.Set(key, value)
+	case "query":
 		q := req.URL.Query()
 		q.Set(key, value)
 		req.URL.RawQuery = q.Encode()
-		return nil
+	default:
+		return fmt.Errorf("apikey auth: unsupported in %q (want header or query)", in)
 	}
-	req.Header.Set(key, value)
 	return nil
 }
 

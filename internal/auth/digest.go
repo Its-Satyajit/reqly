@@ -68,6 +68,9 @@ func (digestScheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 	if password == "" {
 		return fmt.Errorf("digest auth requires a password")
 	}
+	if _, err := digestAlgorithm(cfg, vars); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -101,18 +104,15 @@ func (s digestScheme) Challenge(req *http.Request, challenge string, cfg map[str
 		}
 	}
 
-	algorithm := strings.ToUpper(params["algorithm"])
-	if algorithm == "" {
-		algorithm, err = vars.Interpolate(cfg["algorithm"])
+	algorithm, err := digestAlgorithm(cfg, vars)
+	if err != nil {
+		return err
+	}
+	if challengeAlg := strings.ToUpper(params["algorithm"]); challengeAlg != "" {
+		algorithm, err = parseDigestAlgorithm(challengeAlg)
 		if err != nil {
-			return fmt.Errorf("digest algorithm: %w", err)
+			return err
 		}
-	}
-	if algorithm == "" {
-		algorithm = "MD5"
-	}
-	if algorithm != "MD5" && algorithm != "SHA-256" {
-		return fmt.Errorf("digest auth: unsupported algorithm %q", algorithm)
 	}
 
 	qop := ""
@@ -176,6 +176,27 @@ func computeDigestResponse(method, uri, username, password, realm, algorithm,
 		return "", fmt.Errorf("digest auth: challenge missing nonce")
 	}
 	return hashHex(algorithm, HA1+":"+nonce+":"+HA2), nil
+}
+
+// digestAlgorithm resolves the configured digest algorithm, defaulting to MD5
+// when unset. It validates the value so a bad algorithm fails at Apply time.
+func digestAlgorithm(cfg map[string]string, vars Interpolator) (string, error) {
+	algorithm, err := vars.Interpolate(cfg["algorithm"])
+	if err != nil {
+		return "", fmt.Errorf("digest algorithm: %w", err)
+	}
+	if algorithm == "" {
+		return "MD5", nil
+	}
+	return parseDigestAlgorithm(strings.ToUpper(algorithm))
+}
+
+// parseDigestAlgorithm validates an explicit digest algorithm value.
+func parseDigestAlgorithm(algorithm string) (string, error) {
+	if algorithm != "MD5" && algorithm != "SHA-256" {
+		return "", fmt.Errorf("digest auth: unsupported algorithm %q", algorithm)
+	}
+	return algorithm, nil
 }
 
 func hashHex(algorithm, s string) string {

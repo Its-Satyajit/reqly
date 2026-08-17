@@ -167,3 +167,10 @@ func TestApplyAPIKeyMissingValueErrors(t *testing.T) {
 		t.Fatal("expected error when apikey value missing")
 	}
 }
+
+func TestApplyAPIKeyInvalidLocationErrors(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
+	if err := auth.Apply(req, "apikey", map[string]string{"key": "X-Key", "value": "v", "in": "cookie"}, variables.NewSet()); err == nil {
+		t.Fatal("expected error when apikey in is not header or query")
+	}
+}

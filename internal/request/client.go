@@ -105,8 +105,12 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 				return nil, err
 			}
 			if retried {
-				io.Copy(io.Discard, resp.Body)
-				resp.Body.Close()
+				// Drain and close the 401 body so the connection can be
+				// reused for the retry. A drain/close error is irrelevant
+				// here: this response is being abandoned, so the errors are
+				// explicitly not propagated.
+				_, _ = io.Copy(io.Discard, resp.Body)
+				_ = resp.Body.Close()
 				resp, err = c.http.Do(retryReq)
 				if err != nil {
 					return nil, err

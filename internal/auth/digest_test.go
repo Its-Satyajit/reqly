@@ -117,6 +117,13 @@ func TestDigestApplyValidatesConfig(t *testing.T) {
 	if !strings.Contains(err.Error(), "password") {
 		t.Fatal("expected error to mention password")
 	}
+	err = s.Apply(req, map[string]string{"username": "u", "password": "p", "algorithm": "SHA-512"}, variables.NewSet())
+	if err == nil {
+		t.Fatal("expected error when algorithm unsupported")
+	}
+	if !strings.Contains(err.Error(), "algorithm") {
+		t.Fatal("expected error to mention algorithm")
+	}
 }
 
 func TestDigestChallengeUsesConfigAlgorithmFallback(t *testing.T) {
