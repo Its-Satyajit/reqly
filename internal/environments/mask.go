@@ -32,13 +32,19 @@ type Masker struct {
 
 // NewMasker returns a Masker for the given values. Empty values are dropped.
 func NewMasker(values ...string) *Masker {
-	var kept []string
+	m := &Masker{}
+	m.Add(values...)
+	return m
+}
+
+// Add includes extra sensitive values (e.g. resolved auth credentials) in the
+// mask. Empty values are dropped.
+func (m *Masker) Add(values ...string) {
 	for _, v := range values {
 		if v != "" {
-			kept = append(kept, v)
+			m.values = append(m.values, v)
 		}
 	}
-	return &Masker{values: kept}
 }
 
 // Mask replaces every sensitive value in text with [SECRET]. Values are

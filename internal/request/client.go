@@ -29,16 +29,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/response"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
-
-// Interpolator resolves {{key}} placeholders in request fields. It is the
-// variables.Set interface, kept small so the engine does not depend on the
-// full variables package internals.
-type Interpolator interface {
-	Interpolate(input string) (string, error)
-}
 
 // Client executes Request values over HTTP and returns response.Response
 // values. It is the shared engine used by the Desktop, CLI, and MCP.
@@ -77,14 +71,14 @@ func NewClient(opts ...Option) *Client {
 
 // Execute runs a Request and returns the response. Variables are interpolated
 // into the URL, headers, query parameters, and body before sending.
-func (c *Client) Execute(ctx context.Context, r *Request, vars Interpolator) (*response.Response, error) {
+func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator) (*response.Response, error) {
 	if r.Timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(r.Timeout)*time.Millisecond)
 		defer cancel()
 	}
 
-	req, err := c.build(ctx, r, vars)
+	req, authToken, err := c.build(ctx, r, vars)
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +87,36 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars Interpolator) (*r
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, err
+	}
+
+	// Digest (and other challenge-based schemes) respond to a 401 Digest
+	// WWW-Authenticate challenge by computing credentials and retrying once.
+	// The retry is bounded to a single challenge/response round-trip and only
+	// fires for a matching Digest challenge; other 401s return as-is.
+	if resp.StatusCode == http.StatusUnauthorized && r.Auth.Type != "" {
+		challenge := resp.Header.Get("WWW-Authenticate")
+		if strings.HasPrefix(challenge, "Digest") {
+			retryReq, _, err := c.build(ctx, r, vars)
+			if err != nil {
+				return nil, err
+			}
+			retried, err := auth.Challenge(retryReq, r.Auth.Type, challenge, r.Auth.Config, vars)
+			if err != nil {
+				return nil, err
+			}
+			if retried {
+				// Drain and close the 401 body so the connection can be
+				// reused for the retry. A drain/close error is irrelevant
+				// here: this response is being abandoned, so the errors are
+				// explicitly not propagated.
+				_, _ = io.Copy(io.Discard, resp.Body)
+				_ = resp.Body.Close()
+				resp, err = c.http.Do(retryReq)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
 	}
 	defer resp.Body.Close()
 
@@ -109,12 +133,14 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars Interpolator) (*r
 		Body:       body,
 		Duration:   time.Since(start),
 		Size:       int64(len(body)),
+		AuthToken:  authToken,
 	}, nil
 }
 
 // build constructs a net/http Request from the model, applying interpolation,
-// query parameters, headers, body, and authentication.
-func (c *Client) build(ctx context.Context, r *Request, vars Interpolator) (*http.Request, error) {
+// query parameters, headers, body, and authentication. It returns the built
+// request plus the resolved auth token (empty when no token was acquired).
+func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) (*http.Request, string, error) {
 	if vars == nil {
 		vars = variables.NewSet()
 	}
@@ -126,26 +152,26 @@ func (c *Client) build(ctx context.Context, r *Request, vars Interpolator) (*htt
 
 	rawURL, err := vars.Interpolate(r.URL)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if rawURL == "" {
-		return nil, errors.New("request has no URL")
+		return nil, "", errors.New("request has no URL")
 	}
 
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid URL %q: %w", rawURL, err)
+		return nil, "", fmt.Errorf("invalid URL %q: %w", rawURL, err)
 	}
 
 	q := u.Query()
 	for _, p := range r.Query {
 		key, err := vars.Interpolate(p.Key)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		value, err := vars.Interpolate(p.Value)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		q.Set(key, value)
 	}
@@ -155,14 +181,14 @@ func (c *Client) build(ctx context.Context, r *Request, vars Interpolator) (*htt
 	if r.Body != "" {
 		interpolated, err := vars.Interpolate(r.Body)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		body = strings.NewReader(interpolated)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, string(method), u.String(), body)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if body != nil {
@@ -172,11 +198,11 @@ func (c *Client) build(ctx context.Context, r *Request, vars Interpolator) (*htt
 	for _, h := range r.Headers {
 		key, err := vars.Interpolate(h.Key)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		value, err := vars.Interpolate(h.Value)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		if strings.EqualFold(key, "Content-Type") {
 			req.Header.Set(key, value)
@@ -185,52 +211,33 @@ func (c *Client) build(ctx context.Context, r *Request, vars Interpolator) (*htt
 		req.Header.Add(key, value)
 	}
 
-	if err := applyAuth(req, r.Auth, vars); err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// applyAuth sets the Authorization header (and any extra headers) for the
-// configured auth type. Unknown or empty auth types are a no-op.
-func applyAuth(req *http.Request, a Auth, vars Interpolator) error {
-	switch a.Type {
-	case "bearer":
-		token, err := vars.Interpolate(a.Config["token"])
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Authorization", "Bearer "+token)
-	case "basic":
-		username, err := vars.Interpolate(a.Config["username"])
-		if err != nil {
-			return err
-		}
-		password, err := vars.Interpolate(a.Config["password"])
-		if err != nil {
-			return err
-		}
-		req.SetBasicAuth(username, password)
-	case "apikey":
-		key, err := vars.Interpolate(a.Config["key"])
-		if err != nil {
-			return err
-		}
-		value, err := vars.Interpolate(a.Config["value"])
-		if err != nil {
-			return err
-		}
-		in := a.Config["in"]
-		if in == "query" {
-			q := req.URL.Query()
-			q.Set(key, value)
-			req.URL.RawQuery = q.Encode()
-		} else {
-			req.Header.Set(key, value)
+	authToken := ""
+	cfg := r.Auth.Config
+	if r.Auth.Type != "" {
+		// Schemes implementing TokenSource (e.g. oauth2) acquire a token
+		// before Apply; the resolved token is injected into a copy of the
+		// config so the request's own config is never mutated.
+		if s, ok := auth.Lookup(r.Auth.Type); ok {
+			if ts, ok := s.(auth.TokenSource); ok {
+				tok, err := ts.Token(ctx, r.Auth.Config, vars)
+				if err != nil {
+					return nil, "", err
+				}
+				authToken = tok.AccessToken
+				cfg = make(map[string]string, len(r.Auth.Config)+1)
+				for k, v := range r.Auth.Config {
+					cfg[k] = v
+				}
+				cfg["token"] = authToken
+			}
 		}
 	}
-	return nil
+
+	if err := auth.Apply(req, r.Auth.Type, cfg, vars); err != nil {
+		return nil, "", err
+	}
+
+	return req, authToken, nil
 }
 
 // detectContentType returns a best-effort content type for the request body

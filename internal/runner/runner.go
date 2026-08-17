@@ -28,6 +28,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/response"
@@ -57,7 +58,14 @@ type StepResult struct {
 	Tests []TestResult `json:"tests"`
 	// Logs are console output from pre/post scripts.
 	Logs []string `json:"logs"`
+	// authValues are the resolved credential values for this step's request,
+	// used to mask output. Never serialized.
+	authValues []string
 }
+
+// AuthValues returns the resolved credential values for this step's request,
+// for output masking.
+func (s *StepResult) AuthValues() []string { return s.authValues }
 
 // Report is the aggregate result of a run.
 type Report struct {
@@ -186,6 +194,8 @@ func (r *Runner) runStep(ctx context.Context, ws *collections.Workspace, coll *c
 		}
 	}
 
+	result.authValues = auth.MaskValues(req.Auth.Type, req.Auth.Config, r.vars)
+
 	resp, err := r.client.Execute(ctx, &req, r.vars)
 	if err != nil {
 		result.Passed = false
@@ -193,6 +203,11 @@ func (r *Runner) runStep(ctx context.Context, ws *collections.Workspace, coll *c
 		return result
 	}
 	result.Response = resp
+	// The acquired OAuth token is masked alongside the config secrets so
+	// output echoing it (headers, body, errors) never leaks it.
+	if resp.AuthToken != "" {
+		result.authValues = append(result.authValues, resp.AuthToken)
+	}
 
 	// Post-request script inspects the response and registers tests.
 	if entry.File.PostRequest != "" {

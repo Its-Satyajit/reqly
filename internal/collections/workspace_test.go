@@ -325,6 +325,30 @@ func TestFolderAuthOverridesCollection(t *testing.T) {
 	}
 }
 
+func TestRequestNoneAuthClearsInherited(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, `{"name":"ws"}`)
+	collDir := filepath.Join(root, "collections", "c")
+	writeConfig(t, collDir, `{"name":"c","auth":{"type":"bearer","config":{"token":"{{TOKEN}}"}}}`)
+	writeRequest(t, collDir, "public.yaml", `request: {url: "https://api.example.com/public", auth: {type: none}}`)
+
+	w, err := LoadWorkspace(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coll, chain, entry, ok := w.FindRequest(RequestPath("c/public.yaml"))
+	if !ok {
+		t.Fatal("request not found")
+	}
+	resolved, err := w.ResolveRequest(coll, chain, entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Request.Auth.Type != "none" {
+		t.Fatalf("auth type: got %q, want none", resolved.Request.Auth.Type)
+	}
+}
+
 func TestLoadWorkspaceYAMLConfig(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(root, 0o755); err != nil {

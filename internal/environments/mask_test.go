@@ -16,9 +16,33 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package secrets handles sensitive credential storage. It defines the Store
-// interface for persisting secret values (tokens) keyed by a stable
-// identifier, with a file-backed implementation writing atomically at 0600
-// permissions. An OS-keychain backend can be added behind the same interface
-// later; masking of stored values is handled by the environments masker.
-package secrets
+package environments
+
+import "testing"
+
+func TestMaskerAdd(t *testing.T) {
+	m := NewMasker("env-secret")
+	m.Add("auth-secret")
+
+	if got := m.Mask("prefix env-secret middle auth-secret suffix"); got !=
+		"prefix [SECRET] middle [SECRET] suffix" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestMaskerAddEmptyIgnored(t *testing.T) {
+	m := NewMasker("keep")
+	m.Add("", "")
+	if got := m.Mask("keep"); got != "[SECRET]" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestMaskerAddAfterMask(t *testing.T) {
+	m := NewMasker("first")
+	_ = m.Mask("first")
+	m.Add("second")
+	if got := m.Mask("first and second"); got != "[SECRET] and [SECRET]" {
+		t.Fatalf("got %q", got)
+	}
+}

@@ -37,6 +37,10 @@ type Response struct {
 	Duration time.Duration
 	// Size is the body size in bytes.
 	Size int64
+	// AuthToken is the resolved access token used for this request, when an
+	// auth scheme acquired one (e.g. oauth2). It exists so callers can mask
+	// it in output; it is never serialized.
+	AuthToken string `json:"-"`
 }
 
 // OK reports whether the response indicates success (2xx).

@@ -16,9 +16,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package secrets handles sensitive credential storage. It defines the Store
-// interface for persisting secret values (tokens) keyed by a stable
-// identifier, with a file-backed implementation writing atomically at 0600
-// permissions. An OS-keychain backend can be added behind the same interface
-// later; masking of stored values is handled by the environments masker.
-package secrets
+package auth
+
+import (
+	"net/http"
+)
+
+// noneScheme applies no credentials. Combined with the inheritance rule that a
+// non-empty auth type replaces inherited auth (internal/collections), a
+// request with auth.type "none" is sent unauthenticated even under an
+// auth-bearing collection or folder.
+type noneScheme struct{}
+
+// Apply is a no-op; "none" means no credentials.
+func (noneScheme) Apply(req *http.Request, _ map[string]string, _ Interpolator) error {
+	return nil
+}
+
+func init() {
+	Register("none", noneScheme{})
+}
