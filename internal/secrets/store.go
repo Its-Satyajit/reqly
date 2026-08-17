@@ -160,37 +160,42 @@ func (s *FileStore) Keys() ([]string, error) {
 	return keys, nil
 }
 
+// writeFileAtomic writes data to path via temp-file + rename with the given
+// permissions, so a crash never leaves a half-written file.
+func writeFileAtomic(path string, data []byte, perm fs.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".tmp-*")
+	if err != nil {
+		return fmt.Errorf("secrets: create temp file: %w", err)
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName) // no-op after successful rename
+
+	if err := tmp.Chmod(perm); err != nil {
+		tmp.Close()
+		return fmt.Errorf("secrets: chmod temp file: %w", err)
+	}
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return fmt.Errorf("secrets: write temp file: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return fmt.Errorf("secrets: sync temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("secrets: close temp file: %w", err)
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return fmt.Errorf("secrets: replace file: %w", err)
+	}
+	return nil
+}
+
 // write atomically replaces the store file with entries.
 func (s *FileStore) write(entries map[string]string) error {
 	data, err := json.Marshal(entries)
 	if err != nil {
 		return fmt.Errorf("secrets: encode store: %w", err)
 	}
-
-	tmp, err := os.CreateTemp(filepath.Dir(s.path), ".tokens-*.tmp")
-	if err != nil {
-		return fmt.Errorf("secrets: create temp store: %w", err)
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName) // no-op after successful rename
-
-	if err := tmp.Chmod(0o600); err != nil {
-		tmp.Close()
-		return fmt.Errorf("secrets: chmod temp store: %w", err)
-	}
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return fmt.Errorf("secrets: write temp store: %w", err)
-	}
-	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		return fmt.Errorf("secrets: sync temp store: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("secrets: close temp store: %w", err)
-	}
-	if err := os.Rename(tmpName, s.path); err != nil {
-		return fmt.Errorf("secrets: replace store: %w", err)
-	}
-	return nil
+	return writeFileAtomic(s.path, data, 0o600)
 }

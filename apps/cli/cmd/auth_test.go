@@ -21,6 +21,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -495,6 +496,9 @@ func TestAuthLoginDeviceFlowExplicitFlag(t *testing.T) {
 		"client_secret":            "dev-secret",
 	})
 
+	oldFlow := authLoginFlow
+	t.Cleanup(func() { authLoginFlow = oldFlow })
+
 	var out bytes.Buffer
 	rootCmd.SetOut(&out)
 	rootCmd.SetErr(&out)
@@ -519,6 +523,9 @@ func TestAuthLoginUnknownFlow(t *testing.T) {
 		"client_secret":            "dev-secret",
 	})
 
+	oldFlow := authLoginFlow
+	t.Cleanup(func() { authLoginFlow = oldFlow })
+
 	var out bytes.Buffer
 	rootCmd.SetOut(&out)
 	rootCmd.SetErr(&out)
@@ -526,6 +533,146 @@ func TestAuthLoginUnknownFlow(t *testing.T) {
 	err := rootCmd.Execute()
 	if err == nil || !strings.Contains(err.Error(), "unknown login flow") {
 		t.Fatalf("err = %v, want unknown login flow error", err)
+	}
+}
+
+func TestAuthStatusShowsBackend(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	writeCachedToken(t, root, "very-secret-access-token", time.Now().Add(1*time.Hour))
+	chdirWorkspace(t, root)
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "status"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "token store: file") {
+		t.Fatalf("expected 'token store: file', got:\n%s", out.String())
+	}
+}
+
+func TestAuthStatusKeychainFallback(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	writeCachedToken(t, root, "very-secret-access-token", time.Now().Add(1*time.Hour))
+	chdirWorkspace(t, root)
+	t.Setenv("REQLY_TOKEN_STORE", "keychain")
+
+	oldStore := newKeychainStore
+	newKeychainStore = func(_, _ string) (*secrets.KeychainStore, error) {
+		return nil, errors.New("keychain unavailable (test)")
+	}
+	t.Cleanup(func() { newKeychainStore = oldStore })
+
+	var warnBuf bytes.Buffer
+	oldWarn := warnf
+	warnf = func(format string, args ...any) { fmt.Fprintf(&warnBuf, format, args...) }
+	t.Cleanup(func() { warnf = oldWarn })
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "status"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(warnBuf.String(), "falling back to the file store") {
+		t.Fatalf("expected fallback warning, got:\n%s", warnBuf.String())
+	}
+	if !strings.Contains(out.String(), "token store: file") {
+		t.Fatalf("expected 'token store: file' after fallback, got:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "cached") {
+		t.Fatalf("expected cached token after fallback, got:\n%s", out.String())
+	}
+}
+
+func TestAuthStatusUnknownStore(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+	t.Setenv("REQLY_TOKEN_STORE", "bogus")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "status"})
+	err := rootCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "unknown token store") {
+		t.Fatalf("err = %v, want unknown token store error", err)
+	}
+}
+
+func TestAuthStatusFlagOverridesEnv(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	writeCachedToken(t, root, "very-secret-access-token", time.Now().Add(1*time.Hour))
+	chdirWorkspace(t, root)
+	t.Setenv("REQLY_TOKEN_STORE", "bogus")
+
+	oldStore := authStoreFlag
+	t.Cleanup(func() { authStoreFlag = oldStore })
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "status", "--store", "file"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("--store file should override a bogus env: %v", err)
+	}
+	if !strings.Contains(out.String(), "token store: file") {
+		t.Fatalf("expected 'token store: file', got:\n%s", out.String())
+	}
+}
+
+func TestAuthLoginDeviceFlowKeychainFallback(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+	t.Setenv("REQLY_TOKEN_STORE", "keychain")
+
+	oldStore := newKeychainStore
+	newKeychainStore = func(_, _ string) (*secrets.KeychainStore, error) {
+		return nil, errors.New("keychain unavailable (test)")
+	}
+	t.Cleanup(func() { newKeychainStore = oldStore })
+
+	deviceSrv, tokenSrv := fakeDeviceProvider(t)
+	cfgPath := writeAuthConfig(t, root, map[string]string{
+		"device_authorization_url": deviceSrv.URL,
+		"token_url":                tokenSrv.URL,
+		"client_id":                "dev-client",
+		"client_secret":            "dev-secret",
+	})
+
+	var warnBuf bytes.Buffer
+	oldWarn := warnf
+	warnf = func(format string, args ...any) { fmt.Fprintf(&warnBuf, format, args...) }
+	t.Cleanup(func() { warnf = oldWarn })
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "login", cfgPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(warnBuf.String(), "falling back to the file store") {
+		t.Fatalf("expected fallback warning, got:\n%s", warnBuf.String())
+	}
+	if !strings.Contains(out.String(), "login complete") {
+		t.Fatalf("expected login complete, got:\n%s", out.String())
+	}
+
+	// The token must land in the fallback file store.
+	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := store.Keys()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("cached %d tokens in fallback store, want 1", len(keys))
 	}
 }
 

@@ -18,7 +18,9 @@
 
 // Package secrets handles sensitive credential storage. It defines the Store
 // interface for persisting secret values (tokens) keyed by a stable
-// identifier, with a file-backed implementation writing atomically at 0600
-// permissions. An OS-keychain backend can be added behind the same interface
-// later; masking of stored values is handled by the environments masker.
+// identifier, with two implementations behind it: FileStore writes atomically
+// at 0600 permissions to a JSON file, and KeychainStore keeps values in the
+// OS credential store (Secret Service / Keychain / WinCred) with a 0600
+// key index. Masking of values in output is handled by the environments
+// masker.
 package secrets

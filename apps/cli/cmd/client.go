@@ -19,6 +19,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -27,19 +28,58 @@ import (
 )
 
 // newRequestClient returns a request engine wired with store-backed OAuth
-// token caching. The store lives at <workspace root>/.reqly/tokens.json and
-// scopes cache keys to that workspace. When no workspace descriptor can be
-// found, a plain client without caching is returned.
+// token caching. The store (file by default, keychain when selected and
+// available) lives under <workspace root>/.reqly and scopes cache keys to
+// that workspace. When no workspace descriptor can be found, a plain client
+// without caching is returned.
 func newRequestClient(startDir string) *request.Client {
 	root := findWorkspaceRoot(startDir)
 	if root == "" {
 		return request.NewClient()
 	}
-	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	store, _, err := openTokenStore(root)
 	if err != nil {
+		warnf("warning: %v; requests will not use cached tokens\n", err)
 		return request.NewClient()
 	}
 	return request.NewClient(request.WithTokenCache(store, root))
+}
+
+// newKeychainStore opens the OS-keychain store for a workspace root. It is a
+// variable so tests can force the unavailable path deterministically instead
+// of depending on whether the host has a Secret Service.
+var newKeychainStore = secrets.NewKeychainStore
+
+// openTokenStore opens the token store for a workspace root per
+// storeBackendFor, returning the store and the active backend name. A
+// keychain backend that cannot be opened falls back to the file store with a
+// warning.
+func openTokenStore(root string) (secrets.Store, string, error) {
+	backend := storeBackendFor()
+	switch backend {
+	case "keychain":
+		store, err := newKeychainStore("reqly", filepath.Join(root, ".reqly", "keychain.index"))
+		if err != nil {
+			warnf("warning: %v; falling back to the file store\n", err)
+			backend = "file"
+			break
+		}
+		return store, "keychain", nil
+	case "file":
+	default:
+		return nil, "", fmt.Errorf("unknown token store %q (want file or keychain)", backend)
+	}
+	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	if err != nil {
+		return nil, "", err
+	}
+	return store, backend, nil
+}
+
+// warnf prints a warning to stderr. It is a variable so tests can capture
+// (and silence) it.
+var warnf = func(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format, args...)
 }
 
 // findWorkspaceRoot walks up from dir to the nearest directory containing a

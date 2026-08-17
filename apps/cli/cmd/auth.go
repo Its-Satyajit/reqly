@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -39,14 +38,32 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
-// tokenStoreFor resolves the token store for the workspace nearest to startDir.
-// Returns nil when no workspace descriptor exists up the tree.
-func tokenStoreFor(startDir string) (*secrets.FileStore, error) {
+// authStoreFlag selects the token-store backend for `reqly auth` commands
+// (--store), overriding REQLY_TOKEN_STORE.
+var authStoreFlag string
+
+// tokenStoreFor resolves the token store for the workspace nearest to
+// startDir, honoring --store > REQLY_TOKEN_STORE > default file. It returns
+// the store, the active backend name, and an error. The store is nil when no
+// workspace descriptor exists up the tree.
+func tokenStoreFor(startDir string) (secrets.Store, string, error) {
 	root := findWorkspaceRoot(startDir)
 	if root == "" {
-		return nil, nil
+		return nil, "", nil
 	}
-	return secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	return openTokenStore(root)
+}
+
+// storeBackendFor resolves the requested token-store backend: the --store
+// flag, then REQLY_TOKEN_STORE, then "file".
+func storeBackendFor() string {
+	if authStoreFlag != "" {
+		return authStoreFlag
+	}
+	if env := os.Getenv("REQLY_TOKEN_STORE"); env != "" {
+		return env
+	}
+	return "file"
 }
 
 // launchBrowser opens url in the system default browser. It is a package
@@ -94,7 +111,7 @@ whether a refresh token is cached, and whether the token is still valid.
 Token values never print in full.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		store, err := tokenStoreFor(".")
+		store, backend, err := tokenStoreFor(".")
 		if err != nil {
 			return err
 		}
@@ -102,6 +119,7 @@ Token values never print in full.`,
 			fmt.Fprintln(cmd.OutOrStdout(), "no workspace found: no cached tokens")
 			return nil
 		}
+		fmt.Fprintf(cmd.OutOrStdout(), "token store: %s\n", backend)
 
 		keys, err := store.Keys()
 		if err != nil {
@@ -217,7 +235,7 @@ func runAuthCodeLogin(cmd *cobra.Command, cfg map[string]string) error {
 	if root == "" {
 		return fmt.Errorf("no workspace found: run reqly auth login inside a workspace (reqly.yaml)")
 	}
-	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	store, _, err := openTokenStore(root)
 	if err != nil {
 		return err
 	}
@@ -249,7 +267,7 @@ func runDeviceLogin(cmd *cobra.Command, cfg map[string]string) error {
 	if root == "" {
 		return fmt.Errorf("no workspace found: run reqly auth login inside a workspace (reqly.yaml)")
 	}
-	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	store, _, err := openTokenStore(root)
 	if err != nil {
 		return err
 	}
@@ -294,7 +312,7 @@ current directory, access and refresh tokens included. The next request that
 needs a token re-acquires one.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		store, err := tokenStoreFor(".")
+		store, _, err := tokenStoreFor(".")
 		if err != nil {
 			return err
 		}
@@ -365,6 +383,7 @@ func yesNo(b bool) string {
 func init() {
 	authLoginCmd.Flags().IntVar(&authLoginTimeoutSeconds, "timeout", 300, "seconds to wait for the browser callback or device-flow approval")
 	authLoginCmd.Flags().StringVar(&authLoginFlow, "flow", "auto", "grant to run: authorization_code, device_code, or auto (infer from the config)")
+	authCmd.PersistentFlags().StringVar(&authStoreFlag, "store", "", "token store backend: file or keychain (default REQLY_TOKEN_STORE or file)")
 	authCmd.AddCommand(authLoginCmd, authStatusCmd, authLogoutCmd)
 	rootCmd.AddCommand(authCmd)
 }
