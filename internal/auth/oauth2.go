@@ -66,7 +66,8 @@ type oauth2Scheme struct{}
 
 // Token dispatches on grant_type: client_credentials performs an RFC 6749
 // §4.4 grant; authorization_code runs the RFC 6749 §4.1 + RFC 7636 flow
-// (see oauth2_authcode.go). Any other grant type is rejected up front.
+// (see oauth2_authcode.go); device_code runs the RFC 8628 device flow
+// (see oauth2_device.go). Any other grant type is rejected up front.
 func (oauth2Scheme) Token(ctx context.Context, cfg map[string]string, vars Interpolator) (Token, error) {
 	grantType, err := vars.Interpolate(cfg["grant_type"])
 	if err != nil {
@@ -80,6 +81,8 @@ func (oauth2Scheme) Token(ctx context.Context, cfg map[string]string, vars Inter
 		return tokenClientCredentials(ctx, cfg, vars)
 	case "authorization_code":
 		return (&AuthorizationCodeSource{Open: oauth2BrowserOpener}).Token(ctx, cfg, vars)
+	case "device_code":
+		return (&DeviceCodeSource{Status: oauth2DeviceStatus}).Token(ctx, cfg, vars)
 	default:
 		return Token{}, fmt.Errorf("oauth2: unsupported grant_type %q", grantType)
 	}

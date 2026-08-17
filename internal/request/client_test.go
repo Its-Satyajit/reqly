@@ -986,3 +986,88 @@ func TestExecuteOAuth2AuthorizationCodeAutoLogin(t *testing.T) {
 		t.Fatalf("authorizations = %v, want Bearer auto-tok on both requests", gotAuth)
 	}
 }
+
+// TestExecuteOAuth2DeviceCode drives the RFC 8628 device flow through the
+// engine: cold cache runs the device authorization + poll loop, the token is
+// attached as Bearer, and a second request reuses the cached token without
+// re-running the flow.
+func TestExecuteOAuth2DeviceCode(t *testing.T) {
+	var gotAuth []string
+	var deviceCalls int
+	var tokenCalls int
+
+	deviceSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		deviceCalls++
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if got := r.PostForm.Get("client_id"); got != "dev-client" {
+			http.Error(w, "bad client_id", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"device_code":"dev-code","user_code":"AB-1234","verification_uri":"https://idp.example.com/device","interval":1}`))
+	}))
+	defer deviceSrv.Close()
+
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenCalls++
+		if tokenCalls == 1 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"authorization_pending"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"tok-device","token_type":"Bearer","expires_in":3600,"refresh_token":"dev-rt"}`))
+	}))
+	defer tokenSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = append(gotAuth, r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiSrv.Close()
+
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	client := NewClient(WithTokenCache(store, dir))
+
+	req := &Request{
+		Method: MethodGet,
+		URL:    apiSrv.URL,
+		Auth: Auth{
+			Type: "oauth2",
+			Config: map[string]string{
+				"grant_type":               "device_code",
+				"device_authorization_url": deviceSrv.URL,
+				"token_url":                tokenSrv.URL,
+				"client_id":                "dev-client",
+				"client_secret":            "dev-secret",
+			},
+		},
+	}
+
+	// First request: cold cache runs the device flow (pending, then grant).
+	if _, err := client.Execute(context.Background(), req, variables.NewSet()); err != nil {
+		t.Fatalf("first Execute: %v", err)
+	}
+	// Second request: reuses the cached token — no device flow re-run.
+	if _, err := client.Execute(context.Background(), req, variables.NewSet()); err != nil {
+		t.Fatalf("second Execute: %v", err)
+	}
+
+	if deviceCalls != 1 {
+		t.Fatalf("device endpoint called %d times across two requests, want 1", deviceCalls)
+	}
+	if tokenCalls != 2 {
+		t.Fatalf("token endpoint polled %d times, want 2 (pending + grant)", tokenCalls)
+	}
+	if len(gotAuth) != 2 || gotAuth[0] != "Bearer tok-device" || gotAuth[1] != "Bearer tok-device" {
+		t.Fatalf("authorizations = %v, want Bearer tok-device on both requests", gotAuth)
+	}
+}

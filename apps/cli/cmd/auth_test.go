@@ -217,7 +217,7 @@ func fakeAuthCodeProvider(t *testing.T) (*httptest.Server, *httptest.Server) {
 func writeAuthConfig(t *testing.T, dir string, cfg map[string]string) string {
 	t.Helper()
 	var b strings.Builder
-	for _, k := range []string{"authorization_url", "token_url", "client_id", "client_secret", "redirect_uri", "scope"} {
+	for _, k := range []string{"authorization_url", "device_authorization_url", "token_url", "client_id", "client_secret", "redirect_uri", "scope"} {
 		if v, ok := cfg[k]; ok {
 			fmt.Fprintf(&b, "%s: %s\n", k, v)
 		}
@@ -387,6 +387,145 @@ func writeCachedAuthCodeToken(t *testing.T, root, token string, expiry time.Time
 	}
 	if err := store.Set("some-workspace:some-config", string(blob)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// fakeDeviceProvider returns fake device-flow endpoints: the device
+// authorization endpoint answers with a verification URI + code, and the
+// token endpoint answers authorization_pending once, then grants.
+func fakeDeviceProvider(t *testing.T) (*httptest.Server, *httptest.Server) {
+	t.Helper()
+	deviceSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"device_code":"dev-code","user_code":"AB-1234","verification_uri":"https://idp.example.com/device","verification_uri_complete":"https://idp.example.com/device?user_code=AB-1234","interval":1}`))
+	}))
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/pending" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"authorization_pending"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"tok-device","token_type":"Bearer","expires_in":3600,"refresh_token":"dev-rt"}`))
+	}))
+	t.Cleanup(deviceSrv.Close)
+	t.Cleanup(tokenSrv.Close)
+	return deviceSrv, tokenSrv
+}
+
+func TestAuthLoginDeviceFlowAuto(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+
+	deviceSrv, tokenSrv := fakeDeviceProvider(t)
+	cfgPath := writeAuthConfig(t, root, map[string]string{
+		"device_authorization_url": deviceSrv.URL,
+		"token_url":                tokenSrv.URL,
+		"client_id":                "dev-client",
+		"client_secret":            "dev-secret",
+	})
+
+	// The device flow must not open a browser.
+	called := false
+	oldBrowser := launchBrowser
+	launchBrowser = func(string) error { called = true; return nil }
+	t.Cleanup(func() { launchBrowser = oldBrowser })
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "login", cfgPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if called {
+		t.Fatal("device login opened a browser")
+	}
+
+	output := out.String()
+	for _, want := range []string{"open https://idp.example.com/device?user_code=AB-1234", "AB-1234", "login complete", "tok", "yes"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected output to contain %q, got:\n%s", want, output)
+		}
+	}
+	if strings.Contains(output, "dev-secret") || strings.Contains(output, "tok-device") {
+		t.Fatalf("login output leaked a secret:\n%s", output)
+	}
+
+	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := store.Keys()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("cached %d tokens, want 1", len(keys))
+	}
+	raw, err := store.Get(keys[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	tok, err := auth.ParseCachedToken(raw)
+	if err != nil {
+		t.Fatalf("ParseCachedToken: %v", err)
+	}
+	if tok.GrantType != "device_code" {
+		t.Fatalf("GrantType = %q, want device_code", tok.GrantType)
+	}
+	if tok.AccessToken != "tok-device" || tok.RefreshToken != "dev-rt" {
+		t.Fatalf("token = %+v", tok)
+	}
+}
+
+func TestAuthLoginDeviceFlowExplicitFlag(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+
+	deviceSrv, tokenSrv := fakeDeviceProvider(t)
+	// Both URLs present: auto would pick authorization_code, so the explicit
+	// --flow device flag must win.
+	cfgPath := writeAuthConfig(t, root, map[string]string{
+		"authorization_url":        "https://idp.example.com/authorize",
+		"device_authorization_url": deviceSrv.URL,
+		"token_url":                tokenSrv.URL,
+		"client_id":                "dev-client",
+		"client_secret":            "dev-secret",
+	})
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "login", "--flow", "device_code", cfgPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "login complete") {
+		t.Fatalf("expected login complete, got:\n%s", out.String())
+	}
+}
+
+func TestAuthLoginUnknownFlow(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+
+	deviceSrv, tokenSrv := fakeDeviceProvider(t)
+	cfgPath := writeAuthConfig(t, root, map[string]string{
+		"device_authorization_url": deviceSrv.URL,
+		"token_url":                tokenSrv.URL,
+		"client_id":                "dev-client",
+		"client_secret":            "dev-secret",
+	})
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "login", "--flow", "bogus", cfgPath})
+	err := rootCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "unknown login flow") {
+		t.Fatalf("err = %v, want unknown login flow error", err)
 	}
 }
 

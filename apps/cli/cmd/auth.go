@@ -69,7 +69,7 @@ var launchBrowser = func(url string) error {
 
 // authCmd reports and manages locally cached OAuth tokens. Client
 // Credentials acquisition is automatic on first request; Authorization Code
-// tokens are acquired interactively with `auth login`.
+// and Device flow tokens are acquired interactively with `auth login`.
 var authCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "Inspect and manage locally cached OAuth tokens",
@@ -77,9 +77,10 @@ var authCmd = &cobra.Command{
 
 Client Credentials tokens are acquired automatically when a request uses an
 OAuth2 auth scheme and are cached per workspace in
-<workspace>/.reqly/tokens.json (0600). Authorization Code tokens are acquired
-interactively: run "reqly auth login <config>" once to authorize in the
-system browser, then requests reuse the cached token (and its refresh token)
+<workspace>/.reqly/tokens.json (0600). Authorization Code and Device flow
+tokens are acquired interactively: run "reqly auth login <config>" once to
+authorize in the system browser (or via a printed verification code for the
+device flow), then requests reuse the cached token (and its refresh token)
 until it expires or you run "reqly auth logout".`,
 }
 
@@ -145,76 +146,143 @@ Token values never print in full.`,
 }
 
 // authLoginTimeoutSeconds bounds how long `auth login` waits for the browser
-// callback before failing.
+// callback (or the device-flow approval) before failing.
 var authLoginTimeoutSeconds = 300
 
-// authLoginCmd performs the Authorization Code + PKCE flow on demand: it
-// opens the system browser at the provider's authorization page, waits for
-// the loopback callback, exchanges the code, and caches the token.
+// authLoginFlow selects the grant for `auth login`: auto (default) infers it
+// from the config (a device_authorization_url without an authorization_url
+// means device_code, otherwise authorization_code), or an explicit
+// authorization_code | device_code.
+var authLoginFlow = "auto"
+
+// authLoginCmd performs an OAuth 2.0 interactive grant on demand and caches
+// the token: the Authorization Code + PKCE flow opens the system browser,
+// and the Device flow (RFC 8628) prints a verification URI + code to approve
+// on any device.
 var authLoginCmd = &cobra.Command{
 	Use:   "login <config>",
-	Short: "Authorize OAuth 2.0 in the system browser",
-	Long: `Perform the OAuth 2.0 Authorization Code + PKCE flow and cache the token.
+	Short: "Authorize OAuth 2.0 (browser or device flow)",
+	Long: `Perform an interactive OAuth 2.0 grant and cache the token.
 
 <config> is a YAML or JSON file with the OAuth config keys:
 
-  authorization_url: https://idp.example.com/authorize   # required
-  token_url:         https://idp.example.com/token       # required
-  client_id:         my-client                           # required
-  client_secret:     s3cr3t                              # required
-  redirect_uri:      http://127.0.0.1:8080/callback      # optional (loopback default)
-  scope:             read write                          # optional
+  authorization_url:        https://idp.example.com/authorize   # required for authorization_code
+  device_authorization_url: https://idp.example.com/device      # required for device_code
+  token_url:                https://idp.example.com/token       # required
+  client_id:                my-client                           # required
+  client_secret:            s3cr3t                              # required
+  redirect_uri:             http://127.0.0.1:8080/callback      # optional (loopback default)
+  scope:                    read write                          # optional
 
-The system browser opens at the authorization page; the loopback callback
-server on an ephemeral 127.0.0.1 port receives the redirect, verifies the
-state, and exchanges the code for a token, which is cached in
-<workspace>/.reqly/tokens.json. The client secret and tokens never print.`,
+With --flow authorization_code (the default when the config has an
+authorization_url), the system browser opens at the authorization page and a
+loopback callback server on an ephemeral 127.0.0.1 port receives the redirect,
+verifies the state, and exchanges the code. With --flow device_code (the
+default when the config only has a device_authorization_url), a verification
+URI and code are printed to approve on any device, and Reqly polls until you
+authorize. The token is cached in <workspace>/.reqly/tokens.json; the client
+secret and tokens never print.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := loadAuthConfig(args[0])
 		if err != nil {
 			return err
 		}
-		// The login command always performs the authorization_code grant;
-		// normalize the config so the cache key matches a request descriptor
-		// with grant_type: authorization_code.
-		cfg["grant_type"] = "authorization_code"
-		root := findWorkspaceRoot(".")
-		if root == "" {
-			return fmt.Errorf("no workspace found: run reqly auth login inside a workspace (reqly.yaml)")
+		flow := authLoginFlow
+		if flow == "auto" {
+			if cfg["device_authorization_url"] != "" && cfg["authorization_url"] == "" {
+				flow = "device_code"
+			} else {
+				flow = "authorization_code"
+			}
 		}
-		store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
-		if err != nil {
-			return err
+		switch flow {
+		case "authorization_code":
+			return runAuthCodeLogin(cmd, cfg)
+		case "device_code":
+			return runDeviceLogin(cmd, cfg)
+		default:
+			return fmt.Errorf("unknown login flow %q (want authorization_code or device_code)", flow)
 		}
-
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(authLoginTimeoutSeconds)*time.Second)
-		defer cancel()
-
-		src := &auth.AuthorizationCodeSource{
-			Open: func(_ context.Context, authorizationURL string) error {
-				fmt.Fprintf(cmd.OutOrStdout(), "opening %s in your browser…\n", authorizationURL)
-				return launchBrowser(authorizationURL)
-			},
-		}
-		cached := auth.NewCachedTokenSource(src, store, auth.TokenCacheKey(root, cfg))
-		tok, err := cached.Token(ctx, cfg, variables.NewSet())
-		if err != nil {
-			return fmt.Errorf("login failed: %w", err)
-		}
-
-		endpoint := cfg["token_url"]
-		if endpoint == "" {
-			endpoint = "(unknown)"
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), "login complete — token cached")
-		fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%s\n",
-			endpoint, formatExpiry(tok.Expiry), maskToken(tok.AccessToken),
-			yesNo(tok.RefreshToken != ""))
-		return nil
 	},
+}
+
+// runAuthCodeLogin performs the Authorization Code + PKCE flow: open the
+// system browser, wait for the loopback callback, exchange the code, cache.
+func runAuthCodeLogin(cmd *cobra.Command, cfg map[string]string) error {
+	// Normalize the config so the cache key matches a request descriptor
+	// with grant_type: authorization_code.
+	cfg["grant_type"] = "authorization_code"
+	root := findWorkspaceRoot(".")
+	if root == "" {
+		return fmt.Errorf("no workspace found: run reqly auth login inside a workspace (reqly.yaml)")
+	}
+	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	if err != nil {
+		return err
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(authLoginTimeoutSeconds)*time.Second)
+	defer cancel()
+
+	src := &auth.AuthorizationCodeSource{
+		Open: func(_ context.Context, authorizationURL string) error {
+			fmt.Fprintf(cmd.OutOrStdout(), "opening %s in your browser…\n", authorizationURL)
+			return launchBrowser(authorizationURL)
+		},
+	}
+	cached := auth.NewCachedTokenSource(src, store, auth.TokenCacheKey(root, cfg))
+	tok, err := cached.Token(ctx, cfg, variables.NewSet())
+	if err != nil {
+		return fmt.Errorf("login failed: %w", err)
+	}
+	return printLoginSummary(cmd, cfg, tok)
+}
+
+// runDeviceLogin performs the Device Authorization flow (RFC 8628): print the
+// verification URI + code, poll until the user approves, cache the token.
+func runDeviceLogin(cmd *cobra.Command, cfg map[string]string) error {
+	cfg["grant_type"] = "device_code"
+	root := findWorkspaceRoot(".")
+	if root == "" {
+		return fmt.Errorf("no workspace found: run reqly auth login inside a workspace (reqly.yaml)")
+	}
+	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
+	if err != nil {
+		return err
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(authLoginTimeoutSeconds)*time.Second)
+	defer cancel()
+
+	src := &auth.DeviceCodeSource{
+		Status: func(line string) {
+			fmt.Fprintln(cmd.OutOrStdout(), line)
+		},
+	}
+	cached := auth.NewCachedTokenSource(src, store, auth.TokenCacheKey(root, cfg))
+	tok, err := cached.Token(ctx, cfg, variables.NewSet())
+	if err != nil {
+		return fmt.Errorf("login failed: %w", err)
+	}
+	return printLoginSummary(cmd, cfg, tok)
+}
+
+// printLoginSummary renders the post-login one-line token summary.
+func printLoginSummary(cmd *cobra.Command, cfg map[string]string, tok auth.Token) error {
+	endpoint := cfg["token_url"]
+	if endpoint == "" {
+		endpoint = "(unknown)"
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), "login complete — token cached")
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%s\n",
+		endpoint, formatExpiry(tok.Expiry), maskToken(tok.AccessToken),
+		yesNo(tok.RefreshToken != ""))
+	return nil
 }
 
 // authLogoutCmd clears cached tokens for the nearest workspace.
@@ -295,7 +363,8 @@ func yesNo(b bool) string {
 }
 
 func init() {
-	authLoginCmd.Flags().IntVar(&authLoginTimeoutSeconds, "timeout", 300, "seconds to wait for the browser callback")
+	authLoginCmd.Flags().IntVar(&authLoginTimeoutSeconds, "timeout", 300, "seconds to wait for the browser callback or device-flow approval")
+	authLoginCmd.Flags().StringVar(&authLoginFlow, "flow", "auto", "grant to run: authorization_code, device_code, or auto (infer from the config)")
 	authCmd.AddCommand(authLoginCmd, authStatusCmd, authLogoutCmd)
 	rootCmd.AddCommand(authCmd)
 }

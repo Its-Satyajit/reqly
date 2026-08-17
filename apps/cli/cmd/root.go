@@ -20,6 +20,8 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -47,6 +49,11 @@ func init() {
 	// so reqly run/test/collection work without a separate login step.
 	auth.SetOAuth2BrowserOpener(func(_ context.Context, authorizationURL string) error {
 		return launchBrowser(authorizationURL)
+	})
+	// Automatic device-flow acquisition prints the verification URI + code to
+	// stderr so the user can approve without a separate login step.
+	auth.SetOAuth2DeviceStatus(func(line string) {
+		fmt.Fprintln(os.Stderr, line)
 	})
 	rootCmd.AddCommand(
 		runCmd,
