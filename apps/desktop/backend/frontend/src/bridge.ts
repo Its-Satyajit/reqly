@@ -13,7 +13,13 @@ import { useAuthStore, useRequestStore } from '@reqly/frontend'
  * shape the UI renders.
  */
 export const wailsSender: RequestSender = async (req: RequestInput): Promise<ResponseData> => {
-  const res = await AppService.SendRequest(req as never)
+  const res = await AppService.SendRequest({
+    method: req.method,
+    url: req.url,
+    headers: (req.headers ?? []).map(({ key, value }) => ({ key, value })),
+    query: (req.params ?? []).map(({ key, value }) => ({ key, value })),
+    body: req.body,
+  } as never)
   if (!res) {
     throw new Error('core returned an empty response')
   }
