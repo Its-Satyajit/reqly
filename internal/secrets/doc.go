@@ -16,6 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package secrets handles sensitive credential storage using the OS keychain
-// and encrypted-at-rest values, with masking to prevent leaks.
+// Package secrets handles sensitive credential storage. It defines the Store
+// interface for persisting secret values (tokens) keyed by a stable
+// identifier, with a file-backed implementation writing atomically at 0600
+// permissions. An OS-keychain backend can be added behind the same interface
+// later; masking of stored values is handled by the environments masker.
 package secrets
