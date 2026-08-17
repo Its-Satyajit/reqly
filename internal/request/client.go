@@ -78,7 +78,7 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 		defer cancel()
 	}
 
-	req, err := c.build(ctx, r, vars)
+	req, authToken, err := c.build(ctx, r, vars)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 	if resp.StatusCode == http.StatusUnauthorized && r.Auth.Type != "" {
 		challenge := resp.Header.Get("WWW-Authenticate")
 		if strings.HasPrefix(challenge, "Digest") {
-			retryReq, err := c.build(ctx, r, vars)
+			retryReq, _, err := c.build(ctx, r, vars)
 			if err != nil {
 				return nil, err
 			}
@@ -133,12 +133,14 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 		Body:       body,
 		Duration:   time.Since(start),
 		Size:       int64(len(body)),
+		AuthToken:  authToken,
 	}, nil
 }
 
 // build constructs a net/http Request from the model, applying interpolation,
-// query parameters, headers, body, and authentication.
-func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) (*http.Request, error) {
+// query parameters, headers, body, and authentication. It returns the built
+// request plus the resolved auth token (empty when no token was acquired).
+func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) (*http.Request, string, error) {
 	if vars == nil {
 		vars = variables.NewSet()
 	}
@@ -150,26 +152,26 @@ func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) 
 
 	rawURL, err := vars.Interpolate(r.URL)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if rawURL == "" {
-		return nil, errors.New("request has no URL")
+		return nil, "", errors.New("request has no URL")
 	}
 
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid URL %q: %w", rawURL, err)
+		return nil, "", fmt.Errorf("invalid URL %q: %w", rawURL, err)
 	}
 
 	q := u.Query()
 	for _, p := range r.Query {
 		key, err := vars.Interpolate(p.Key)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		value, err := vars.Interpolate(p.Value)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		q.Set(key, value)
 	}
@@ -179,14 +181,14 @@ func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) 
 	if r.Body != "" {
 		interpolated, err := vars.Interpolate(r.Body)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		body = strings.NewReader(interpolated)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, string(method), u.String(), body)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if body != nil {
@@ -196,11 +198,11 @@ func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) 
 	for _, h := range r.Headers {
 		key, err := vars.Interpolate(h.Key)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		value, err := vars.Interpolate(h.Value)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		if strings.EqualFold(key, "Content-Type") {
 			req.Header.Set(key, value)
@@ -209,11 +211,33 @@ func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) 
 		req.Header.Add(key, value)
 	}
 
-	if err := auth.Apply(req, r.Auth.Type, r.Auth.Config, vars); err != nil {
-		return nil, err
+	authToken := ""
+	cfg := r.Auth.Config
+	if r.Auth.Type != "" {
+		// Schemes implementing TokenSource (e.g. oauth2) acquire a token
+		// before Apply; the resolved token is injected into a copy of the
+		// config so the request's own config is never mutated.
+		if s, ok := auth.Lookup(r.Auth.Type); ok {
+			if ts, ok := s.(auth.TokenSource); ok {
+				tok, err := ts.Token(ctx, r.Auth.Config, vars)
+				if err != nil {
+					return nil, "", err
+				}
+				authToken = tok.AccessToken
+				cfg = make(map[string]string, len(r.Auth.Config)+1)
+				for k, v := range r.Auth.Config {
+					cfg[k] = v
+				}
+				cfg["token"] = authToken
+			}
+		}
 	}
 
-	return req, nil
+	if err := auth.Apply(req, r.Auth.Type, cfg, vars); err != nil {
+		return nil, "", err
+	}
+
+	return req, authToken, nil
 }
 
 // detectContentType returns a best-effort content type for the request body

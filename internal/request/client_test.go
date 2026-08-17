@@ -202,6 +202,48 @@ func TestExecuteBearerAuth(t *testing.T) {
 	}
 }
 
+func TestExecuteOAuth2ClientCredentials(t *testing.T) {
+	var gotAuth string
+	var tokenCalls int
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenCalls++
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"access_token":"tok-oauth","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer tokenSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiSrv.Close()
+
+	client := NewClient()
+	_, err := client.Execute(context.Background(), &Request{
+		Method: MethodGet,
+		URL:    apiSrv.URL,
+		Auth: Auth{
+			Type: "oauth2",
+			Config: map[string]string{
+				"grant_type":    "client_credentials",
+				"token_url":     tokenSrv.URL,
+				"client_id":     "client-123",
+				"client_secret": "s3cr3t",
+			},
+		},
+	}, variables.NewSet())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if gotAuth != "Bearer tok-oauth" {
+		t.Fatalf("expected 'Bearer tok-oauth', got %q", gotAuth)
+	}
+	if tokenCalls != 1 {
+		t.Fatalf("token endpoint called %d times, want 1", tokenCalls)
+	}
+}
+
 func TestExecuteBasicAuth(t *testing.T) {
 	var gotUser, gotPass string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

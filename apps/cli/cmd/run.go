@@ -120,6 +120,11 @@ and --data to build requests directly on the CLI:
 		if err != nil {
 			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
 		}
+		// Mask the acquired OAuth token (and any other runtime credential)
+		// so headers/body echoing it never leak it.
+		if resp.AuthToken != "" {
+			masker.Add(resp.AuthToken)
+		}
 
 		status := resp.StatusCode
 		color := ""

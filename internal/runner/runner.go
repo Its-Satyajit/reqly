@@ -203,6 +203,11 @@ func (r *Runner) runStep(ctx context.Context, ws *collections.Workspace, coll *c
 		return result
 	}
 	result.Response = resp
+	// The acquired OAuth token is masked alongside the config secrets so
+	// output echoing it (headers, body, errors) never leaks it.
+	if resp.AuthToken != "" {
+		result.authValues = append(result.authValues, resp.AuthToken)
+	}
 
 	// Post-request script inspects the response and registers tests.
 	if entry.File.PostRequest != "" {
