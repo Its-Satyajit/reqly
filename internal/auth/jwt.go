@@ -46,7 +46,10 @@ func (jwtScheme) Apply(req *http.Request, cfg map[string]string, vars Interpolat
 		return fmt.Errorf("jwt auth requires a secret")
 	}
 
-	algorithm := cfg["algorithm"]
+	algorithm, err := vars.Interpolate(cfg["algorithm"])
+	if err != nil {
+		return fmt.Errorf("jwt algorithm: %w", err)
+	}
 	if algorithm == "" {
 		algorithm = "HS256"
 	}
@@ -60,7 +63,12 @@ func (jwtScheme) Apply(req *http.Request, cfg map[string]string, vars Interpolat
 		return fmt.Errorf("jwt claims: %w", err)
 	}
 
-	token, err := signJWT(newHash, []byte(secret), algorithm, claims, cfg["expiresIn"])
+	expiresIn, err := vars.Interpolate(cfg["expiresIn"])
+	if err != nil {
+		return fmt.Errorf("jwt expiresIn: %w", err)
+	}
+
+	token, err := signJWT(newHash, []byte(secret), algorithm, claims, expiresIn)
 	if err != nil {
 		return err
 	}

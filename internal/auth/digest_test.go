@@ -59,9 +59,9 @@ func TestComputeDigestResponseWithoutQop(t *testing.T) {
 		t.Fatal(err)
 	}
 	// RFC 2617 legacy response (no qop): H(HA1:nonce:HA2).
-	HA1 := md5Hex("Mufasa:testrealm@host.com:Circle Of Life")
-	HA2 := md5Hex("GET:/dir/index.html")
-	want := md5Hex(HA1 + ":dcd98b7102dd2f0e8b11d0f600bfb0c093:" + HA2)
+	HA1 := hashHex("MD5", "Mufasa:testrealm@host.com:Circle Of Life")
+	HA2 := hashHex("MD5", "GET:/dir/index.html")
+	want := hashHex("MD5", HA1+":dcd98b7102dd2f0e8b11d0f600bfb0c093:"+HA2)
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
 	}
@@ -69,7 +69,7 @@ func TestComputeDigestResponseWithoutQop(t *testing.T) {
 
 func TestDigestChallengeSetsHeader(t *testing.T) {
 	old := newCNonce
-	newCNonce = func() string { return "0a4f113b" }
+	newCNonce = func() (string, error) { return "0a4f113b", nil }
 	defer func() { newCNonce = old }()
 
 	req := httptest.NewRequest(http.MethodGet, "https://example.com/dir/index.html", nil)
@@ -106,15 +106,67 @@ func TestDigestChallengeSetsHeader(t *testing.T) {
 func TestDigestApplyValidatesConfig(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
 	s := digestScheme{}
-	if err := s.Apply(req, nil, variables.NewSet()); err == nil {
+	err := s.Apply(req, nil, variables.NewSet())
+	if err == nil {
 		t.Fatal("expected error when username/password missing")
 	}
-	if err := s.Apply(req, map[string]string{"username": "u"}, variables.NewSet()); err == nil {
+	err = s.Apply(req, map[string]string{"username": "u"}, variables.NewSet())
+	if err == nil {
 		t.Fatal("expected error when password missing")
 	}
-	if !strings.Contains(errFor(s.Apply(req, map[string]string{"username": "u"}, variables.NewSet())).Error(), "password") {
+	if !strings.Contains(err.Error(), "password") {
 		t.Fatal("expected error to mention password")
 	}
 }
 
-func errFor(err error) error { return err }
+func TestDigestChallengeUsesConfigAlgorithmFallback(t *testing.T) {
+	old := newCNonce
+	newCNonce = func() (string, error) { return "f2/wE4q74E6zIJEtWaHKaf5wv/H5QzzpXusqGemxURZJ", nil }
+	defer func() { newCNonce = old }()
+
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/dir/index.html", nil)
+	s := digestScheme{}
+	// Challenge omits algorithm; config selects SHA-256.
+	challenge := `Digest realm="http-auth@example.org", nonce="7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v", qop="auth"`
+	err := s.Challenge(req, challenge, map[string]string{
+		"username":  "Mufasa",
+		"password":  "Circle of Life",
+		"algorithm": "SHA-256",
+	}, variables.NewSet())
+	if err != nil {
+		t.Fatal(err)
+	}
+	hdr := req.Header.Get("Authorization")
+	if !strings.Contains(hdr, `algorithm=SHA-256`) {
+		t.Fatalf("expected SHA-256 algorithm in header, got %q", hdr)
+	}
+	if want := `response="753927fa0e85d155564e2e272a28d1802ca10daf4496794697cf8db5856cb6c1"`; !strings.Contains(hdr, want) {
+		t.Fatalf("expected SHA-256 response %q in header, got %q", want, hdr)
+	}
+}
+
+func TestDigestChallengeUsesConfigRealmFallback(t *testing.T) {
+	old := newCNonce
+	newCNonce = func() (string, error) { return "0a4f113b", nil }
+	defer func() { newCNonce = old }()
+
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/dir/index.html", nil)
+	s := digestScheme{}
+	// Challenge omits realm; config supplies it.
+	challenge := `Digest nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", qop="auth"`
+	err := s.Challenge(req, challenge, map[string]string{
+		"username": "Mufasa",
+		"password": "Circle Of Life",
+		"realm":    "testrealm@host.com",
+	}, variables.NewSet())
+	if err != nil {
+		t.Fatal(err)
+	}
+	hdr := req.Header.Get("Authorization")
+	if want := `realm="testrealm@host.com"`; !strings.Contains(hdr, want) {
+		t.Fatalf("expected %q in header, got %q", want, hdr)
+	}
+	if want := `response="6629fae49393a05397450978507c4ef1"`; !strings.Contains(hdr, want) {
+		t.Fatalf("expected response %q in header, got %q", want, hdr)
+	}
+}

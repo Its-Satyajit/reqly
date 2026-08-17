@@ -22,9 +22,10 @@ import (
 	"net/http"
 )
 
-// noneScheme clears inherited auth: it applies no credentials of its own, so
-// a request with auth.type "none" is sent as-is even under an auth-bearing
-// collection or folder.
+// noneScheme applies no credentials. Combined with the inheritance rule that a
+// non-empty auth type replaces inherited auth (internal/collections), a
+// request with auth.type "none" is sent unauthenticated even under an
+// auth-bearing collection or folder.
 type noneScheme struct{}
 
 // Apply is a no-op; "none" means no credentials.

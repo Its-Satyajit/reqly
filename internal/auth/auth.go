@@ -117,3 +117,21 @@ func Lookup(typ string) (Scheme, bool) {
 	s, ok := registry[typ]
 	return s, ok
 }
+
+// Challenge applies a 401 WWW-Authenticate challenge to req for the scheme
+// registered under typ. It reports whether a retry should follow (true when
+// the scheme is challenge-based and applied the credentials).
+func Challenge(req *http.Request, typ, challenge string, cfg map[string]string, vars Interpolator) (bool, error) {
+	s, ok := Lookup(typ)
+	if !ok {
+		return false, nil
+	}
+	cs, ok := s.(ChallengedScheme)
+	if !ok {
+		return false, nil
+	}
+	if err := cs.Challenge(req, challenge, cfg, vars); err != nil {
+		return false, err
+	}
+	return true, nil
+}

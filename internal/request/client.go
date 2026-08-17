@@ -34,13 +34,6 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
-// Interpolator resolves {{key}} placeholders in request fields. It is the
-// variables.Set interface, kept small so the engine does not depend on the
-// full variables package internals.
-type Interpolator interface {
-	Interpolate(input string) (string, error)
-}
-
 // Client executes Request values over HTTP and returns response.Response
 // values. It is the shared engine used by the Desktop, CLI, and MCP.
 type Client struct {
@@ -78,7 +71,7 @@ func NewClient(opts ...Option) *Client {
 
 // Execute runs a Request and returns the response. Variables are interpolated
 // into the URL, headers, query parameters, and body before sending.
-func (c *Client) Execute(ctx context.Context, r *Request, vars Interpolator) (*response.Response, error) {
+func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator) (*response.Response, error) {
 	if r.Timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(r.Timeout)*time.Millisecond)
@@ -96,27 +89,27 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars Interpolator) (*r
 		return nil, err
 	}
 
-	// Digest (and other challenge-based schemes) respond to a 401
+	// Digest (and other challenge-based schemes) respond to a 401 Digest
 	// WWW-Authenticate challenge by computing credentials and retrying once.
-	// The retry is bounded to a single challenge/response round-trip.
+	// The retry is bounded to a single challenge/response round-trip and only
+	// fires for a matching Digest challenge; other 401s return as-is.
 	if resp.StatusCode == http.StatusUnauthorized && r.Auth.Type != "" {
-		if s, ok := auth.Lookup(r.Auth.Type); ok {
-			if cs, ok := s.(auth.ChallengedScheme); ok {
-				if challenge := resp.Header.Get("WWW-Authenticate"); challenge != "" {
-					io.Copy(io.Discard, resp.Body)
-					resp.Body.Close()
-
-					retryReq, err := c.build(ctx, r, vars)
-					if err != nil {
-						return nil, err
-					}
-					if err := cs.Challenge(retryReq, challenge, r.Auth.Config, vars); err != nil {
-						return nil, err
-					}
-					resp, err = c.http.Do(retryReq)
-					if err != nil {
-						return nil, err
-					}
+		challenge := resp.Header.Get("WWW-Authenticate")
+		if strings.HasPrefix(challenge, "Digest") {
+			retryReq, err := c.build(ctx, r, vars)
+			if err != nil {
+				return nil, err
+			}
+			retried, err := auth.Challenge(retryReq, r.Auth.Type, challenge, r.Auth.Config, vars)
+			if err != nil {
+				return nil, err
+			}
+			if retried {
+				io.Copy(io.Discard, resp.Body)
+				resp.Body.Close()
+				resp, err = c.http.Do(retryReq)
+				if err != nil {
+					return nil, err
 				}
 			}
 		}
@@ -141,7 +134,7 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars Interpolator) (*r
 
 // build constructs a net/http Request from the model, applying interpolation,
 // query parameters, headers, body, and authentication.
-func (c *Client) build(ctx context.Context, r *Request, vars Interpolator) (*http.Request, error) {
+func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) (*http.Request, error) {
 	if vars == nil {
 		vars = variables.NewSet()
 	}

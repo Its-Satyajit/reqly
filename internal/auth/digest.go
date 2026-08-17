@@ -30,12 +30,12 @@ import (
 
 // newCNonce returns a fresh client nonce for digest challenges. It is a var so
 // tests can pin it.
-var newCNonce = func() string {
+var newCNonce = func() (string, error) {
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {
-		panic(fmt.Sprintf("digest: generating cnonce: %v", err))
+		return "", fmt.Errorf("digest: generating cnonce: %w", err)
 	}
-	return hex.EncodeToString(b)
+	return hex.EncodeToString(b), nil
 }
 
 // ChallengedScheme is implemented by schemes that must respond to a server
@@ -75,7 +75,9 @@ func (digestScheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 func (digestScheme) SecretKeys() []string { return []string{"password"} }
 
 // Challenge parses the WWW-Authenticate challenge, computes the digest
-// response, and sets the Authorization header on req.
+// response, and sets the Authorization header on req. The challenge's realm
+// and algorithm win; the configured realm/algorithm act as fallbacks when the
+// challenge omits them.
 func (s digestScheme) Challenge(req *http.Request, challenge string, cfg map[string]string, vars Interpolator) error {
 	params, err := parseDigestChallenge(challenge)
 	if err != nil {
@@ -92,34 +94,40 @@ func (s digestScheme) Challenge(req *http.Request, challenge string, cfg map[str
 	}
 
 	realm := params["realm"]
+	if realm == "" {
+		realm, err = vars.Interpolate(cfg["realm"])
+		if err != nil {
+			return fmt.Errorf("digest realm: %w", err)
+		}
+	}
+
 	algorithm := strings.ToUpper(params["algorithm"])
+	if algorithm == "" {
+		algorithm, err = vars.Interpolate(cfg["algorithm"])
+		if err != nil {
+			return fmt.Errorf("digest algorithm: %w", err)
+		}
+	}
 	if algorithm == "" {
 		algorithm = "MD5"
 	}
 	if algorithm != "MD5" && algorithm != "SHA-256" {
-		return fmt.Errorf("digest auth: unsupported algorithm %q", params["algorithm"])
+		return fmt.Errorf("digest auth: unsupported algorithm %q", algorithm)
 	}
 
 	qop := ""
 	if params["qop"] != "" {
 		qop = "auth"
 	}
-	cnonce := newCNonce()
-	nc := "00000001"
-
-	bodyHash := ""
-	if params["qop"] == "auth-int" {
-		h, err := digestBodyHash(req, algorithm)
-		if err != nil {
-			return err
-		}
-		bodyHash = h
-		qop = "auth-int"
+	cnonce, err := newCNonce()
+	if err != nil {
+		return err
 	}
+	nc := "00000001"
 
 	uri := req.URL.RequestURI()
 	response, err := computeDigestResponse(req.Method, uri, username, password, realm,
-		algorithm, params["nonce"], cnonce, nc, qop, bodyHash)
+		algorithm, params["nonce"], cnonce, nc, qop, "")
 	if err != nil {
 		return err
 	}
@@ -150,35 +158,13 @@ func (s digestScheme) Challenge(req *http.Request, challenge string, cfg map[str
 	return nil
 }
 
-// digestBodyHash returns H(entity-body) for qop=auth-int. The body is read via
-// GetBody so the request body is not consumed.
-func digestBodyHash(req *http.Request, algorithm string) (string, error) {
-	body, err := req.GetBody()
-	if err != nil {
-		return "", fmt.Errorf("digest auth-int: reading body: %w", err)
-	}
-	defer body.Close()
-	raw := make([]byte, 0, 256)
-	buf := make([]byte, 512)
-	for {
-		n, err := body.Read(buf)
-		raw = append(raw, buf[:n]...)
-		if err != nil {
-			break
-		}
-	}
-	return hashHex(algorithm, string(raw)), nil
-}
-
 // computeDigestResponse implements the RFC 2617/7616 response calculation.
+// The hash covers method + URI only; qop=auth-int (body hashing) is out of
+// scope for streaming bodies and ignored.
 func computeDigestResponse(method, uri, username, password, realm, algorithm,
 	nonce, cnonce, nc, qop, bodyHash string) (string, error) {
 	HA1 := hashHex(algorithm, username+":"+realm+":"+password)
-	HA2Input := method + ":" + uri
-	if qop == "auth-int" {
-		HA2Input += ":" + bodyHash
-	}
-	HA2 := hashHex(algorithm, HA2Input)
+	HA2 := hashHex(algorithm, method+":"+uri)
 
 	if qop != "" {
 		if nonce == "" || cnonce == "" || nc == "" {
@@ -191,8 +177,6 @@ func computeDigestResponse(method, uri, username, password, realm, algorithm,
 	}
 	return hashHex(algorithm, HA1+":"+nonce+":"+HA2), nil
 }
-
-func md5Hex(s string) string { return hashHex("MD5", s) }
 
 func hashHex(algorithm, s string) string {
 	switch algorithm {

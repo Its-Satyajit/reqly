@@ -320,6 +320,40 @@ func TestExecuteDigestRetryIsBounded(t *testing.T) {
 	}
 }
 
+func TestExecuteDigestNonDigest401NotRetried(t *testing.T) {
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		// A Basic challenge is not a Digest challenge: the client must not
+		// attempt a digest retry nor turn the 401 into an error.
+		w.Header().Set("WWW-Authenticate", `Basic realm="example"`)
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	client := NewClient()
+	resp, err := client.Execute(context.Background(), &Request{
+		Method: MethodGet,
+		URL:    srv.URL,
+		Auth: Auth{
+			Type: "digest",
+			Config: map[string]string{
+				"username": "u",
+				"password": "p",
+			},
+		},
+	}, variables.NewSet())
+	if err != nil {
+		t.Fatalf("non-Digest 401 must not error, got %v", err)
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+	if calls != 1 {
+		t.Fatalf("expected only 1 request for non-Digest challenge, got %d", calls)
+	}
+}
+
 func TestExecuteDigestAuthMissingPassword(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

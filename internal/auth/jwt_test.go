@@ -202,6 +202,41 @@ func TestJWTApplyInterpolated(t *testing.T) {
 	}
 }
 
+func TestJWTApplyInterpolatesAlgorithmAndExpiry(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
+	vars := variables.NewSet()
+	vars.Set(variables.ScopeRequest, "alg", "HS512")
+	vars.Set(variables.ScopeRequest, "ttl", "120")
+	err := jwtScheme{}.Apply(req, map[string]string{
+		"secret":    "s",
+		"algorithm": "{{alg}}",
+		"expiresIn": "{{ttl}}",
+	}, vars)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := strings.TrimPrefix(req.Header.Get("Authorization"), "Bearer ")
+	parts := strings.Split(token, ".")
+	var header struct {
+		Alg string `json:"alg"`
+	}
+	if err := json.Unmarshal(decodeSegment(t, parts[0]), &header); err != nil {
+		t.Fatal(err)
+	}
+	if header.Alg != "HS512" {
+		t.Fatalf("algorithm: got %q, want HS512", header.Alg)
+	}
+	var payload struct {
+		Exp int64 `json:"exp"`
+	}
+	if err := json.Unmarshal(decodeSegment(t, parts[1]), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Exp == 0 {
+		t.Fatal("expected exp claim from interpolated expiresIn")
+	}
+}
+
 func TestJWTApplyMissingSecret(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
 	s := jwtScheme{}

@@ -32,6 +32,9 @@ func (bearerScheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 	if err != nil {
 		return fmt.Errorf("bearer token: %w", err)
 	}
+	if token == "" {
+		return fmt.Errorf("bearer auth requires a token")
+	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	return nil
 }
@@ -48,9 +51,15 @@ func (basicScheme) Apply(req *http.Request, cfg map[string]string, vars Interpol
 	if err != nil {
 		return fmt.Errorf("basic username: %w", err)
 	}
+	if username == "" {
+		return fmt.Errorf("basic auth requires a username")
+	}
 	password, err := vars.Interpolate(cfg["password"])
 	if err != nil {
 		return fmt.Errorf("basic password: %w", err)
+	}
+	if password == "" {
+		return fmt.Errorf("basic auth requires a password")
 	}
 	req.SetBasicAuth(username, password)
 	return nil
@@ -68,9 +77,15 @@ func (apikeyScheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 	if err != nil {
 		return fmt.Errorf("apikey key: %w", err)
 	}
+	if key == "" {
+		return fmt.Errorf("apikey auth requires a key")
+	}
 	value, err := vars.Interpolate(cfg["value"])
 	if err != nil {
 		return fmt.Errorf("apikey value: %w", err)
+	}
+	if value == "" {
+		return fmt.Errorf("apikey auth requires a value")
 	}
 	if cfg["in"] == "query" {
 		q := req.URL.Query()

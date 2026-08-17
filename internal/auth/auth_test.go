@@ -143,3 +143,27 @@ func TestApplyUnknownTypeErrors(t *testing.T) {
 		t.Fatalf("expected error to name the unknown type, got %v", err)
 	}
 }
+
+func TestApplyBearerMissingTokenErrors(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
+	if err := auth.Apply(req, "bearer", nil, variables.NewSet()); err == nil {
+		t.Fatal("expected error when bearer token missing")
+	}
+}
+
+func TestApplyBasicMissingCredentialsErrors(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
+	if err := auth.Apply(req, "basic", nil, variables.NewSet()); err == nil {
+		t.Fatal("expected error when basic username/password missing")
+	}
+	if err := auth.Apply(req, "basic", map[string]string{"username": "u"}, variables.NewSet()); err == nil {
+		t.Fatal("expected error when basic password missing")
+	}
+}
+
+func TestApplyAPIKeyMissingValueErrors(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
+	if err := auth.Apply(req, "apikey", map[string]string{"key": "X-Key"}, variables.NewSet()); err == nil {
+		t.Fatal("expected error when apikey value missing")
+	}
+}
