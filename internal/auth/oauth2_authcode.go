@@ -95,8 +95,10 @@ func BuildAuthorizationURL(cfg map[string]string, vars Interpolator, redirectURI
 }
 
 // AuthorizationFlow is an in-progress authorization_code flow: the
-// authorization URL the user must approve, plus the one-shot loopback
-// callback listener waiting for the provider redirect.
+// authorization URL the user must approve, plus the one-shot callback
+// transport waiting for the provider redirect — the loopback HTTP listener
+// (CLI default) or a registered custom scheme receiving deep links
+// (desktop).
 type AuthorizationFlow struct {
 	// AuthorizationURL is the page the user approves in their browser.
 	AuthorizationURL string
@@ -104,13 +106,14 @@ type AuthorizationFlow struct {
 	// request and the token exchange.
 	RedirectURI string
 
-	state    string
-	verifier string
-	server   *http.Server
-	ln       net.Listener
-	result   chan callbackResult
-	handled  sync.Once
-	closed   sync.Once
+	state        string
+	verifier     string
+	server       *http.Server
+	ln           net.Listener
+	customScheme string
+	result       chan callbackResult
+	handled      sync.Once
+	closed       sync.Once
 }
 
 type callbackResult struct {
@@ -138,77 +141,144 @@ func StartAuthorizationFlow(cfg map[string]string, vars Interpolator) (*Authoriz
 		return nil, err
 	}
 
-	redirectURI, host, err := loopbackRedirect(cfg, vars)
-	if err != nil {
+	flow := &AuthorizationFlow{
+		AuthorizationURL: "",
+		state:            state,
+		verifier:         verifier,
+		result:           make(chan callbackResult, 1),
+	}
+	if err := flow.startCallback(cfg, vars); err != nil {
 		return nil, err
 	}
-	ln, err := net.Listen("tcp", host)
+
+	authURL, err := BuildAuthorizationURL(cfg, vars, flow.RedirectURI, verifier, state)
 	if err != nil {
-		return nil, fmt.Errorf("oauth2: start callback listener on %s: %w", host, err)
+		flow.Close()
+		return nil, err
+	}
+	flow.AuthorizationURL = authURL
+	return flow, nil
+}
+
+// startCallback wires the callback transport for the flow. Loopback
+// redirect URIs (the default: an ephemeral 127.0.0.1 port) start the one-shot
+// HTTP listener; a custom scheme (e.g. reqly://callback) is accepted only
+// when a receiver for that scheme has been registered (the desktop app) and
+// completes via DeliverCustomSchemeCallback.
+func (f *AuthorizationFlow) startCallback(cfg map[string]string, vars Interpolator) error {
+	raw := cfg["redirect_uri"]
+	if raw == "" {
+		return f.startLoopback("http://127.0.0.1:0/callback", "127.0.0.1:0")
+	}
+	interpolated, err := vars.Interpolate(raw)
+	if err != nil {
+		return fmt.Errorf("oauth2 redirect_uri: %w", err)
+	}
+	u, err := url.Parse(interpolated)
+	if err != nil {
+		return fmt.Errorf("oauth2 invalid redirect_uri %q: %w", interpolated, err)
+	}
+	if host := u.Hostname(); host == "127.0.0.1" || host == "localhost" {
+		if u.Port() == "" {
+			return fmt.Errorf("oauth2 redirect_uri %q must include a port", interpolated)
+		}
+		return f.startLoopback(interpolated, u.Host)
 	}
 
-	// Substitute the actual ephemeral port when the URI asked for port 0.
+	// Non-loopback: only a registered custom-scheme receiver can deliver it.
+	customSchemeMu.Lock()
+	registered := customSchemeReceivers[u.Scheme]
+	customSchemeMu.Unlock()
+	if !registered {
+		return fmt.Errorf("oauth2 redirect_uri %q uses scheme %q with no registered receiver; loopback (127.0.0.1/localhost) callbacks work by default, custom schemes require the desktop app", interpolated, u.Scheme)
+	}
+	f.RedirectURI = interpolated
+	f.customScheme = u.Scheme
+	customSchemeFlows.Store(u.Scheme, f)
+	return nil
+}
+
+// startLoopback starts the one-shot HTTP callback listener and resolves the
+// redirect URI (substituting the actual port when the URI asked for port 0).
+func (f *AuthorizationFlow) startLoopback(redirectURI, listenAddr string) error {
+	ln, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		return fmt.Errorf("oauth2: start callback listener on %s: %w", listenAddr, err)
+	}
 	if u, err := url.Parse(redirectURI); err == nil && u.Port() == "0" {
 		port := ln.Addr().(*net.TCPAddr).Port
 		u.Host = net.JoinHostPort(u.Hostname(), strconv.Itoa(port))
 		redirectURI = u.String()
 	}
-
-	flow := &AuthorizationFlow{
-		AuthorizationURL: "",
-		RedirectURI:      redirectURI,
-		state:            state,
-		verifier:         verifier,
-		ln:               ln,
-		result:           make(chan callbackResult, 1),
-	}
-	flow.server = &http.Server{Handler: http.HandlerFunc(flow.serveHTTP)}
-
-	authURL, err := BuildAuthorizationURL(cfg, vars, redirectURI, verifier, state)
-	if err != nil {
-		ln.Close()
-		return nil, err
-	}
-	flow.AuthorizationURL = authURL
-
+	f.RedirectURI = redirectURI
+	f.ln = ln
+	f.server = &http.Server{Handler: http.HandlerFunc(f.serveHTTP)}
 	go func() {
 		// The listener serves a single flow; ServeHTTP delivers the result
 		// and the deferred Close in Token() shuts the server down.
-		if err := flow.server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := f.server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			select {
-			case flow.result <- callbackResult{err: fmt.Errorf("oauth2: callback server: %w", err)}:
+			case f.result <- callbackResult{err: fmt.Errorf("oauth2: callback server: %w", err)}:
 			default:
 			}
 		}
 	}()
-
-	return flow, nil
+	return nil
 }
 
-// loopbackRedirect resolves the redirect_uri and the listen address. The
-// default is an ephemeral 127.0.0.1 port; a config-provided redirect_uri
-// must be a loopback URL (providers require an exact registered redirect,
-// and custom schemes cannot be received by a local listener).
-func loopbackRedirect(cfg map[string]string, vars Interpolator) (redirectURI, listenAddr string, err error) {
-	raw := cfg["redirect_uri"]
-	if raw == "" {
-		return "http://127.0.0.1:0/callback", "127.0.0.1:0", nil
+// customSchemeReceivers holds schemes the host app has registered as
+// receivable via deep links (the desktop app registers its scheme at
+// startup). Without a registration, flows using a custom scheme fail fast.
+var (
+	customSchemeMu        sync.Mutex
+	customSchemeReceivers = map[string]bool{}
+)
+
+// RegisterCustomSchemeReceiver marks scheme as receivable by this process
+// and returns an unregister func. The CLI registers nothing, so a
+// non-loopback redirect_uri fails fast with an actionable error; the desktop
+// app registers its deep-link scheme and feeds callbacks via
+// DeliverCustomSchemeCallback.
+func RegisterCustomSchemeReceiver(scheme string) func() {
+	customSchemeMu.Lock()
+	customSchemeReceivers[scheme] = true
+	customSchemeMu.Unlock()
+	return func() {
+		customSchemeMu.Lock()
+		delete(customSchemeReceivers, scheme)
+		customSchemeMu.Unlock()
 	}
-	interpolated, err := vars.Interpolate(raw)
+}
+
+// customSchemeFlows maps scheme → the flow currently waiting for a deep-link
+// callback on that scheme. Only one flow per scheme can wait at a time.
+var customSchemeFlows sync.Map
+
+// DeliverCustomSchemeCallback feeds a deep-link callback payload into the
+// flow waiting on uri's scheme. It verifies state, extracts the code (or the
+// provider error), delivers it to the waiting flow, and removes the flow
+// (one-shot: a second delivery for the same scheme is rejected). The desktop
+// app calls this when the OS hands it a registered URL.
+func DeliverCustomSchemeCallback(uri string) error {
+	u, err := url.Parse(uri)
 	if err != nil {
-		return "", "", fmt.Errorf("oauth2 redirect_uri: %w", err)
+		return fmt.Errorf("oauth2: invalid custom-scheme callback %q: %w", uri, err)
 	}
-	u, err := url.Parse(interpolated)
+	raw, ok := customSchemeFlows.LoadAndDelete(u.Scheme)
+	if !ok {
+		return fmt.Errorf("oauth2: no authorization flow waiting for scheme %q", u.Scheme)
+	}
+	flow, ok := raw.(*AuthorizationFlow)
+	if !ok {
+		return fmt.Errorf("oauth2: waiting flow for scheme %q has the wrong type", u.Scheme)
+	}
+	code, err := flow.parseCallbackQuery(u.Query())
 	if err != nil {
-		return "", "", fmt.Errorf("oauth2 invalid redirect_uri %q: %w", interpolated, err)
+		flow.deliver(callbackResult{err: err})
+		return err
 	}
-	if host := u.Hostname(); host != "127.0.0.1" && host != "localhost" {
-		return "", "", fmt.Errorf("oauth2 redirect_uri %q is not loopback; only 127.0.0.1/localhost callbacks are supported", interpolated)
-	}
-	if u.Port() == "" {
-		return "", "", fmt.Errorf("oauth2 redirect_uri %q must include a port", interpolated)
-	}
-	return interpolated, u.Host, nil
+	flow.deliver(callbackResult{code: code})
+	return nil
 }
 
 // WaitCode blocks until the provider redirect delivers an authorization code
@@ -232,12 +302,15 @@ func (f *AuthorizationFlow) WaitCode(ctx context.Context) (string, error) {
 	}
 }
 
-// Close shuts down the callback listener. Safe to call more than once.
+// Close shuts down the callback transport. Safe to call more than once.
 func (f *AuthorizationFlow) Close() error {
 	var err error
 	f.closed.Do(func() {
 		if f.server != nil {
 			err = f.server.Close()
+		}
+		if f.customScheme != "" {
+			customSchemeFlows.Delete(f.customScheme)
 		}
 	})
 	return err
@@ -254,30 +327,36 @@ func (f *AuthorizationFlow) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := r.URL.Query()
-	if state := q.Get("state"); state != f.state {
-		f.deliver(callbackResult{err: fmt.Errorf("oauth2: authorization callback state mismatch")})
-		http.Error(w, "state mismatch", http.StatusBadRequest)
+	code, err := f.parseCallbackQuery(r.URL.Query())
+	if err != nil {
+		f.deliver(callbackResult{err: err})
+		http.Error(w, "authorization failed", http.StatusBadRequest)
 		return
+	}
+	f.deliver(callbackResult{code: code})
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprint(w, "<!doctype html><html><body><h3>Authorization complete</h3><p>You can close this tab and return to Reqly.</p></body></html>")
+}
+
+// parseCallbackQuery verifies the state and extracts the authorization code
+// (or the provider error) from a callback query. It is shared by the
+// loopback HTTP handler and the custom-scheme deep-link delivery.
+func (f *AuthorizationFlow) parseCallbackQuery(q url.Values) (string, error) {
+	if state := q.Get("state"); state != f.state {
+		return "", fmt.Errorf("oauth2: authorization callback state mismatch")
 	}
 	if errStr := q.Get("error"); errStr != "" {
 		err := fmt.Errorf("oauth2: authorization failed: %s", errStr)
 		if desc := q.Get("error_description"); desc != "" {
 			err = fmt.Errorf("%w: %s", err, desc)
 		}
-		f.deliver(callbackResult{err: err})
-		http.Error(w, "authorization failed", http.StatusBadRequest)
-		return
+		return "", err
 	}
 	code := q.Get("code")
 	if code == "" {
-		f.deliver(callbackResult{err: fmt.Errorf("oauth2: authorization callback missing code")})
-		http.Error(w, "missing code", http.StatusBadRequest)
-		return
+		return "", fmt.Errorf("oauth2: authorization callback missing code")
 	}
-	f.deliver(callbackResult{code: code})
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<!doctype html><html><body><h3>Authorization complete</h3><p>You can close this tab and return to Reqly.</p></body></html>")
+	return code, nil
 }
 
 func (f *AuthorizationFlow) deliver(r callbackResult) {

@@ -369,3 +369,90 @@ func TestOAuth2TokenParsesRefreshToken(t *testing.T) {
 		t.Fatalf("RefreshToken = %q, want %q", tok.RefreshToken, "rt-x")
 	}
 }
+
+func TestStartAuthorizationFlowCustomSchemeUnregistered(t *testing.T) {
+	_, tokenSrv := authCodeProvider(t, `{"access_token":"t","expires_in":3600}`, nil)
+	cfg := authCodeConfig(&httptest.Server{URL: "https://idp.example.com/authorize"}, tokenSrv, nil)
+	cfg["redirect_uri"] = "reqly://callback"
+
+	flow, err := auth.StartAuthorizationFlow(cfg, variables.NewSet())
+	if flow != nil {
+		flow.Close()
+	}
+	if err == nil || !strings.Contains(err.Error(), "no registered receiver") {
+		t.Fatalf("err = %v, want no-registered-receiver error", err)
+	}
+}
+
+func TestAuthorizationCodeSourceCustomScheme(t *testing.T) {
+	unregister := auth.RegisterCustomSchemeReceiver("reqly")
+	t.Cleanup(unregister)
+
+	var gotRedirect string
+	_, tokenSrv := authCodeProvider(t, `{"access_token":"deep-tok","token_type":"Bearer","expires_in":3600,"refresh_token":"deep-rt"}`, func(r *http.Request) {
+		if err := r.ParseForm(); err == nil {
+			gotRedirect = r.PostForm.Get("redirect_uri")
+		}
+	})
+	cfg := authCodeConfig(&httptest.Server{URL: "https://idp.example.com/authorize"}, tokenSrv, nil)
+	cfg["redirect_uri"] = "reqly://callback"
+
+	src := &auth.AuthorizationCodeSource{
+		Open: func(_ context.Context, authorizationURL string) error {
+			u, err := url.Parse(authorizationURL)
+			if err != nil {
+				return err
+			}
+			cb := "reqly://callback?code=deep-code&state=" + url.QueryEscape(u.Query().Get("state"))
+			return auth.DeliverCustomSchemeCallback(cb)
+		},
+	}
+	tok, err := src.Token(context.Background(), cfg, variables.NewSet())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tok.AccessToken != "deep-tok" || tok.RefreshToken != "deep-rt" {
+		t.Fatalf("tok = %+v", tok)
+	}
+	if gotRedirect != "reqly://callback" {
+		t.Fatalf("exchange redirect_uri = %q, want reqly://callback", gotRedirect)
+	}
+
+	// One-shot: the flow was removed from the registry at delivery.
+	if err := auth.DeliverCustomSchemeCallback("reqly://callback?code=again&state=x"); err == nil || !strings.Contains(err.Error(), "no authorization flow waiting") {
+		t.Fatalf("second delivery err = %v, want no-waiting-flow (one-shot)", err)
+	}
+}
+
+func TestCustomSchemeCallbackStateMismatch(t *testing.T) {
+	unregister := auth.RegisterCustomSchemeReceiver("reqly")
+	t.Cleanup(unregister)
+
+	_, tokenSrv := authCodeProvider(t, `{"access_token":"t","expires_in":3600}`, nil)
+	cfg := authCodeConfig(&httptest.Server{URL: "https://idp.example.com/authorize"}, tokenSrv, nil)
+	cfg["redirect_uri"] = "reqly://callback"
+
+	flow, err := auth.StartAuthorizationFlow(cfg, variables.NewSet())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer flow.Close()
+
+	err = auth.DeliverCustomSchemeCallback("reqly://callback?code=deep-code&state=wrong-state")
+	if err == nil || !strings.Contains(err.Error(), "state mismatch") {
+		t.Fatalf("deliver err = %v, want state mismatch", err)
+	}
+	if _, err := flow.WaitCode(context.Background()); err == nil || !strings.Contains(err.Error(), "state mismatch") {
+		t.Fatalf("WaitCode err = %v, want state mismatch", err)
+	}
+}
+
+func TestDeliverCustomSchemeCallbackNoFlow(t *testing.T) {
+	unregister := auth.RegisterCustomSchemeReceiver("reqly")
+	t.Cleanup(unregister)
+
+	err := auth.DeliverCustomSchemeCallback("reqly://callback?code=x&state=y")
+	if err == nil || !strings.Contains(err.Error(), "no authorization flow waiting") {
+		t.Fatalf("err = %v, want no-waiting-flow error", err)
+	}
+}

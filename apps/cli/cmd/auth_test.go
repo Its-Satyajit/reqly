@@ -676,6 +676,36 @@ func TestAuthLoginDeviceFlowKeychainFallback(t *testing.T) {
 	}
 }
 
+func TestAuthLoginCustomSchemeFailsFast(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+
+	cfgPath := writeAuthConfig(t, root, map[string]string{
+		"authorization_url": "https://idp.example.com/authorize",
+		"token_url":         "https://idp.example.com/token",
+		"client_id":         "cli-client",
+		"client_secret":     "cli-secret",
+		"redirect_uri":      "reqly://callback",
+	})
+
+	called := false
+	oldBrowser := launchBrowser
+	launchBrowser = func(string) error { called = true; return nil }
+	t.Cleanup(func() { launchBrowser = oldBrowser })
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"auth", "login", cfgPath})
+	err := rootCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "no registered receiver") {
+		t.Fatalf("err = %v, want no-registered-receiver error", err)
+	}
+	if called {
+		t.Fatal("browser launched despite unregistered custom scheme")
+	}
+}
+
 func TestAuthStatusShowsGrantAndRefresh(t *testing.T) {
 	root := makeTestWorkspace(t, "http://example.com")
 	writeCachedAuthCodeToken(t, root, "very-secret-access-token", time.Now().Add(1*time.Hour))
