@@ -72,3 +72,14 @@ func Apply(req *http.Request, typ string, cfg map[string]string, vars Interpolat
 	}
 	return s.Apply(req, cfg, vars)
 }
+
+// Lookup returns the scheme registered for typ and whether it exists.
+func Lookup(typ string) (Scheme, bool) {
+	if typ == "" {
+		return nil, false
+	}
+	registryMu.RLock()
+	defer registryMu.RUnlock()
+	s, ok := registry[typ]
+	return s, ok
+}

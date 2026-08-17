@@ -20,6 +20,8 @@ package request
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -227,6 +229,134 @@ func TestExecuteBasicAuth(t *testing.T) {
 	if gotUser != "user" || gotPass != "pass" {
 		t.Fatalf("expected user/pass, got %q/%q", gotUser, gotPass)
 	}
+}
+
+func TestExecuteDigestAuth(t *testing.T) {
+	const (
+		realm    = "testrealm@host.com"
+		nonce    = "dcd98b7102dd2f0e8b11d0f600bfb0c093"
+		username = "Mufasa"
+		password = "Circle Of Life"
+	)
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		auth := r.Header.Get("Authorization")
+		if auth == "" {
+			w.Header().Set("WWW-Authenticate",
+				`Digest realm="testrealm@host.com", qop="auth", nonce="`+nonce+`"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		// Server-side verification: recompute the expected response from the
+		// client-supplied nonce, cnonce, nc, and uri.
+		params := parseTestDigestHeader(t, auth)
+		HA1 := md5HexForTest(username + ":" + realm + ":" + password)
+		HA2 := md5HexForTest(r.Method + ":" + r.URL.RequestURI())
+		want := md5HexForTest(HA1 + ":" + params["nonce"] + ":" + params["nc"] +
+			":" + params["cnonce"] + ":auth:" + HA2)
+		if params["response"] != want {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	client := NewClient()
+	resp, err := client.Execute(context.Background(), &Request{
+		Method: MethodGet,
+		URL:    srv.URL,
+		Auth: Auth{
+			Type: "digest",
+			Config: map[string]string{
+				"username": username,
+				"password": password,
+			},
+		},
+	}, variables.NewSet())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 after digest retry, got %d (calls=%d)", resp.StatusCode, calls)
+	}
+	if calls != 2 {
+		t.Fatalf("expected exactly 2 calls (challenge + retry), got %d", calls)
+	}
+}
+
+func TestExecuteDigestRetryIsBounded(t *testing.T) {
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("WWW-Authenticate",
+			`Digest realm="r", qop="auth", nonce="neverchanges"`)
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	client := NewClient()
+	resp, err := client.Execute(context.Background(), &Request{
+		Method: MethodGet,
+		URL:    srv.URL,
+		Auth: Auth{
+			Type: "digest",
+			Config: map[string]string{
+				"username": "u",
+				"password": "p",
+			},
+		},
+	}, variables.NewSet())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+	if calls != 2 {
+		t.Fatalf("expected exactly 2 requests (initial + one retry), got %d", calls)
+	}
+}
+
+func TestExecuteDigestAuthMissingPassword(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	client := NewClient()
+	_, err := client.Execute(context.Background(), &Request{
+		Method: MethodGet,
+		URL:    srv.URL,
+		Auth: Auth{
+			Type:   "digest",
+			Config: map[string]string{"username": "u"},
+		},
+	}, variables.NewSet())
+	if err == nil {
+		t.Fatal("expected error for missing digest password")
+	}
+}
+
+func parseTestDigestHeader(t *testing.T, hdr string) map[string]string {
+	t.Helper()
+	params := make(map[string]string)
+	rest := strings.TrimPrefix(hdr, "Digest ")
+	for _, part := range strings.Split(rest, ",") {
+		kv := strings.SplitN(strings.TrimSpace(part), "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		params[kv[0]] = strings.Trim(kv[1], `"`)
+	}
+	return params
+}
+
+func md5HexForTest(s string) string {
+	sum := md5.Sum([]byte(s))
+	return hex.EncodeToString(sum[:])
 }
 
 func TestExecuteAPIKeyInHeader(t *testing.T) {

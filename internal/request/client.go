@@ -95,6 +95,32 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars Interpolator) (*r
 	if err != nil {
 		return nil, err
 	}
+
+	// Digest (and other challenge-based schemes) respond to a 401
+	// WWW-Authenticate challenge by computing credentials and retrying once.
+	// The retry is bounded to a single challenge/response round-trip.
+	if resp.StatusCode == http.StatusUnauthorized && r.Auth.Type != "" {
+		if s, ok := auth.Lookup(r.Auth.Type); ok {
+			if cs, ok := s.(auth.ChallengedScheme); ok {
+				if challenge := resp.Header.Get("WWW-Authenticate"); challenge != "" {
+					io.Copy(io.Discard, resp.Body)
+					resp.Body.Close()
+
+					retryReq, err := c.build(ctx, r, vars)
+					if err != nil {
+						return nil, err
+					}
+					if err := cs.Challenge(retryReq, challenge, r.Auth.Config, vars); err != nil {
+						return nil, err
+					}
+					resp, err = c.http.Do(retryReq)
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
