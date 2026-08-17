@@ -75,6 +75,9 @@ var jwtHashes = map[string]func() hash.Hash{
 	"HS512": sha512.New,
 }
 
+// SecretKeys reports the signing secret as the sensitive config value.
+func (jwtScheme) SecretKeys() []string { return []string{"secret"} }
+
 // signJWT builds a compact JWS: base64url(header).base64url(payload).signature.
 func signJWT(newHash func() hash.Hash, secret []byte, algorithm, claims, expiresIn string) (string, error) {
 	header, err := json.Marshal(map[string]string{

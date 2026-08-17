@@ -28,6 +28,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Its-Satyajit/reqly/internal/environments"
 )
 
 func TestRunCommandExecutesRequest(t *testing.T) {
@@ -140,6 +142,47 @@ request:
 		t.Fatal("expected error for unreachable host")
 	} else if strings.Contains(err.Error(), secret) {
 		t.Fatalf("secret leaked in request error: %q", err)
+	}
+}
+
+func TestRunCommandMasksAuthConfigInOutput(t *testing.T) {
+	resetRunFlags()
+	token := "s3cr3t-bearer-token"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Echo the Authorization header back so a leaked token would surface.
+		fmt.Fprint(w, r.Header.Get("Authorization"))
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	t.Chdir(dir)
+	requestPath := filepath.Join(dir, "req.yaml")
+	content := `request:
+  method: GET
+  url: ` + srv.URL + `
+  auth:
+    type: bearer
+    config:
+      token: ` + token + `
+`
+	if err := os.WriteFile(requestPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"run", requestPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	output := out.String()
+	if strings.Contains(output, token) {
+		t.Fatalf("auth token leaked in output: %q", output)
+	}
+	if !strings.Contains(output, environments.MaskedSecret) {
+		t.Fatalf("expected [SECRET] in output, got %q", output)
 	}
 }
 

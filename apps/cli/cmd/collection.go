@@ -28,6 +28,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/runner"
@@ -77,6 +78,7 @@ Use --workspace to point at a workspace directory other than the current one.`,
 			return err
 		}
 		mergeEnvScope(resolved.Vars, envSet)
+		masker.Add(auth.MaskValues(resolved.Request.Auth.Type, resolved.Request.Auth.Config, resolved.Vars)...)
 
 		client := request.NewClient()
 		resp, err := client.Execute(context.Background(), &resolved.Request, resolved.Vars)
@@ -248,6 +250,9 @@ Use --workspace to point at a workspace directory other than the current one.`,
 		})
 		if err != nil {
 			return err
+		}
+		for _, step := range report.Steps {
+			masker.Add(step.AuthValues()...)
 		}
 
 		for _, step := range report.Steps {

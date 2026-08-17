@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
 	"github.com/Its-Satyajit/reqly/internal/variables"
@@ -112,6 +113,7 @@ and --data to build requests directly on the CLI:
 			return err
 		}
 		mergeEnvScope(vars, envSet)
+		masker.Add(auth.MaskValues(req.Auth.Type, req.Auth.Config, vars)...)
 
 		client := request.NewClient()
 		resp, err := client.Execute(context.Background(), req, vars)

@@ -71,6 +71,9 @@ func (digestScheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 	return nil
 }
 
+// SecretKeys reports the password as the sensitive config value.
+func (digestScheme) SecretKeys() []string { return []string{"password"} }
+
 // Challenge parses the WWW-Authenticate challenge, computes the digest
 // response, and sets the Authorization header on req.
 func (s digestScheme) Challenge(req *http.Request, challenge string, cfg map[string]string, vars Interpolator) error {

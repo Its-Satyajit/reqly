@@ -40,6 +40,40 @@ type Scheme interface {
 	Apply(req *http.Request, cfg map[string]string, vars Interpolator) error
 }
 
+// SecretKeyScheme is implemented by schemes whose config holds credential
+// values that must never surface in output. SecretKeys returns the config
+// keys whose values are secrets.
+type SecretKeyScheme interface {
+	SecretKeys() []string
+}
+
+// MaskValues returns the resolved secret config values for the auth type,
+// for feeding into an output Masker. Unknown types and schemes without
+// secrets yield no values.
+func MaskValues(typ string, cfg map[string]string, vars Interpolator) []string {
+	s, ok := Lookup(typ)
+	if !ok {
+		return nil
+	}
+	sks, ok := s.(SecretKeyScheme)
+	if !ok {
+		return nil
+	}
+	var values []string
+	for _, key := range sks.SecretKeys() {
+		raw, ok := cfg[key]
+		if !ok || raw == "" {
+			continue
+		}
+		resolved, err := vars.Interpolate(raw)
+		if err != nil || resolved == "" {
+			continue
+		}
+		values = append(values, resolved)
+	}
+	return values
+}
+
 var (
 	registryMu sync.RWMutex
 	registry   = make(map[string]Scheme)

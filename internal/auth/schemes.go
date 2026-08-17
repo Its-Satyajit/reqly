@@ -36,6 +36,9 @@ func (bearerScheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 	return nil
 }
 
+// SecretKeys reports the token as the sensitive config value.
+func (bearerScheme) SecretKeys() []string { return []string{"token"} }
+
 // basicScheme sends a username/password pair as HTTP Basic credentials.
 type basicScheme struct{}
 
@@ -52,6 +55,9 @@ func (basicScheme) Apply(req *http.Request, cfg map[string]string, vars Interpol
 	req.SetBasicAuth(username, password)
 	return nil
 }
+
+// SecretKeys reports the password as the sensitive config value.
+func (basicScheme) SecretKeys() []string { return []string{"password"} }
 
 // apikeyScheme sends an API key either as a header or a query parameter.
 type apikeyScheme struct{}
@@ -75,6 +81,9 @@ func (apikeyScheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 	req.Header.Set(key, value)
 	return nil
 }
+
+// SecretKeys reports the key value as the sensitive config value.
+func (apikeyScheme) SecretKeys() []string { return []string{"value"} }
 
 func init() {
 	Register("bearer", bearerScheme{})
