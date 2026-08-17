@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/response"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
@@ -185,52 +186,11 @@ func (c *Client) build(ctx context.Context, r *Request, vars Interpolator) (*htt
 		req.Header.Add(key, value)
 	}
 
-	if err := applyAuth(req, r.Auth, vars); err != nil {
+	if err := auth.Apply(req, r.Auth.Type, r.Auth.Config, vars); err != nil {
 		return nil, err
 	}
 
 	return req, nil
-}
-
-// applyAuth sets the Authorization header (and any extra headers) for the
-// configured auth type. Unknown or empty auth types are a no-op.
-func applyAuth(req *http.Request, a Auth, vars Interpolator) error {
-	switch a.Type {
-	case "bearer":
-		token, err := vars.Interpolate(a.Config["token"])
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Authorization", "Bearer "+token)
-	case "basic":
-		username, err := vars.Interpolate(a.Config["username"])
-		if err != nil {
-			return err
-		}
-		password, err := vars.Interpolate(a.Config["password"])
-		if err != nil {
-			return err
-		}
-		req.SetBasicAuth(username, password)
-	case "apikey":
-		key, err := vars.Interpolate(a.Config["key"])
-		if err != nil {
-			return err
-		}
-		value, err := vars.Interpolate(a.Config["value"])
-		if err != nil {
-			return err
-		}
-		in := a.Config["in"]
-		if in == "query" {
-			q := req.URL.Query()
-			q.Set(key, value)
-			req.URL.RawQuery = q.Encode()
-		} else {
-			req.Header.Set(key, value)
-		}
-	}
-	return nil
 }
 
 // detectContentType returns a best-effort content type for the request body
