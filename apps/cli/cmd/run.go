@@ -122,9 +122,7 @@ and --data to build requests directly on the CLI:
 		}
 		// Mask the acquired OAuth token (and any other runtime credential)
 		// so headers/body echoing it never leak it.
-		if resp.AuthToken != "" {
-			masker.Add(resp.AuthToken)
-		}
+		maskAcquiredToken(masker, resp.AuthToken)
 
 		status := resp.StatusCode
 		color := ""

@@ -143,7 +143,7 @@ Token values never print in full.`,
 			}
 
 			state := "cached"
-			if !tok.Expiry.IsZero() && now.After(tok.Expiry) {
+			if !tok.IsFresh(now) {
 				state = "expired"
 			}
 

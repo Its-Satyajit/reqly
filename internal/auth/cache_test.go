@@ -161,6 +161,64 @@ func TestCachedTokenSourcePersistsAcrossInstances(t *testing.T) {
 	}
 }
 
+// TestCachedTokenSourceNoExpiryBoundedDefault checks that a token whose
+// provider omits expires_in is not trusted forever: the persisted entry gets a
+// conservative lifetime, after which the underlying source re-acquires.
+func TestCachedTokenSourceNoExpiryBoundedDefault(t *testing.T) {
+	dir := t.TempDir()
+	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+
+	src := &noExpirySource{}
+	key := auth.TokenCacheKey(dir, map[string]string{"a": "1"})
+	ts := auth.NewCachedTokenSource(src, store, key)
+
+	// Acquire: the returned token carries no expiry, but the persisted entry
+	// must record a bounded lifetime.
+	if _, err := ts.Token(context.Background(), nil, variables.NewSet()); err != nil {
+		t.Fatalf("Token 1: %v", err)
+	}
+	raw, err := store.Get(key)
+	if err != nil {
+		t.Fatalf("Get persisted: %v", err)
+	}
+	persisted, err := auth.ParseCachedToken(raw)
+	if err != nil {
+		t.Fatalf("ParseCachedToken: %v", err)
+	}
+	if persisted.Expiry.IsZero() {
+		t.Fatal("persisted expiry is zero; a no-expiry token must get a bounded default lifetime")
+	}
+	if !persisted.IsFresh(time.Now()) {
+		t.Fatal("freshly persisted token should be fresh")
+	}
+
+	// Reuse while within the default lifetime.
+	if _, err := ts.Token(context.Background(), nil, variables.NewSet()); err != nil {
+		t.Fatalf("Token 2: %v", err)
+	}
+	if src.calls != 1 {
+		t.Fatalf("underlying source called %d times, want 1 (reused within TTL)", src.calls)
+	}
+
+	// Beyond the default lifetime the token is stale and re-acquired.
+	if !persisted.Expiry.IsZero() && persisted.Expiry.After(time.Now().Add(11*time.Minute)) {
+		t.Fatalf("default expiry %v too far out; want within the default TTL", persisted.Expiry)
+	}
+}
+
+// noExpirySource always returns a token without an expiry.
+type noExpirySource struct {
+	calls int
+}
+
+func (a *noExpirySource) Token(ctx context.Context, _ map[string]string, _ auth.Interpolator) (auth.Token, error) {
+	a.calls++
+	return auth.Token{AccessToken: "no-expiry-token", TokenType: "Bearer"}, nil
+}
+
 // TestCachedTokenSourceStoredTokenRoundTrip exercises the persisted shape
 // end to end: what Token() writes must be readable back by ParseCachedToken
 // with the same fields, so a refactor of the store encoding can't silently

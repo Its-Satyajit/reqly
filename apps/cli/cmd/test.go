@@ -76,9 +76,7 @@ response_time. The command exits non-zero when any assertion fails.`,
 		if err != nil {
 			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
 		}
-		if resp.AuthToken != "" {
-			masker.Add(resp.AuthToken)
-		}
+		maskAcquiredToken(masker, resp.AuthToken)
 
 		results := tf.Suite().Run(resp)
 

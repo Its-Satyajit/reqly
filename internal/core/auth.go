@@ -126,7 +126,7 @@ func (s *AuthService) Status() ([]AuthTokenStatus, error) {
 			return nil, fmt.Errorf("decode token %s: %w", key, err)
 		}
 		state := "cached"
-		if !tok.Expiry.IsZero() && now.After(tok.Expiry) {
+		if !tok.IsFresh(now) {
 			state = "expired"
 		}
 		endpoint := tok.Endpoint

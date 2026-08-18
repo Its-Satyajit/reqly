@@ -37,6 +37,12 @@ import (
 // never reaches the server expired.
 const tokenExpirySkew = 30 * time.Second
 
+// defaultTokenTTL bounds the lifetime of a cached token whose provider omits
+// expires_in (Expiry is zero). Without a recorded expiry there is no way to
+// know when the token dies, so the cache treats it as expired after this
+// interval and re-acquires, instead of trusting it forever.
+const defaultTokenTTL = 10 * time.Minute
+
 // TokenCacheKey derives a stable cache key for a workspace root and auth
 // config. The workspace root scopes tokens to the workspace, and the
 // canonicalized config hash scopes them to a specific auth setup so changing
@@ -76,34 +82,9 @@ func NewCachedTokenSource(src TokenSource, store secrets.Store, key string) *Cac
 }
 
 // CachedToken is the decoded on-disk representation of a cached OAuth token,
-// exported so the CLI can report status without acquiring.
+// exported so the CLI can report status without acquiring. The JSON tags keep
+// the store format stable while letting callers read the value directly.
 type CachedToken struct {
-	AccessToken  string
-	TokenType    string
-	Endpoint     string
-	Expiry       time.Time
-	RefreshToken string
-	GrantType    string
-}
-
-// ParseCachedToken decodes the raw store value written by CachedTokenSource.
-func ParseCachedToken(raw string) (CachedToken, error) {
-	var c cachedToken
-	if err := json.Unmarshal([]byte(raw), &c); err != nil {
-		return CachedToken{}, err
-	}
-	return CachedToken{
-		AccessToken:  c.AccessToken,
-		TokenType:    c.TokenType,
-		Endpoint:     c.Endpoint,
-		Expiry:       c.Expiry,
-		RefreshToken: c.RefreshToken,
-		GrantType:    c.GrantType,
-	}, nil
-}
-
-// cachedToken is the on-disk representation of a Token.
-type cachedToken struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
 	// Endpoint is the token URL the token was acquired from, stored so the
@@ -118,24 +99,40 @@ type cachedToken struct {
 	GrantType string `json:"grant_type,omitempty"`
 }
 
+// ParseCachedToken decodes the raw store value written by CachedTokenSource.
+func ParseCachedToken(raw string) (CachedToken, error) {
+	var c CachedToken
+	if err := json.Unmarshal([]byte(raw), &c); err != nil {
+		return CachedToken{}, err
+	}
+	return c, nil
+}
+
+// IsFresh reports whether the cached token is still usable, applying the same
+// expiry skew the cache uses when reusing a persisted token: a zero expiry is
+// treated as fresh (used only for entries written before the default-TTL rule;
+// newly persisted entries always carry an expiry), and a recorded expiry is
+// fresh until the skew window (a token about to expire within the skew is
+// already stale).
+func (c CachedToken) IsFresh(now time.Time) bool {
+	return c.AccessToken != "" && (c.Expiry.IsZero() || now.Add(tokenExpirySkew).Before(c.Expiry))
+}
+
 // Token returns a fresh token for the cache key, reusing the persisted token
 // while it remains valid (plus skew). An expired entry with a refresh token
 // is renewed via the refresh-token grant when the underlying source supports
 // it (no re-run of the original grant, e.g. no second browser flow);
 // otherwise a new token is acquired from the underlying source.
 func (c *CachedTokenSource) Token(ctx context.Context, cfg map[string]string, vars Interpolator) (Token, error) {
-	if c.src == nil {
-		return Token{}, fmt.Errorf("cached token source has no underlying source")
-	}
-
 	if raw, err := c.store.Get(c.key); err == nil {
-		var cached cachedToken
+		var cached CachedToken
 		if err := json.Unmarshal([]byte(raw), &cached); err != nil {
 			// Corrupt or foreign entry: drop it and re-acquire rather than
-			// failing the request. A delete error is irrelevant here — the
-			// entry is unusable either way.
-			_ = c.store.Delete(c.key)
-		} else if cached.AccessToken != "" && (cached.Expiry.IsZero() || time.Now().Add(tokenExpirySkew).Before(cached.Expiry)) {
+			// failing the request.
+			if err := c.store.Delete(c.key); err != nil {
+				return Token{}, fmt.Errorf("drop corrupt cached token: %w", err)
+			}
+		} else if cached.IsFresh(time.Now()) {
 			return Token{
 				AccessToken:  cached.AccessToken,
 				TokenType:    cached.TokenType,
@@ -183,7 +180,9 @@ func (c *CachedTokenSource) ForceRefresh(ctx context.Context, cfg map[string]str
 	}
 	// No refresh token available: drop the entry and re-acquire from the
 	// underlying source (the original grant).
-	_ = c.store.Delete(c.key)
+	if err := c.store.Delete(c.key); err != nil {
+		return Token{}, fmt.Errorf("drop cached token before refresh: %w", err)
+	}
 	tok, err := c.src.Token(ctx, cfg, vars)
 	if err != nil {
 		return Token{}, err
@@ -192,6 +191,16 @@ func (c *CachedTokenSource) ForceRefresh(ctx context.Context, cfg map[string]str
 		return Token{}, err
 	}
 	return tok, nil
+}
+
+// defaultTokenExpiry returns the expiry to persist for a token. A token with
+// no recorded expiry (provider omitted expires_in) gets a conservative
+// lifetime so it is re-acquired periodically instead of trusted forever.
+func defaultTokenExpiry(expiry time.Time) time.Time {
+	if expiry.IsZero() {
+		return time.Now().Add(defaultTokenTTL)
+	}
+	return expiry
 }
 
 // renewFromRefreshToken renews an expired token via the refresh-token grant
@@ -223,17 +232,17 @@ func (c *CachedTokenSource) persist(tok Token, cfg map[string]string) (string, e
 	refresh := tok.RefreshToken
 	if refresh == "" {
 		if raw, err := c.store.Get(c.key); err == nil {
-			var prev cachedToken
+			var prev CachedToken
 			if err := json.Unmarshal([]byte(raw), &prev); err == nil {
 				refresh = prev.RefreshToken
 			}
 		}
 	}
-	blob, err := json.Marshal(cachedToken{
+	blob, err := json.Marshal(CachedToken{
 		AccessToken:  tok.AccessToken,
 		TokenType:    tok.TokenType,
 		Endpoint:     cfg["token_url"],
-		Expiry:       tok.Expiry,
+		Expiry:       defaultTokenExpiry(tok.Expiry),
 		RefreshToken: refresh,
 		GrantType:    cfg["grant_type"],
 	})

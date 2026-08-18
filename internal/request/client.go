@@ -154,13 +154,17 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 			// browser flow), otherwise by re-acquiring — then retries exactly
 			// once. A second 401 is returned as-is (no retry loop).
 			if ts, isTokenSource := s.(auth.TokenSource); isTokenSource && c.tokens != nil {
-				key := auth.TokenCacheKey(c.tokens.root, r.Auth.Config)
-				cached := auth.NewCachedTokenSource(ts, c.tokens.store, key)
-				if _, err := cached.ForceRefresh(ctx, r.Auth.Config, vars); err != nil {
+				if err := c.forceRefreshToken(ctx, ts, r.Auth.Config, vars); err != nil {
+					// Drain and close the 401 body before bailing so the
+					// connection can be reused; the response is abandoned.
+					_, _ = io.Copy(io.Discard, resp.Body)
+					_ = resp.Body.Close()
 					return nil, err
 				}
 				retryReq, refreshedToken, err := c.build(ctx, r, vars)
 				if err != nil {
+					_, _ = io.Copy(io.Discard, resp.Body)
+					_ = resp.Body.Close()
 					return nil, err
 				}
 				_, _ = io.Copy(io.Discard, resp.Body)
@@ -308,6 +312,20 @@ func (c *Client) acquireToken(ctx context.Context, s auth.TokenSource, cfg map[s
 	defer c.tokens.mu.Unlock()
 	ts := auth.NewCachedTokenSource(s, c.tokens.store, auth.TokenCacheKey(c.tokens.root, cfg))
 	return ts.Token(ctx, cfg, vars)
+}
+
+// forceRefreshToken invalidates and renews a cached token under the same lock
+// as acquireToken, so a reactive 401 refresh cannot race a concurrent acquire
+// on the same store entry.
+func (c *Client) forceRefreshToken(ctx context.Context, s auth.TokenSource, cfg map[string]string, vars auth.Interpolator) error {
+	if c.tokens == nil {
+		return nil
+	}
+	c.tokens.mu.Lock()
+	defer c.tokens.mu.Unlock()
+	ts := auth.NewCachedTokenSource(s, c.tokens.store, auth.TokenCacheKey(c.tokens.root, cfg))
+	_, err := ts.ForceRefresh(ctx, cfg, vars)
+	return err
 }
 
 // detectContentType returns a best-effort content type for the request body

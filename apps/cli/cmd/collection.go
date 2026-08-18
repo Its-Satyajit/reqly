@@ -84,9 +84,7 @@ Use --workspace to point at a workspace directory other than the current one.`,
 		if err != nil {
 			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
 		}
-		if resp.AuthToken != "" {
-			masker.Add(resp.AuthToken)
-		}
+		maskAcquiredToken(masker, resp.AuthToken)
 
 		status := resp.StatusCode
 		color := ""
