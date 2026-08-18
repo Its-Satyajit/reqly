@@ -21,4 +21,4 @@ package version
 
 // Version is the current release version. release-please bumps it on release
 // PRs via the x-release-please-version annotation.
-const Version = "0.1.0" // x-release-please-version
+const Version = "1.1.0" // x-release-please-version
