@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/Its-Satyajit/reqly/compare/v1.1.0...v1.1.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **release:** pass tag_name to asset upload step ([4efc46a](https://github.com/Its-Satyajit/reqly/commit/4efc46a57720786519bcb56a4b9e1b4da80203df))
+* **release:** pass tag_name to asset upload step ([f7c6526](https://github.com/Its-Satyajit/reqly/commit/f7c65260e3c8d9220e173b47f52832b596c5e4a8))
+
 ## [1.1.0](https://github.com/Its-Satyajit/reqly/compare/v1.0.0...v1.1.0) (2026-08-18)
 
 
