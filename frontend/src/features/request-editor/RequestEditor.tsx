@@ -1,19 +1,45 @@
 import { useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
+import { KeyValueEditor } from '../../components/KeyValueEditor'
 import { useRequestStore } from '../../stores'
+import { sentRows, type KeyValueRow } from '../../lib/request'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
+
+type Tab = 'params' | 'headers' | 'body'
+
+const tabs: { id: Tab; label: string }[] = [
+  { id: 'params', label: 'Params' },
+  { id: 'headers', label: 'Headers' },
+  { id: 'body', label: 'Body' },
+]
+
+const tabClass = (active: boolean) =>
+  `rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+    active
+      ? 'bg-muted text-foreground'
+      : 'text-muted-foreground hover:text-foreground'
+  }`
 
 export function RequestEditor() {
   const [method, setMethod] = useState<string>('GET')
   const [url, setUrl] = useState('')
   const [body, setBody] = useState('{\n  \n}')
+  const [tab, setTab] = useState<Tab>('params')
+  const [params, setParams] = useState<KeyValueRow[]>([])
+  const [headers, setHeaders] = useState<KeyValueRow[]>([])
   const send = useRequestStore((s) => s.send)
   const loading = useRequestStore((s) => s.loading)
 
   const handleSend = () => {
-    void send({ method, url, body })
+    void send({
+      method,
+      url,
+      params: sentRows(params),
+      headers: sentRows(headers).map(({ key, value }) => ({ key, value })),
+      body,
+    })
   }
 
   return (
@@ -33,20 +59,50 @@ export function RequestEditor() {
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://reqly-test-api.vercel.app/api/users — mock API for testing"
+          placeholder="https://reqly-test-api.vercel.app/api/users?page=1 — mock API for testing"
           className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
         />
         <Button size="sm" onClick={handleSend} disabled={loading}>
           {loading ? 'Sending…' : 'Send'}
         </Button>
       </div>
-      <div className="min-h-0 flex-1 p-2">
-        <CodeMirrorEditor
-          value={body}
-          language="json"
-          onChange={setBody}
-          className="h-full overflow-hidden rounded-md border border-border"
-        />
+
+      <div className="flex items-center gap-1 px-2">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={tabClass(tab === t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {tab === 'params' ? (
+          <KeyValueEditor
+            rows={params}
+            onChange={setParams}
+            keyPlaceholder="param"
+            valuePlaceholder="value"
+          />
+        ) : tab === 'headers' ? (
+          <KeyValueEditor
+            rows={headers}
+            onChange={setHeaders}
+            keyPlaceholder="header"
+            valuePlaceholder="value"
+          />
+        ) : (
+          <CodeMirrorEditor
+            value={body}
+            language="json"
+            onChange={setBody}
+            className="h-full overflow-hidden rounded-md border border-border"
+          />
+        )}
       </div>
     </div>
   )
