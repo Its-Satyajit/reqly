@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
 import { useRequestStore } from '../../stores'
 import { sentRows, type KeyValueRow } from '../../lib/request'
+import { bodyTypes, type BodyType } from '../../lib/body'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
 
@@ -22,10 +23,21 @@ const tabClass = (active: boolean) =>
       : 'text-muted-foreground hover:text-foreground'
   }`
 
+const bodyLanguage: Record<BodyType, 'json' | 'xml' | 'text'> = {
+  none: 'text',
+  json: 'json',
+  xml: 'xml',
+  'form-data': 'text',
+  urlencoded: 'text',
+  raw: 'text',
+}
+
 export function RequestEditor() {
   const [method, setMethod] = useState<string>('GET')
   const [url, setUrl] = useState('')
+  const [bodyType, setBodyType] = useState<BodyType>('none')
   const [body, setBody] = useState('{\n  \n}')
+  const [form, setForm] = useState<KeyValueRow[]>([])
   const [tab, setTab] = useState<Tab>('params')
   const [params, setParams] = useState<KeyValueRow[]>([])
   const [headers, setHeaders] = useState<KeyValueRow[]>([])
@@ -38,7 +50,9 @@ export function RequestEditor() {
       url,
       params: sentRows(params),
       headers: sentRows(headers).map(({ key, value }) => ({ key, value })),
+      bodyType,
       body,
+      form: sentRows(form),
     })
   }
 
@@ -96,12 +110,37 @@ export function RequestEditor() {
             valuePlaceholder="value"
           />
         ) : (
-          <CodeMirrorEditor
-            value={body}
-            language="json"
-            onChange={setBody}
-            className="h-full overflow-hidden rounded-md border border-border"
-          />
+          <div className="flex h-full flex-col gap-1">
+            <div className="flex items-center gap-1">
+              {bodyTypes.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setBodyType(t.id)}
+                  className={tabClass(bodyType === t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {bodyType === 'form-data' || bodyType === 'urlencoded' ? (
+              <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border p-2">
+                <KeyValueEditor
+                  rows={form}
+                  onChange={setForm}
+                  keyPlaceholder="field"
+                  valuePlaceholder="value"
+                />
+              </div>
+            ) : (
+              <CodeMirrorEditor
+                value={body}
+                language={bodyLanguage[bodyType]}
+                onChange={setBody}
+                className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

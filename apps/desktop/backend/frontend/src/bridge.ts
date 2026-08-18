@@ -5,6 +5,7 @@ import type {
   RequestSender,
   ResponseData,
 } from '@reqly/frontend'
+import { serializeBody } from '@reqly/frontend'
 import { useAuthStore, useRequestStore } from '@reqly/frontend'
 
 /**
@@ -13,12 +14,19 @@ import { useAuthStore, useRequestStore } from '@reqly/frontend'
  * shape the UI renders.
  */
 export const wailsSender: RequestSender = async (req: RequestInput): Promise<ResponseData> => {
+  const headers = (req.headers ?? []).map(({ key, value }) => ({ key, value }))
+  const { body, contentType } = serializeBody(req)
+  const hasManualType = headers.some(
+    (h) => h.key.toLowerCase() === 'content-type',
+  )
+  if (contentType && !hasManualType) headers.push({ key: 'Content-Type', value: contentType })
+
   const res = await AppService.SendRequest({
     method: req.method,
     url: req.url,
-    headers: (req.headers ?? []).map(({ key, value }) => ({ key, value })),
+    headers,
     query: (req.params ?? []).map(({ key, value }) => ({ key, value })),
-    body: req.body,
+    body,
   } as never)
   if (!res) {
     throw new Error('core returned an empty response')

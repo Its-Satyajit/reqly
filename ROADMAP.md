@@ -114,9 +114,9 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.6 Request builder & response viewer (UI)
 - [x] Method select, URL bar, Send → real response data flow
-- [ ] Params/headers/body tabs in the builder
-- [ ] Body editors: JSON, XML, form-data, URL-encoded, raw, binary, GraphQL
-- [ ] Response viewer: metadata, raw/pretty/tree/table views, search
+- [x] Params/headers/body tabs in the builder
+- [~] Body editors: JSON/XML/raw via CodeMirror, form-data/urlencoded via key-value rows, auto Content-Type (manual wins) — [Milestone 14 T2](https://github.com/Its-Satyajit/reqly/issues/73); binary + GraphQL bodies pending
+- [x] Response viewer: metadata, raw/pretty/tree/table views, search
 - [ ] JSONPath / XPath response querying
 - [ ] Response actions: copy, download, format, save-as-example
 - [ ] Cookies: view/edit/delete, persistence, domain/path matching
@@ -296,7 +296,7 @@ Every checked feature must pass the full checklist:
 11. ~~**OAuth 2.0 Client Credentials**~~ — `auth.TokenSource` acquisition split from application, store-backed token cache in `<workspace>/.reqly/tokens.json` (`secrets.Store` + `CachedTokenSource`, ADR 0006), expiry-skewed proactive refresh, reactive 401 refresh + retry-once, per-config concurrency lock, masking of acquired tokens in `run`/`test`/`collection run`/`collection test`, `reqly auth status`/`auth logout` — ✅ shipped ([PR #58](https://github.com/Its-Satyajit/reqly/pull/58))
 12. ~~**OAuth 2.0 Authorization Code + PKCE**~~ — [Spec #52](https://github.com/Its-Satyajit/reqly/issues/52) + tickets [#53–#57](https://github.com/Its-Satyajit/reqly/issues/53): `AuthorizationCodeSource` (PKCE S256 + state, one-shot loopback callback, code exchange), `reqly auth login`, first-request auto-login, refresh-token reuse with rotation, ADR 0007 — ✅ shipped
 13. ~~**OAuth 2.0 / auth leftovers**~~ — [Spec #60](https://github.com/Its-Satyajit/reqly/issues/60) + tickets [#61–#65](https://github.com/Its-Satyajit/reqly/issues/61): device flow (RFC 8628) with `reqly auth login --flow device`, OS-keychain token backend (`--store keychain`/`REQLY_TOKEN_STORE`, file fallback), custom-scheme redirects (`reqly://` deep links), desktop auth panel — ✅ shipped ([PRs #66–#69](https://github.com/Its-Satyajit/reqly/pull/66), [ADR 0008](docs/adr/0008-oauth2-auth-leftovers.md)); Password/ROPC stays deferred per OAuth 2.1
-14. **Desktop request builder UI** — params/headers/body tabs, response viewer (metadata, raw/pretty/tree/table, search), the largest remaining Phase-1 P0 chunk
+14. **Desktop request builder UI** — params/headers tabs ([T1](https://github.com/Its-Satyajit/reqly/issues/72)) + response viewer raw/pretty/tree/table + search ([T3](https://github.com/Its-Satyajit/reqly/issues/74)) + body-type editors JSON/XML/form-data/urlencoded/raw with auto Content-Type ([T2](https://github.com/Its-Satyajit/reqly/issues/73)) — shipped; remaining: response actions + JSONPath (T4), cookies view + docs (T5), the last Phase-1 P0 chunk
 
 
 > **Companion:** [**reqly-test-api**](https://reqly-test-api.vercel.app) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.

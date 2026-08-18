@@ -5,6 +5,8 @@
 // injected through a RequestSender: the Wails host injects a sender backed by
 // the Go core, while browser dev mode uses fetchSender.
 
+import { serializeBody, type BodyType } from './body'
+
 export interface RequestHeader {
   key: string
   value: string
@@ -23,7 +25,11 @@ export interface RequestInput {
   url: string
   headers?: RequestHeader[]
   params?: KeyValueRow[]
+  bodyType?: BodyType
+  /** Body text for json/xml/raw body types; serialized form fields for
+   * form-data/urlencoded live in `form`. */
   body?: string
+  form?: KeyValueRow[]
   timeout?: number
 }
 
@@ -62,12 +68,6 @@ export type RequestSender = (req: RequestInput) => Promise<ResponseData>
 
 const CONTENT_TYPE = 'Content-Type'
 
-function detectContentType(body: string): string {
-  const trimmed = body.trim()
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return 'application/json'
-  return 'text/plain'
-}
-
 /**
  * fetchSender runs a request in the browser (no Wails bridge). Used as the
  * default so the shared UI is usable in plain Vite dev mode.
@@ -77,15 +77,17 @@ export const fetchSender: RequestSender = async (req) => {
 
   const headers: Record<string, string> = {}
   for (const h of req.headers ?? []) headers[h.key] = h.value
-  if (req.body && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) {
-    headers[CONTENT_TYPE] = detectContentType(req.body)
-  }
+  const { body: requestBodyText, contentType } = serializeBody(req)
+  const hasManualType = Object.keys(headers).some(
+    (k) => k.toLowerCase() === 'content-type',
+  )
+  if (contentType && !hasManualType) headers[CONTENT_TYPE] = contentType
 
   const method = req.method ?? 'GET'
   // Browsers reject a body on GET/HEAD, so drop it for those methods (the Go
   // engine tolerates it; dev mode cannot).
   const requestBody =
-    method === 'GET' || method === 'HEAD' ? undefined : req.body || undefined
+    method === 'GET' || method === 'HEAD' ? undefined : requestBodyText || undefined
 
   const res = await fetch(appendParams(req.url, req.params ?? []), {
     method,
