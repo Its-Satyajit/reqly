@@ -6,20 +6,23 @@ import { useRequestStore } from '../../stores'
 import {
   contentType,
   headerRows,
+  parseSetCookies,
   prettyBody,
   searchBody,
   suggestedFilename,
   copyText,
+  cookieExpiry,
 } from '../../lib/response'
 import { queryJSONPath, type JSONPathMatch } from '../../lib/jsonpath'
 
-type View = 'raw' | 'pretty' | 'headers' | 'tree'
+type View = 'raw' | 'pretty' | 'headers' | 'tree' | 'cookies'
 
 const views: { id: View; label: string }[] = [
   { id: 'raw', label: 'Raw' },
   { id: 'pretty', label: 'Pretty' },
   { id: 'headers', label: 'Headers' },
   { id: 'tree', label: 'Tree' },
+  { id: 'cookies', label: 'Cookies' },
 ]
 
 const tabClass = (active: boolean) =>
@@ -66,6 +69,23 @@ export function ResponseViewer() {
 
   const filename = response ? suggestedFilename(response.headers, ct) : ''
   const headersText = headers.map((h) => `${h.key}: ${h.value}`).join('\n')
+  const cookies = useMemo(
+    () => (response ? parseSetCookies(response.headers) : []),
+    [response],
+  )
+  const cookiesText = cookies
+    .map(
+      (c) =>
+        `${c.name}=${c.value}; ${[
+          c.domain ? `Domain=${c.domain}` : '',
+          c.path ? `Path=${c.path}` : '',
+          c.secure ? 'Secure' : '',
+          c.httpOnly ? 'HttpOnly' : '',
+        ]
+          .filter(Boolean)
+          .join('; ')}`,
+    )
+    .join('\n')
   const jsonPathResult = useMemo(() => {
     if (!parsed || !jsonPath.trim()) return null
     return queryJSONPath(parsed, jsonPath)
@@ -92,6 +112,15 @@ export function ResponseViewer() {
             h.value.toLowerCase().includes(query.toLowerCase()),
         )
       : headers
+
+  const filteredCookies =
+    view === 'cookies' && query.trim()
+      ? cookies.filter((c) =>
+          `${c.name} ${c.value} ${c.domain ?? ''} ${c.path ?? ''}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+        )
+      : cookies
 
   return (
     <div className="flex h-full flex-col">
@@ -139,7 +168,9 @@ export function ResponseViewer() {
             size="xs"
             variant="ghost"
             onClick={() => {
-              void copyText(view === 'headers' ? headersText : bodyView)
+              const text =
+                view === 'headers' ? headersText : view === 'cookies' ? cookiesText : bodyView
+              void copyText(text)
               setCopied(true)
               setTimeout(() => setCopied(false), 1500)
             }}
@@ -242,6 +273,54 @@ export function ResponseViewer() {
               className="min-h-0 flex-1 overflow-hidden"
             />
           </div>
+        ) : view === 'cookies' ? (
+          <div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
+            {filteredCookies.length === 0 ? (
+              <div className="flex h-full flex-col items-start justify-center gap-2 px-4">
+                <p className="text-sm font-medium text-foreground">
+                  {cookies.length === 0
+                    ? 'No cookies set by this response.'
+                    : 'No cookies match your search.'}
+                </p>
+                {cookies.length === 0 ? (
+                  <p className="max-w-sm text-xs text-muted-foreground">
+                    Servers set cookies via <code className="font-mono">Set-Cookie</code> response
+                    headers. Send a request to an endpoint that sets a cookie to see it here —
+                    persistence is a separate roadmap item.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <tbody>
+                  {filteredCookies.map((c) => (
+                    <tr key={`${c.name}-${c.value}-${c.domain ?? ''}`} className="border-b border-border/50 last:border-0">
+                      <td className="py-1 pr-3 align-top font-mono text-foreground">{c.name}</td>
+                      <td className="py-1 pr-3 font-mono text-muted-foreground break-all">{c.value}</td>
+                      <td className="py-1 pr-3 align-top text-muted-foreground">
+                        {c.domain ?? '—'}
+                      </td>
+                      <td className="py-1 pr-3 align-top font-mono text-muted-foreground">
+                        {c.path ?? '/'}
+                      </td>
+                      <td className="py-1 pr-3 align-top text-muted-foreground">
+                        {cookieExpiry(c) ?? 'Session'}
+                      </td>
+                      <td className="py-1 align-top whitespace-nowrap text-muted-foreground">
+                        {[
+                          c.secure ? 'Secure' : '',
+                          c.httpOnly ? 'HttpOnly' : '',
+                          c.sameSite ? `SameSite=${c.sameSite}` : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ') || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         ) : view === 'headers' ? (
           <div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
             {filteredHeaders.length === 0 ? (
@@ -280,7 +359,7 @@ export function ResponseViewer() {
         )}
       </div>
 
-      {view !== 'tree' && view !== 'headers' && response && query && searchResult && searchResult.count === 0 ? (
+      {view !== 'tree' && view !== 'headers' && view !== 'cookies' && response && query && searchResult && searchResult.count === 0 ? (
         <p className="px-2 pb-1 text-xs text-muted-foreground">No matches in the response body.</p>
       ) : null}
     </div>

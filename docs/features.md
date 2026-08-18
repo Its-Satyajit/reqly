@@ -477,13 +477,13 @@ Templates should support variables and inherited configuration.
 
 Display:
 
-* Status code
-* Status text
-* Response time
-* Response size
-* Headers
-* Cookies
-* Request metadata
+* Status code — shipped
+* Status text — shipped
+* Response time — shipped
+* Response size — shipped
+* Headers — shipped
+* Cookies — shipped (view from `Set-Cookie` response headers; persistence is separate, see §12)
+* Request metadata — shipped (proto)
 
 ## 11.2 Response Data
 
@@ -502,35 +502,35 @@ Support:
 
 Provide:
 
-* Raw view
-* Pretty-printed view
-* Tree view
-* Table view
+* Raw view — shipped
+* Pretty-printed view — shipped (JSON pretty-print + XML indentation)
+* Tree view — shipped (interactive expand/collapse JSON tree)
+* Table view — pending
 * Hex/binary view
 * Preview view
 
 ## 11.4 Response Search
 
-Search and navigate through large response bodies.
+Search and navigate through large response bodies — shipped (case-insensitive substring search across the current view, with match highlighting).
 
 ## 11.5 JSONPath
 
-Filter and query JSON responses.
+Filter and query JSON responses — shipped (dependency-free evaluator: `$` root, dot/bracket segments, wildcard `*`, array indexes; match list with canonical paths; specific per-segment errors).
 
 ## 11.6 XPath
 
-Query XML responses using XPath.
+Query XML responses using XPath — pending.
 
 ## 11.7 Response Actions
 
 Allow users to:
 
-* Copy value
-* Copy JSONPath
-* Copy response
-* Download response
-* Format response
-* Save response as example
+* Copy value — pending
+* Copy JSONPath — pending
+* Copy response — shipped (body or headers)
+* Download response — shipped (Content-Disposition filename, else derived from Content-Type)
+* Format response — shipped (JSON/XML pretty)
+* Save response as example — pending
 
 ---
 
@@ -540,17 +540,17 @@ Provide a complete cookie management system.
 
 ### Features
 
-* Cookie jar
-* View cookies
-* Edit cookies
-* Delete cookies
-* Domain/path matching
-* Secure cookies
-* HttpOnly
-* SameSite
-* Cookie persistence
-* Clear cookies per environment
-* Clear cookies per workspace
+* Cookie jar — pending (separate roadmap item §1.6 Cookies persistence)
+* View cookies — shipped (parse `Set-Cookie` response headers in the desktop response viewer: name, value, domain, path, expiry, Secure/HttpOnly/SameSite flags)
+* Edit cookies — pending
+* Delete cookies — pending
+* Domain/path matching — pending
+* Secure cookies — shipped (flag rendered)
+* HttpOnly — shipped (flag rendered)
+* SameSite — shipped (flag rendered)
+* Cookie persistence — pending (out of scope for milestone 14; display only)
+* Clear cookies per environment — pending
+* Clear cookies per workspace — pending
 
 ---
 

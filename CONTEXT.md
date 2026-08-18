@@ -87,3 +87,18 @@ The one-shot local HTTP listener that receives the provider's authorization redi
 ### Refresh Token Grant
 RFC 6749 §6 renewal: a form POST to `token_url` with `grant_type=refresh_token` and the stored `refresh_token`, using the cached credentials. The response yields a new access token and may carry a new refresh token (rotation — persisted when present; the previous one is kept otherwise). `reqly auth login` and the engine's refresh paths use it so expired tokens recover without reopening the browser.
 
+### Request Builder Tabs
+The desktop request editor's tab bar (**Params / Headers / Body**) from milestone 14. Params and Headers are key-value row editors (add/remove/toggle-enabled); the Body tab holds a body-type picker. The send path maps the tabs onto `request.Request{Query, Headers, Body}`; the engine's existing merge semantics apply (query params override the URL's, a manual `Content-Type` header beats the body type's default).
+
+### Body Type
+A request-body kind selected in the builder's Body tab: **none / JSON / XML / form-data / urlencoded / raw text**. JSON/XML/raw use a CodeMirror editor with the matching language; form-data and urlencoded use key-value rows. Selecting a type sets the appropriate `Content-Type` (or `multipart/form-data` with a generated boundary) unless the user set one manually.
+
+### Response View
+One of the desktop response viewer's tabs: **Raw** (as-received), **Pretty** (JSON pretty-printed, XML re-indented when parseable), **Headers** (key/value table), **Tree** (recursive expand/collapse JSON tree), or **Cookies** (parsed `Set-Cookie` response headers). A search box filters the active view; the JSONPath query bar replaces the body area with query matches while active.
+
+### JSONPath Query
+A dependency-free evaluator (`frontend/src/lib/jsonpath.ts`) over the response's JSON body: `$` root, dot/bracket segments (`$.user.name`, `$['users'][0]`), wildcard `*`, and array indexes. Returns a match list with canonical paths, or a specific per-segment error for invalid paths; zero matches render as an empty state, not an error.
+
+### Response Cookie
+A cookie parsed from a `Set-Cookie` response header (RFC 6265 §5.2) for display: name, value, domain, path, expiry (normalized from `Expires` or `Max-Age`), and `Secure`/`HttpOnly`/`SameSite` flags. Milestone 14 is display-only — there is no cookie jar, so cookies are not persisted or replayed on later requests (separate roadmap item).
+
