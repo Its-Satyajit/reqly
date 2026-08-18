@@ -16,6 +16,43 @@ export function headerRows(headers: HeaderMap | undefined): { key: string; value
   return rows
 }
 
+const EXTENSIONS: Record<string, string> = {
+  json: 'json',
+  xml: 'xml',
+  html: 'html',
+  text: 'txt',
+  csv: 'csv',
+  javascript: 'js',
+  'x-www-form-urlencoded': 'txt',
+}
+
+/** suggestedFilename picks a download name for a response body: the
+ * Content-Disposition filename when present, else `response.<ext>` derived
+ * from the Content-Type. */
+export function suggestedFilename(
+  headers: HeaderMap | undefined,
+  contentType: string,
+): string {
+  const disposition = (headers ?? {})['content-disposition']?.[0]
+  const match = disposition?.match(/filename="?([^";]+)"?/i)
+  if (match?.[1]) return match[1]
+  const type = contentType.split(';')[0].trim().toLowerCase()
+  const media = type.split('/')[1] ?? ''
+  const ext = EXTENSIONS[media] ?? 'txt'
+  return `response.${ext}`
+}
+
+/** copyText writes text to the clipboard, falling back to a silent no-op when
+ * the Clipboard API is unavailable. */
+export async function copyText(text: string): Promise<void> {
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    // Clipboard API unavailable or denied — nothing else to try.
+  }
+}
+
 function looksLikeJson(body: string): boolean {
   const trimmed = body.trim()
   return trimmed.startsWith('{') || trimmed.startsWith('[')
