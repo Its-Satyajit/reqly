@@ -618,6 +618,19 @@ A Git-native environment manager in the desktop app (Milestone 15), on the same
 * **Delete** removes the environment file (confirming first) and clears the descriptor's active selection when the active environment is deleted
 * **Inline validation** mirrors `reqly env validate`: duplicate keys block save (hard error); variable names that look like secrets (key/token/secret/password/credential) render as non-blocking warnings
 
+## 14.2b Desktop Collections Browser
+
+A Git-native collections browser in the desktop app (Milestone 16), on the
+same on-disk collections/folders/request files and workspace descriptor the
+CLI uses ([ADR 0009](adr/0009-desktop-collection-request-snapshot-model.md)):
+
+* **Workspace tree** in the sidebar — collections → folders → requests, name-sorted, expandable/collapsible, with a refresh button
+* **Open a request into a tab** — resolves the request file server-side (effective URL against the base URL, merged headers, inherited auth, full variable chain, file `environment:`), seeds a tab deduplicated by Request Path
+* **Per-tab state** — each tab keeps its own unsaved edits and response when switching; a persistent *New Request* scratchpad remains for ad-hoc requests
+* **Read-only Variables view** — the effective variable chain per tab, shown highest-to-lowest precedence with its defining scope
+* **Per-tab environment pill** — a request file's `environment:` field wins; otherwise the app-header selection applies
+* **Snapshot send** — sends the tab's open-time snapshot with the environment/process scopes layered *below* the file variables; inherited auth is applied silently (no auth editing UI yet)
+
 ## 14.3 Environment Validation
 
 Detect:
