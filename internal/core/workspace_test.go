@@ -545,3 +545,36 @@ func TestWorkspaceServiceResolveSendAppliesDraft(t *testing.T) {
 		t.Fatalf("TOKEN = %q, %v; want req-token from the request scope", v, ok)
 	}
 }
+
+func TestWorkspaceServiceResolveSendPreservesFileOwnAuth(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+	// A file with its own auth: the send-time substitution must not clobber it.
+	path := "collections/users/own-auth.yaml"
+	full := `request:
+  method: GET
+  url: own
+  auth:
+    type: basic
+    config:
+      username: file-user
+      password: file-pass
+`
+	if err := os.WriteFile(filepath.Join(dir, path), []byte(full), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewWorkspaceService(dir)
+	// The draft carries only builder fields (no auth) — that is what the
+	// editor sends.
+	resolved, err := svc.ResolveSend("users/own-auth", request.Request{Method: "GET", URL: "edited"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Request.Auth.Type != "basic" || resolved.Request.Auth.Config["username"] != "file-user" {
+		t.Fatalf("file-owned auth lost on re-resolve: %+v", resolved.Request.Auth)
+	}
+	if resolved.Request.URL != "https://api.example.com/v1/edited" {
+		t.Fatalf("URL = %q, want https://api.example.com/v1/edited", resolved.Request.URL)
+	}
+}

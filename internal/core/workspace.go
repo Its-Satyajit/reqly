@@ -258,7 +258,7 @@ func (s *WorkspaceService) ResolveSend(path string, draft request.Request) (*col
 	}
 	sub := *entry
 	file := *entry.File
-	file.Request = draft
+	file.Request = mergedBuilderRequest(entry.File.Request, draft)
 	sub.File = &file
 	return ws.ResolveRequest(coll, chain, &sub)
 }
