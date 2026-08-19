@@ -111,3 +111,30 @@ A dependency-free evaluator (`frontend/src/lib/jsonpath.ts`) over the response's
 ### Response Cookie
 A cookie parsed from a `Set-Cookie` response header (RFC 6265 §5.2) for display: name, value, domain, path, expiry (normalized from `Expires` or `Max-Age`), and `Secure`/`HttpOnly`/`SameSite` flags. Milestone 14 is display-only — there is no cookie jar, so cookies are not persisted or replayed on later requests (separate roadmap item).
 
+### Workspace
+The top-level Git-native unit of Reqly: a directory containing a `reqly.yaml` descriptor plus optional `collections/` and `environments/` directories. Discovered by walking up from the current directory to the nearest descriptor. It owns the workspace-level configuration (base URL, headers, auth, variables, active environment) that its collections inherit.
+
+### Collection
+A named group of requests under a workspace's `collections/` directory. A collection is a directory with its own `reqly.yaml` descriptor and may nest **Folders**. It contributes configuration (base URL, headers, auth, variables) that its requests and folders inherit, with child values overriding parent values.
+
+### Folder
+A nested container inside a collection (recursively nestable), also a directory carrying a `reqly.yaml` descriptor. Only subdirectories with a descriptor are part of the workspace; a descriptor-less subdirectory is ignored.
+
+### Request Entry
+A request file (`.json`/`.yaml`/`.yml` in `requestfile` format) located directly inside a collection or folder. It is the leaf of the workspace tree; there are no inline requests — the file *is* the request, and its position in the tree defines its identity.
+
+### Request Path
+A workspace-relative identifier locating a **Request Entry**, e.g. `users/auth/login` (the file name minus its extension). This is the stable identity used to find a request, open it, and deduplicate request tabs.
+
+### Inherited Configuration
+The effective base URL, headers, and auth a request receives from the **Workspace → Collection → Folder** chain before its own fields apply: headers merge key-wise (child wins), base URLs join (an absolute child replaces the parent), auth is replaced when the child defines one and cleared by `auth.type: none`. Inherited values are resolved lazily so `{{variable}}` placeholders survive until interpolation.
+
+### Resolved Request
+A **Request Entry** combined with its **Inherited Configuration** and the full variable chain (workspace → collection → folder → request scopes), ready for execution. Opening a request in the desktop **Collections Browser** loads its Resolved Request into a **Request Tab** — the editor shows the effective URL, headers, and variables rather than the raw file.
+
+### Collections Browser
+The desktop sidebar surface that loads the workspace and renders its collections, folders, and request entries as an expandable/collapsible tree. Clicking a request opens its **Resolved Request** in a tab; a manual refresh reloads the tree from disk (open tabs keep their snapshot). Editing/saving request files is out of scope for now — opening is read-only.
+
+### Request Tab
+The desktop's per-request working area, one per opened request (deduplicated by **Request Path**, plus a persistent *New Request* scratchpad for ad-hoc sends). Each tab owns its editable resolved-request fields, its response, a read-only effective-variables view, and an environment pill showing which environment the tab will send with — the request file's `environment:` if set, else the header-selected one.
+
