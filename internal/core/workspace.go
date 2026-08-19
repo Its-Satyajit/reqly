@@ -19,14 +19,22 @@
 package core
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/requestfile"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
+
+// ErrFileChangedOnDisk reports a save attempt against a request file that
+// changed on disk since it was opened. The editor surfaces it as a
+// changed-on-disk conflict instead of silently clobbering the external edit.
+var ErrFileChangedOnDisk = errors.New("request file changed on disk since it was opened")
 
 // WorkspaceRequest is a request file within a collection or folder, located
 // by its workspace-relative Request Path (e.g. "users/auth/login").
@@ -78,6 +86,15 @@ type OpenedRequest struct {
 	// FileEnv is the request file's environment: field ("" when unset); the
 	// sending tab uses it as its environment pill.
 	FileEnv string `json:"fileEnv"`
+	// FileRequest is the raw, unmerged file-owned request: the editor seed.
+	// It carries only what the file declares (no inherited base URL, headers,
+	// or auth), and only its builder fields (url/method/headers/query/body)
+	// are editable — everything else is preserved verbatim on save.
+	FileRequest request.Request `json:"fileRequest"`
+	// Version fingerprints the raw file bytes at open time. A save is only
+	// accepted when the on-disk bytes still match; otherwise the request
+	// changed under the editor and SaveRequest returns ErrFileChangedOnDisk.
+	Version string `json:"version"`
 }
 
 // WorkspaceService exposes the workspace's collection tree to front-ends on
@@ -130,12 +147,16 @@ func (s *WorkspaceService) OpenRequest(path string) (*OpenedRequest, error) {
 	if err != nil {
 		return nil, err
 	}
-	return openedRequestDTO(path, entry, resolved), nil
+	raw, err := os.ReadFile(entry.Path)
+	if err != nil {
+		return nil, fmt.Errorf("read request file %q: %w", entry.Path, err)
+	}
+	return openedRequestDTO(path, entry, resolved, requestfile.Fingerprint(raw)), nil
 }
 
 // openedRequestDTO maps a resolved request to its bridge-friendly view,
 // enumerating the variable chain in precedence order (lowest → highest scope).
-func openedRequestDTO(path string, entry *collections.RequestEntry, resolved *collections.ResolvedRequest) *OpenedRequest {
+func openedRequestDTO(path string, entry *collections.RequestEntry, resolved *collections.ResolvedRequest, version string) *OpenedRequest {
 	out := make([]ResolvedVariable, 0)
 	for _, scope := range []variables.Scope{
 		variables.ScopeGlobal,
@@ -148,12 +169,98 @@ func openedRequestDTO(path string, entry *collections.RequestEntry, resolved *co
 		})
 	}
 	return &OpenedRequest{
-		Path:      path,
-		Name:      entry.Name,
-		Request:   resolved.Request,
-		Variables: out,
-		FileEnv:   entry.File.Environment,
+		Path:        path,
+		Name:        entry.Name,
+		Request:     resolved.Request,
+		Variables:   out,
+		FileEnv:     entry.File.Environment,
+		FileRequest: entry.File.Request,
+		Version:     version,
 	}
+}
+
+// SaveRequest persists a request file's editable builder fields
+// (url/method/headers/query/body) back to disk, preserving the file's format
+// (JSON for .json, YAML otherwise) and every non-editable field (name,
+// environment, variables, scripts, auth, timeout) verbatim. expectedVersion
+// must match the current on-disk fingerprint, taken from OpenedRequest.Version;
+// a mismatch returns ErrFileChangedOnDisk without touching the file. The
+// returned string is the new fingerprint of the saved file, to be used as the
+// tab's next baseline version.
+func (s *WorkspaceService) SaveRequest(path string, draft request.Request, expectedVersion string) (string, error) {
+	if s.root == "" {
+		return "", fmt.Errorf("no workspace found: open a reqly workspace to save requests")
+	}
+	ws, err := collections.LoadWorkspace(s.root)
+	if err != nil {
+		return "", err
+	}
+	_, _, entry, ok := ws.FindRequest(collections.RequestPath(path))
+	if !ok {
+		return "", fmt.Errorf("request %q not found in the workspace", path)
+	}
+
+	raw, err := os.ReadFile(entry.Path)
+	if err != nil {
+		return "", fmt.Errorf("read request file %q: %w", entry.Path, err)
+	}
+	if requestfile.Fingerprint(raw) != expectedVersion {
+		return "", ErrFileChangedOnDisk
+	}
+
+	file := *entry.File
+	file.Request = mergedBuilderRequest(entry.File.Request, draft)
+	if err := requestfile.Save(entry.Path, &file); err != nil {
+		return "", err
+	}
+
+	saved, err := os.ReadFile(entry.Path)
+	if err != nil {
+		return "", fmt.Errorf("read saved request file %q: %w", entry.Path, err)
+	}
+	return requestfile.Fingerprint(saved), nil
+}
+
+// mergedBuilderRequest carries only the editable builder fields from draft
+// onto the file's original request, preserving id, name, auth, and timeout
+// verbatim so a save can never alter what the editor cannot edit.
+func mergedBuilderRequest(original, draft request.Request) request.Request {
+	return request.Request{
+		ID:      original.ID,
+		Name:    original.Name,
+		Method:  draft.Method,
+		URL:     draft.URL,
+		Headers: draft.Headers,
+		Query:   draft.Query,
+		Body:    draft.Body,
+		Auth:    original.Auth,
+		Timeout: original.Timeout,
+	}
+}
+
+// ResolveSend re-resolves a request file with draft substituted for the file's
+// own request, applying the full inheritance chain (base URL, merged headers,
+// inherited auth) and variable scopes against the draft. It is the send-time
+// seam for file-backed tabs: the draft carries the editor's live edits while
+// every inherited field is recomputed from the containers, not from an
+// already-resolved snapshot.
+func (s *WorkspaceService) ResolveSend(path string, draft request.Request) (*collections.ResolvedRequest, error) {
+	if s.root == "" {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to send requests")
+	}
+	ws, err := collections.LoadWorkspace(s.root)
+	if err != nil {
+		return nil, err
+	}
+	coll, chain, entry, ok := ws.FindRequest(collections.RequestPath(path))
+	if !ok {
+		return nil, fmt.Errorf("request %q not found in the workspace", path)
+	}
+	sub := *entry
+	file := *entry.File
+	file.Request = draft
+	sub.File = &file
+	return ws.ResolveRequest(coll, chain, &sub)
 }
 
 // workspaceTreeDTO maps an internal workspace to its bridge-friendly tree.
