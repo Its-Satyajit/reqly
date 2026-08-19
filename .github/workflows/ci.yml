@@ -8,7 +8,7 @@ on:
 
 env:
   GOBIN: /home/runner/go/bin
-  WAILS_VERSION: v3.0.0-beta.8
+  WAILS_VERSION: v3.0.0-beta.9
 
 jobs:
   frontend:
