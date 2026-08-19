@@ -1,6 +1,7 @@
 import { AppService } from '../bindings/github.com/Its-Satyajit/reqly/apps/desktop/backend/index'
 import type {
   AuthAdapter,
+  CollectionsAdapter,
   EnvAdapter,
   RequestInput,
   RequestSender,
@@ -22,13 +23,20 @@ export const wailsSender: RequestSender = async (req: RequestInput): Promise<Res
   )
   if (contentType && !hasManualType) headers.push({ key: 'Content-Type', value: contentType })
 
-  const res = await AppService.SendRequest({
-    method: req.method,
-    url: req.url,
-    headers,
-    query: (req.params ?? []).map(({ key, value }) => ({ key, value })),
-    body,
-  } as never)
+  const res = await AppService.SendRequest(
+    {
+      method: req.method,
+      url: req.url,
+      headers,
+      query: (req.params ?? []).map(({ key, value }) => ({ key, value })),
+      body,
+      auth: req.auth,
+    } as never,
+    {
+      env: req.env ?? '',
+      vars: (req.vars ?? []).map(({ name, value, scope }) => ({ name, value, scope })),
+    } as never,
+  )
   if (!res) {
     throw new Error('core returned an empty response')
   }
@@ -126,6 +134,76 @@ export const wailsEnvAdapter: EnvAdapter = {
 }
 
 /**
+ * wailsCollectionsAdapter loads the workspace's collection tree through the
+ * Go core's WorkspaceService via the generated Wails bindings. The generated
+ * models are nullable; normalize them to the shared tree shapes.
+ */
+type WailsTree = NonNullable<Awaited<ReturnType<typeof AppService.WorkspaceLoad>>>
+type WailsCollection = NonNullable<WailsTree['collections']>[number]
+type WailsFolder = NonNullable<WailsCollection['folders']>[number]
+type WailsRequest = NonNullable<WailsCollection['requests']>[number]
+
+const normalizeFolder = (f: WailsFolder): import('@reqly/frontend').WorkspaceFolder => ({
+  name: f.name,
+  path: f.path,
+  folders: (f.folders ?? []).map(normalizeFolder),
+  requests: (f.requests ?? []).map(normalizeRequest),
+})
+
+const normalizeRequest = (r: WailsRequest): import('@reqly/frontend').WorkspaceRequest => ({
+  name: r.name,
+  path: r.path,
+})
+
+type WailsOpened = NonNullable<Awaited<ReturnType<typeof AppService.WorkspaceOpenRequest>>>
+
+const normalizeOpenedRequest = (o: WailsOpened): import('@reqly/frontend').OpenedRequest => ({
+  path: o.path,
+  name: o.name,
+  request: {
+    method: o.request?.method ?? 'GET',
+    url: o.request?.url ?? '',
+    headers: (o.request?.headers ?? []).map(({ key, value }) => ({ key, value })),
+    query: (o.request?.query ?? []).map(({ key, value }) => ({ key, value })),
+    body: o.request?.body ?? '',
+    auth: o.request?.auth
+      ? {
+          type: o.request.auth.type,
+          config: o.request.auth.config ? normalizeVariables(o.request.auth.config) : undefined,
+        }
+      : undefined,
+  },
+  variables: (o.variables ?? []).map(({ name, value, scope }) => ({ name, value, scope })),
+  fileEnv: o.fileEnv ?? '',
+})
+
+export const wailsCollectionsAdapter: CollectionsAdapter = {
+  load: async () => {
+    const tree = await AppService.WorkspaceLoad()
+    if (!tree) {
+      throw new Error('core returned an empty workspace tree')
+    }
+    return {
+      name: tree.name ?? '',
+      path: tree.path ?? '',
+      collections: (tree.collections ?? []).map((c) => ({
+        name: c.name,
+        path: c.path,
+        folders: (c.folders ?? []).map(normalizeFolder),
+        requests: (c.requests ?? []).map(normalizeRequest),
+      })),
+    }
+  },
+  open: async (path) => {
+    const opened = await AppService.WorkspaceOpenRequest(path)
+    if (!opened) {
+      throw new Error('core returned an empty opened request')
+    }
+    return normalizeOpenedRequest(opened)
+  },
+}
+
+/**
  * Wires the Go core behind the shared request, auth, and environment stores.
  * Called once from the host entry point, before the React tree mounts.
  */
@@ -133,4 +211,5 @@ export function initRequestBridge(): void {
   useRequestStore.getState().setSender(wailsSender)
   useAuthStore.getState().setAdapter(wailsAuthAdapter)
   useWorkspaceStore.getState().setEnvAdapter(wailsEnvAdapter)
+  useWorkspaceStore.getState().setWorkspaceAdapter(wailsCollectionsAdapter)
 }

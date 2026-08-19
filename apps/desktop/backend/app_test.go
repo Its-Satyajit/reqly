@@ -25,7 +25,104 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Its-Satyajit/reqly/internal/core"
+	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/variables"
 )
+
+func TestWorkspaceLoadBridgeReturnsTree(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users", "auth"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for path, contents := range map[string]string{
+		"collections/users/reqly.yaml":      "name: users\n",
+		"collections/users/list-users.yaml": "request: {method: GET, url: users}\n",
+		"collections/users/get-user.yaml":   "request: {method: GET, url: users/1}\n",
+		"collections/users/auth/reqly.yaml": "name: auth\n",
+		"collections/users/auth/login.yaml": "request: {method: POST, url: auth/login}\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, path), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	tree, err := svc.WorkspaceLoad()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tree.Collections) != 1 || tree.Collections[0].Name != "users" {
+		t.Fatalf("collections = %+v", tree.Collections)
+	}
+	coll := tree.Collections[0]
+	if coll.Path != "users" {
+		t.Fatalf("collection path = %q, want users", coll.Path)
+	}
+	if len(coll.Requests) != 2 || coll.Requests[0].Path != "users/get-user" {
+		t.Fatalf("requests = %+v", coll.Requests)
+	}
+	if len(coll.Folders) != 1 || coll.Folders[0].Path != "users/auth" {
+		t.Fatalf("folders = %+v", coll.Folders)
+	}
+	if len(coll.Folders[0].Requests) != 1 || coll.Folders[0].Requests[0].Path != "users/auth/login" {
+		t.Fatalf("folder requests = %+v", coll.Folders[0].Requests)
+	}
+}
+
+func TestWorkspaceLoadBridgeWithoutWorkspaceErrors(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if _, err := svc.WorkspaceLoad(); err == nil || !strings.Contains(err.Error(), "no workspace found") {
+		t.Fatalf("WorkspaceLoad err = %v, want no-workspace error", err)
+	}
+}
+
+func TestWorkspaceOpenRequestBridgeResolvesRequest(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/reqly.yaml"), []byte("name: users\nbaseURL: https://api.example.com\nheaders:\n  - key: X-Collection\n    value: users\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/list-users.yaml"), []byte("name: List Users\nenvironment: staging\nrequest: {method: GET, url: users}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	opened, err := svc.WorkspaceOpenRequest("users/list-users")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opened.Path != "users/list-users" || opened.Name != "list-users" {
+		t.Fatalf("path/name = %q/%q", opened.Path, opened.Name)
+	}
+	if opened.FileEnv != "staging" {
+		t.Fatalf("fileEnv = %q, want staging", opened.FileEnv)
+	}
+	if opened.Request.URL != "https://api.example.com/users" {
+		t.Fatalf("URL = %q, want https://api.example.com/users", opened.Request.URL)
+	}
+}
+
+func TestWorkspaceOpenRequestBridgeMissingErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if _, err := svc.WorkspaceOpenRequest("nope/thing"); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("WorkspaceOpenRequest err = %v, want not-found error", err)
+	}
+}
 
 func writeWorkspace(t *testing.T, root string) {
 	t.Helper()
@@ -51,7 +148,7 @@ func TestResolveAppEnvironmentFromWorkspaceDescriptor(t *testing.T) {
 	t.Chdir(dir)
 	t.Setenv("REQLY_ENV", "")
 
-	set, err := resolveAppEnvironment()
+	set, err := resolveAppEnvironment("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +170,7 @@ func TestResolveAppEnvironmentFromREQLYEnv(t *testing.T) {
 	t.Chdir(dir)
 	t.Setenv("REQLY_ENV", "prod")
 
-	set, err := resolveAppEnvironment()
+	set, err := resolveAppEnvironment("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,12 +184,106 @@ func TestResolveAppEnvironmentWithoutWorkspaceIsNotAnError(t *testing.T) {
 	t.Chdir(dir)
 	t.Setenv("REQLY_ENV", "")
 
-	set, err := resolveAppEnvironment()
+	set, err := resolveAppEnvironment("")
 	if err != nil {
 		t.Fatalf("expected no error without workspace, got %v", err)
 	}
 	if set == nil {
 		t.Fatal("expected a variable set (with process-env scope)")
+	}
+}
+
+func TestSendRequestEnvironmentPillOverrides(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	// Second environment not selected by the descriptor; the pill must win.
+	if err := os.WriteFile(filepath.Join(dir, "environments", "prod.yaml"), []byte("variables:\n  REGION: eu-central-1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var gotRegion string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotRegion = r.Header.Get("X-Region")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	t.Chdir(dir)
+	t.Setenv("REQLY_ENV", "")
+
+	svc := NewAppService()
+	_, err := svc.SendRequest(request.Request{
+		Method:  "GET",
+		URL:     srv.URL,
+		Headers: []request.Header{{Key: "X-Region", Value: "{{REGION}}"}},
+	}, SendOptions{Env: "prod"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotRegion != "eu-central-1" {
+		t.Fatalf("X-Region = %q, want eu-central-1 (pill override)", gotRegion)
+	}
+}
+
+func TestSendRequestSnapshotVariablesWinOverEnvironment(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+	t.Setenv("REQLY_ENV", "")
+
+	var got map[string]string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = map[string]string{
+			"X-Region": r.Header.Get("X-Region"),
+			"X-Shared": r.Header.Get("X-Shared"),
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	svc := NewAppService()
+	_, err := svc.SendRequest(request.Request{
+		Method: "GET",
+		URL:    srv.URL,
+		Headers: []request.Header{
+			{Key: "X-Region", Value: "{{REGION}}"},
+			{Key: "X-Shared", Value: "{{SHARED}}"},
+		},
+	}, SendOptions{
+		// Environment scope carries REGION=us-west-2; the snapshot overlays a
+		// collection-scope REGION and a request-scope SHARED. Precedence must
+		// keep request > collection > environment.
+		Vars: []core.ResolvedVariable{
+			{Name: "REGION", Value: "snapshot-collection", Scope: string(variables.ScopeCollection)},
+			{Name: "SHARED", Value: "snapshot-request", Scope: string(variables.ScopeRequest)},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["X-Region"] != "snapshot-collection" {
+		t.Fatalf("X-Region = %q, want snapshot-collection (collection wins over env)", got["X-Region"])
+	}
+	if got["X-Shared"] != "snapshot-request" {
+		t.Fatalf("X-Shared = %q, want snapshot-request (request wins)", got["X-Shared"])
+	}
+}
+
+func TestSendRequestMissingPillEnvironmentErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+	t.Setenv("REQLY_ENV", "")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	svc := NewAppService()
+	_, err := svc.SendRequest(request.Request{Method: "GET", URL: srv.URL}, SendOptions{Env: "nope"})
+	if err == nil {
+		t.Fatal("expected an error for a missing pill environment, got nil")
 	}
 }
 
