@@ -6,7 +6,6 @@
 // the Go core, while browser dev mode uses fetchSender.
 
 import { serializeBody, type BodyType } from './body'
-import type { ResolvedVariable } from './collections'
 
 export interface RequestHeader {
   key: string
@@ -42,9 +41,12 @@ export interface RequestInput {
   /** Environment pill (a request file's environment: field) used at send;
    * empty falls back to the app's active environment. */
   env?: string
-  /** The tab's effective variable chain (scope-tagged snapshot), layered
-   * under the request so file variables win over the environment. */
-  vars?: ResolvedVariable[]
+  /** Workspace-relative Request Path of the file-backed tab this send belongs
+   * to. When set, the request is treated as the tab's live draft and the full
+   * inheritance chain (base URL, merged headers, inherited auth, variable
+   * scopes) is re-resolved against it at send time; when unset, the request
+   * is sent as-is (scratchpad). */
+  requestPath?: string
   /** Inherited auth resolved when the request was opened; applied silently. */
   auth?: RequestAuth
 }

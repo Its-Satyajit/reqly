@@ -37,13 +37,21 @@ export interface WorkspaceTree {
   path: string
   collections: WorkspaceCollection[]
 }/** CollectionsAdapter is the seam through which the desktop UI loads the
- * workspace's collection tree and opens requests. */
+ * workspace's collection tree, opens requests, and saves their editable
+ * builder fields back to disk. */
 export interface CollectionsAdapter {
   load: () => Promise<WorkspaceTree>
   /** open resolves a request file by Request Path into its fully resolved
    * form (effective URL, merged headers, inherited auth, variable chain,
-   * file environment), ready to seed an editor tab. */
+   * file environment) plus the raw file-owned request and version, ready to
+   * seed an editor tab. */
   open: (path: string) => Promise<OpenedRequest>
+  /** save persists a file-backed tab's editable builder fields to disk,
+   * preserving format and every non-editable field. expectedVersion must
+   * match the file's fingerprint from OpenedRequest.version; a mismatch
+   * rejects the save (changed on disk) without touching the file. Resolves
+   * to the new baseline version on success. */
+  save: (path: string, draft: FileRequestInput, expectedVersion: string) => Promise<string>
 }
 
 /** ResolvedVariable is one entry of an opened request's effective variable
@@ -67,6 +75,18 @@ export interface ResolvedRequestInput {
   auth?: RequestAuth
 }
 
+/** FileRequestInput is the raw, unmerged file-owned request: the editor seed.
+ * It carries only what the file declares (no inherited base URL, headers, or
+ * auth), and only its builder fields are editable — everything else is
+ * preserved verbatim on save. */
+export interface FileRequestInput {
+  method: string
+  url: string
+  headers: { key: string; value: string }[]
+  query: { key: string; value: string }[]
+  body: string
+}
+
 /** OpenedRequest is a request file combined with its inherited configuration
  * and full variable chain, ready to be loaded into an editor. Placeholders
  * are left intact — they resolve at send time with the environment layer. */
@@ -74,10 +94,14 @@ export interface OpenedRequest {
   path: string
   name: string
   request: ResolvedRequestInput
+  fileRequest: FileRequestInput
   variables: ResolvedVariable[]
   /** The request file's environment: field ("" when unset); the sending tab
    * uses it as its environment pill. */
   fileEnv: string
+  /** Fingerprint of the raw file bytes at open time; a save is only accepted
+   * while the on-disk bytes still match. */
+  version: string
 }
 
 /**
@@ -89,5 +113,8 @@ export const fallbackCollectionsAdapter: CollectionsAdapter = {
   load: async () => ({ name: '', path: '', collections: [] }),
   open: async () => {
     throw new Error('Opening collections requires the desktop app.')
+  },
+  save: async () => {
+    throw new Error('Saving request files requires the desktop app.')
   },
 }

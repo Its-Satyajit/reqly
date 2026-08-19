@@ -3,10 +3,20 @@ import { fallbackEnvAdapter, type EnvAdapter } from '../lib/env'
 import {
   fallbackCollectionsAdapter,
   type CollectionsAdapter,
+  type FileRequestInput,
   type ResolvedRequestInput,
   type WorkspaceTree,
 } from '../lib/collections'
-import { useRequestStore, NEW_REQUEST_TAB_ID, type TabDraft } from './useRequestStore'
+import type { RequestHeader } from '../lib/request'
+import {
+  useRequestStore,
+  NEW_REQUEST_TAB_ID,
+  tabIsDirty,
+  fileInputFromDraft,
+  emptyTabDraft,
+  type TabDraft,
+  type TabMeta,
+} from './useRequestStore'
 import type { BodyType } from '../lib/body'
 
 export interface Workspace {
@@ -59,8 +69,19 @@ interface WorkspaceState {
   closeTab: (id: string) => void
   setActiveTab: (id: string | null) => void
   /** Open a collection request by Request Path into a tab, seeding the draft
-   * from its resolved form and recording its variable chain + env pill. */
+   * from its raw file request and recording its version, base URL, inherited
+   * headers, variable chain, and env pill. */
   openRequest: (path: string) => Promise<void>
+  /** Save a file-backed tab's editable fields back to disk. On a
+   * changed-on-disk conflict the tab flags the conflict instead of
+   * clobbering the external edit. */
+  saveRequest: (id: string) => Promise<void>
+  /** Resolve a changed-on-disk conflict by overwriting: re-open the file and
+   * save the current draft on top of it. */
+  overwriteRequest: (id: string) => Promise<void>
+  /** Resolve a changed-on-disk conflict by reloading: re-open the file and
+   * discard the tab's edits, reseeding from the fresh file. */
+  reloadRequest: (id: string) => Promise<void>
   setActiveEnvironment: (id: string | null) => void
   setEnvironments: (environments: Environment[]) => void
   setEnvAdapter: (adapter: EnvAdapter) => void
@@ -80,7 +101,10 @@ const toEnvironment = (name: string, src: { description?: string; variables?: Re
 
 /** bodyTypeFor infers the editor's body type from an opened request's body and
  * Content-Type header, so what the tab shows matches what the core will send. */
-export const bodyTypeFor = (req: ResolvedRequestInput): BodyType => {
+export const bodyTypeFor = (req: {
+  body?: string
+  headers: { key: string; value: string }[]
+}): BodyType => {
   if (!req.body) return 'none'
   const contentType = req.headers
     .find((h) => h.key.toLowerCase() === 'content-type')
@@ -92,21 +116,54 @@ export const bodyTypeFor = (req: ResolvedRequestInput): BodyType => {
   return 'raw'
 }
 
-/** draftFromOpened maps an opened request's resolved fields onto the editor
- * draft shape, preserving placeholders for send-time interpolation. */
-export const draftFromOpened = (opened: {
-  request: ResolvedRequestInput
-}): Partial<TabDraft> => {
+/** draftFromFileRequest maps the raw file-owned request onto the editor draft
+ * shape, preserving placeholders for send-time interpolation. Only builder
+ * fields are editable; inherited fields are recomputed at send. */
+export const draftFromFileRequest = (file: FileRequestInput): Partial<TabDraft> => {
   const toRows = (rows: { key: string; value: string }[]) =>
     rows.map(({ key, value }) => ({ key, value, enabled: true }))
   return {
-    method: opened.request.method,
-    url: opened.request.url,
-    params: toRows(opened.request.query),
-    headers: toRows(opened.request.headers),
-    bodyType: bodyTypeFor(opened.request),
-    body: opened.request.body,
+    method: file.method,
+    url: file.url,
+    params: toRows(file.query),
+    headers: toRows(file.headers),
+    bodyType: bodyTypeFor(file),
+    body: file.body,
   }
+}
+
+/** baseUrlFor derives the inherited base URL prefix from the opened request's
+ * effective URL and the file's raw URL. An absolute file URL means no base;
+ * otherwise the raw URL is stripped from the end of the effective URL. */
+export const baseUrlFor = (fileUrl: string, effectiveUrl: string): string => {
+  if (!fileUrl || fileUrl.includes('://')) return ''
+  if (effectiveUrl.endsWith(fileUrl)) return effectiveUrl.slice(0, -fileUrl.length)
+  if (effectiveUrl.endsWith('/' + fileUrl)) return effectiveUrl.slice(0, -fileUrl.length - 1)
+  return ''
+}
+
+/** effectiveUrlFor renders the live Effective URL line: the draft URL joined
+ * onto the inherited base, or the draft URL as-is when absolute/base-less. */
+export const effectiveUrlFor = (draftUrl: string, baseUrl: string): string => {
+  if (draftUrl.includes('://')) return draftUrl
+  if (!baseUrl) return draftUrl
+  return `${baseUrl}/${draftUrl.replace(/^\/+/, '')}`
+}
+
+/** inheritedHeadersFrom returns the resolved headers that are not declared by
+ * the file itself (workspace → collection → folder), for the read-only group. */
+export const inheritedHeadersFrom = (
+  resolved: ResolvedRequestInput,
+  file: FileRequestInput,
+): RequestHeader[] => {
+  const own = new Set((file.headers ?? []).map((h) => h.key.toLowerCase()))
+  return (resolved.headers ?? []).filter((h) => !own.has(h.key.toLowerCase()))
+}
+
+/** isChangedOnDisk reports whether an error is a changed-on-disk save
+ * conflict (the file changed under the editor). */
+export function isChangedOnDisk(err: unknown): boolean {
+  return err instanceof Error && err.message.includes('changed on disk')
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
@@ -151,6 +208,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   closeTab: (id) =>
     set((state) => {
+      const { drafts, meta } = useRequestStore.getState()
+      if (tabIsDirty(drafts[id], meta[id])) {
+        const keep = window.confirm(
+          'This request has unsaved changes. Close without saving?',
+        )
+        if (!keep) return {}
+      }
       const index = state.openTabs.findIndex((t) => t.id === id)
       let openTabs = state.openTabs.filter((t) => t.id !== id)
       useRequestStore.getState().removeTab(id)
@@ -178,17 +242,99 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     try {
       const opened = await workspaceAdapter.open(path)
       set({ openError: null })
+      const seed = draftFromFileRequest(opened.fileRequest)
       get().openTab(
         { id: opened.path, title: opened.name, requestPath: opened.path },
-        draftFromOpened(opened),
+        seed,
       )
-      useRequestStore.getState().setMeta(opened.path, {
+      const meta: TabMeta = {
         requestPath: opened.path,
         name: opened.name,
         variables: opened.variables,
         env: opened.fileEnv || undefined,
         auth: opened.request.auth,
+        version: opened.version,
+        baseUrl: baseUrlFor(opened.fileRequest.url, opened.request.url),
+        inheritedHeaders: inheritedHeadersFrom(opened.request, opened.fileRequest),
+        baseline: { ...emptyTabDraft(), ...seed },
+      }
+      useRequestStore.getState().setMeta(opened.path, meta)
+    } catch (err) {
+      set({ openError: err instanceof Error ? err.message : String(err) })
+    }
+  },
+
+  saveRequest: async (id) => {
+    const { workspaceAdapter } = get()
+    const { drafts, meta } = useRequestStore.getState()
+    const m = meta[id]
+    const draft = drafts[id]
+    if (!m?.requestPath || !draft || m.changedOnDisk) return
+    try {
+      const version = await workspaceAdapter.save(m.requestPath, fileInputFromDraft(draft), m.version ?? '')
+      useRequestStore.getState().setMeta(id, {
+        ...m,
+        version,
+        baseline: { ...draft },
+        changedOnDisk: false,
       })
+    } catch (err) {
+      useRequestStore.getState().setMeta(id, {
+        ...m,
+        changedOnDisk: isChangedOnDisk(err),
+      })
+      if (!isChangedOnDisk(err)) {
+        set({ openError: err instanceof Error ? err.message : String(err) })
+      }
+    }
+  },
+
+  overwriteRequest: async (id) => {
+    const { workspaceAdapter } = get()
+    const { drafts, meta } = useRequestStore.getState()
+    const m = meta[id]
+    const draft = drafts[id]
+    if (!m?.requestPath || !draft) return
+    try {
+      // Re-open the file for a fresh version, then save the current draft on
+      // top of it — the editor's edits win over the external change.
+      const opened = await workspaceAdapter.open(m.requestPath)
+      const version = await workspaceAdapter.save(
+        m.requestPath,
+        fileInputFromDraft(draft),
+        opened.version,
+      )
+      useRequestStore.getState().setMeta(id, {
+        ...m,
+        version,
+        baseline: { ...draft },
+        changedOnDisk: false,
+      })
+      set({ openError: null })
+    } catch (err) {
+      set({ openError: err instanceof Error ? err.message : String(err) })
+    }
+  },
+
+  reloadRequest: async (id) => {
+    const { workspaceAdapter } = get()
+    const { meta } = useRequestStore.getState()
+    const m = meta[id]
+    if (!m?.requestPath) return
+    try {
+      // Discard the tab's edits and reseed from the fresh file on disk.
+      const opened = await workspaceAdapter.open(m.requestPath)
+      const seed = draftFromFileRequest(opened.fileRequest)
+      useRequestStore.getState().updateDraft(id, { ...emptyTabDraft(), ...seed })
+      useRequestStore.getState().setMeta(id, {
+        ...m,
+        version: opened.version,
+        baseUrl: baseUrlFor(opened.fileRequest.url, opened.request.url),
+        inheritedHeaders: inheritedHeadersFrom(opened.request, opened.fileRequest),
+        baseline: { ...emptyTabDraft(), ...seed },
+        changedOnDisk: false,
+      })
+      set({ openError: null })
     } catch (err) {
       set({ openError: err instanceof Error ? err.message : String(err) })
     }

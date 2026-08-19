@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import type { RequestInput, RequestSender, ResponseData, KeyValueRow, RequestAuth } from '../lib/request'
-import { fetchSender } from '../lib/request'
+import type { RequestInput, RequestSender, ResponseData, KeyValueRow, RequestAuth, RequestHeader } from '../lib/request'
+import { fetchSender, sentRows } from '../lib/request'
+import { serializeBody } from '../lib/body'
 import type { BodyType } from '../lib/body'
 import type { ResolvedVariable } from '../lib/collections'
 
@@ -28,6 +29,20 @@ export interface TabMeta {
   variables: ResolvedVariable[]
   env?: string
   auth?: RequestAuth
+  /** Fingerprint of the raw file bytes at open/last-save; a save is only
+   * accepted while the on-disk bytes still match. */
+  version?: string
+  /** The inherited base URL prefix ("" when the file URL is absolute) used to
+   * render the tab's live Effective URL line. */
+  baseUrl?: string
+  /** Headers inherited from the container chain (workspace → collection →
+   * folder), displayed read-only alongside the editable own headers. */
+  inheritedHeaders: RequestHeader[]
+  /** The draft exactly as seeded from the file; dirty = draft ≠ baseline. */
+  baseline?: TabDraft
+  /** True when the last save attempt hit a concurrent on-disk edit; the
+   * editor surfaces Overwrite / Reload. */
+  changedOnDisk?: boolean
 }
 
 /** Per-tab execution state: the response (if any), in-flight flag, error. */
@@ -47,6 +62,38 @@ export const emptyTabDraft = (): TabDraft => ({
   headers: [],
 })
 
+/** fileInputFromDraft serializes a tab's editable fields into the
+ * file-owned request shape a save writes to disk: the body type + body/form
+ * collapse into request.body, with the implied Content-Type pushed onto the
+ * headers (unless a manual Content-Type is already present) so the file
+ * round-trips through the editor. */
+export function fileInputFromDraft(draft: TabDraft): {
+  method: string
+  url: string
+  headers: RequestHeader[]
+  query: { key: string; value: string }[]
+  body: string
+} {
+  const headers = sentRows(draft.headers).map(({ key, value }) => ({ key, value }))
+  const hasManualType = headers.some((h) => h.key.toLowerCase() === 'content-type')
+  const { body, contentType } = serializeBody(draft)
+  if (contentType && !hasManualType) headers.push({ key: 'Content-Type', value: contentType })
+  return {
+    method: draft.method,
+    url: draft.url,
+    headers,
+    query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
+    body: body ?? '',
+  }
+}
+
+/** tabIsDirty reports whether a tab's draft differs from its file baseline
+ * (the seeded file request). Scratchpad tabs are never dirty. */
+export function tabIsDirty(draft: TabDraft | undefined, meta: TabMeta | undefined): boolean {
+  if (!draft || !meta?.requestPath || !meta.baseline) return false
+  return JSON.stringify(draft) !== JSON.stringify(meta.baseline)
+}
+
 interface RequestState {
   drafts: Record<string, TabDraft>
   responses: Record<string, TabResponse>
@@ -59,6 +106,8 @@ interface RequestState {
   updateDraft: (id: string, patch: Partial<TabDraft>) => void
   /** Set a tab's collection metadata (variables chain, environment pill). */
   setMeta: (id: string, meta: TabMeta) => void
+  /** Clear a tab's changed-on-disk conflict flag after the user resolves it. */
+  clearChangedOnDisk: (id: string) => void
   send: (id: string, req: RequestInput) => Promise<void>
   removeTab: (id: string) => void
 }
@@ -92,6 +141,15 @@ export const useRequestStore = create<RequestState>((set, get) => ({
 
   setMeta: (id, meta) =>
     set((state) => ({ meta: { ...state.meta, [id]: meta } })),
+
+  /** clearChangedOnDisk acknowledges a changed-on-disk conflict after the
+   * user resolves it (overwrite or reload). */
+  clearChangedOnDisk: (id) =>
+    set((state) => {
+      const meta = state.meta[id]
+      if (!meta?.changedOnDisk) return {}
+      return { meta: { ...state.meta, [id]: { ...meta, changedOnDisk: false } } }
+    }),
 
   send: async (id, req) => {
     set((state) => ({

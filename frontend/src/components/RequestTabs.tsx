@@ -1,10 +1,12 @@
 import { useWorkspaceStore } from "#stores";
-import { NEW_REQUEST_TAB_ID } from "#stores/useRequestStore";
+import { NEW_REQUEST_TAB_ID, tabIsDirty } from "#stores/useRequestStore";
+import { useRequestStore } from "#stores/useRequestStore";
 import { cn } from "#lib/utils";
 
 /**
  * The request tab bar: one tab per open request (deduplicated by id) plus a
- * "+ New request" action that focuses the persistent scratchpad tab.
+ * "+ New request" action that focuses the persistent scratchpad tab. A dot
+ * marks file-backed tabs with unsaved edits.
  */
 export function RequestTabs() {
   const openTabs = useWorkspaceStore((s) => s.openTabs);
@@ -12,6 +14,8 @@ export function RequestTabs() {
   const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
   const closeTab = useWorkspaceStore((s) => s.closeTab);
   const openTab = useWorkspaceStore((s) => s.openTab);
+  const drafts = useRequestStore((s) => s.drafts);
+  const meta = useRequestStore((s) => s.meta);
 
   const newRequest = () => {
     openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" });
@@ -30,6 +34,12 @@ export function RequestTabs() {
           )}
         >
           <button onClick={() => setActiveTab(t.id)} className="max-w-40 truncate">
+            {tabIsDirty(drafts[t.id], meta[t.id]) && (
+              <span
+                title="Unsaved changes"
+                className="mr-1 inline-block size-1.5 rounded-full bg-amber-500"
+              />
+            )}
             {t.title}
           </button>
           <button

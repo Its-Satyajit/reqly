@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
 import { useRequestStore, useWorkspaceStore } from '../../stores'
+import { tabIsDirty } from '../../stores/useRequestStore'
+import { effectiveUrlFor } from '../../stores/useWorkspaceStore'
 import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
 import type { ResolvedVariable } from '../../lib/collections'
@@ -41,9 +43,23 @@ export function RequestEditor() {
   const loading = useRequestStore((s) => (activeTabId ? s.responses[activeTabId]?.loading : false))
   const updateDraft = useRequestStore((s) => s.updateDraft)
   const send = useRequestStore((s) => s.send)
+  const saveRequest = useWorkspaceStore((s) => s.saveRequest)
+  const overwriteRequest = useWorkspaceStore((s) => s.overwriteRequest)
+  const reloadRequest = useWorkspaceStore((s) => s.reloadRequest)
   const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId)
   const environments = useWorkspaceStore((s) => s.environments)
   const [tab, setTab] = useState<Tab>('params')
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        void saveRequest(activeTabId ?? '')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [activeTabId, saveRequest])
 
   if (!activeTabId || !draft) {
     return (
@@ -58,6 +74,9 @@ export function RequestEditor() {
 
   const envPill = meta?.env ?? environments.find((e) => e.id === activeEnvironmentId)?.name ?? null
   const showVariables = (meta?.variables.length ?? 0) > 0
+  const dirty = tabIsDirty(draft, meta)
+  const requestPath = meta?.requestPath
+  const canSave = Boolean(requestPath) && dirty && draft.url.trim() !== ''
 
   const handleSend = () => {
     void send(activeTabId, {
@@ -69,7 +88,7 @@ export function RequestEditor() {
       body: draft.body,
       form: sentRows(draft.form),
       env: meta?.env,
-      vars: meta?.variables,
+      requestPath,
       auth: meta?.auth,
     })
   }
@@ -78,6 +97,30 @@ export function RequestEditor() {
 
   return (
     <div className="flex h-full flex-col">
+      {meta?.changedOnDisk && (
+        <div className="flex items-center justify-between gap-2 border-b border-amber-500/40 bg-amber-500/10 px-3 py-1.5">
+          <p className="text-xs text-amber-600">
+            This request changed on disk since you opened it. Overwrite the
+            file, or reload to keep the on-disk version.
+          </p>
+          <div className="flex shrink-0 gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void reloadRequest(activeTabId)}
+            >
+              Reload
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => void overwriteRequest(activeTabId)}
+            >
+              Overwrite
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 p-2">
         <select
           value={draft.method}
@@ -103,10 +146,26 @@ export function RequestEditor() {
           {envPill ?? 'No environment'}
           {meta?.env ? ' • file' : ''}
         </span>
+        {requestPath && (
+          <Button size="sm" variant="outline" onClick={() => void saveRequest(activeTabId)} disabled={!canSave}>
+            {dirty ? 'Save' : 'Saved'}
+          </Button>
+        )}
         <Button size="sm" onClick={handleSend} disabled={loading}>
           {loading ? 'Sending…' : 'Send'}
         </Button>
       </div>
+
+      {requestPath && (
+        <div className="flex items-center gap-1 px-2 pb-1">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Effective URL
+          </span>
+          <code className="min-w-0 flex-1 truncate rounded bg-muted/40 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+            {effectiveUrlFor(draft.url, meta?.baseUrl ?? '')}
+          </code>
+        </div>
+      )}
 
       <div className="flex items-center gap-1 px-2">
         {tabs
@@ -132,12 +191,36 @@ export function RequestEditor() {
             valuePlaceholder="value"
           />
         ) : tab === 'headers' ? (
-          <KeyValueEditor
-            rows={draft.headers}
-            onChange={(rows) => patch({ headers: rows })}
-            keyPlaceholder="header"
-            valuePlaceholder="value"
-          />
+          <div className="flex h-full flex-col gap-2">
+            <KeyValueEditor
+              rows={draft.headers}
+              onChange={(rows) => patch({ headers: rows })}
+              keyPlaceholder="header"
+              valuePlaceholder="value"
+            />
+            {(meta?.inheritedHeaders.length ?? 0) > 0 && (
+              <div className="shrink-0">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Inherited from workspace / collection / folder — read-only
+                </p>
+                <div className="overflow-hidden rounded-md border border-border">
+                  {meta!.inheritedHeaders.map((h, i) => (
+                    <div
+                      key={`${h.key}:${h.value}:${i}`}
+                      className={`flex items-center gap-2 px-2 py-1 text-xs ${
+                        i % 2 === 0 ? 'bg-muted/30' : ''
+                      }`}
+                    >
+                      <span className="shrink-0 font-medium text-foreground">{h.key}</span>
+                      <code className="min-w-0 flex-1 truncate text-muted-foreground">
+                        {h.value}
+                      </code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         ) : tab === 'variables' ? (
           <VariablesView
             variables={meta?.variables ?? []}
