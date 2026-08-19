@@ -123,6 +123,9 @@ A nested container inside a collection (recursively nestable), also a directory 
 ### Request Entry
 A request file (`.json`/`.yaml`/`.yml` in `requestfile` format) located directly inside a collection or folder. It is the leaf of the workspace tree; there are no inline requests — the file *is* the request, and its position in the tree defines its identity.
 
+### File Request
+The raw, unmerged request a **Request Entry** declares (url/method/headers/query/body — the *builder fields*) plus the file's own auth, timeout, and request-level variables. It is the editor seed: a **Request Tab** opens from the File Request, and only its builder fields are editable. Everything else is preserved verbatim when the tab is saved.
+
 ### Request Path
 A workspace-relative identifier locating a **Request Entry**, e.g. `users/auth/login` (the file name minus its extension). This is the stable identity used to find a request, open it, and deduplicate request tabs.
 
@@ -130,11 +133,11 @@ A workspace-relative identifier locating a **Request Entry**, e.g. `users/auth/l
 The effective base URL, headers, and auth a request receives from the **Workspace → Collection → Folder** chain before its own fields apply: headers merge key-wise (child wins), base URLs join (an absolute child replaces the parent), auth is replaced when the child defines one and cleared by `auth.type: none`. Inherited values are resolved lazily so `{{variable}}` placeholders survive until interpolation.
 
 ### Resolved Request
-A **Request Entry** combined with its **Inherited Configuration** and the full variable chain (workspace → collection → folder → request scopes), ready for execution. Opening a request in the desktop **Collections Browser** loads its Resolved Request into a **Request Tab** — the editor shows the effective URL, headers, and variables rather than the raw file.
+A **Request Entry** combined with its **Inherited Configuration** and the full variable chain (workspace → collection → folder → request scopes), ready for execution. Opening a request in the desktop **Collections Browser** loads its Resolved Request alongside the raw **File Request**: the resolved form drives display (Effective URL line, inherited-headers group, Variables tab) while the editor edits the File Request's builder fields and **re-resolves** the live draft through the inheritance chain at send time.
 
 ### Collections Browser
-The desktop sidebar surface that loads the workspace and renders its collections, folders, and request entries as an expandable/collapsible tree. Clicking a request opens its **Resolved Request** in a tab; a manual refresh reloads the tree from disk (open tabs keep their snapshot). Editing/saving request files is out of scope for now — opening is read-only.
+The desktop sidebar surface that loads the workspace and renders its collections, folders, and request entries as an expandable/collapsible tree. Clicking a request opens its **File Request** into an editable **Request Tab**; a manual refresh reloads the tree from disk. File-backed tabs can save their builder fields back to the file (format-preserving, atomic) with dirty tracking and changed-on-disk conflict handling.
 
 ### Request Tab
-The desktop's per-request working area, one per opened request (deduplicated by **Request Path**, plus a persistent *New Request* scratchpad for ad-hoc sends). Each tab owns its editable resolved-request fields, its response, a read-only effective-variables view, and an environment pill showing which environment the tab will send with — the request file's `environment:` if set, else the header-selected one.
+The desktop's per-request working area, one per opened request (deduplicated by **Request Path**, plus a persistent *New Request* scratchpad for ad-hoc sends). File-backed tabs edit a draft of the **File Request**'s builder fields and can save them to disk; each tab shows its response, a read-only effective-variables view, a live **Effective URL** line, an inherited-headers group, and an environment pill showing which environment the tab will send with — the request file's `environment:` if set, else the header-selected one. Sends re-resolve the draft through the inheritance chain at send time; the scratchpad sends raw.
 
