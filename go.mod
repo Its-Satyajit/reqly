@@ -3,7 +3,7 @@ module github.com/Its-Satyajit/reqly
 go 1.25.0
 
 require (
-	github.com/coder/websocket v1.8.14
+	github.com/coder/websocket v1.8.15
 	github.com/dop251/goja v0.0.0-20260806115107-493f22071ef6
 	github.com/getkin/kin-openapi v0.147.0
 	github.com/r3labs/diff/v3 v3.0.2
