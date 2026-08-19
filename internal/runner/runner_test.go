@@ -253,6 +253,37 @@ func TestRunCollectionFolderOrder(t *testing.T) {
 	}
 }
 
+func TestRunFolder(t *testing.T) {
+	var hits []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits = append(hits, r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := buildWorkspace(t, srv.URL)
+	collDir := filepath.Join(dir, "collections/main")
+	writeFile(t, collDir, "root.yaml", "request:\n  method: GET\n  url: /root\n")
+	writeFile(t, collDir, "sub/reqly.yaml", "name: sub\n")
+	writeFile(t, collDir, "sub/a.yaml", "request:\n  method: GET\n  url: /sub/a\n")
+	writeFile(t, collDir, "sub/nested/reqly.yaml", "name: nested\n")
+	writeFile(t, collDir, "sub/nested/b.yaml", "request:\n  method: GET\n  url: /sub/nested/b\n")
+	ws, coll := loadWorkspace(t, dir)
+
+	folder := coll.Folders[0]
+	report, err := RunFolder(context.Background(), ws, coll, folder, nil, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Steps) != 2 {
+		t.Fatalf("expected 2 steps (folder + nested), got %d: %+v", len(report.Steps), report.Steps)
+	}
+	// Folder's own requests run before its nested folders.
+	if hits[0] != "/sub/a" || hits[1] != "/sub/nested/b" {
+		t.Fatalf("unexpected order: %v", hits)
+	}
+}
+
 func TestRunCollectionPreScriptMutatesRequest(t *testing.T) {
 	var gotHeader, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
