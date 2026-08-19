@@ -36,6 +36,30 @@ const bodyLanguage: Record<BodyType, 'json' | 'xml' | 'text'> = {
   raw: 'text',
 }
 
+/** saveWarnings validates a draft before it is persisted. Warnings do not
+ * block a save — they flag values that would survive onto disk (unknown
+ * method, malformed body) so the user can fix them instead of persisting
+ * garbage. */
+function saveWarnings(draft: {
+  method: string
+  url: string
+  bodyType: BodyType
+  body: string
+}): string[] {
+  const warnings: string[] = []
+  if (!methods.includes(draft.method as (typeof methods)[number])) {
+    warnings.push(`Unknown method "${draft.method}" will be written to the file.`)
+  }
+  if (draft.bodyType === 'json' && draft.body.trim() !== '') {
+    try {
+      JSON.parse(draft.body)
+    } catch {
+      warnings.push('The JSON body is malformed and will be saved as-is.')
+    }
+  }
+  return warnings
+}
+
 export function RequestEditor() {
   const activeTabId = useWorkspaceStore((s) => s.activeTabId)
   const draft = useRequestStore((s) => (activeTabId ? s.drafts[activeTabId] : undefined))
@@ -76,7 +100,9 @@ export function RequestEditor() {
   const showVariables = (meta?.variables.length ?? 0) > 0
   const dirty = tabIsDirty(draft, meta)
   const requestPath = meta?.requestPath
-  const canSave = Boolean(requestPath) && dirty && draft.url.trim() !== ''
+  const canSave =
+    Boolean(requestPath) && dirty && draft.url.trim() !== '' && !meta?.changedOnDisk
+  const warnings = saveWarnings(draft)
 
   const handleSend = () => {
     void send(activeTabId, {
@@ -119,6 +145,15 @@ export function RequestEditor() {
               Overwrite
             </Button>
           </div>
+        </div>
+      )}
+      {requestPath && dirty && warnings.length > 0 && (
+        <div className="flex flex-col gap-0.5 border-b border-yellow-500/40 bg-yellow-500/10 px-3 py-1.5">
+          {warnings.map((w) => (
+            <p key={w} className="text-xs text-yellow-600">
+              {w}
+            </p>
+          ))}
         </div>
       )}
       <div className="flex items-center gap-2 p-2">

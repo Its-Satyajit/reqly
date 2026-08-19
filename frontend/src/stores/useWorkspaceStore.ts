@@ -164,8 +164,12 @@ export const inheritedHeadersFrom = (
 }
 
 /** isChangedOnDisk reports whether an error is a changed-on-disk save
- * conflict (the file changed under the editor). */
+ * conflict (the file changed under the editor). The bridge tags it with a
+ * stable code; the message check is a fallback for non-bridge adapters. */
 export function isChangedOnDisk(err: unknown): boolean {
+  if (err && typeof err === 'object' && 'code' in err) {
+    return (err as { code?: string }).code === 'ERR_CHANGED_ON_DISK'
+  }
   return err instanceof Error && err.message.includes('changed on disk')
 }
 
