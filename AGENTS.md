@@ -16,7 +16,7 @@ Use the `context-mode` plugin for session continuity: before asking the user wha
 
 - `internal/` — shared domain logic (request engine, runner, auth, mocking, openapi, importer/exporter, websocket, sse, validation, diffing, mcp, requestfile parser).
 - `apps/cli` — Cobra CLI. `apps/cli/cmd/*.go` is one command per file; `root.go` holds the root command.
-- `apps/desktop` — Wails v3. Go backend in `backend/`; React frontend in `backend/frontend` (Vite + TS, **no test script** — use `npm run typecheck`).
+- `apps/desktop` — Wails v3. Go backend in `backend/`; React host frontend in `frontend/` (Vite + TS, **no test script** — use `npm run typecheck`), shared UI in the root `frontend/` workspace.
 - `docs/` — specs, ADRs (`docs/adr/`), and references (`docs/reference/`). `CONTEXT.md` is the canonical glossary; `ROADMAP.md` tracks milestone status.
 
 ## 4. Skill Pipeline
@@ -26,7 +26,7 @@ For features or architecture changes, run the 5-stage pipeline in order (`~/.age
 1. `/grill-with-docs` — stress-test requirements against `CONTEXT.md` (one question per turn); update `CONTEXT.md` and `docs/adr/` inline.
 2. `/to-spec` — produce the technical spec/design doc.
 3. `/to-tickets` — split the spec into actionable tickets.
-4. `/implement` — execute tickets with strict TDD (tests first). For frontend work (`apps/desktop/backend/frontend`), always follow `/frontend-design`.
+4. `/implement` — execute tickets with strict TDD (tests first). For frontend work (`apps/desktop/frontend` + shared `frontend/`), always follow `/frontend-design`.
 5. `/code-review` — audit against conventions; verify clean test output.
 
 ## 5. Verification & Quality Gates
@@ -35,7 +35,7 @@ A change is done only when all unit and integration tests pass with no dummy fal
 
 - **Go core & CLI:** `go test ./...` (use `go test -race ./...` before shipping)
 - **CLI binary:** `go build -o reqly ./apps/cli`
-- **Frontend:** `cd apps/desktop/backend/frontend && npm run typecheck` (no test suite exists)
+- **Frontend:** `cd apps/desktop/frontend && npm run typecheck` (no test suite exists)
 - **Style:** gofmt; follow [`docs/reference/go.md`](./docs/reference/go.md)
 
 ## 6. Domain Glossary
