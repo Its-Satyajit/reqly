@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useWorkspaceStore } from '../../stores'
 import { Button } from '../../components'
 import { EnvironmentEditor } from './EnvironmentEditor'
+import { SecretsEditor } from './SecretsEditor'
 
 const inputClass =
   'rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:border-ring'
@@ -108,13 +109,16 @@ export function EnvironmentsView() {
       {setActiveError && <p className="text-xs text-destructive">{setActiveError}</p>}
 
       {editing && (
-        <EnvironmentEditor
-          env={editing}
-          onCancel={() => {
-            setHasUnsavedEnvChanges(false)
-            setEditingName(null)
-          }}
-        />
+        <div className="flex flex-col gap-3">
+          <EnvironmentEditor
+            env={editing}
+            onCancel={() => {
+              setHasUnsavedEnvChanges(false)
+              setEditingName(null)
+            }}
+          />
+          <SecretsEditor envName={editing.name} secretNames={editing.secrets} />
+        </div>
       )}
 
       {environmentsError ? (

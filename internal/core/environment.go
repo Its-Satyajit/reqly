@@ -142,6 +142,34 @@ func (s *EnvironmentService) Update(name, description string, variables map[stri
 	return environments.Save(env, s.root)
 }
 
+// UpdateSecrets changes an environment's secrets without ever reading their
+// values back to the caller. `values` holds only the secrets the user changed
+// (existing ones keep their on-disk values); `remove` lists secret names to
+// delete. A missing environment or workspace is an error.
+func (s *EnvironmentService) UpdateSecrets(name string, values map[string]string, remove []string) error {
+	if s.root == "" {
+		return fmt.Errorf("no workspace found: open a reqly workspace to edit secrets")
+	}
+	existing, err := environments.Read(name, s.root)
+	if err != nil {
+		return err
+	}
+	secrets := existing.Secrets
+	for key, value := range values {
+		secrets[key] = value
+	}
+	for _, key := range remove {
+		delete(secrets, key)
+	}
+	env := &environments.Environment{
+		Name:        existing.Name,
+		Description: existing.Description,
+		Variables:   existing.Variables,
+		Secrets:     secrets,
+	}
+	return environments.Save(env, s.root)
+}
+
 // SetActive persists name as the workspace's active environment in the
 // descriptor. An empty name clears the selection. Without a workspace, this
 // is an error.

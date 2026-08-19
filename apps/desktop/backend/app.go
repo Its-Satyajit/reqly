@@ -157,6 +157,13 @@ func (s *AppService) EnvUpdate(name, description string, variables map[string]st
 	return s.environments.Update(name, description, variables)
 }
 
+// EnvUpdateSecrets changes an environment's secrets: `values` holds only the
+// secrets the user changed; `remove` names secrets to delete. Existing secret
+// values never leave the disk.
+func (s *AppService) EnvUpdateSecrets(name string, values map[string]string, remove []string) error {
+	return s.environments.UpdateSecrets(name, values, remove)
+}
+
 // EnvSetActive persists name as the workspace's active environment in the
 // descriptor. An empty name clears the selection.
 func (s *AppService) EnvSetActive(name string) error {

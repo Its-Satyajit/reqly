@@ -21,6 +21,7 @@ package core
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -291,6 +292,54 @@ func TestEnvironmentServiceUpdateWithoutWorkspaceErrors(t *testing.T) {
 
 	svc := NewEnvironmentService(dir)
 	if err := svc.Update("dev", "x", nil); err == nil {
+		t.Fatal("expected error without workspace, got nil")
+	}
+}
+
+func TestEnvironmentServiceUpdateSecretsSetsAndRemoves(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir) // dev.yaml has secret API_KEY=dev-secret
+
+	svc := NewEnvironmentService(dir)
+	// Change API_KEY, add DB_PASSWORD, remove LOGIN_TOKEN (not present: no-op).
+	err := svc.UpdateSecrets("dev", map[string]string{"API_KEY": "new-key", "DB_PASSWORD": "hunter2"}, []string{"LOGIN_TOKEN"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Secret values are never read back through the service, so verify the
+	// file on disk directly.
+	data, err := os.ReadFile(filepath.Join(dir, "environments", "dev.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "API_KEY: new-key") {
+		t.Fatalf("API_KEY not updated:\n%s", content)
+	}
+	if !strings.Contains(content, "DB_PASSWORD: hunter2") {
+		t.Fatalf("DB_PASSWORD not added:\n%s", content)
+	}
+	if strings.Contains(content, "dev-secret") {
+		t.Fatalf("old API_KEY value leaked:\n%s", content)
+	}
+}
+
+func TestEnvironmentServiceUpdateSecretsMissingEnvironmentErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir)
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.UpdateSecrets("nope", nil, nil); err == nil {
+		t.Fatal("expected missing-environment error, got nil")
+	}
+}
+
+func TestEnvironmentServiceUpdateSecretsWithoutWorkspaceErrors(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.UpdateSecrets("dev", nil, nil); err == nil {
 		t.Fatal("expected error without workspace, got nil")
 	}
 }
