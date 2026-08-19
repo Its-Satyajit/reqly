@@ -70,6 +70,7 @@ export function RequestEditor() {
       form: sentRows(draft.form),
       env: meta?.env,
       vars: meta?.variables,
+      auth: meta?.auth,
     })
   }
 
@@ -203,7 +204,7 @@ function VariablesView({
         <p className="text-xs text-muted-foreground">No variables defined.</p>
       ) : (
         <div className="overflow-hidden rounded-md border border-border">
-          {variables.map((v, i) => (
+          {[...variables].reverse().map((v, i) => (
             <div
               key={`${v.scope}:${v.name}`}
               className={`flex items-start gap-2 px-2 py-1 text-xs ${

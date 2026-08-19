@@ -13,6 +13,13 @@ export interface RequestHeader {
   value: string
 }
 
+/** RequestAuth is the resolved auth attached to an opened request. It is
+ * applied silently at send — there is no auth editing UI. */
+export interface RequestAuth {
+  type?: string
+  config?: Record<string, string>
+}
+
 /** A key-value row in the builder: enabled rows are sent, disabled are kept
  * but skipped; blank keys are dropped. */
 export interface KeyValueRow {
@@ -38,6 +45,8 @@ export interface RequestInput {
   /** The tab's effective variable chain (scope-tagged snapshot), layered
    * under the request so file variables win over the environment. */
   vars?: ResolvedVariable[]
+  /** Inherited auth resolved when the request was opened; applied silently. */
+  auth?: RequestAuth
 }
 
 /** sentParams returns the enabled, non-blank rows of a param/header list. */

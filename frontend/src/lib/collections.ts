@@ -5,6 +5,8 @@
 // The host injects a CollectionsAdapter backed by the Go core's
 // WorkspaceService; browser dev mode uses a read-only fallback.
 
+import type { RequestAuth } from './request'
+
 /** WorkspaceRequest is a request file within a collection or folder, located
  * by its workspace-relative Request Path (e.g. "users/auth/login"). */
 export interface WorkspaceRequest {
@@ -34,9 +36,7 @@ export interface WorkspaceTree {
   name: string
   path: string
   collections: WorkspaceCollection[]
-}
-
-/** CollectionsAdapter is the seam through which the desktop UI loads the
+}/** CollectionsAdapter is the seam through which the desktop UI loads the
  * workspace's collection tree and opens requests. */
 export interface CollectionsAdapter {
   load: () => Promise<WorkspaceTree>
@@ -56,13 +56,15 @@ export interface ResolvedVariable {
 
 /** ResolvedRequestInput is the resolved request fields an opened tab is
  * seeded with: the effective URL, merged headers (inherited + own), and
- * query/body. Inherited auth is applied silently by the core at send time. */
+ * query/body. Inherited auth is carried along so it is applied silently at
+ * send time. */
 export interface ResolvedRequestInput {
   method: string
   url: string
   headers: { key: string; value: string }[]
   query: { key: string; value: string }[]
   body: string
+  auth?: RequestAuth
 }
 
 /** OpenedRequest is a request file combined with its inherited configuration

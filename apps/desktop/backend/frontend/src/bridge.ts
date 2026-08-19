@@ -30,6 +30,7 @@ export const wailsSender: RequestSender = async (req: RequestInput): Promise<Res
       headers,
       query: (req.params ?? []).map(({ key, value }) => ({ key, value })),
       body,
+      auth: req.auth,
     } as never,
     {
       env: req.env ?? '',
@@ -165,6 +166,12 @@ const normalizeOpenedRequest = (o: WailsOpened): import('@reqly/frontend').Opene
     headers: (o.request?.headers ?? []).map(({ key, value }) => ({ key, value })),
     query: (o.request?.query ?? []).map(({ key, value }) => ({ key, value })),
     body: o.request?.body ?? '',
+    auth: o.request?.auth
+      ? {
+          type: o.request.auth.type,
+          config: o.request.auth.config ? normalizeVariables(o.request.auth.config) : undefined,
+        }
+      : undefined,
   },
   variables: (o.variables ?? []).map(({ name, value, scope }) => ({ name, value, scope })),
   fileEnv: o.fileEnv ?? '',

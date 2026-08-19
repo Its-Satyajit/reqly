@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { RequestInput, RequestSender, ResponseData, KeyValueRow } from '../lib/request'
+import type { RequestInput, RequestSender, ResponseData, KeyValueRow, RequestAuth } from '../lib/request'
 import { fetchSender } from '../lib/request'
 import type { BodyType } from '../lib/body'
 import type { ResolvedVariable } from '../lib/collections'
@@ -19,13 +19,15 @@ export interface TabDraft {
 }
 
 /** Per-tab metadata for requests opened from a collection: the source request
- * path, its effective variable chain (read-only), and the environment pill.
- * The scratchpad tab has none of these. */
+ * path, its effective variable chain (read-only), the environment pill, and
+ * the inherited auth applied silently at send. The scratchpad tab has none
+ * of these. */
 export interface TabMeta {
   requestPath?: string
   name?: string
   variables: ResolvedVariable[]
   env?: string
+  auth?: RequestAuth
 }
 
 /** Per-tab execution state: the response (if any), in-flight flag, error. */
@@ -44,8 +46,6 @@ export const emptyTabDraft = (): TabDraft => ({
   params: [],
   headers: [],
 })
-
-export const emptyTabMeta = (): TabMeta => ({ variables: [] })
 
 interface RequestState {
   drafts: Record<string, TabDraft>

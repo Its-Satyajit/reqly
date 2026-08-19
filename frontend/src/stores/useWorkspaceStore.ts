@@ -48,6 +48,8 @@ interface WorkspaceState {
   expanded: Record<string, boolean>
   dirtyEditors: Record<string, boolean>
   hasUnsavedEnvChanges: boolean
+  /** Transient error opening a specific request; never replaces the tree. */
+  openError: string | null
 
   setCurrentWorkspace: (workspace: Workspace | null) => void
   selectCollection: (id: string | null) => void
@@ -123,6 +125,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   expanded: {},
   dirtyEditors: {},
   hasUnsavedEnvChanges: false,
+  openError: null,
 
   setCurrentWorkspace: (currentWorkspace) => set({ currentWorkspace }),
   selectCollection: (selectedCollectionId) => set({ selectedCollectionId }),
@@ -174,6 +177,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const { workspaceAdapter } = get()
     try {
       const opened = await workspaceAdapter.open(path)
+      set({ openError: null })
       get().openTab(
         { id: opened.path, title: opened.name, requestPath: opened.path },
         draftFromOpened(opened),
@@ -183,9 +187,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         name: opened.name,
         variables: opened.variables,
         env: opened.fileEnv || undefined,
+        auth: opened.request.auth,
       })
     } catch (err) {
-      set({ workspaceError: err instanceof Error ? err.message : String(err) })
+      set({ openError: err instanceof Error ? err.message : String(err) })
     }
   },
 
@@ -204,6 +209,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       set({
         workspaceTree: tree,
         workspaceError: null,
+        openError: null,
         currentWorkspace: tree.name
           ? { id: tree.path, name: tree.name, path: tree.path }
           : null,

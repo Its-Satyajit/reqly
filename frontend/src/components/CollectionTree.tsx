@@ -69,6 +69,7 @@ function CollectionBranch({ folders, requests, depth }: Props & { depth: number 
 export function CollectionTree() {
   const tree = useWorkspaceStore((s) => s.workspaceTree);
   const workspaceError = useWorkspaceStore((s) => s.workspaceError);
+  const openError = useWorkspaceStore((s) => s.openError);
   const expanded = useWorkspaceStore((s) => s.expanded);
   const toggleExpanded = useWorkspaceStore((s) => s.toggleExpanded);
 
@@ -85,6 +86,9 @@ export function CollectionTree() {
 
   return (
     <div className="flex flex-col gap-0.5">
+      {openError && (
+        <p className="px-2 text-xs text-destructive">{openError}</p>
+      )}
       {tree.collections.map((collection) => {
         const isOpen = expanded[collection.path] ?? false;
         return (
