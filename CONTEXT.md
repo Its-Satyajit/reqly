@@ -45,6 +45,15 @@ Workspace-aware static checks (`reqly env validate <name>`) over an environment:
 ### Environment Diff
 Secret-aware comparison of two environments (`reqly env diff <nameA> <nameB>`): added/removed/changed keys via the structural diff engine, with changed secret values rendered as `[SECRET]` so the diff shows *which* secret changed without leaking it.
 
+### Environment Manager
+The desktop surface for managing a workspace's environments (list, create, edit, delete, set active). Edits are held in memory as an **Environment Draft** until explicitly saved, which writes the `environments/<name>.yaml` file back to disk — the filesystem remains the source of truth.
+
+### Environment Draft
+The in-memory, unsaved edit state of an **Environment** in the desktop Environment Manager. Editing a secret into the draft marks it changed but never reads an existing secret's plaintext back into the UI; a changed secret is written on save, an unchanged one is left as-is.
+
+### Environment Adapter
+The frontend seam through which the desktop UI reads and writes environments. The host injects a Wails-backed adapter into the shared frontend; browser dev mode uses a read-only fallback, mirroring the request/auth adapter pattern.
+
 ### Authentication Scheme
 A named credential-application strategy (`internal/auth`) that mutates an outgoing request. Dispatched by a request's `auth.type` string through a registered `Scheme` interface; each scheme owns its `config` keys and applies them to the request before send.
 
