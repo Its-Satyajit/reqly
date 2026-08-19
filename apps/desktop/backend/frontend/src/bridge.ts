@@ -1,12 +1,13 @@
 import { AppService } from '../bindings/github.com/Its-Satyajit/reqly/apps/desktop/backend/index'
 import type {
   AuthAdapter,
+  EnvAdapter,
   RequestInput,
   RequestSender,
   ResponseData,
 } from '@reqly/frontend'
 import { serializeBody } from '@reqly/frontend'
-import { useAuthStore, useRequestStore } from '@reqly/frontend'
+import { useAuthStore, useRequestStore, useWorkspaceStore } from '@reqly/frontend'
 
 /**
  * wailsSender executes requests through the Go core via the generated Wails
@@ -54,7 +55,7 @@ export const wailsAuthAdapter: AuthAdapter = {
     }
     return {
       backend: status.backend,
-      tokens: status.tokens.map((t) => ({
+      tokens: (status.tokens ?? []).map((t) => ({
         endpoint: t.endpoint,
         grantType: t.grantType,
         expiry: t.expiry,
@@ -68,10 +69,61 @@ export const wailsAuthAdapter: AuthAdapter = {
 }
 
 /**
- * Wires the Go core behind the shared request and auth stores. Called once
- * from the host entry point, before the React tree mounts.
+ * wailsEnvAdapter manages environments through the Go core's
+ * EnvironmentService via the generated Wails bindings, shaping the results
+ * into the shared EnvAdapter contract the UI renders.
+ */
+/**
+ * normalizeVariables coerces the generated bindings' nullable/undefined-valued
+ * map into a plain string map the shared types expect.
+ */
+const normalizeVariables = (v: Record<string, string | undefined> | null | undefined): Record<string, string> => {
+  const out: Record<string, string> = {}
+  for (const [k, val] of Object.entries(v ?? {})) {
+    if (typeof val === 'string') out[k] = val
+  }
+  return out
+}
+
+export const wailsEnvAdapter: EnvAdapter = {
+  list: async () => {
+    const data = await AppService.EnvList()
+    if (!data) {
+      throw new Error('core returned an empty environment list')
+    }
+    return {
+      active: data.active ?? '',
+      environments: (data.environments ?? []).map((e) => ({
+        name: e.name,
+        description: e.description ?? '',
+        variables: normalizeVariables(e.variables),
+        secrets: e.secrets ?? [],
+      })),
+    }
+  },
+  read: async (name) => {
+    const env = await AppService.EnvRead(name)
+    if (!env) {
+      throw new Error(`core returned an empty environment "${name}"`)
+    }
+    return {
+      name: env.name,
+      description: env.description ?? '',
+      variables: normalizeVariables(env.variables),
+      secrets: env.secrets ?? [],
+    }
+  },
+  setActive: async (name) => {
+    await AppService.EnvSetActive(name)
+  },
+}
+
+/**
+ * Wires the Go core behind the shared request, auth, and environment stores.
+ * Called once from the host entry point, before the React tree mounts.
  */
 export function initRequestBridge(): void {
   useRequestStore.getState().setSender(wailsSender)
   useAuthStore.getState().setAdapter(wailsAuthAdapter)
+  useWorkspaceStore.getState().setEnvAdapter(wailsEnvAdapter)
 }

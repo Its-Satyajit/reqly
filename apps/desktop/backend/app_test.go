@@ -262,3 +262,100 @@ func TestDeliverCustomSchemeCallbackBridge(t *testing.T) {
 		t.Fatalf("err = %v, want no-waiting-flow error", err)
 	}
 }
+
+func TestEnvListBridgeReturnsEnvironmentsAndActive(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	list, err := svc.EnvList()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.Active != "dev" {
+		t.Fatalf("active = %q, want dev", list.Active)
+	}
+	if len(list.Environments) != 1 {
+		t.Fatalf("environments = %d, want 1", len(list.Environments))
+	}
+	env := list.Environments[0]
+	if env.Name != "dev" || env.Variables["REGION"] != "us-west-2" {
+		t.Fatalf("env = %+v", env)
+	}
+	if len(env.Secrets) != 1 || env.Secrets[0] != "API_KEY" {
+		t.Fatalf("secrets = %v, want [API_KEY]", env.Secrets)
+	}
+}
+
+func TestEnvReadBridgeReturnsEnvironmentWithoutSecretValues(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	env, err := svc.EnvRead("dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env.Name != "dev" || env.Variables["REGION"] != "us-west-2" {
+		t.Fatalf("env = %+v", env)
+	}
+	if len(env.Secrets) != 1 || env.Secrets[0] != "API_KEY" {
+		t.Fatalf("secrets = %v, want [API_KEY]", env.Secrets)
+	}
+}
+
+func TestEnvSetActiveBridgePersists(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	// Second environment not selected by the descriptor.
+	if err := os.WriteFile(filepath.Join(dir, "environments", "prod.yaml"), []byte("variables:\n  REGION: eu-central-1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if err := svc.EnvSetActive("prod"); err != nil {
+		t.Fatal(err)
+	}
+	list, err := svc.EnvList()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.Active != "prod" {
+		t.Fatalf("active = %q, want prod", list.Active)
+	}
+}
+
+func TestEnvSetActiveBridgeClears(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if err := svc.EnvSetActive(""); err != nil {
+		t.Fatal(err)
+	}
+	list, err := svc.EnvList()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.Active != "" {
+		t.Fatalf("active = %q, want cleared", list.Active)
+	}
+}
+
+func TestEnvListBridgeWithoutWorkspaceIsEmpty(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	list, err := svc.EnvList()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.Active != "" || len(list.Environments) != 0 {
+		t.Fatalf("got active=%q envs=%d, want empty", list.Active, len(list.Environments))
+	}
+}

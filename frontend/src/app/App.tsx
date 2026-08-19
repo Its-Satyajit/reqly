@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
 import { ThemeToggle, WorkspaceSidebar } from "../components";
@@ -9,11 +10,30 @@ export function App() {
 	const theme = useThemeStore((s) => s.theme);
 	const environments = useWorkspaceStore((s) => s.environments);
 	const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
+	const environmentsError = useWorkspaceStore((s) => s.environmentsError);
 	const setActiveEnvironment = useWorkspaceStore((s) => s.setActiveEnvironment);
+	const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments);
 
 	const activeEnvironment = environments.find(
 		(e) => e.id === activeEnvironmentId,
 	);
+
+	useEffect(() => {
+		void refreshEnvironments();
+	}, [refreshEnvironments]);
+
+	const onSelectEnvironment = async (name: string) => {
+		const envAdapter = useWorkspaceStore.getState().envAdapter;
+		setActiveEnvironment(name || null);
+		try {
+			await envAdapter.setActive(name);
+		} catch {
+			// Persist failed: re-sync from the source of truth.
+			await refreshEnvironments();
+			return;
+		}
+		await refreshEnvironments();
+	};
 
 	return (
 		<div className="flex h-screen flex-col">
@@ -29,7 +49,8 @@ export function App() {
 				<div className="flex items-center gap-2">
 					<select
 						value={activeEnvironment?.id ?? ""}
-						onChange={(e) => setActiveEnvironment(e.target.value || null)}
+						onChange={(e) => void onSelectEnvironment(e.target.value)}
+						title={environmentsError ?? "Select the active environment"}
 						className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground"
 					>
 						<option value="">No environment</option>
