@@ -152,6 +152,78 @@ func TestRunCollectionFailFast(t *testing.T) {
 	}
 }
 
+func TestRunCollectionOnStep(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := buildWorkspace(t, srv.URL)
+	collDir := filepath.Join(dir, "collections/main")
+	writeFile(t, collDir, "a.yaml", "request:\n  method: GET\n  url: /a\n")
+	writeFile(t, collDir, "b.yaml", "request:\n  method: GET\n  url: /b\n")
+	ws, coll := loadWorkspace(t, dir)
+
+	var onStep []string
+	report, err := RunCollection(context.Background(), ws, coll, nil, Options{OnStep: func(s StepResult) { onStep = append(onStep, s.Name) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(onStep) != 2 || onStep[0] != "a" || onStep[1] != "b" {
+		t.Fatalf("onStep = %v", onStep)
+	}
+	for i, s := range report.Steps {
+		if s.Name != onStep[i] {
+			t.Fatalf("onStep order %v != report order %v", onStep, s.Name)
+		}
+	}
+}
+
+func TestRunCollectionOnStepNil(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := buildWorkspace(t, srv.URL)
+	collDir := filepath.Join(dir, "collections/main")
+	writeFile(t, collDir, "a.yaml", "request:\n  method: GET\n  url: /a\n")
+	ws, coll := loadWorkspace(t, dir)
+
+	report, err := RunCollection(context.Background(), ws, coll, nil, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Total != 1 || !report.OK() {
+		t.Fatalf("report = %+v", report)
+	}
+}
+
+func TestRunCollectionCancelStopsScheduling(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var onStep []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cancel()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := buildWorkspace(t, srv.URL)
+	collDir := filepath.Join(dir, "collections/main")
+	writeFile(t, collDir, "a.yaml", "request:\n  method: GET\n  url: /a\n")
+	writeFile(t, collDir, "b.yaml", "request:\n  method: GET\n  url: /b\n")
+	ws, coll := loadWorkspace(t, dir)
+
+	report, err := RunCollection(ctx, ws, coll, nil, Options{OnStep: func(s StepResult) { onStep = append(onStep, s.Name) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Steps) != 1 || len(onStep) != 1 || onStep[0] != "a" {
+		t.Fatalf("expected only step a, steps=%d onStep=%v", len(report.Steps), onStep)
+	}
+}
+
 func TestRunCollectionFolderOrder(t *testing.T) {
 	var hits []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

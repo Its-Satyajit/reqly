@@ -87,6 +87,9 @@ func (r *Report) OK() bool { return r.Failed == 0 }
 type Options struct {
 	// FailFast stops the run after the first failing step.
 	FailFast bool
+	// OnStep, if non-nil, is invoked once per completed step, in execution
+	// order, immediately after the step finishes.
+	OnStep func(StepResult)
 	// Client executes requests (nil uses request.NewClient()).
 	Client *request.Client
 	// ClientOptions are applied when Client is nil.
@@ -111,8 +114,16 @@ func RunCollection(ctx context.Context, ws *collections.Workspace, coll *collect
 	collectSteps(&steps, coll.Requests, coll.Folders, nil)
 	report := &Report{Started: time.Now(), Total: len(steps)}
 	for _, s := range steps {
+		// A cancelled context stops scheduling further steps; the current
+		// step may finish.
+		if ctx.Err() != nil {
+			break
+		}
 		result := r.runStep(ctx, ws, coll, s.chain, s.entry)
 		report.Steps = append(report.Steps, result)
+		if opts.OnStep != nil {
+			opts.OnStep(result)
+		}
 		if result.Passed {
 			report.Passed++
 		} else {
