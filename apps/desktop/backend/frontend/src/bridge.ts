@@ -148,6 +148,22 @@ const normalizeRequest = (r: WailsRequest): import('@reqly/frontend').WorkspaceR
   path: r.path,
 })
 
+type WailsOpened = NonNullable<Awaited<ReturnType<typeof AppService.WorkspaceOpenRequest>>>
+
+const normalizeOpenedRequest = (o: WailsOpened): import('@reqly/frontend').OpenedRequest => ({
+  path: o.path,
+  name: o.name,
+  request: {
+    method: o.request?.method ?? 'GET',
+    url: o.request?.url ?? '',
+    headers: (o.request?.headers ?? []).map(({ key, value }) => ({ key, value })),
+    query: (o.request?.query ?? []).map(({ key, value }) => ({ key, value })),
+    body: o.request?.body ?? '',
+  },
+  variables: (o.variables ?? []).map(({ name, value, scope }) => ({ name, value, scope })),
+  fileEnv: o.fileEnv ?? '',
+})
+
 export const wailsCollectionsAdapter: CollectionsAdapter = {
   load: async () => {
     const tree = await AppService.WorkspaceLoad()
@@ -164,6 +180,13 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
         requests: (c.requests ?? []).map(normalizeRequest),
       })),
     }
+  },
+  open: async (path) => {
+    const opened = await AppService.WorkspaceOpenRequest(path)
+    if (!opened) {
+      throw new Error('core returned an empty opened request')
+    }
+    return normalizeOpenedRequest(opened)
   },
 }
 

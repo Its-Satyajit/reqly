@@ -9,11 +9,10 @@ interface Props {
 }
 
 function RequestRow({ request }: { request: WorkspaceRequest }) {
+  const openRequest = useWorkspaceStore((s) => s.openRequest);
   return (
     <button
-      onClick={() => {
-        // Opening a request into a tab lands in T3; the row is inert for now.
-      }}
+      onClick={() => void openRequest(request.path)}
       className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground"
     >
       <span className="size-3 shrink-0 text-muted-foreground/60" aria-hidden>

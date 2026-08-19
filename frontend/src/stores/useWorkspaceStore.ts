@@ -3,9 +3,11 @@ import { fallbackEnvAdapter, type EnvAdapter } from '../lib/env'
 import {
   fallbackCollectionsAdapter,
   type CollectionsAdapter,
+  type ResolvedRequestInput,
   type WorkspaceTree,
 } from '../lib/collections'
-import { useRequestStore, NEW_REQUEST_TAB_ID } from './useRequestStore'
+import { useRequestStore, NEW_REQUEST_TAB_ID, type TabDraft } from './useRequestStore'
+import type { BodyType } from '../lib/body'
 
 export interface Workspace {
   id: string
@@ -54,6 +56,9 @@ interface WorkspaceState {
   openTab: (tab: RequestTab, seed?: Partial<import('./useRequestStore').TabDraft>) => void
   closeTab: (id: string) => void
   setActiveTab: (id: string | null) => void
+  /** Open a collection request by Request Path into a tab, seeding the draft
+   * from its resolved form and recording its variable chain + env pill. */
+  openRequest: (path: string) => Promise<void>
   setActiveEnvironment: (id: string | null) => void
   setEnvironments: (environments: Environment[]) => void
   setEnvAdapter: (adapter: EnvAdapter) => void
@@ -70,6 +75,37 @@ const toEnvironment = (name: string, src: { description?: string; variables?: Re
   variables: src.variables ?? {},
   secrets: src.secrets ?? [],
 })
+
+/** bodyTypeFor infers the editor's body type from an opened request's body and
+ * Content-Type header, so what the tab shows matches what the core will send. */
+export const bodyTypeFor = (req: ResolvedRequestInput): BodyType => {
+  if (!req.body) return 'none'
+  const contentType = req.headers
+    .find((h) => h.key.toLowerCase() === 'content-type')
+    ?.value.toLowerCase()
+  if (contentType?.includes('json')) return 'json'
+  if (contentType?.includes('xml')) return 'xml'
+  if (contentType?.includes('multipart/form-data')) return 'form-data'
+  if (contentType?.includes('urlencoded')) return 'urlencoded'
+  return 'raw'
+}
+
+/** draftFromOpened maps an opened request's resolved fields onto the editor
+ * draft shape, preserving placeholders for send-time interpolation. */
+export const draftFromOpened = (opened: {
+  request: ResolvedRequestInput
+}): Partial<TabDraft> => {
+  const toRows = (rows: { key: string; value: string }[]) =>
+    rows.map(({ key, value }) => ({ key, value, enabled: true }))
+  return {
+    method: opened.request.method,
+    url: opened.request.url,
+    params: toRows(opened.request.query),
+    headers: toRows(opened.request.headers),
+    bodyType: bodyTypeFor(opened.request),
+    body: opened.request.body,
+  }
+}
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   currentWorkspace: null,
@@ -132,6 +168,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       useRequestStore.getState().ensureDraft(activeTabId)
     }
     set({ activeTabId })
+  },
+
+  openRequest: async (path) => {
+    const { workspaceAdapter } = get()
+    try {
+      const opened = await workspaceAdapter.open(path)
+      get().openTab(
+        { id: opened.path, title: opened.name, requestPath: opened.path },
+        draftFromOpened(opened),
+      )
+      useRequestStore.getState().setMeta(opened.path, {
+        requestPath: opened.path,
+        name: opened.name,
+        variables: opened.variables,
+        env: opened.fileEnv || undefined,
+      })
+    } catch (err) {
+      set({ workspaceError: err instanceof Error ? err.message : String(err) })
+    }
   },
 
   setActiveEnvironment: (activeEnvironmentId) => set({ activeEnvironmentId }),

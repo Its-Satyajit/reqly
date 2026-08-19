@@ -79,6 +79,47 @@ func TestWorkspaceLoadBridgeWithoutWorkspaceErrors(t *testing.T) {
 	}
 }
 
+func TestWorkspaceOpenRequestBridgeResolvesRequest(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/reqly.yaml"), []byte("name: users\nbaseURL: https://api.example.com\nheaders:\n  - key: X-Collection\n    value: users\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/list-users.yaml"), []byte("name: List Users\nenvironment: staging\nrequest: {method: GET, url: users}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	opened, err := svc.WorkspaceOpenRequest("users/list-users")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opened.Path != "users/list-users" || opened.Name != "list-users" {
+		t.Fatalf("path/name = %q/%q", opened.Path, opened.Name)
+	}
+	if opened.FileEnv != "staging" {
+		t.Fatalf("fileEnv = %q, want staging", opened.FileEnv)
+	}
+	if opened.Request.URL != "https://api.example.com/users" {
+		t.Fatalf("URL = %q, want https://api.example.com/users", opened.Request.URL)
+	}
+}
+
+func TestWorkspaceOpenRequestBridgeMissingErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if _, err := svc.WorkspaceOpenRequest("nope/thing"); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("WorkspaceOpenRequest err = %v, want not-found error", err)
+	}
+}
+
 func writeWorkspace(t *testing.T, root string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Join(root, "environments"), 0o755); err != nil {

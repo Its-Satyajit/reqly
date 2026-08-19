@@ -184,6 +184,13 @@ func (s *AppService) WorkspaceLoad() (*core.WorkspaceTree, error) {
 	return s.workspace.Load()
 }
 
+// WorkspaceOpenRequest resolves a request file by its workspace-relative
+// Request Path into its fully resolved form (effective URL, merged headers,
+// inherited auth, variable chain, file environment), ready for the editor.
+func (s *AppService) WorkspaceOpenRequest(path string) (*core.OpenedRequest, error) {
+	return s.workspace.OpenRequest(path)
+}
+
 // resolveAppEnvironment loads the process-env scope plus the environment
 // selected from the working directory by REQLY_ENV or the workspace
 // descriptor's environment: field (the --env CLI flag is not available to the

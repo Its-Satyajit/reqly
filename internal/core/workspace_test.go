@@ -175,3 +175,162 @@ func TestWorkspaceServiceLoadSkipsDescriptorlessSubdirectories(t *testing.T) {
 		}
 	}
 }
+
+// writeResolvableWorkspace builds a workspace with a workspace + collection +
+// folder inheritance chain (base URL join, header merge, auth inheritance,
+// variable scopes) and a file that pins an environment.
+func writeResolvableWorkspace(t *testing.T, root string) {
+	t.Helper()
+	files := map[string]string{
+		"reqly.yaml": `
+name: demo
+baseURL: https://api.example.com
+variables:
+  ENV: prod
+  SHARED: ws
+headers:
+  - key: X-Workspace
+    value: ws
+`,
+		"collections/users/reqly.yaml": `
+name: users
+baseURL: v1
+variables:
+  SHARED: users
+headers:
+  - key: X-Collection
+    value: users
+auth:
+  type: bearer
+  config:
+    token: "{{TOKEN}}"
+`,
+		"collections/users/list-users.yaml": `
+name: List Users
+environment: staging
+variables:
+  TOKEN: req-token
+request:
+  method: GET
+  url: users
+`,
+		"collections/users/auth/reqly.yaml": `
+name: auth
+variables:
+  TOKEN: folder-token
+`,
+		"collections/users/auth/login.yaml": `
+request:
+  method: POST
+  url: auth/login
+`,
+	}
+	for name, contents := range files {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestWorkspaceServiceOpenRequestResolvesInheritance(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+
+	svc := NewWorkspaceService(dir)
+	opened, err := svc.OpenRequest("users/list-users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if opened.Path != "users/list-users" || opened.Name != "list-users" {
+		t.Fatalf("path/name = %q/%q", opened.Path, opened.Name)
+	}
+	if opened.FileEnv != "staging" {
+		t.Fatalf("fileEnv = %q, want staging", opened.FileEnv)
+	}
+
+	req := opened.Request
+	if req.URL != "https://api.example.com/v1/users" {
+		t.Fatalf("URL = %q, want https://api.example.com/v1/users", req.URL)
+	}
+	if req.Method != "GET" {
+		t.Fatalf("method = %q, want GET", req.Method)
+	}
+	// Header merge: workspace + collection (collection wins on X-Workspace).
+	headers := map[string]string{}
+	for _, h := range req.Headers {
+		headers[h.Key] = h.Value
+	}
+	if headers["X-Workspace"] != "ws" || headers["X-Collection"] != "users" {
+		t.Fatalf("headers = %v", headers)
+	}
+	// Inherited auth applied silently (bearer with a token placeholder).
+	if req.Auth.Type != "bearer" {
+		t.Fatalf("auth type = %q, want bearer", req.Auth.Type)
+	}
+}
+
+func TestWorkspaceServiceOpenRequestVariablesInScopeOrder(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+
+	svc := NewWorkspaceService(dir)
+	opened, err := svc.OpenRequest("users/auth/login")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Scope order low → high: global, collection, folder, request.
+	var scopes []string
+	byName := map[string]string{}
+	for _, v := range opened.Variables {
+		scopes = append(scopes, v.Scope)
+		byName[v.Name] = v.Scope
+	}
+	if byName["SHARED"] != "collection" {
+		t.Fatalf("SHARED scope = %q, want collection (wins over workspace)", byName["SHARED"])
+	}
+	if byName["TOKEN"] != "folder" {
+		t.Fatalf("TOKEN scope = %q, want folder (login has no request vars)", byName["TOKEN"])
+	}
+	if byName["ENV"] != "global" {
+		t.Fatalf("ENV scope = %q, want global", byName["ENV"])
+	}
+	if len(scopes) == 0 {
+		t.Fatal("expected variables")
+	}
+	// No scope appears before an earlier-scope entry.
+	order := map[string]int{"global": 0, "collection": 1, "folder": 2, "request": 3}
+	prev := -1
+	for _, s := range scopes {
+		if order[s] < prev {
+			t.Fatalf("scopes out of order: %v", scopes)
+		}
+		prev = order[s]
+	}
+}
+
+func TestWorkspaceServiceOpenRequestMissingErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+
+	svc := NewWorkspaceService(dir)
+	for _, path := range []string{"users/nope", "missing/thing", ""} {
+		if _, err := svc.OpenRequest(path); err == nil {
+			t.Fatalf("expected error for path %q, got nil", path)
+		}
+	}
+}
+
+func TestWorkspaceServiceOpenRequestWithoutWorkspaceErrors(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+
+	svc := NewWorkspaceService(dir)
+	if _, err := svc.OpenRequest("users/list-users"); err == nil {
+		t.Fatal("expected error without a workspace, got nil")
+	}
+}
