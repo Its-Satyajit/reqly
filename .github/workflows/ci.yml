@@ -54,7 +54,7 @@ jobs:
           path: ${{ env.GOBIN }}/wails3
           key: wails3-${{ env.WAILS_VERSION }}-${{ runner.os }}
           save-always: true
-      - uses: nubjs/setup-nub@v0
+      - uses: nubjs/setup-nub@47e5e7393d50f4e9544ddaf756aa277972afba2d # v0
         with:
           node-version-file: .node-version
           cache-dependency-path: nub.lock
