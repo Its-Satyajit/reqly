@@ -210,17 +210,29 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
     return normalizeOpenedRequest(opened)
   },
   save: async (path, draft, expectedVersion) => {
-    const version = await AppService.WorkspaceSaveRequest(
-      path,
-      {
-        method: draft.method,
-        url: draft.url,
-        headers: (draft.headers ?? []).map(({ key, value }) => ({ key, value })),
-        query: (draft.query ?? []).map(({ key, value }) => ({ key, value })),
-        body: draft.body,
-      } as never,
-      expectedVersion,
-    )
+    let version: string
+    try {
+      version = await AppService.WorkspaceSaveRequest(
+        path,
+        {
+          method: draft.method,
+          url: draft.url,
+          headers: (draft.headers ?? []).map(({ key, value }) => ({ key, value })),
+          query: (draft.query ?? []).map(({ key, value }) => ({ key, value })),
+          body: draft.body,
+        } as never,
+        expectedVersion,
+      )
+    } catch (err) {
+      // Tag the changed-on-disk conflict with a stable code so the store does
+      // not depend on core error wording.
+      if (err instanceof Error && err.message.includes('changed on disk')) {
+        const conflict = new Error(err.message)
+        ;(conflict as Error & { code?: string }).code = 'ERR_CHANGED_ON_DISK'
+        throw conflict
+      }
+      throw err
+    }
     if (!version) {
       throw new Error('core returned an empty version after save')
     }

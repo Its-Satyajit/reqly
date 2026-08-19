@@ -9,7 +9,7 @@
   },
   "workspaces": [
     "frontend",
-    "apps/desktop/backend/frontend"
+    "apps/desktop/frontend"
   ],
   "scripts": {
     "dev": "nub run --filter @reqly/desktop dev",
