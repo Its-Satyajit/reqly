@@ -20,6 +20,8 @@ package core
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
@@ -168,6 +170,29 @@ func (s *EnvironmentService) UpdateSecrets(name string, values map[string]string
 		Secrets:     secrets,
 	}
 	return environments.Save(env, s.root)
+}
+
+// Delete removes an environment's file. If the deleted environment is the
+// workspace's active one, the descriptor's selection is cleared. A missing
+// environment or workspace is an error.
+func (s *EnvironmentService) Delete(name string) error {
+	if s.root == "" {
+		return fmt.Errorf("no workspace found: open a reqly workspace to delete an environment")
+	}
+	if _, err := environments.Read(name, s.root); err != nil {
+		return err
+	}
+	envDir, err := environments.Discover(s.root)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(filepath.Join(envDir, name+".yaml")); err != nil {
+		return fmt.Errorf("remove environment file %q: %w", name, err)
+	}
+	if collections.WorkspaceEnvironment(s.root) == name {
+		return collections.SetWorkspaceEnvironment(s.root, "")
+	}
+	return nil
 }
 
 // SetActive persists name as the workspace's active environment in the

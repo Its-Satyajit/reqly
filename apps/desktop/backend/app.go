@@ -164,6 +164,12 @@ func (s *AppService) EnvUpdateSecrets(name string, values map[string]string, rem
 	return s.environments.UpdateSecrets(name, values, remove)
 }
 
+// EnvDelete removes an environment file, clearing the descriptor's active
+// selection when the deleted environment was active.
+func (s *AppService) EnvDelete(name string) error {
+	return s.environments.Delete(name)
+}
+
 // EnvSetActive persists name as the workspace's active environment in the
 // descriptor. An empty name clears the selection.
 func (s *AppService) EnvSetActive(name string) error {

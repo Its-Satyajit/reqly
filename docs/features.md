@@ -605,6 +605,19 @@ Support:
 * Production
 * Custom environments
 
+## 14.2a Desktop Environments Manager
+
+A Git-native environment manager in the desktop app (Milestone 15), on the same
+`environments/<name>.yaml` files and workspace descriptor the CLI uses:
+
+* Dedicated **Environments** view reachable from the sidebar (list, active indicator)
+* **Create** an environment with a name + optional description; duplicate/unsafe names surface inline errors
+* **Set active** from the manager or the header selector; persists to the workspace descriptor and is shared with the CLI
+* **Edit** description and variables in an in-memory draft with explicit Save and dirty-tracking (navigation confirms before discarding)
+* **Masked secret editing** — secret values never leave disk: only the names are shown; typing replaces, unchanged secrets keep their on-disk values, per-row reveal toggle, add/remove
+* **Delete** removes the environment file (confirming first) and clears the descriptor's active selection when the active environment is deleted
+* **Inline validation** mirrors `reqly env validate`: duplicate keys block save (hard error); variable names that look like secrets (key/token/secret/password/credential) render as non-blocking warnings
+
 ## 14.3 Environment Validation
 
 Detect:

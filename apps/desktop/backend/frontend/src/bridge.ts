@@ -125,6 +125,9 @@ export const wailsEnvAdapter: EnvAdapter = {
   updateSecrets: async (name, values, remove) => {
     await AppService.EnvUpdateSecrets(name, values, remove)
   },
+  delete: async (name) => {
+    await AppService.EnvDelete(name)
+  },
 }
 
 /**
