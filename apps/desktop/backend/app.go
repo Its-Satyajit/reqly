@@ -25,6 +25,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/collections"
@@ -33,6 +36,7 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/variables"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // AppService is a Wails v3 service exposing the Go core to the frontend.
@@ -42,8 +46,12 @@ type AppService struct {
 	auth         *core.AuthService
 	environments *core.EnvironmentService
 	workspace    *core.WorkspaceService
+	runs         *core.CollectionRunService
 	// authBackend is the active token-store backend name ("file"/"keychain").
 	authBackend string
+
+	runMu      sync.Mutex
+	runCancels map[string]context.CancelFunc
 }
 
 // NewAppService creates a new AppService. It resolves the workspace rooted at
@@ -56,7 +64,14 @@ func NewAppService() *AppService {
 	root := collections.FindWorkspaceRoot(".")
 	store, backend := openAppTokenStore(root)
 
-	svc := &AppService{requests: core.NewCachedRequestService(store, root), authBackend: backend, environments: core.NewEnvironmentService(root), workspace: core.NewWorkspaceService(root)}
+	svc := &AppService{
+		requests:     core.NewCachedRequestService(store, root),
+		authBackend:  backend,
+		environments: core.NewEnvironmentService(root),
+		workspace:    core.NewWorkspaceService(root),
+		runs:         core.NewCollectionRunService(root),
+		runCancels:   make(map[string]context.CancelFunc),
+	}
 	if store != nil {
 		svc.auth = core.NewAuthService(store, root)
 	}
@@ -205,6 +220,80 @@ func (s *AppService) WorkspaceLoad() (*core.WorkspaceTree, error) {
 // inherited auth, variable chain, file environment), ready for the editor.
 func (s *AppService) WorkspaceOpenRequest(path string) (*core.OpenedRequest, error) {
 	return s.workspace.OpenRequest(path)
+}
+
+// WorkspaceRunCollection starts a collection run for the collection or folder
+// at the workspace-relative Request Path. env names the environment pill for
+// the run (empty → the workspace descriptor's active environment). The run
+// executes on a background goroutine: per-step results stream to the frontend
+// as reqly.run.<id>.step events and the final report as reqly.run.<id>.done.
+// Only one run may be active at a time.
+func (s *AppService) WorkspaceRunCollection(path, env string, failFast bool) (string, error) {
+	if s.runs == nil || s.runs.Root() == "" {
+		return "", fmt.Errorf("no workspace found: open a reqly workspace to run collections")
+	}
+	id := newRunID()
+	ctx, cancel := context.WithCancel(context.Background())
+	s.runMu.Lock()
+	if len(s.runCancels) > 0 {
+		s.runMu.Unlock()
+		cancel()
+		return "", fmt.Errorf("a collection run is already in progress")
+	}
+	s.runCancels[id] = cancel
+	s.runMu.Unlock()
+
+	go func() {
+		defer func() {
+			cancel()
+			s.runMu.Lock()
+			delete(s.runCancels, id)
+			s.runMu.Unlock()
+		}()
+		report, err := s.runs.Run(ctx, path, core.RunOptions{
+			Env:      env,
+			FailFast: failFast,
+			OnStep: func(step core.RunStep) {
+				emitRunEvent("reqly.run."+id+".step", step)
+			},
+		})
+		if err != nil {
+			emitRunEvent("reqly.run."+id+".error", err.Error())
+			return
+		}
+		emitRunEvent("reqly.run."+id+".done", report)
+	}()
+	return id, nil
+}
+
+// WorkspaceRunCancel aborts the active run by id. It returns an error when
+// no run with that id is in flight.
+func (s *AppService) WorkspaceRunCancel(id string) error {
+	s.runMu.Lock()
+	cancel, ok := s.runCancels[id]
+	s.runMu.Unlock()
+	if !ok {
+		return fmt.Errorf("no active collection run with id %q", id)
+	}
+	cancel()
+	return nil
+}
+
+// runCounter sequences run ids so concurrent timestamps never collide.
+var runCounter atomic.Int64
+
+// newRunID returns a unique id for a collection run.
+func newRunID() string {
+	return fmt.Sprintf("%d-%d", time.Now().UnixNano(), runCounter.Add(1))
+}
+
+// emitRunEvent sends a Wails custom event to the frontend. It is a package
+// variable so tests can capture emitted events without a running app. When no
+// app is initialized (unit tests, early startup) the event is dropped.
+var emitRunEvent = func(name string, data any) {
+	if app := application.Get(); app != nil {
+		app.Event.EmitEvent(&application.CustomEvent{Name: name, Data: data})
+	}
 }
 
 // resolveAppEnvironment loads the process-env scope plus the environment

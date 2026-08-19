@@ -164,6 +164,20 @@ func (s *CollectionRunService) acquire() bool {
 	return true
 }
 
+// Active reports whether a run is currently in flight. It lets a front-end
+// reject a new run immediately without waiting for the blocking Run.
+func (s *CollectionRunService) Active() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.running
+}
+
+// Root returns the workspace root the service runs against. An empty root
+// means no workspace is open.
+func (s *CollectionRunService) Root() string {
+	return s.root
+}
+
 func (s *CollectionRunService) release() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
