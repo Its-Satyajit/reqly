@@ -207,3 +207,42 @@ func TestMaskLeavesNonSecretTextUntouched(t *testing.T) {
 		t.Fatalf("Mask: got %q", got)
 	}
 }
+
+func TestSaveWritesEnvironmentFileRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	envDir := filepath.Join(dir, "environments")
+	if err := os.MkdirAll(envDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	env := &Environment{
+		Name:        "staging",
+		Description: "Staging server",
+		Variables:   map[string]string{"REGION": "ap-south-1"},
+		Secrets:     map[string]string{"API_KEY": "staging-key"},
+	}
+	if err := Save(env, dir); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := Load(filepath.Join(envDir, "staging.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name != "staging" || got.Description != "Staging server" {
+		t.Fatalf("got = %+v", got)
+	}
+	if !reflect.DeepEqual(got.Variables, env.Variables) {
+		t.Fatalf("variables = %v, want %v", got.Variables, env.Variables)
+	}
+	if !reflect.DeepEqual(got.Secrets, env.Secrets) {
+		t.Fatalf("secrets = %v, want %v", got.Secrets, env.Secrets)
+	}
+}
+
+func TestSaveWithoutEnvironmentsDirErrors(t *testing.T) {
+	dir := t.TempDir() // no environments/ subdir
+	env := &Environment{Name: "dev", Variables: map[string]string{}}
+	if err := Save(env, dir); err == nil {
+		t.Fatal("expected error without environments/ directory, got nil")
+	}
+}

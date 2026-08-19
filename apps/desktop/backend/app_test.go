@@ -359,3 +359,39 @@ func TestEnvListBridgeWithoutWorkspaceIsEmpty(t *testing.T) {
 		t.Fatalf("got active=%q envs=%d, want empty", list.Active, len(list.Environments))
 	}
 }
+
+func TestEnvCreateBridgeWritesEnvironment(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if err := svc.EnvCreate("staging", "Staging server", map[string]string{"REGION": "ap-south-1"}); err != nil {
+		t.Fatal(err)
+	}
+
+	env, err := svc.EnvRead("staging")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env.Name != "staging" || env.Description != "Staging server" {
+		t.Fatalf("env = %+v", env)
+	}
+	if env.Variables["REGION"] != "ap-south-1" {
+		t.Fatalf("variables = %v", env.Variables)
+	}
+	if len(env.Secrets) != 0 {
+		t.Fatalf("secrets = %v, want none", env.Secrets)
+	}
+}
+
+func TestEnvCreateBridgeDuplicateErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if err := svc.EnvCreate("dev", "Duplicate", nil); err == nil {
+		t.Fatal("expected duplicate error, got nil")
+	}
+}

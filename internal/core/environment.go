@@ -104,6 +104,24 @@ func (s *EnvironmentService) Read(name string) (*Environment, error) {
 	return &out, nil
 }
 
+// Create writes a new environment (name + optional description + variables)
+// to environments/<name>.yaml. An empty or unsafe name, or an environment
+// that already exists, is an error. Without a workspace, this is an error.
+func (s *EnvironmentService) Create(name, description string, variables map[string]string) error {
+	if s.root == "" {
+		return fmt.Errorf("no workspace found: open a reqly workspace to create an environment")
+	}
+	if _, err := environments.Read(name, s.root); err == nil {
+		return fmt.Errorf("environment %q already exists", name)
+	}
+	env := &environments.Environment{
+		Name:        name,
+		Description: description,
+		Variables:   variables,
+	}
+	return environments.Save(env, s.root)
+}
+
 // SetActive persists name as the workspace's active environment in the
 // descriptor. An empty name clears the selection. Without a workspace, this
 // is an error.

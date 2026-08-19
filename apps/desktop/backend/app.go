@@ -145,6 +145,12 @@ func (s *AppService) EnvRead(name string) (*core.Environment, error) {
 	return s.environments.Read(name)
 }
 
+// EnvCreate writes a new environment (name + optional description +
+// variables) to disk. Errors on an empty/unsafe name or a duplicate.
+func (s *AppService) EnvCreate(name, description string, variables map[string]string) error {
+	return s.environments.Create(name, description, variables)
+}
+
 // EnvSetActive persists name as the workspace's active environment in the
 // descriptor. An empty name clears the selection.
 func (s *AppService) EnvSetActive(name string) error {

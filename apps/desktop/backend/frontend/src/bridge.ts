@@ -116,6 +116,9 @@ export const wailsEnvAdapter: EnvAdapter = {
   setActive: async (name) => {
     await AppService.EnvSetActive(name)
   },
+  create: async (name, description, variables) => {
+    await AppService.EnvCreate(name, description, variables)
+  },
 }
 
 /**
