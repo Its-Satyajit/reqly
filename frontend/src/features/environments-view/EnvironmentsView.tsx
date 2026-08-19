@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useWorkspaceStore } from '../../stores'
 import { Button } from '../../components'
+import { EnvironmentEditor } from './EnvironmentEditor'
 
 const inputClass =
   'rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:border-ring'
 
 /**
- * EnvironmentsView manages the workspace's environments: list, create, and
- * set the active one. Edits to an existing environment happen in the editor
- * (the same surface, later tickets); this view establishes the list + create
- * + selection loop.
+ * EnvironmentsView manages the workspace's environments: list, create, set
+ * the active one, and edit existing environments (description + variables)
+ * through an in-memory editor with explicit Save.
  */
 export function EnvironmentsView() {
   const environments = useWorkspaceStore((s) => s.environments)
@@ -17,16 +17,28 @@ export function EnvironmentsView() {
   const environmentsError = useWorkspaceStore((s) => s.environmentsError)
   const envAdapter = useWorkspaceStore((s) => s.envAdapter)
   const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments)
+  const setHasUnsavedEnvChanges = useWorkspaceStore((s) => s.setHasUnsavedEnvChanges)
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [setActiveError, setSetActiveError] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState<string | null>(null)
 
   useEffect(() => {
     void refreshEnvironments()
   }, [refreshEnvironments])
+
+  const editing = environments.find((e) => e.name === editingName) ?? null
+
+  const onEdit = (name: string) => {
+    if (editingName === name) {
+      setEditingName(null)
+      return
+    }
+    setEditingName(name)
+  }
 
   const onCreate = async () => {
     setCreateError(null)
@@ -95,6 +107,16 @@ export function EnvironmentsView() {
 
       {setActiveError && <p className="text-xs text-destructive">{setActiveError}</p>}
 
+      {editing && (
+        <EnvironmentEditor
+          env={editing}
+          onCancel={() => {
+            setHasUnsavedEnvChanges(false)
+            setEditingName(null)
+          }}
+        />
+      )}
+
       {environmentsError ? (
         <p className="rounded-md border border-border bg-card p-3 text-xs text-destructive">
           {environmentsError}
@@ -114,7 +136,11 @@ export function EnvironmentsView() {
                 key={env.id}
                 className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2"
               >
-                <div className="flex min-w-0 flex-col gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => onEdit(env.name)}
+                  className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+                >
                   <span className="flex items-center gap-2 text-sm font-medium">
                     <span className="font-mono">{env.name}</span>
                     {active && (
@@ -126,16 +152,23 @@ export function EnvironmentsView() {
                   <span className="truncate text-xs text-muted-foreground">
                     {env.description || `${Object.keys(env.variables).length} variable(s)`}
                   </span>
+                </button>
+                <div className="flex items-center gap-2">
+                  {editingName === env.name && (
+                    <Button variant="outline" size="sm" onClick={() => onEdit(env.name)}>
+                      Editing…
+                    </Button>
+                  )}
+                  {!active && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void onSetActive(env.name)}
+                    >
+                      Use
+                    </Button>
+                  )}
                 </div>
-                {!active && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void onSetActive(env.name)}
-                  >
-                    Use
-                  </Button>
-                )}
               </li>
             )
           })}

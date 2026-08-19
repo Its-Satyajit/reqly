@@ -122,6 +122,26 @@ func (s *EnvironmentService) Create(name, description string, variables map[stri
 	return environments.Save(env, s.root)
 }
 
+// Update rewrites an existing environment's description and variables,
+// preserving its secrets on disk (secret values are never read back through
+// the service). A missing environment or workspace is an error.
+func (s *EnvironmentService) Update(name, description string, variables map[string]string) error {
+	if s.root == "" {
+		return fmt.Errorf("no workspace found: open a reqly workspace to update an environment")
+	}
+	existing, err := environments.Read(name, s.root)
+	if err != nil {
+		return err
+	}
+	env := &environments.Environment{
+		Name:        name,
+		Description: description,
+		Variables:   variables,
+		Secrets:     existing.Secrets,
+	}
+	return environments.Save(env, s.root)
+}
+
 // SetActive persists name as the workspace's active environment in the
 // descriptor. An empty name clears the selection. Without a workspace, this
 // is an error.

@@ -33,10 +33,12 @@ interface WorkspaceState {
   environments: Environment[]
   environmentsError: string | null
   envAdapter: EnvAdapter
+  hasUnsavedEnvChanges: boolean
 
   setCurrentWorkspace: (workspace: Workspace | null) => void
   selectCollection: (id: string | null) => void
   setActiveView: (view: WorkspaceView) => void
+  setHasUnsavedEnvChanges: (dirty: boolean) => void
   openTab: (tab: RequestTab) => void
   closeTab: (id: string) => void
   setActiveTab: (id: string | null) => void
@@ -64,10 +66,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   environments: [],
   environmentsError: null,
   envAdapter: fallbackEnvAdapter,
+  hasUnsavedEnvChanges: false,
 
   setCurrentWorkspace: (currentWorkspace) => set({ currentWorkspace }),
   selectCollection: (selectedCollectionId) => set({ selectedCollectionId }),
   setActiveView: (activeView) => set({ activeView }),
+  setHasUnsavedEnvChanges: (hasUnsavedEnvChanges) => set({ hasUnsavedEnvChanges }),
 
   openTab: (tab) =>
     set((state) => {
