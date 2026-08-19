@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.2.0](https://github.com/Its-Satyajit/reqly/compare/v1.1.1...v1.2.0) (2026-08-19)
+
+
+### Features
+
+* **desktop:** environment delete + inline validation + milestone docs (M15 T5) ([782b86b](https://github.com/Its-Satyajit/reqly/commit/782b86bcf5043c2e72194aa4d970b03b2c4bf466))
+* **desktop:** environment delete + inline validation + milestone docs (M15 T5) ([211e413](https://github.com/Its-Satyajit/reqly/commit/211e4132b32863ca722c0c66951f8f832998a665))
+* **desktop:** environment editor — description + variables with explicit save (M15 T3) ([5f89315](https://github.com/Its-Satyajit/reqly/commit/5f893156ac60109ccfba1598e2efb89fe7660d7f))
+* **desktop:** environment editor — description + variables with explicit save (M15 T3) ([5ba5959](https://github.com/Its-Satyajit/reqly/commit/5ba59596da1d4da79a518a77b2ab500974402192))
+* **desktop:** environment service + header selector wiring (M15 T1) ([4553aa7](https://github.com/Its-Satyajit/reqly/commit/4553aa7c1946e8e703bf930cd96759ef1a95da16))
+* **desktop:** environment service + header selector wiring (M15 T1) ([bf70ebb](https://github.com/Its-Satyajit/reqly/commit/bf70ebb1a08b64607606084e49e3a8292dac5fda))
+* **desktop:** environments view — list, create, set active (M15 T2) ([5dd2332](https://github.com/Its-Satyajit/reqly/commit/5dd2332b1773dafe62ec6d777a1f61d499c40416))
+* **desktop:** environments view — list, create, set active (M15 T2) ([a452db0](https://github.com/Its-Satyajit/reqly/commit/a452db026eeb9e6e9002865deb7d9d4ae3fea247))
+* **desktop:** masked secrets editing — changed-only writes, reveal toggle, remove (M15 T4) ([aa8ed25](https://github.com/Its-Satyajit/reqly/commit/aa8ed252693d13f74163c6011bab06c4d715e3d9))
+* **desktop:** masked secrets editing — changed-only writes, reveal toggle, remove (M15 T4) ([10bcdc2](https://github.com/Its-Satyajit/reqly/commit/10bcdc2c70ac33e62087538c7bb9de19f3e895b8))
+* **m16:** desktop collections browser ([#135](https://github.com/Its-Satyajit/reqly/issues/135)) ([ad4339d](https://github.com/Its-Satyajit/reqly/commit/ad4339d094678a93a1e19274fa9be524397db755))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/coder/websocket to v1.8.15 ([e88a544](https://github.com/Its-Satyajit/reqly/commit/e88a544fa332c412255fc0efc438505dcf89b921))
+* **deps:** update module github.com/coder/websocket to v1.8.15 ([e88a544](https://github.com/Its-Satyajit/reqly/commit/e88a544fa332c412255fc0efc438505dcf89b921))
+* **deps:** update module github.com/coder/websocket to v1.8.15 ([379f791](https://github.com/Its-Satyajit/reqly/commit/379f791a59a24a5537af06030e1fdddccddee7f6))
+* **deps:** update module github.com/getkin/kin-openapi to v0.147.0 ([81be1b0](https://github.com/Its-Satyajit/reqly/commit/81be1b02fd24d70843a9fb3b5508e784cc68f113))
+* **deps:** update module github.com/getkin/kin-openapi to v0.147.0 ([81be1b0](https://github.com/Its-Satyajit/reqly/commit/81be1b02fd24d70843a9fb3b5508e784cc68f113))
+* **deps:** update module github.com/getkin/kin-openapi to v0.147.0 ([7bc3216](https://github.com/Its-Satyajit/reqly/commit/7bc3216bb6081c7a45ac4f313fd3878459d9a58b))
+* **deps:** update module github.com/spf13/cobra to v1.10.2 ([8b8c9bc](https://github.com/Its-Satyajit/reqly/commit/8b8c9bc39792d51789df3d3202831fe5ede5ba29))
+* **deps:** update module github.com/spf13/cobra to v1.10.2 ([8b8c9bc](https://github.com/Its-Satyajit/reqly/commit/8b8c9bc39792d51789df3d3202831fe5ede5ba29))
+* **deps:** update module github.com/spf13/cobra to v1.10.2 ([0ea7201](https://github.com/Its-Satyajit/reqly/commit/0ea72016055bce0a8f5e25371adaca6fe9486bce))
+* **deps:** update module github.com/wailsapp/wails/v3 to v3.0.0-beta.9 ([33ec967](https://github.com/Its-Satyajit/reqly/commit/33ec967bccf80afec36b88e53ddb97b17cdc5093))
+* **deps:** update module github.com/wailsapp/wails/v3 to v3.0.0-beta.9 ([33ec967](https://github.com/Its-Satyajit/reqly/commit/33ec967bccf80afec36b88e53ddb97b17cdc5093))
+* **deps:** update module github.com/wailsapp/wails/v3 to v3.0.0-beta.9 ([3f4340a](https://github.com/Its-Satyajit/reqly/commit/3f4340ad5230294f23a899b74440c4a6e673ccc6))
+* **desktop:** review fixes — secrets panic, cross-collision, dirty-flag, empty-active warning (M15) ([26716ee](https://github.com/Its-Satyajit/reqly/commit/26716ee96640f0b8271b2dfd4094c9459e7cea12))
+* **desktop:** review fixes — secrets panic, cross-collision, dirty-flag, empty-active warning (M15) ([a9bb28c](https://github.com/Its-Satyajit/reqly/commit/a9bb28c9ea4b92a70528b91a4a351e0733620bb7))
+* **desktop:** wire environments view state into store (M15 T2 follow-up) ([076d97e](https://github.com/Its-Satyajit/reqly/commit/076d97e32c38dda403783cd27b418cb86127547f))
+* **desktop:** wire environments view state into store (M15 T2 follow-up) ([27ea8c1](https://github.com/Its-Satyajit/reqly/commit/27ea8c10d804a47ef187b0a172e748a7457f3c72))
+
 ## [1.1.1](https://github.com/Its-Satyajit/reqly/compare/v1.1.0...v1.1.1) (2026-08-18)
 
 
