@@ -395,3 +395,33 @@ func TestEnvCreateBridgeDuplicateErrors(t *testing.T) {
 		t.Fatal("expected duplicate error, got nil")
 	}
 }
+
+func TestEnvUpdateBridgePersistsChanges(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if err := svc.EnvUpdate("dev", "Updated", map[string]string{"REGION": "eu-west-1"}); err != nil {
+		t.Fatal(err)
+	}
+
+	env, err := svc.EnvRead("dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env.Description != "Updated" || env.Variables["REGION"] != "eu-west-1" {
+		t.Fatalf("env = %+v", env)
+	}
+}
+
+func TestEnvUpdateBridgeMissingEnvironmentErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if err := svc.EnvUpdate("nope", "x", nil); err == nil {
+		t.Fatal("expected missing-environment error, got nil")
+	}
+}

@@ -151,6 +151,12 @@ func (s *AppService) EnvCreate(name, description string, variables map[string]st
 	return s.environments.Create(name, description, variables)
 }
 
+// EnvUpdate rewrites an existing environment's description and variables,
+// preserving its secrets on disk.
+func (s *AppService) EnvUpdate(name, description string, variables map[string]string) error {
+	return s.environments.Update(name, description, variables)
+}
+
 // EnvSetActive persists name as the workspace's active environment in the
 // descriptor. An empty name clears the selection.
 func (s *AppService) EnvSetActive(name string) error {

@@ -249,6 +249,52 @@ func TestEnvironmentServiceCreateWithoutWorkspaceErrors(t *testing.T) {
 	}
 }
 
+func TestEnvironmentServiceUpdatePersistsChangesAndPreservesSecrets(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir)
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.Update("dev", "Updated description", map[string]string{"REGION": "eu-west-1"}); err != nil {
+		t.Fatal(err)
+	}
+
+	env, err := svc.Read("dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env.Description != "Updated description" {
+		t.Fatalf("description = %q, want Updated description", env.Description)
+	}
+	if env.Variables["REGION"] != "eu-west-1" {
+		t.Fatalf("variables = %v", env.Variables)
+	}
+	// Secrets stay on disk and are never exposed through Read: only the name
+	// shows up, proving Update preserved the secret while overwriting the
+	// description and variables.
+	if len(env.Secrets) != 1 || env.Secrets[0] != "API_KEY" {
+		t.Fatalf("secrets = %v, want [API_KEY]", env.Secrets)
+	}
+}
+
+func TestEnvironmentServiceUpdateMissingEnvironmentErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir)
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.Update("nope", "x", nil); err == nil {
+		t.Fatal("expected error updating a missing environment, got nil")
+	}
+}
+
+func TestEnvironmentServiceUpdateWithoutWorkspaceErrors(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.Update("dev", "x", nil); err == nil {
+		t.Fatal("expected error without workspace, got nil")
+	}
+}
+
 func contains(list []string, want string) bool {
 	for _, s := range list {
 		if s == want {

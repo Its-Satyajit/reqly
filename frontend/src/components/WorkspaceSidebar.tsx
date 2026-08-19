@@ -5,10 +5,17 @@ import { cn } from "#lib/utils";
 export function WorkspaceSidebar() {
   const activeView = useWorkspaceStore((s) => s.activeView);
   const setActiveView = useWorkspaceStore((s) => s.setActiveView);
+  const hasUnsavedEnvChanges = useWorkspaceStore((s) => s.hasUnsavedEnvChanges);
 
   const navItem = (view: "requests" | "environments", label: string) => (
     <button
-      onClick={() => setActiveView(view)}
+      onClick={() => {
+        if (activeView === view) return;
+        if (hasUnsavedEnvChanges && !window.confirm("Discard unsaved environment changes?")) {
+          return;
+        }
+        setActiveView(view);
+      }}
       className={cn(
         "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
         activeView === view
