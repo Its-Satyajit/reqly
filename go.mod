@@ -5,9 +5,11 @@ go 1.25.0
 require (
 	github.com/coder/websocket v1.8.14
 	github.com/dop251/goja v0.0.0-20260806115107-493f22071ef6
-	github.com/getkin/kin-openapi v0.146.0
+	github.com/getkin/kin-openapi v0.147.0
+	github.com/r3labs/diff/v3 v3.0.2
 	github.com/spf13/cobra v1.8.1
 	github.com/wailsapp/wails/v3 v3.0.0-beta.8
+	github.com/zalando/go-keyring v0.2.8
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -28,12 +30,10 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
-	github.com/r3labs/diff/v3 v3.0.2 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	github.com/zalando/go-keyring v0.2.8 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.39.0 // indirect
 )
