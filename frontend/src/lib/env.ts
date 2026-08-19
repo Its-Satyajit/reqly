@@ -33,6 +33,7 @@ export interface EnvAdapter {
     values: Record<string, string>,
     remove: string[],
   ) => Promise<void>
+  delete: (name: string) => Promise<void>
   setActive: (name: string) => Promise<void>
 }
 
@@ -54,6 +55,9 @@ export const fallbackEnvAdapter: EnvAdapter = {
   },
   updateSecrets: async () => {
     throw new Error('Updating secrets is only available in the desktop app')
+  },
+  delete: async () => {
+    throw new Error('Deleting an environment is only available in the desktop app')
   },
   setActive: async () => {
     throw new Error('Setting an active environment is only available in the desktop app')

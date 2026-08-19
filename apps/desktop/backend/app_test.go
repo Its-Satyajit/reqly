@@ -445,3 +445,22 @@ func TestEnvUpdateSecretsBridgePersists(t *testing.T) {
 		t.Fatalf("secrets = %v, want [API_KEY]", env.Secrets)
 	}
 }
+
+func TestEnvDeleteBridgeRemovesFileAndClearsActive(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if err := svc.EnvDelete("dev"); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := svc.EnvList()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.Active != "" || len(list.Environments) != 0 {
+		t.Fatalf("got active=%q envs=%d, want empty", list.Active, len(list.Environments))
+	}
+}

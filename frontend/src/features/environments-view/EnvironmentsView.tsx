@@ -71,6 +71,20 @@ export function EnvironmentsView() {
     }
   }
 
+  const onDelete = async (name: string) => {
+    if (!window.confirm(`Delete environment "${name}"? This removes its file and its secrets.`)) {
+      return
+    }
+    setSetActiveError(null)
+    try {
+      await envAdapter.delete(name)
+      if (editingName === name) setEditingName(null)
+      await refreshEnvironments()
+    } catch (err) {
+      setSetActiveError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-6">
       <div>
@@ -172,6 +186,14 @@ export function EnvironmentsView() {
                       Use
                     </Button>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10"
+                    onClick={() => void onDelete(env.name)}
+                  >
+                    Delete
+                  </Button>
                 </div>
               </li>
             )

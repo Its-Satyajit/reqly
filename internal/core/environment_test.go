@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Its-Satyajit/reqly/internal/collections"
 )
 
 func writeEnvWorkspace(t *testing.T, root string) {
@@ -340,6 +342,64 @@ func TestEnvironmentServiceUpdateSecretsWithoutWorkspaceErrors(t *testing.T) {
 
 	svc := NewEnvironmentService(dir)
 	if err := svc.UpdateSecrets("dev", nil, nil); err == nil {
+		t.Fatal("expected error without workspace, got nil")
+	}
+}
+
+func TestEnvironmentServiceDeleteRemovesFileAndClearsActive(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir) // active = dev, environments: dev, prod
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.Delete("dev"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "environments", "dev.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("dev.yaml still exists: %v", err)
+	}
+	active := collections.WorkspaceEnvironment(dir)
+	if active != "" {
+		t.Fatalf("active = %q, want cleared", active)
+	}
+	list, err := svc.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Environments) != 1 || list.Environments[0].Name != "prod" {
+		t.Fatalf("environments = %+v, want [prod]", list.Environments)
+	}
+}
+
+func TestEnvironmentServiceDeleteNonActiveKeepsActive(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir) // active = dev
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.Delete("prod"); err != nil {
+		t.Fatal(err)
+	}
+	active := collections.WorkspaceEnvironment(dir)
+	if active != "dev" {
+		t.Fatalf("active = %q, want dev", active)
+	}
+}
+
+func TestEnvironmentServiceDeleteMissingEnvironmentErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir)
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.Delete("nope"); err == nil {
+		t.Fatal("expected missing-environment error, got nil")
+	}
+}
+
+func TestEnvironmentServiceDeleteWithoutWorkspaceErrors(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.Delete("dev"); err == nil {
 		t.Fatal("expected error without workspace, got nil")
 	}
 }

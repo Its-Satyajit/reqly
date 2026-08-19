@@ -64,6 +64,22 @@ export function EnvironmentEditor({
     return null
   }, [rows])
 
+  // Matches the CLI's secret-exposure heuristic (key/token/secret/password/
+  // credential): variables whose names look like secrets are a warning, not a
+  // hard error — the user may intend them as secrets or plain variables.
+  const secretLikeWarnings = useMemo(() => {
+    const pattern = /(key|token|secret|password|credential)/i
+    const seen = new Set<string>()
+    const warnings: string[] = []
+    for (const row of rows) {
+      const key = row.key.trim()
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      if (pattern.test(key)) warnings.push(key)
+    }
+    return warnings
+  }, [rows])
+
   const setRow = (index: number, patch: Partial<VariableRow>) =>
     setRows((rs) => rs.map((r, i) => (i === index ? { ...r, ...patch } : r)))
 
@@ -154,6 +170,12 @@ export function EnvironmentEditor({
             Add variable
           </Button>
         </div>
+        {secretLikeWarnings.length > 0 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            {secretLikeWarnings.join(', ')} look{secretLikeWarnings.length === 1 ? 's' : ''} like
+            a secret — consider moving it to the Secrets section.
+          </p>
+        )}
       </div>
 
       {error && <p className="text-xs text-destructive">{error}</p>}
