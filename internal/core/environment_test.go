@@ -193,6 +193,62 @@ func TestEnvironmentServiceSetActiveWithoutWorkspaceErrors(t *testing.T) {
 	}
 }
 
+func TestEnvironmentServiceCreateWritesEnvironmentFile(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir)
+
+	svc := NewEnvironmentService(dir)
+	err := svc.Create("staging", "Staging server", map[string]string{"REGION": "ap-south-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	env, err := svc.Read("staging")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env.Name != "staging" || env.Description != "Staging server" {
+		t.Fatalf("env = %+v", env)
+	}
+	if env.Variables["REGION"] != "ap-south-1" {
+		t.Fatalf("variables = %v", env.Variables)
+	}
+	if len(env.Secrets) != 0 {
+		t.Fatalf("secrets = %v, want none", env.Secrets)
+	}
+}
+
+func TestEnvironmentServiceCreateDuplicateErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir)
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.Create("dev", "Duplicate", nil); err == nil {
+		t.Fatal("expected error creating a duplicate environment, got nil")
+	}
+}
+
+func TestEnvironmentServiceCreateInvalidNameErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir)
+
+	svc := NewEnvironmentService(dir)
+	for _, name := range []string{"", "a/b", "..", "bad name", ".hidden"} {
+		if err := svc.Create(name, "Invalid", nil); err == nil {
+			t.Fatalf("expected error for name %q, got nil", name)
+		}
+	}
+}
+
+func TestEnvironmentServiceCreateWithoutWorkspaceErrors(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.Create("staging", "No workspace", nil); err == nil {
+		t.Fatal("expected error without workspace, got nil")
+	}
+}
+
 func contains(list []string, want string) bool {
 	for _, s := range list {
 		if s == want {

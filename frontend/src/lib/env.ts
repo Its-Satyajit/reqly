@@ -26,6 +26,7 @@ export interface EnvListData {
 export interface EnvAdapter {
   list: () => Promise<EnvListData>
   read: (name: string) => Promise<EnvironmentData>
+  create: (name: string, description: string, variables: Record<string, string>) => Promise<void>
   setActive: (name: string) => Promise<void>
 }
 
@@ -38,6 +39,9 @@ export const fallbackEnvAdapter: EnvAdapter = {
   list: async () => ({ active: '', environments: [] }),
   read: async (name) => {
     throw new Error(`Environment "${name}" is only available in the desktop app`)
+  },
+  create: async () => {
+    throw new Error('Creating an environment is only available in the desktop app')
   },
   setActive: async () => {
     throw new Error('Setting an active environment is only available in the desktop app')

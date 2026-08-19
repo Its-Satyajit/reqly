@@ -4,10 +4,12 @@ import logoLight from "../assets/logo-light.svg";
 import { ThemeToggle, WorkspaceSidebar } from "../components";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
+import { EnvironmentsView } from "../features/environments-view/EnvironmentsView";
 import { useThemeStore, useWorkspaceStore } from "../stores";
 
 export function App() {
 	const theme = useThemeStore((s) => s.theme);
+	const activeView = useWorkspaceStore((s) => s.activeView);
 	const environments = useWorkspaceStore((s) => s.environments);
 	const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
 	const environmentsError = useWorkspaceStore((s) => s.environmentsError);
@@ -66,12 +68,20 @@ export function App() {
 			<div className="flex min-h-0 flex-1">
 				<WorkspaceSidebar />
 				<main className="flex min-w-0 flex-1 flex-col lg:flex-row">
-					<section className="min-h-0 flex-1 border-r border-border lg:w-1/2">
-						<RequestEditor />
-					</section>
-					<section className="min-h-0 flex-1 lg:w-1/2">
-						<ResponseViewer />
-					</section>
+					{activeView === "environments" ? (
+						<section className="min-h-0 flex-1 overflow-y-auto">
+							<EnvironmentsView />
+						</section>
+					) : (
+						<>
+							<section className="min-h-0 flex-1 border-r border-border lg:w-1/2">
+								<RequestEditor />
+							</section>
+							<section className="min-h-0 flex-1 lg:w-1/2">
+								<ResponseViewer />
+							</section>
+						</>
+					)}
 				</main>
 			</div>
 		</div>

@@ -141,3 +141,52 @@ func List(dir string) ([]string, error) {
 func (e *Environment) Mask(text string) string {
 	return NewMasker(e.SecretValues()...).Mask(text)
 }
+
+// Save writes env to environments/<name>.yaml in the environments/ directory
+// discovered from dir. It errors when no environments/ directory exists, when
+// the name is empty, or when the name is not a safe single filename component.
+func Save(env *Environment, dir string) error {
+	if env.Name == "" {
+		return fmt.Errorf("save environment: empty name")
+	}
+	if !validName(env.Name) {
+		return fmt.Errorf("save environment %q: name must be a plain filename component (letters, digits, '-', '_', '.', no path separators)", env.Name)
+	}
+	envDir, err := Discover(dir)
+	if err != nil {
+		return err
+	}
+	if envDir == "" {
+		return fmt.Errorf("save environment %q: no environments/ directory found", env.Name)
+	}
+	path := filepath.Join(envDir, env.Name+".yaml")
+	schema := fileSchema{
+		Description: env.Description,
+		Variables:   env.Variables,
+		Secrets:     env.Secrets,
+	}
+	data, err := yaml.Marshal(&schema)
+	if err != nil {
+		return fmt.Errorf("encode environment %q: %w", env.Name, err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("write environment file %q: %w", path, err)
+	}
+	return nil
+}
+
+// validName reports whether name is a safe single filename component for an
+// environment: non-empty, not dot-only, and free of path separators and other
+// characters that would break the YAML filename or the descriptor.
+func validName(name string) bool {
+	if name == "" || name == "." || name == ".." {
+		return false
+	}
+	if strings.ContainsAny(name, `/\`+" \t\n") {
+		return false
+	}
+	if strings.HasPrefix(name, ".") {
+		return false
+	}
+	return true
+}
