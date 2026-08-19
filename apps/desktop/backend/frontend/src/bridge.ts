@@ -23,13 +23,19 @@ export const wailsSender: RequestSender = async (req: RequestInput): Promise<Res
   )
   if (contentType && !hasManualType) headers.push({ key: 'Content-Type', value: contentType })
 
-  const res = await AppService.SendRequest({
-    method: req.method,
-    url: req.url,
-    headers,
-    query: (req.params ?? []).map(({ key, value }) => ({ key, value })),
-    body,
-  } as never)
+  const res = await AppService.SendRequest(
+    {
+      method: req.method,
+      url: req.url,
+      headers,
+      query: (req.params ?? []).map(({ key, value }) => ({ key, value })),
+      body,
+    } as never,
+    {
+      env: req.env ?? '',
+      vars: (req.vars ?? []).map(({ name, value, scope }) => ({ name, value, scope })),
+    } as never,
+  )
   if (!res) {
     throw new Error('core returned an empty response')
   }

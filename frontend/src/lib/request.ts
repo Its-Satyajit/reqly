@@ -6,6 +6,7 @@
 // the Go core, while browser dev mode uses fetchSender.
 
 import { serializeBody, type BodyType } from './body'
+import type { ResolvedVariable } from './collections'
 
 export interface RequestHeader {
   key: string
@@ -31,6 +32,12 @@ export interface RequestInput {
   body?: string
   form?: KeyValueRow[]
   timeout?: number
+  /** Environment pill (a request file's environment: field) used at send;
+   * empty falls back to the app's active environment. */
+  env?: string
+  /** The tab's effective variable chain (scope-tagged snapshot), layered
+   * under the request so file variables win over the environment. */
+  vars?: ResolvedVariable[]
 }
 
 /** sentParams returns the enabled, non-blank rows of a param/header list. */

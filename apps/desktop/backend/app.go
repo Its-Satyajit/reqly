@@ -64,14 +64,30 @@ func NewAppService() *AppService {
 	return svc
 }
 
+// SendOptions carries the per-send environment + snapshot variable overlay
+// for tabs opened from the collections browser. Env is the environment pill
+// (a request file's environment: field); when empty, the app's active
+// environment applies. Vars is the opened request's effective variable chain
+// (workspace → collection → folder → request, low → high scope) so
+// request-file variables win over the environment while preserving scope
+// precedence at send time.
+type SendOptions struct {
+	Env  string                  `json:"env"`
+	Vars []core.ResolvedVariable `json:"vars"`
+}
+
 // SendRequest executes an HTTP request through the core and returns the
 // bridge-friendly response for the frontend to render. The active environment
-// is resolved from the workspace rooted at the app's working directory and its
+// is resolved from the workspace rooted at the app's working directory; the
+// SendOptions environment pill (if any) overrides it, and the snapshot
 // variables are layered under the request for interpolation.
-func (s *AppService) SendRequest(r request.Request) (*core.SendResponse, error) {
-	vars, err := resolveAppEnvironment()
+func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.SendResponse, error) {
+	vars, err := resolveAppEnvironment(opts.Env)
 	if err != nil {
 		return nil, err
+	}
+	for _, v := range opts.Vars {
+		vars.Set(variables.Scope(v.Scope), v.Name, v.Value)
 	}
 	return s.requests.Send(r, vars)
 }
@@ -192,17 +208,22 @@ func (s *AppService) WorkspaceOpenRequest(path string) (*core.OpenedRequest, err
 }
 
 // resolveAppEnvironment loads the process-env scope plus the environment
-// selected from the working directory by REQLY_ENV or the workspace
-// descriptor's environment: field (the --env CLI flag is not available to the
-// desktop). When no workspace or environment is present, the returned set
-// still carries the process-env scope so OS variables always interpolate.
-func resolveAppEnvironment() (*variables.Set, error) {
+// selected for execution. env is a per-send override (a request file's
+// environment pill); when empty, REQLY_ENV or the workspace descriptor's
+// environment: field applies. When no workspace or environment is present,
+// the returned set still carries the process-env scope so OS variables always
+// interpolate.
+func resolveAppEnvironment(env string) (*variables.Set, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("resolve working directory: %w", err)
 	}
+	envFlag := os.Getenv("REQLY_ENV")
+	if env != "" {
+		envFlag = env
+	}
 	sel := environments.Selection{
-		EnvFlag:   os.Getenv("REQLY_ENV"),
+		EnvFlag:   envFlag,
 		ConfigEnv: collections.WorkspaceEnvironment(dir),
 	}
 	set, _, err := environments.ResolveSet(dir, sel)

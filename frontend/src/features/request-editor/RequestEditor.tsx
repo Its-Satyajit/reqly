@@ -68,6 +68,8 @@ export function RequestEditor() {
       bodyType: draft.bodyType,
       body: draft.body,
       form: sentRows(draft.form),
+      env: meta?.env,
+      vars: meta?.variables,
     })
   }
 
