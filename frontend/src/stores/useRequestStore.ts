@@ -106,8 +106,6 @@ interface RequestState {
   updateDraft: (id: string, patch: Partial<TabDraft>) => void
   /** Set a tab's collection metadata (variables chain, environment pill). */
   setMeta: (id: string, meta: TabMeta) => void
-  /** Clear a tab's changed-on-disk conflict flag after the user resolves it. */
-  clearChangedOnDisk: (id: string) => void
   send: (id: string, req: RequestInput) => Promise<void>
   removeTab: (id: string) => void
 }
@@ -141,15 +139,6 @@ export const useRequestStore = create<RequestState>((set, get) => ({
 
   setMeta: (id, meta) =>
     set((state) => ({ meta: { ...state.meta, [id]: meta } })),
-
-  /** clearChangedOnDisk acknowledges a changed-on-disk conflict after the
-   * user resolves it (overwrite or reload). */
-  clearChangedOnDisk: (id) =>
-    set((state) => {
-      const meta = state.meta[id]
-      if (!meta?.changedOnDisk) return {}
-      return { meta: { ...state.meta, [id]: { ...meta, changedOnDisk: false } } }
-    }),
 
   send: async (id, req) => {
     set((state) => ({

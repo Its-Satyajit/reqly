@@ -211,7 +211,7 @@ func (s *WorkspaceService) SaveRequest(path string, draft request.Request, expec
 	file := *entry.File
 	file.Request = mergedBuilderRequest(entry.File.Request, draft)
 	if err := requestfile.Save(entry.Path, &file); err != nil {
-		return "", err
+		return "", fmt.Errorf("save request file %q: %w", entry.Path, err)
 	}
 
 	saved, err := os.ReadFile(entry.Path)
