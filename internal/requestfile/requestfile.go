@@ -19,6 +19,8 @@
 package requestfile
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -128,4 +130,65 @@ func LooksLikeFile(path string) bool {
 		return true
 	}
 	return false
+}
+
+// Save writes a request file back to disk, preserving the original format
+// (JSON for .json files, YAML otherwise) and writing atomically via a temp
+// file in the same directory followed by a rename. The request must have a
+// non-empty URL. The destination file's permissions are preserved.
+func Save(path string, f *File) error {
+	data, err := marshal(path, f)
+	if err != nil {
+		return err
+	}
+	mode := os.FileMode(0o644)
+	if info, err := os.Stat(path); err == nil {
+		mode = info.Mode().Perm()
+	}
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("write request file %q: %w", path, err)
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if err := os.Chmod(tmpName, mode); err != nil {
+		tmp.Close()
+		return fmt.Errorf("write request file %q: %w", path, err)
+	}
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return fmt.Errorf("write request file %q: %w", path, err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("write request file %q: %w", path, err)
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return fmt.Errorf("write request file %q: %w", path, err)
+	}
+	return nil
+}
+
+// marshal serializes a File in its on-disk format: JSON for .json paths,
+// YAML otherwise. The URL is validated before serializing.
+func marshal(path string, f *File) ([]byte, error) {
+	if _, err := validate(f); err != nil {
+		return nil, err
+	}
+	if isJSONPath(path) {
+		return json.MarshalIndent(f, "", "  ")
+	}
+	return yaml.Marshal(f)
+}
+
+// isJSONPath reports whether a path carries a .json extension.
+func isJSONPath(path string) bool {
+	return strings.EqualFold(filepath.Ext(path), ".json")
+}
+
+// Fingerprint returns a stable content hash of a request file's bytes, used
+// to detect on-disk changes between the time a request was opened and saved.
+func Fingerprint(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
