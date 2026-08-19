@@ -21,11 +21,14 @@ export interface RequestTab {
   requestId?: string
 }
 
+export type WorkspaceView = 'requests' | 'environments'
+
 interface WorkspaceState {
   currentWorkspace: Workspace | null
   selectedCollectionId: string | null
   openTabs: RequestTab[]
   activeTabId: string | null
+  activeView: WorkspaceView
   activeEnvironmentId: string | null
   environments: Environment[]
   environmentsError: string | null
@@ -33,6 +36,7 @@ interface WorkspaceState {
 
   setCurrentWorkspace: (workspace: Workspace | null) => void
   selectCollection: (id: string | null) => void
+  setActiveView: (view: WorkspaceView) => void
   openTab: (tab: RequestTab) => void
   closeTab: (id: string) => void
   setActiveTab: (id: string | null) => void
@@ -55,6 +59,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   selectedCollectionId: null,
   openTabs: [],
   activeTabId: null,
+  activeView: 'requests',
   activeEnvironmentId: null,
   environments: [],
   environmentsError: null,
@@ -62,6 +67,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   setCurrentWorkspace: (currentWorkspace) => set({ currentWorkspace }),
   selectCollection: (selectedCollectionId) => set({ selectedCollectionId }),
+  setActiveView: (activeView) => set({ activeView }),
 
   openTab: (tab) =>
     set((state) => {
