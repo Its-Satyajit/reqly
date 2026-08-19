@@ -20,9 +20,9 @@ build_out/
 # Wails v3
 apps/desktop/backend/bin/
 apps/desktop/backend/build/linux/*.desktop
-apps/desktop/backend/frontend/dist/
-apps/desktop/backend/frontend/bindings/
-apps/desktop/backend/frontend/node_modules/
+apps/desktop/frontend/dist/
+apps/desktop/frontend/bindings/
+apps/desktop/frontend/node_modules/
 
 # Go
 *.test
