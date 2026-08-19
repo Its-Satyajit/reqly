@@ -1,5 +1,10 @@
 import { create } from 'zustand'
 import { fallbackEnvAdapter, type EnvAdapter } from '../lib/env'
+import {
+  fallbackCollectionsAdapter,
+  type CollectionsAdapter,
+  type WorkspaceTree,
+} from '../lib/collections'
 
 export interface Workspace {
   id: string
@@ -33,6 +38,10 @@ interface WorkspaceState {
   environments: Environment[]
   environmentsError: string | null
   envAdapter: EnvAdapter
+  workspaceTree: WorkspaceTree | null
+  workspaceError: string | null
+  workspaceAdapter: CollectionsAdapter
+  expanded: Record<string, boolean>
   dirtyEditors: Record<string, boolean>
   hasUnsavedEnvChanges: boolean
 
@@ -46,6 +55,9 @@ interface WorkspaceState {
   setActiveEnvironment: (id: string | null) => void
   setEnvironments: (environments: Environment[]) => void
   setEnvAdapter: (adapter: EnvAdapter) => void
+  setWorkspaceAdapter: (adapter: CollectionsAdapter) => void
+  refreshWorkspace: () => Promise<void>
+  toggleExpanded: (path: string) => void
   refreshEnvironments: () => Promise<void>
 }
 
@@ -67,6 +79,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   environments: [],
   environmentsError: null,
   envAdapter: fallbackEnvAdapter,
+  workspaceTree: null,
+  workspaceError: null,
+  workspaceAdapter: fallbackCollectionsAdapter,
+  expanded: {},
   dirtyEditors: {},
   hasUnsavedEnvChanges: false,
 
@@ -106,6 +122,27 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setEnvironments: (environments) => set({ environments }),
 
   setEnvAdapter: (envAdapter) => set({ envAdapter }),
+
+  setWorkspaceAdapter: (workspaceAdapter) => set({ workspaceAdapter }),
+
+  refreshWorkspace: async () => {
+    const { workspaceAdapter } = get()
+    try {
+      const tree = await workspaceAdapter.load()
+      set({
+        workspaceTree: tree,
+        workspaceError: null,
+        currentWorkspace: tree.name
+          ? { id: tree.path, name: tree.name, path: tree.path }
+          : null,
+      })
+    } catch (err) {
+      set({ workspaceError: err instanceof Error ? err.message : String(err) })
+    }
+  },
+
+  toggleExpanded: (path) =>
+    set((state) => ({ expanded: { ...state.expanded, [path]: !state.expanded[path] } })),
 
   refreshEnvironments: async () => {
     const { envAdapter } = get()

@@ -27,6 +27,58 @@ import (
 	"testing"
 )
 
+func TestWorkspaceLoadBridgeReturnsTree(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users", "auth"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for path, contents := range map[string]string{
+		"collections/users/reqly.yaml":      "name: users\n",
+		"collections/users/list-users.yaml": "request: {method: GET, url: users}\n",
+		"collections/users/get-user.yaml":   "request: {method: GET, url: users/1}\n",
+		"collections/users/auth/reqly.yaml": "name: auth\n",
+		"collections/users/auth/login.yaml": "request: {method: POST, url: auth/login}\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, path), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	tree, err := svc.WorkspaceLoad()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tree.Collections) != 1 || tree.Collections[0].Name != "users" {
+		t.Fatalf("collections = %+v", tree.Collections)
+	}
+	coll := tree.Collections[0]
+	if coll.Path != "users" {
+		t.Fatalf("collection path = %q, want users", coll.Path)
+	}
+	if len(coll.Requests) != 2 || coll.Requests[0].Path != "users/get-user" {
+		t.Fatalf("requests = %+v", coll.Requests)
+	}
+	if len(coll.Folders) != 1 || coll.Folders[0].Path != "users/auth" {
+		t.Fatalf("folders = %+v", coll.Folders)
+	}
+	if len(coll.Folders[0].Requests) != 1 || coll.Folders[0].Requests[0].Path != "users/auth/login" {
+		t.Fatalf("folder requests = %+v", coll.Folders[0].Requests)
+	}
+}
+
+func TestWorkspaceLoadBridgeWithoutWorkspaceErrors(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if _, err := svc.WorkspaceLoad(); err == nil || !strings.Contains(err.Error(), "no workspace found") {
+		t.Fatalf("WorkspaceLoad err = %v, want no-workspace error", err)
+	}
+}
+
 func writeWorkspace(t *testing.T, root string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Join(root, "environments"), 0o755); err != nil {

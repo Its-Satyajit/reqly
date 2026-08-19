@@ -15,6 +15,7 @@ export function App() {
 	const environmentsError = useWorkspaceStore((s) => s.environmentsError);
 	const setActiveEnvironment = useWorkspaceStore((s) => s.setActiveEnvironment);
 	const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments);
+	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
 
 	const activeEnvironment = environments.find(
 		(e) => e.id === activeEnvironmentId,
@@ -22,7 +23,8 @@ export function App() {
 
 	useEffect(() => {
 		void refreshEnvironments();
-	}, [refreshEnvironments]);
+		void refreshWorkspace();
+	}, [refreshEnvironments, refreshWorkspace]);
 
 	const onSelectEnvironment = async (name: string) => {
 		const envAdapter = useWorkspaceStore.getState().envAdapter;

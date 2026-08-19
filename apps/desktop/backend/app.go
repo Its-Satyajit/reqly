@@ -41,6 +41,7 @@ type AppService struct {
 	requests     *core.RequestService
 	auth         *core.AuthService
 	environments *core.EnvironmentService
+	workspace    *core.WorkspaceService
 	// authBackend is the active token-store backend name ("file"/"keychain").
 	authBackend string
 }
@@ -55,7 +56,7 @@ func NewAppService() *AppService {
 	root := collections.FindWorkspaceRoot(".")
 	store, backend := openAppTokenStore(root)
 
-	svc := &AppService{requests: core.NewCachedRequestService(store, root), authBackend: backend, environments: core.NewEnvironmentService(root)}
+	svc := &AppService{requests: core.NewCachedRequestService(store, root), authBackend: backend, environments: core.NewEnvironmentService(root), workspace: core.NewWorkspaceService(root)}
 	if store != nil {
 		svc.auth = core.NewAuthService(store, root)
 	}
@@ -174,6 +175,13 @@ func (s *AppService) EnvDelete(name string) error {
 // descriptor. An empty name clears the selection.
 func (s *AppService) EnvSetActive(name string) error {
 	return s.environments.SetActive(name)
+}
+
+// WorkspaceLoad returns the workspace's collection tree (collections →
+// folders → requests, all name-sorted) with workspace-relative Request Paths.
+// A workspace without a collections/ directory yields an empty tree.
+func (s *AppService) WorkspaceLoad() (*core.WorkspaceTree, error) {
+	return s.workspace.Load()
 }
 
 // resolveAppEnvironment loads the process-env scope plus the environment
