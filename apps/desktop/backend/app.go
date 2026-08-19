@@ -38,8 +38,9 @@ import (
 // AppService is a Wails v3 service exposing the Go core to the frontend.
 // It should stay thin: business logic belongs in the Go core (internal/core).
 type AppService struct {
-	requests *core.RequestService
-	auth     *core.AuthService
+	requests     *core.RequestService
+	auth         *core.AuthService
+	environments *core.EnvironmentService
 	// authBackend is the active token-store backend name ("file"/"keychain").
 	authBackend string
 }
@@ -54,7 +55,7 @@ func NewAppService() *AppService {
 	root := collections.FindWorkspaceRoot(".")
 	store, backend := openAppTokenStore(root)
 
-	svc := &AppService{requests: core.NewCachedRequestService(store, root), authBackend: backend}
+	svc := &AppService{requests: core.NewCachedRequestService(store, root), authBackend: backend, environments: core.NewEnvironmentService(root)}
 	if store != nil {
 		svc.auth = core.NewAuthService(store, root)
 	}
@@ -131,6 +132,23 @@ func (s *AppService) AuthLogout() (int, error) {
 // OS delivers a registered URL to the app.
 func (s *AppService) DeliverCustomSchemeCallback(uri string) error {
 	return auth.DeliverCustomSchemeCallback(uri)
+}
+
+// EnvList lists the workspace's environments plus the active one. Secret
+// values never cross the bridge — only their names are returned.
+func (s *AppService) EnvList() (*core.EnvListResponse, error) {
+	return s.environments.List()
+}
+
+// EnvRead returns a single environment by name, without secret values.
+func (s *AppService) EnvRead(name string) (*core.Environment, error) {
+	return s.environments.Read(name)
+}
+
+// EnvSetActive persists name as the workspace's active environment in the
+// descriptor. An empty name clears the selection.
+func (s *AppService) EnvSetActive(name string) error {
+	return s.environments.SetActive(name)
 }
 
 // resolveAppEnvironment loads the process-env scope plus the environment

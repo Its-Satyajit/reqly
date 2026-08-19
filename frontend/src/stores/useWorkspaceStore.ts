@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { fallbackEnvAdapter, type EnvAdapter } from '../lib/env'
 
 export interface Workspace {
   id: string
@@ -9,7 +10,9 @@ export interface Workspace {
 export interface Environment {
   id: string
   name: string
+  description: string
   variables: Record<string, string>
+  secrets: string[]
 }
 
 export interface RequestTab {
@@ -25,6 +28,8 @@ interface WorkspaceState {
   activeTabId: string | null
   activeEnvironmentId: string | null
   environments: Environment[]
+  environmentsError: string | null
+  envAdapter: EnvAdapter
 
   setCurrentWorkspace: (workspace: Workspace | null) => void
   selectCollection: (id: string | null) => void
@@ -33,15 +38,27 @@ interface WorkspaceState {
   setActiveTab: (id: string | null) => void
   setActiveEnvironment: (id: string | null) => void
   setEnvironments: (environments: Environment[]) => void
+  setEnvAdapter: (adapter: EnvAdapter) => void
+  refreshEnvironments: () => Promise<void>
 }
 
-export const useWorkspaceStore = create<WorkspaceState>((set) => ({
+const toEnvironment = (name: string, src: { description?: string; variables?: Record<string, string>; secrets?: string[] }): Environment => ({
+  id: name,
+  name,
+  description: src.description ?? '',
+  variables: src.variables ?? {},
+  secrets: src.secrets ?? [],
+})
+
+export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   currentWorkspace: null,
   selectedCollectionId: null,
   openTabs: [],
   activeTabId: null,
   activeEnvironmentId: null,
   environments: [],
+  environmentsError: null,
+  envAdapter: fallbackEnvAdapter,
 
   setCurrentWorkspace: (currentWorkspace) => set({ currentWorkspace }),
   selectCollection: (selectedCollectionId) => set({ selectedCollectionId }),
@@ -67,6 +84,24 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     }),
 
   setActiveTab: (activeTabId) => set({ activeTabId }),
+
   setActiveEnvironment: (activeEnvironmentId) => set({ activeEnvironmentId }),
+
   setEnvironments: (environments) => set({ environments }),
+
+  setEnvAdapter: (envAdapter) => set({ envAdapter }),
+
+  refreshEnvironments: async () => {
+    const { envAdapter } = get()
+    try {
+      const data = await envAdapter.list()
+      set({
+        environments: data.environments.map((e) => toEnvironment(e.name, e)),
+        activeEnvironmentId: data.active || null,
+        environmentsError: null,
+      })
+    } catch (err) {
+      set({ environmentsError: err instanceof Error ? err.message : String(err) })
+    }
+  },
 }))
