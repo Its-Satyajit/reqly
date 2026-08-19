@@ -19,6 +19,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,9 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/request"
-	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
 func TestWorkspaceLoadBridgeReturnsTree(t *testing.T) {
@@ -227,47 +226,109 @@ func TestSendRequestEnvironmentPillOverrides(t *testing.T) {
 	}
 }
 
-func TestSendRequestSnapshotVariablesWinOverEnvironment(t *testing.T) {
+func TestSendRequestFileBackedResolvesDraft(t *testing.T) {
 	dir := t.TempDir()
 	writeWorkspace(t, dir)
-	t.Chdir(dir)
-	t.Setenv("REQLY_ENV", "")
 
-	var got map[string]string
+	var got struct {
+		path, method string
+		headers      map[string]string
+	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got = map[string]string{
-			"X-Region": r.Header.Get("X-Region"),
-			"X-Shared": r.Header.Get("X-Shared"),
+		got.path = r.URL.Path
+		got.method = r.Method
+		got.headers = map[string]string{
+			"X-Collection": r.Header.Get("X-Collection"),
+			"X-Own":        r.Header.Get("X-Own"),
+			"X-Region":     r.Header.Get("X-Region"),
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
 
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/reqly.yaml"), []byte(fmt.Sprintf("name: users\nbaseURL: %s\nheaders:\n  - key: X-Collection\n    value: users\n", srv.URL)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/list-users.yaml"), []byte("name: List Users\nenvironment: dev\nvariables:\n  REGION: file-region\nrequest: {method: GET, url: users}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	t.Setenv("REQLY_ENV", "")
+
 	svc := NewAppService()
+	// The draft carries the tab's live edits; the inheritance chain is
+	// re-resolved at send time, not taken from a stale snapshot.
 	_, err := svc.SendRequest(request.Request{
-		Method: "GET",
-		URL:    srv.URL,
+		Method: "POST",
+		URL:    "custom",
 		Headers: []request.Header{
+			{Key: "X-Own", Value: "mine"},
 			{Key: "X-Region", Value: "{{REGION}}"},
-			{Key: "X-Shared", Value: "{{SHARED}}"},
 		},
-	}, SendOptions{
-		// Environment scope carries REGION=us-west-2; the snapshot overlays a
-		// collection-scope REGION and a request-scope SHARED. Precedence must
-		// keep request > collection > environment.
-		Vars: []core.ResolvedVariable{
-			{Name: "REGION", Value: "snapshot-collection", Scope: string(variables.ScopeCollection)},
-			{Name: "SHARED", Value: "snapshot-request", Scope: string(variables.ScopeRequest)},
-		},
-	})
+	}, SendOptions{Env: "dev", RequestPath: "users/list-users"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got["X-Region"] != "snapshot-collection" {
-		t.Fatalf("X-Region = %q, want snapshot-collection (collection wins over env)", got["X-Region"])
+
+	if got.path != "/custom" {
+		t.Fatalf("path = %q, want /custom (draft URL joined onto base URL)", got.path)
 	}
-	if got["X-Shared"] != "snapshot-request" {
-		t.Fatalf("X-Shared = %q, want snapshot-request (request wins)", got["X-Shared"])
+	if got.method != "POST" {
+		t.Fatalf("method = %q, want POST", got.method)
+	}
+	if got.headers["X-Collection"] != "users" {
+		t.Fatalf("X-Collection = %q, want users (inherited)", got.headers["X-Collection"])
+	}
+	if got.headers["X-Own"] != "mine" {
+		t.Fatalf("X-Own = %q, want mine (draft)", got.headers["X-Own"])
+	}
+	// Request-file scope beats the environment scope at send time.
+	if got.headers["X-Region"] != "file-region" {
+		t.Fatalf("X-Region = %q, want file-region (request scope wins over env)", got.headers["X-Region"])
+	}
+}
+
+func TestSendRequestFileBackedMissingPathErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+	t.Setenv("REQLY_ENV", "")
+
+	svc := NewAppService()
+	_, err := svc.SendRequest(request.Request{Method: "GET", URL: "x"}, SendOptions{RequestPath: "users/nope"})
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("err = %v, want not-found error", err)
+	}
+}
+
+func TestSendRequestScratchpadIgnoresRequestPathResolution(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("X-Raw")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	t.Chdir(dir)
+	t.Setenv("REQLY_ENV", "")
+
+	svc := NewAppService()
+	_, err := svc.SendRequest(request.Request{
+		Method:  "GET",
+		URL:     srv.URL,
+		Headers: []request.Header{{Key: "X-Raw", Value: "scratchpad"}},
+	}, SendOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "scratchpad" {
+		t.Fatalf("X-Raw = %q, want scratchpad (raw send, no re-resolution)", got)
 	}
 }
 
@@ -286,6 +347,97 @@ func TestSendRequestMissingPillEnvironmentErrors(t *testing.T) {
 	_, err := svc.SendRequest(request.Request{Method: "GET", URL: srv.URL}, SendOptions{Env: "nope"})
 	if err == nil {
 		t.Fatal("expected an error for a missing pill environment, got nil")
+	}
+}
+
+func TestWorkspaceSaveRequestBridgePersists(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/reqly.yaml"), []byte("name: users\nbaseURL: https://api.example.com\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/list-users.yaml"), []byte("name: List Users\nenvironment: dev\nrequest: {method: GET, url: users}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	opened, err := svc.WorkspaceOpenRequest("users/list-users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	draft := opened.FileRequest
+	draft.URL = "edited"
+	draft.Method = "PUT"
+
+	version, err := svc.WorkspaceSaveRequest("users/list-users", draft, opened.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version == "" {
+		t.Fatal("expected a new version fingerprint")
+	}
+
+	reloaded, err := svc.WorkspaceOpenRequest("users/list-users")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.Request.URL != "https://api.example.com/edited" {
+		t.Fatalf("URL = %q, want https://api.example.com/edited", reloaded.Request.URL)
+	}
+	if reloaded.Request.Method != "PUT" {
+		t.Fatalf("method = %q, want PUT", reloaded.Request.Method)
+	}
+}
+
+func TestWorkspaceSaveRequestBridgeChangedOnDisk(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/reqly.yaml"), []byte("name: users\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections/users/list-users.yaml"), []byte("request: {method: GET, url: users}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	opened, err := svc.WorkspaceOpenRequest("users/list-users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Another editor changes the file on disk after it was opened.
+	path := filepath.Join(dir, "collections/users/list-users.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(data, []byte("\n# changed\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = svc.WorkspaceSaveRequest("users/list-users", opened.FileRequest, opened.Version)
+	if err == nil || !strings.Contains(err.Error(), "changed on disk") {
+		t.Fatalf("err = %v, want changed-on-disk error", err)
+	}
+}
+
+func TestWorkspaceSaveRequestBridgeMissingPathErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if _, err := svc.WorkspaceSaveRequest("users/nope", request.Request{}, "v"); err == nil {
+		t.Fatal("expected error saving an unknown request")
 	}
 }
 
