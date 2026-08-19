@@ -27,7 +27,7 @@ export function EnvironmentEditor({
 }) {
   const envAdapter = useWorkspaceStore((s) => s.envAdapter)
   const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments)
-  const setHasUnsavedEnvChanges = useWorkspaceStore((s) => s.setHasUnsavedEnvChanges)
+  const setEditorDirty = useWorkspaceStore((s) => s.setEditorDirty)
 
   const [description, setDescription] = useState(env.description)
   const [rows, setRows] = useState<VariableRow[]>(() =>
@@ -48,9 +48,9 @@ export function EnvironmentEditor({
   }, [description, rows, env])
 
   useEffect(() => {
-    setHasUnsavedEnvChanges(dirty)
-    return () => setHasUnsavedEnvChanges(false)
-  }, [dirty, setHasUnsavedEnvChanges])
+    setEditorDirty(`vars:${env.name}`, dirty)
+    return () => setEditorDirty(`vars:${env.name}`, false)
+  }, [dirty, env.name, setEditorDirty])
 
   const duplicateKey = useMemo(() => {
     const seen = new Map<string, number>()
@@ -97,7 +97,7 @@ export function EnvironmentEditor({
     try {
       await envAdapter.update(env.name, description.trim(), variables)
       await refreshEnvironments()
-      setHasUnsavedEnvChanges(false)
+      setEditorDirty(`vars:${env.name}`, false)
       onCancel()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

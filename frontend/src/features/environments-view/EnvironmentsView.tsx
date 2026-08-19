@@ -18,7 +18,6 @@ export function EnvironmentsView() {
   const environmentsError = useWorkspaceStore((s) => s.environmentsError)
   const envAdapter = useWorkspaceStore((s) => s.envAdapter)
   const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments)
-  const setHasUnsavedEnvChanges = useWorkspaceStore((s) => s.setHasUnsavedEnvChanges)
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -126,12 +125,13 @@ export function EnvironmentsView() {
         <div className="flex flex-col gap-3">
           <EnvironmentEditor
             env={editing}
-            onCancel={() => {
-              setHasUnsavedEnvChanges(false)
-              setEditingName(null)
-            }}
+            onCancel={() => setEditingName(null)}
           />
-          <SecretsEditor envName={editing.name} secretNames={editing.secrets} />
+          <SecretsEditor
+            envName={editing.name}
+            secretNames={editing.secrets}
+            variableNames={Object.keys(editing.variables)}
+          />
         </div>
       )}
 
@@ -146,7 +146,20 @@ export function EnvironmentsView() {
           </p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <>
+          {(() => {
+            const active = environments.find((e) => e.id === activeEnvironmentId)
+            if (active && Object.keys(active.variables).length === 0 && active.secrets.length === 0) {
+              return (
+                <p className="rounded-md border border-amber-600/40 bg-amber-600/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+                  The active environment has no variables or secrets — requests resolve no
+                  values from it.
+                </p>
+              )
+            }
+            return null
+          })()}
+          <ul className="flex flex-col gap-2">
           {environments.map((env) => {
             const active = env.id === activeEnvironmentId
             return (
@@ -198,7 +211,8 @@ export function EnvironmentsView() {
               </li>
             )
           })}
-        </ul>
+          </ul>
+        </>
       )}
     </div>
   )

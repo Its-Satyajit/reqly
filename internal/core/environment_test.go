@@ -404,6 +404,54 @@ func TestEnvironmentServiceDeleteWithoutWorkspaceErrors(t *testing.T) {
 	}
 }
 
+func TestEnvironmentServiceUpdateSecretsOnEnvWithoutSecrets(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "environments"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// No secrets: key present.
+	if err := os.WriteFile(filepath.Join(dir, "environments", "dev.yaml"), []byte("description: no secrets\nvariables:\n  A: b\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "reqly.yaml"), []byte("environment: dev\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewEnvironmentService(dir)
+	if err := svc.UpdateSecrets("dev", map[string]string{"NEW_KEY": "v"}, nil); err != nil {
+		t.Fatalf("UpdateSecrets on env without secrets: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "environments", "dev.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "NEW_KEY: v") {
+		t.Fatalf("new secret not written:\n%s", data)
+	}
+}
+
+func TestEnvironmentServiceUpdateRejectsVariableSecretCollision(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir) // dev.yaml has secret API_KEY
+
+	svc := NewEnvironmentService(dir)
+	err := svc.Update("dev", "x", map[string]string{"API_KEY": "leaked-in-variables"})
+	if err == nil || !strings.Contains(err.Error(), "both variables and secrets") {
+		t.Fatalf("err = %v, want variable/secret collision error", err)
+	}
+}
+
+func TestEnvironmentServiceUpdateSecretsRejectsVariableSecretCollision(t *testing.T) {
+	dir := t.TempDir()
+	writeEnvWorkspace(t, dir) // dev.yaml has variable REGION
+
+	svc := NewEnvironmentService(dir)
+	err := svc.UpdateSecrets("dev", map[string]string{"REGION": "secret-now"}, nil)
+	if err == nil || !strings.Contains(err.Error(), "both variables and secrets") {
+		t.Fatalf("err = %v, want variable/secret collision error", err)
+	}
+}
+
 func contains(list []string, want string) bool {
 	for _, s := range list {
 		if s == want {

@@ -94,6 +94,9 @@ func Discover(dir string) (string, error) {
 // Read loads the named environment relative to the directory discovered from
 // dir. A selected-but-missing environment is a hard error.
 func Read(name, dir string) (*Environment, error) {
+	if !validName(name) {
+		return nil, fmt.Errorf("environment %q: name must be a plain filename component (letters, digits, '-', '_', '.', no path separators)", name)
+	}
 	envDir, err := Discover(dir)
 	if err != nil {
 		return nil, err

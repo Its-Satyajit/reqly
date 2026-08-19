@@ -33,12 +33,13 @@ interface WorkspaceState {
   environments: Environment[]
   environmentsError: string | null
   envAdapter: EnvAdapter
+  dirtyEditors: Record<string, boolean>
   hasUnsavedEnvChanges: boolean
 
   setCurrentWorkspace: (workspace: Workspace | null) => void
   selectCollection: (id: string | null) => void
   setActiveView: (view: WorkspaceView) => void
-  setHasUnsavedEnvChanges: (dirty: boolean) => void
+  setEditorDirty: (key: string, dirty: boolean) => void
   openTab: (tab: RequestTab) => void
   closeTab: (id: string) => void
   setActiveTab: (id: string | null) => void
@@ -66,12 +67,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   environments: [],
   environmentsError: null,
   envAdapter: fallbackEnvAdapter,
+  dirtyEditors: {},
   hasUnsavedEnvChanges: false,
 
   setCurrentWorkspace: (currentWorkspace) => set({ currentWorkspace }),
   selectCollection: (selectedCollectionId) => set({ selectedCollectionId }),
   setActiveView: (activeView) => set({ activeView }),
-  setHasUnsavedEnvChanges: (hasUnsavedEnvChanges) => set({ hasUnsavedEnvChanges }),
+  setEditorDirty: (key, dirty) =>
+    set((state) => {
+      const dirtyEditors = { ...state.dirtyEditors, [key]: dirty }
+      return { dirtyEditors, hasUnsavedEnvChanges: Object.values(dirtyEditors).some(Boolean) }
+    }),
 
   openTab: (tab) =>
     set((state) => {

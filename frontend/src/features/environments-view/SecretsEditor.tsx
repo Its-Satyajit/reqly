@@ -23,13 +23,15 @@ interface SecretRow {
 export function SecretsEditor({
   envName,
   secretNames,
+  variableNames,
 }: {
   envName: string
   secretNames: string[]
+  variableNames: string[]
 }) {
   const envAdapter = useWorkspaceStore((s) => s.envAdapter)
   const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments)
-  const setHasUnsavedEnvChanges = useWorkspaceStore((s) => s.setHasUnsavedEnvChanges)
+  const setEditorDirty = useWorkspaceStore((s) => s.setEditorDirty)
 
   const [rows, setRows] = useState<SecretRow[]>(() =>
     secretNames.map((name) => ({
@@ -50,14 +52,14 @@ export function SecretsEditor({
   )
 
   useEffect(() => {
-    setHasUnsavedEnvChanges(dirty)
-    return () => setHasUnsavedEnvChanges(false)
-  }, [dirty, setHasUnsavedEnvChanges])
+    setEditorDirty(`secrets:${envName}`, dirty)
+    return () => setEditorDirty(`secrets:${envName}`, false)
+  }, [dirty, envName, setEditorDirty])
 
   const duplicateName = useMemo(() => {
-    const seen = new Set(secretNames)
+    const seen = new Set([...secretNames, ...variableNames])
     return seen.has(newName.trim()) ? newName.trim() : null
-  }, [secretNames, newName])
+  }, [secretNames, variableNames, newName])
 
   const setRow = (index: number, patch: Partial<SecretRow>) =>
     setRows((rs) => rs.map((r, i) => (i === index ? { ...r, ...patch } : r)))
@@ -84,7 +86,7 @@ export function SecretsEditor({
     try {
       await envAdapter.updateSecrets(envName, values, remove)
       await refreshEnvironments()
-      setHasUnsavedEnvChanges(false)
+      setEditorDirty(`secrets:${envName}`, false)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
