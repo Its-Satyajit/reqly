@@ -425,3 +425,23 @@ func TestEnvUpdateBridgeMissingEnvironmentErrors(t *testing.T) {
 		t.Fatal("expected missing-environment error, got nil")
 	}
 }
+
+func TestEnvUpdateSecretsBridgePersists(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if err := svc.EnvUpdateSecrets("dev", map[string]string{"API_KEY": "new-key"}, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	env, err := svc.EnvRead("dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// API_KEY name still present; value never exposed.
+	if len(env.Secrets) != 1 || env.Secrets[0] != "API_KEY" {
+		t.Fatalf("secrets = %v, want [API_KEY]", env.Secrets)
+	}
+}
