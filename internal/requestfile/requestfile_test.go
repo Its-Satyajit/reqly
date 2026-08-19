@@ -19,9 +19,14 @@
 package requestfile
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/Its-Satyajit/reqly/internal/request"
 )
 
 func TestParseJSON(t *testing.T) {
@@ -170,5 +175,163 @@ request:
 	}
 	if f.Environment != "" {
 		t.Fatalf("environment: got %q, want empty", f.Environment)
+	}
+}
+
+func TestSaveJSONPreservesFormat(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "list.json")
+	original := `{"name":"list","request":{"method":"GET","url":"https://api.example.com/users"}}`
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f, err := Parse([]byte(original))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Request.Method = "POST"
+	if err := Save(path, f); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("saved file is not valid JSON: %v\n%s", err, data)
+	}
+	req := m["request"].(map[string]any)
+	if req["method"] != "POST" || req["url"] != "https://api.example.com/users" {
+		t.Fatalf("unexpected saved request: %s", data)
+	}
+}
+
+func TestSaveYAMLPreservesFormat(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "list.yaml")
+	original := "name: list\nrequest:\n  url: https://api.example.com/users\n"
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f, err := Parse([]byte(original))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Request.Method = "GET"
+	if err := Save(path, f); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "{") || strings.Contains(string(data), "}") {
+		t.Fatalf("saved file looks like JSON, expected YAML:\n%s", data)
+	}
+	if !strings.Contains(string(data), "url: https://api.example.com/users") {
+		t.Fatalf("saved YAML missing url:\n%s", data)
+	}
+}
+
+func TestSaveYAMLOmitsZeroValues(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "list.yaml")
+	if err := os.WriteFile(path, []byte("request:\n  url: https://x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := Save(path, &File{Request: request.Request{URL: "https://x"}}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, unwanted := range []string{"id:", "method:", "timeout:", "headers:", "query:", "body:", "auth:"} {
+		if strings.Contains(string(data), unwanted) {
+			t.Fatalf("saved YAML contains zero-value %q:\n%s", unwanted, data)
+		}
+	}
+}
+
+func TestSaveRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "list.yaml")
+	src := `name: list
+variables:
+  token: abc
+environment: staging
+preRequest: console.log("pre")
+postRequest: reqly.test("ok", true)
+request:
+  method: GET
+  url: https://api.example.com/users?page={{page}}
+  headers:
+    - key: Accept
+      value: application/json
+  query:
+    - key: page
+      value: "2"
+  body: "{\"a\":1}"
+  auth:
+    type: bearer
+    config:
+      token: "{{token}}"
+  timeout: 5000
+`
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	orig, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Save(path, orig); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Parse(data)
+	if err != nil {
+		t.Fatalf("saved file does not parse: %v\n%s", err, data)
+	}
+	if !reflect.DeepEqual(orig, got) {
+		t.Fatalf("round trip mismatch:\n%s", data)
+	}
+}
+
+func TestSaveRequiresURL(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "list.yaml")
+	if err := os.WriteFile(path, []byte("request:\n  url: https://x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := Save(path, &File{Request: request.Request{Method: "GET"}}); err == nil {
+		t.Fatal("expected error saving a request without a url")
+	}
+}
+
+func TestSaveMissingDirErrors(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "nope", "list.yaml")
+	if err := Save(path, &File{Request: request.Request{Method: "GET", URL: "https://x"}}); err == nil {
+		t.Fatal("expected error saving into a nonexistent directory")
+	}
+}
+
+func TestFingerprint(t *testing.T) {
+	a := Fingerprint([]byte("hello"))
+	b := Fingerprint([]byte("hello"))
+	c := Fingerprint([]byte("world"))
+	if a != b {
+		t.Fatal("fingerprint is not stable for identical bytes")
+	}
+	if a == c {
+		t.Fatal("fingerprint collides for different bytes")
+	}
+	if len(a) != 64 {
+		t.Fatalf("fingerprint length: got %d, want 64", len(a))
 	}
 }
