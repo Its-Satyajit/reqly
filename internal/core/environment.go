@@ -126,7 +126,8 @@ func (s *EnvironmentService) Create(name, description string, variables map[stri
 
 // Update rewrites an existing environment's description and variables,
 // preserving its secrets on disk (secret values are never read back through
-// the service). A missing environment or workspace is an error.
+// the service). A missing environment or workspace is an error, as is a
+// variable key that collides with an existing secret name.
 func (s *EnvironmentService) Update(name, description string, variables map[string]string) error {
 	if s.root == "" {
 		return fmt.Errorf("no workspace found: open a reqly workspace to update an environment")
@@ -134,6 +135,11 @@ func (s *EnvironmentService) Update(name, description string, variables map[stri
 	existing, err := environments.Read(name, s.root)
 	if err != nil {
 		return err
+	}
+	for key := range variables {
+		if _, dup := existing.Secrets[key]; dup {
+			return fmt.Errorf("key %q is defined in both variables and secrets", key)
+		}
 	}
 	env := &environments.Environment{
 		Name:        name,
@@ -156,7 +162,15 @@ func (s *EnvironmentService) UpdateSecrets(name string, values map[string]string
 	if err != nil {
 		return err
 	}
+	for key := range values {
+		if _, dup := existing.Variables[key]; dup {
+			return fmt.Errorf("key %q is defined in both variables and secrets", key)
+		}
+	}
 	secrets := existing.Secrets
+	if secrets == nil {
+		secrets = make(map[string]string, len(values)+len(remove))
+	}
 	for key, value := range values {
 		secrets[key] = value
 	}

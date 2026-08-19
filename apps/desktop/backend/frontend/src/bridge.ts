@@ -69,11 +69,6 @@ export const wailsAuthAdapter: AuthAdapter = {
 }
 
 /**
- * wailsEnvAdapter manages environments through the Go core's
- * EnvironmentService via the generated Wails bindings, shaping the results
- * into the shared EnvAdapter contract the UI renders.
- */
-/**
  * normalizeVariables coerces the generated bindings' nullable/undefined-valued
  * map into a plain string map the shared types expect.
  */
