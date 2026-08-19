@@ -5,6 +5,7 @@ import {
   type CollectionsAdapter,
   type WorkspaceTree,
 } from '../lib/collections'
+import { useRequestStore, NEW_REQUEST_TAB_ID } from './useRequestStore'
 
 export interface Workspace {
   id: string
@@ -23,7 +24,8 @@ export interface Environment {
 export interface RequestTab {
   id: string
   title: string
-  requestId?: string
+  /** Workspace-relative Request Path when opened from a collection. */
+  requestPath?: string
 }
 
 export type WorkspaceView = 'requests' | 'environments'
@@ -49,7 +51,7 @@ interface WorkspaceState {
   selectCollection: (id: string | null) => void
   setActiveView: (view: WorkspaceView) => void
   setEditorDirty: (key: string, dirty: boolean) => void
-  openTab: (tab: RequestTab) => void
+  openTab: (tab: RequestTab, seed?: Partial<import('./useRequestStore').TabDraft>) => void
   closeTab: (id: string) => void
   setActiveTab: (id: string | null) => void
   setActiveEnvironment: (id: string | null) => void
@@ -95,11 +97,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return { dirtyEditors, hasUnsavedEnvChanges: Object.values(dirtyEditors).some(Boolean) }
     }),
 
-  openTab: (tab) =>
+  openTab: (tab, seed) =>
     set((state) => {
       const exists = state.openTabs.some((t) => t.id === tab.id)
+      const openTabs = exists ? state.openTabs : [...state.openTabs, tab]
+      if (!exists) {
+        useRequestStore.getState().ensureDraft(tab.id, seed)
+      }
       return {
-        openTabs: exists ? state.openTabs : [...state.openTabs, tab],
+        openTabs,
         activeTabId: tab.id,
       }
     }),
@@ -107,7 +113,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   closeTab: (id) =>
     set((state) => {
       const index = state.openTabs.findIndex((t) => t.id === id)
-      const openTabs = state.openTabs.filter((t) => t.id !== id)
+      let openTabs = state.openTabs.filter((t) => t.id !== id)
+      useRequestStore.getState().removeTab(id)
+      // Closing the last tab restores the default scratchpad.
+      if (openTabs.length === 0) {
+        openTabs = [{ id: NEW_REQUEST_TAB_ID, title: 'New Request' }]
+        useRequestStore.getState().ensureDraft(NEW_REQUEST_TAB_ID)
+      }
       const activeTabId =
         state.activeTabId === id
           ? (openTabs[Math.max(0, index - 1)]?.id ?? null)
@@ -115,7 +127,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return { openTabs, activeTabId }
     }),
 
-  setActiveTab: (activeTabId) => set({ activeTabId }),
+  setActiveTab: (activeTabId) => {
+    if (activeTabId) {
+      useRequestStore.getState().ensureDraft(activeTabId)
+    }
+    set({ activeTabId })
+  },
 
   setActiveEnvironment: (activeEnvironmentId) => set({ activeEnvironmentId }),
 

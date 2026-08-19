@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { JsonTree } from '../../components/JsonTree'
 import { Button } from '../../components/ui/button'
-import { useRequestStore } from '../../stores'
+import { useRequestStore, useWorkspaceStore } from '../../stores'
 import {
   contentType,
   headerRows,
@@ -41,9 +41,11 @@ function formatBytes(size: number): string {
 }
 
 export function ResponseViewer() {
-  const response = useRequestStore((s) => s.response)
-  const loading = useRequestStore((s) => s.loading)
-  const error = useRequestStore((s) => s.error)
+  const activeTabId = useWorkspaceStore((s) => s.activeTabId)
+  const tabState = useRequestStore((s) => (activeTabId ? s.responses[activeTabId] : undefined))
+  const response = tabState?.response ?? null
+  const loading = tabState?.loading ?? false
+  const error = tabState?.error ?? null
   const [view, setView] = useState<View>('pretty')
   const [query, setQuery] = useState('')
   const [jsonPath, setJsonPath] = useState('')

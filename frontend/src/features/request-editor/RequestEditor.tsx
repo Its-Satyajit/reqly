@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
-import { useRequestStore } from '../../stores'
-import { sentRows, type KeyValueRow } from '../../lib/request'
+import { useRequestStore, useWorkspaceStore } from '../../stores'
+import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
@@ -33,35 +33,44 @@ const bodyLanguage: Record<BodyType, 'json' | 'xml' | 'text'> = {
 }
 
 export function RequestEditor() {
-  const [method, setMethod] = useState<string>('GET')
-  const [url, setUrl] = useState('')
-  const [bodyType, setBodyType] = useState<BodyType>('none')
-  const [body, setBody] = useState('{\n  \n}')
-  const [form, setForm] = useState<KeyValueRow[]>([])
-  const [tab, setTab] = useState<Tab>('params')
-  const [params, setParams] = useState<KeyValueRow[]>([])
-  const [headers, setHeaders] = useState<KeyValueRow[]>([])
+  const activeTabId = useWorkspaceStore((s) => s.activeTabId)
+  const draft = useRequestStore((s) => (activeTabId ? s.drafts[activeTabId] : undefined))
+  const loading = useRequestStore((s) => (activeTabId ? s.responses[activeTabId]?.loading : false))
+  const updateDraft = useRequestStore((s) => s.updateDraft)
   const send = useRequestStore((s) => s.send)
-  const loading = useRequestStore((s) => s.loading)
+  const [tab, setTab] = useState<Tab>('params')
+
+  if (!activeTabId || !draft) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
+        <p className="text-sm font-medium text-foreground">No request open</p>
+        <p className="max-w-sm text-center text-xs text-muted-foreground">
+          Open a request from the sidebar or create a new one to start sending.
+        </p>
+      </div>
+    )
+  }
 
   const handleSend = () => {
-    void send({
-      method,
-      url,
-      params: sentRows(params),
-      headers: sentRows(headers).map(({ key, value }) => ({ key, value })),
-      bodyType,
-      body,
-      form: sentRows(form),
+    void send(activeTabId, {
+      method: draft.method,
+      url: draft.url,
+      params: sentRows(draft.params),
+      headers: sentRows(draft.headers).map(({ key, value }) => ({ key, value })),
+      bodyType: draft.bodyType,
+      body: draft.body,
+      form: sentRows(draft.form),
     })
   }
+
+  const patch = (p: Partial<Parameters<typeof updateDraft>[1]>) => updateDraft(activeTabId, p)
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 p-2">
         <select
-          value={method}
-          onChange={(e) => setMethod(e.target.value)}
+          value={draft.method}
+          onChange={(e) => patch({ method: e.target.value })}
           className="w-28 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground"
         >
           {methods.map((m) => (
@@ -71,8 +80,8 @@ export function RequestEditor() {
           ))}
         </select>
         <input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          value={draft.url}
+          onChange={(e) => patch({ url: e.target.value })}
           placeholder="https://reqly-test-api.vercel.app/api/users?page=1 — mock API for testing"
           className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
         />
@@ -97,15 +106,15 @@ export function RequestEditor() {
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {tab === 'params' ? (
           <KeyValueEditor
-            rows={params}
-            onChange={setParams}
+            rows={draft.params}
+            onChange={(rows) => patch({ params: rows })}
             keyPlaceholder="param"
             valuePlaceholder="value"
           />
         ) : tab === 'headers' ? (
           <KeyValueEditor
-            rows={headers}
-            onChange={setHeaders}
+            rows={draft.headers}
+            onChange={(rows) => patch({ headers: rows })}
             keyPlaceholder="header"
             valuePlaceholder="value"
           />
@@ -116,27 +125,27 @@ export function RequestEditor() {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setBodyType(t.id)}
-                  className={tabClass(bodyType === t.id)}
+                  onClick={() => patch({ bodyType: t.id })}
+                  className={tabClass(draft.bodyType === t.id)}
                 >
                   {t.label}
                 </button>
               ))}
             </div>
-            {bodyType === 'form-data' || bodyType === 'urlencoded' ? (
+            {draft.bodyType === 'form-data' || draft.bodyType === 'urlencoded' ? (
               <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border p-2">
                 <KeyValueEditor
-                  rows={form}
-                  onChange={setForm}
+                  rows={draft.form}
+                  onChange={(rows) => patch({ form: rows })}
                   keyPlaceholder="field"
                   valuePlaceholder="value"
                 />
               </div>
             ) : (
               <CodeMirrorEditor
-                value={body}
-                language={bodyLanguage[bodyType]}
-                onChange={setBody}
+                value={draft.body}
+                language={bodyLanguage[draft.bodyType]}
+                onChange={(body) => patch({ body })}
                 className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
               />
             )}

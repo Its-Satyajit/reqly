@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
-import { ThemeToggle, WorkspaceSidebar } from "../components";
+import { ThemeToggle, WorkspaceSidebar, RequestTabs } from "../components";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
 import { EnvironmentsView } from "../features/environments-view/EnvironmentsView";
 import { useThemeStore, useWorkspaceStore } from "../stores";
+import { NEW_REQUEST_TAB_ID } from "../stores/useRequestStore";
 
 export function App() {
 	const theme = useThemeStore((s) => s.theme);
@@ -24,6 +25,11 @@ export function App() {
 	useEffect(() => {
 		void refreshEnvironments();
 		void refreshWorkspace();
+		// Ensure the default scratchpad tab exists on first load.
+		const { openTabs, openTab } = useWorkspaceStore.getState();
+		if (openTabs.length === 0) {
+			openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" });
+		}
 	}, [refreshEnvironments, refreshWorkspace]);
 
 	const onSelectEnvironment = async (name: string) => {
@@ -76,11 +82,16 @@ export function App() {
 						</section>
 					) : (
 						<>
-							<section className="min-h-0 flex-1 border-r border-border lg:w-1/2">
-								<RequestEditor />
-							</section>
-							<section className="min-h-0 flex-1 lg:w-1/2">
-								<ResponseViewer />
+							<section className="flex min-h-0 flex-1 flex-col">
+								<RequestTabs />
+								<div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+									<div className="min-h-0 flex-1 border-r border-border lg:w-1/2">
+										<RequestEditor />
+									</div>
+									<div className="min-h-0 flex-1 lg:w-1/2">
+										<ResponseViewer />
+									</div>
+								</div>
 							</section>
 						</>
 					)}
