@@ -38,6 +38,54 @@ export interface AuthScheme {
 	fields: AuthField[]
 }
 
+export interface OAuth2Grant {
+	id: string
+	label: string
+	fields: AuthField[]
+}
+
+export const OAUTH2_GRANTS: OAuth2Grant[] = [
+	{
+		id: "client_credentials",
+		label: "Client Credentials",
+		fields: [
+			{ key: "token_url", label: "Token URL", placeholder: "https://idp.example.com/token" },
+			{ key: "client_id", label: "Client ID", placeholder: "client id" },
+			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true },
+			{ key: "scope", label: "Scope", placeholder: "openid profile" },
+			{ key: "audience", label: "Audience", placeholder: "api://default" },
+			{ key: "token_name", label: "Token name", placeholder: "default" },
+		],
+	},
+	{
+		id: "authorization_code",
+		label: "Authorization Code + PKCE",
+		fields: [
+			{ key: "authorization_url", label: "Authorization URL", placeholder: "https://idp.example.com/authorize" },
+			{ key: "token_url", label: "Token URL", placeholder: "https://idp.example.com/token" },
+			{ key: "client_id", label: "Client ID", placeholder: "client id" },
+			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true },
+			{ key: "redirect_uri", label: "Redirect URI", placeholder: "https://app.example.com/callback" },
+			{ key: "scope", label: "Scope", placeholder: "openid profile" },
+			{ key: "audience", label: "Audience", placeholder: "api://default" },
+			{ key: "token_name", label: "Token name", placeholder: "default" },
+		],
+	},
+	{
+		id: "device_code",
+		label: "Device Code",
+		fields: [
+			{ key: "device_authorization_url", label: "Device Authorization URL", placeholder: "https://idp.example.com/device" },
+			{ key: "token_url", label: "Token URL", placeholder: "https://idp.example.com/token" },
+			{ key: "client_id", label: "Client ID", placeholder: "client id" },
+			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true },
+			{ key: "scope", label: "Scope", placeholder: "openid profile" },
+			{ key: "audience", label: "Audience", placeholder: "api://default" },
+			{ key: "token_name", label: "Token name", placeholder: "default" },
+		],
+	},
+]
+
 export const AUTH_SCHEMES: AuthScheme[] = [
 	{
 		id: "basic",
@@ -102,6 +150,12 @@ export const AUTH_SCHEMES: AuthScheme[] = [
 			},
 		],
 	},
+	{
+		// The oauth2 fields are grant-driven; see OAUTH2_GRANTS.
+		id: "oauth2",
+		label: "OAuth 2.0",
+		fields: [],
+	},
 ]
 
 /** AUTH_SCHEME_LABELS maps every picker state (including Inherit and No Auth)
@@ -115,6 +169,18 @@ export const AUTH_SCHEME_LABELS: Record<AuthSchemeId, string> = {
 	jwt: "JWT",
 	digest: "Digest",
 	oauth2: "OAuth 2.0",
+}
+
+/** DEFAULT_OAUTH2_GRANT is used when a request's oauth2 config has not pinned
+ * grant_type (the core default). */
+export const DEFAULT_OAUTH2_GRANT = "client_credentials"
+
+/** oauth2GrantFor resolves a request's oauth2 config onto a grant. */
+export const oauth2GrantFor = (auth: RequestAuth | undefined): string => {
+	const granted = auth?.config?.grant_type
+	return granted && OAUTH2_GRANTS.some((g) => g.id === granted)
+		? granted
+		: DEFAULT_OAUTH2_GRANT
 }
 
 /** ORDERED_AUTH_SCHEMES is the picker order: the two non-credential states

@@ -60,7 +60,7 @@ export function AuthPanel() {
 	const canLogout = tokens.length > 0 && !loading;
 
 	return (
-		<div className="flex flex-col gap-3 px-2 pt-4">
+		<div id="auth-panel" className="flex flex-col gap-3 px-2 pt-4 scroll-mt-2">
 			<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
 				OAuth tokens
 			</p>

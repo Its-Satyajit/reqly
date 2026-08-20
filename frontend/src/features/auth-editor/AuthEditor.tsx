@@ -9,11 +9,13 @@ import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/field"
 import {
   AUTH_SCHEMES,
+  OAUTH2_GRANTS,
   ORDERED_AUTH_SCHEMES,
   AUTH_SCHEME_LABELS,
   authForScheme,
   schemeFieldValue,
   schemeFor,
+  oauth2GrantFor,
   isSensitiveKey,
   type AuthSchemeId,
 } from "../../lib/authSchemes"
@@ -25,6 +27,13 @@ const selectClass =
 export interface AuthEditorProps {
   auth: RequestAuth | undefined
   onChange: (auth: RequestAuth | undefined) => void
+}
+
+/** scrollToAuthPanel focuses the sidebar's OAuth tokens panel. */
+const scrollToAuthPanel = () => {
+  document
+    .getElementById("auth-panel")
+    ?.scrollIntoView({ behavior: "smooth", block: "nearest" })
 }
 
 export function AuthEditor({ auth, onChange }: AuthEditorProps) {
@@ -64,6 +73,8 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
           Sends unauthenticated, even under an auth-bearing collection or
           folder. Saves <code className="rounded bg-muted/40 px-1">auth.type: none</code>.
         </p>
+      ) : scheme === "oauth2" ? (
+        <OAuth2Fields auth={auth} onChange={onChange} />
       ) : (
         <div className="flex flex-col gap-3">
           {fields.map((field) => (
@@ -105,6 +116,75 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/** OAuth2Fields is the grant-type-driven form for the oauth2 scheme. The
+ * grant config lives in the request's own auth; the token lifecycle (login /
+ * refresh / logout) lives in the sidebar Auth Panel. */
+function OAuth2Fields({
+  auth,
+  onChange,
+}: {
+  auth: RequestAuth | undefined
+  onChange: (auth: RequestAuth | undefined) => void
+}) {
+  const grant = oauth2GrantFor(auth)
+  const fields = OAUTH2_GRANTS.find((g) => g.id === grant)?.fields ?? []
+
+  const setField = (key: string, value: string) => {
+    onChange({ type: "oauth2", config: { ...(auth?.config ?? {}), [key]: value } })
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Field.Root className="flex flex-col gap-1">
+        <Label>Grant type</Label>
+        <select
+          value={grant}
+          onChange={(e) => setField("grant_type", e.target.value)}
+          className={`${selectClass} w-full sm:w-56`}
+        >
+          {OAUTH2_GRANTS.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.label}
+            </option>
+          ))}
+        </select>
+      </Field.Root>
+
+      {fields.map((field) => (
+        <Field.Root key={field.key} className="flex flex-col gap-1">
+          <Label className="flex items-center gap-1.5">
+            {field.label}
+            {isSensitiveKey("oauth2", field.key) && (
+              <span className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-1 text-[9px] font-medium uppercase tracking-wide text-amber-600">
+                secret
+              </span>
+            )}
+          </Label>
+          <Input
+            value={schemeFieldValue(auth, field.key)}
+            onChange={(e) => setField(field.key, e.target.value)}
+            placeholder={field.placeholder}
+            type={field.secret ? "password" : "text"}
+            spellCheck={false}
+            autoComplete="off"
+          />
+          {field.help ? (
+            <p className="text-[11px] text-muted-foreground/70">{field.help}</p>
+          ) : null}
+        </Field.Root>
+      ))}
+
+      <button
+        type="button"
+        onClick={scrollToAuthPanel}
+        className="self-start text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+      >
+        Log in / manage tokens in the sidebar OAuth panel →
+      </button>
     </div>
   )
 }
