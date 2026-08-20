@@ -6,9 +6,13 @@ import type {
   RequestInput,
   RequestSender,
   ResponseData,
+  RunReport,
+  RunStep,
+  RunTestResult,
 } from '@reqly/frontend'
 import { serializeBody } from '@reqly/frontend'
 import { useAuthStore, useRequestStore, useWorkspaceStore } from '@reqly/frontend'
+import { Events } from '@wailsio/runtime'
 
 /**
  * wailsSender executes requests through the Go core via the generated Wails
@@ -177,6 +181,55 @@ const normalizeOpenedRequest = (o: WailsOpened): import('@reqly/frontend').Opene
   fileEnv: o.fileEnv ?? '',
 })
 
+/**
+ * Collection-run events carry the core's RunStep/RunReport DTOs (serialized
+ * over the Wails event channel, so they never surface in the generated
+ * bindings). These normalizers coerce the loosely-typed payloads into the
+ * shared run types the run view renders.
+ */
+const normalizeRunTestResult = (t: { name?: string; passed?: boolean }): RunTestResult => ({
+  name: t.name ?? '',
+  passed: !!t.passed,
+})
+
+const normalizeRunStep = (s: {
+  name?: string
+  requestPath?: string
+  passed?: boolean
+  requestError?: string
+  response?: ResponseData | null
+  tests?: { name?: string; passed?: boolean }[]
+  logs?: string[]
+}): RunStep => ({
+  name: s.name ?? '',
+  requestPath: s.requestPath ?? '',
+  passed: !!s.passed,
+  requestError: s.requestError ?? '',
+  response: s.response ?? null,
+  tests: (s.tests ?? []).map(normalizeRunTestResult),
+  logs: s.logs ?? [],
+})
+
+const normalizeRunReport = (r: {
+  steps?: unknown[]
+  started?: string
+  finished?: string
+  total?: number
+  passed?: number
+  failed?: number
+  durationMs?: number
+  ok?: boolean
+}): RunReport => ({
+  steps: (r.steps ?? []).map((s) => normalizeRunStep(s as Parameters<typeof normalizeRunStep>[0])),
+  started: r.started ?? '',
+  finished: r.finished ?? '',
+  total: r.total ?? 0,
+  passed: r.passed ?? 0,
+  failed: r.failed ?? 0,
+  durationMs: r.durationMs ?? 0,
+  ok: !!r.ok,
+})
+
 export const wailsCollectionsAdapter: CollectionsAdapter = {
   load: async () => {
     const tree = await AppService.WorkspaceLoad()
@@ -200,6 +253,33 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
       throw new Error('core returned an empty opened request')
     }
     return normalizeOpenedRequest(opened)
+  },
+  run: async (path, env, failFast, onEvent) => {
+    const id = await AppService.WorkspaceRunCollection(path, env ?? '', failFast)
+    if (!id) {
+      throw new Error('core returned an empty run id')
+    }
+    // Subscribe before returning so no streamed event is missed: the run
+    // executes on the core's goroutine and the first step can arrive while
+    // the binding's response is still in flight.
+    const offStep = Events.On(`reqly.run.${id}.step`, (e) => {
+      onEvent({ type: 'step', step: normalizeRunStep(e.data) })
+    })
+    const offDone = Events.On(`reqly.run.${id}.done`, (e) => {
+      onEvent({ type: 'done', report: normalizeRunReport(e.data) })
+      offStep()
+      offDone()
+    })
+    const offError = Events.On(`reqly.run.${id}.error`, (e) => {
+      onEvent({ type: 'error', message: String(e.data ?? '') })
+      offStep()
+      offDone()
+      offError()
+    })
+    return id
+  },
+  cancelRun: async (id) => {
+    await AppService.WorkspaceRunCancel(id)
   },
 }
 

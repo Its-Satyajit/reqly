@@ -5,7 +5,7 @@
 // The host injects a CollectionsAdapter backed by the Go core's
 // WorkspaceService; browser dev mode uses a read-only fallback.
 
-import type { RequestAuth } from './request'
+import type { RequestAuth, ResponseData } from './request'
 
 /** WorkspaceRequest is a request file within a collection or folder, located
  * by its workspace-relative Request Path (e.g. "users/auth/login"). */
@@ -36,14 +36,65 @@ export interface WorkspaceTree {
   name: string
   path: string
   collections: WorkspaceCollection[]
-}/** CollectionsAdapter is the seam through which the desktop UI loads the
- * workspace's collection tree and opens requests. */
+}
+
+/** RunTestResult is the outcome of one reqly.test() assertion. */
+export interface RunTestResult {
+  name: string
+  passed: boolean
+}
+
+/** RunStep is the streamed outcome of one request in a collection run. */
+export interface RunStep {
+  name: string
+  /** Workspace-relative Request Path of the step. */
+  requestPath: string
+  passed: boolean
+  /** Transport/pre-script error text ("" when none). */
+  requestError: string
+  /** Received response (null on failure). */
+  response: ResponseData | null
+  tests: RunTestResult[]
+  logs: string[]
+}
+
+/** RunReport is the aggregate result of a finished collection run. */
+export interface RunReport {
+  steps: RunStep[]
+  started: string
+  finished: string
+  total: number
+  passed: number
+  failed: number
+  durationMs: number
+  ok: boolean
+}
+
+/** RunEvent is a streamed collection-run event delivered to the UI. */
+export type RunEvent =
+  | { type: 'step'; step: RunStep }
+  | { type: 'done'; report: RunReport }
+  | { type: 'error'; message: string }
+
+/** CollectionsAdapter is the seam through which the desktop UI loads the
+ * workspace's collection tree, opens requests, and runs collections. */
 export interface CollectionsAdapter {
   load: () => Promise<WorkspaceTree>
   /** open resolves a request file by Request Path into its fully resolved
    * form (effective URL, merged headers, inherited auth, variable chain,
    * file environment), ready to seed an editor tab. */
   open: (path: string) => Promise<OpenedRequest>
+  /** run starts a collection/folder run. env names the environment pill ("" or
+   * null for the workspace default); onEvent receives streamed step/done/error
+   * events for the run's lifecycle. Resolves with the run id. */
+  run: (
+    path: string,
+    env: string | null,
+    failFast: boolean,
+    onEvent: (event: RunEvent) => void,
+  ) => Promise<string>
+  /** cancelRun aborts an in-flight collection run by id. */
+  cancelRun: (id: string) => Promise<void>
 }
 
 /** ResolvedVariable is one entry of an opened request's effective variable
@@ -89,5 +140,11 @@ export const fallbackCollectionsAdapter: CollectionsAdapter = {
   load: async () => ({ name: '', path: '', collections: [] }),
   open: async () => {
     throw new Error('Opening collections requires the desktop app.')
+  },
+  run: async () => {
+    throw new Error('Running collections requires the desktop app.')
+  },
+  cancelRun: async () => {
+    throw new Error('Running collections requires the desktop app.')
   },
 }
