@@ -88,8 +88,8 @@ type OpenedRequest struct {
 	FileEnv string `json:"fileEnv"`
 	// FileRequest is the raw, unmerged file-owned request: the editor seed.
 	// It carries only what the file declares (no inherited base URL, headers,
-	// or auth), and only its builder fields (url/method/headers/query/body)
-	// are editable — everything else is preserved verbatim on save.
+	// or auth), and its builder fields (url/method/headers/query/body) plus its
+	// own auth are editable — everything else is preserved verbatim on save.
 	FileRequest request.Request `json:"fileRequest"`
 	// Version fingerprints the raw file bytes at open time. A save is only
 	// accepted when the on-disk bytes still match; otherwise the request
@@ -180,13 +180,15 @@ func openedRequestDTO(path string, entry *collections.RequestEntry, resolved *co
 }
 
 // SaveRequest persists a request file's editable builder fields
-// (url/method/headers/query/body) back to disk, preserving the file's format
-// (JSON for .json, YAML otherwise) and every non-editable field (name,
-// environment, variables, scripts, auth, timeout) verbatim. expectedVersion
-// must match the current on-disk fingerprint, taken from OpenedRequest.Version;
-// a mismatch returns ErrFileChangedOnDisk without touching the file. The
-// returned string is the new fingerprint of the saved file, to be used as the
-// tab's next baseline version.
+// (url/method/headers/query/body) and its own auth back to disk, preserving
+// the file's format (JSON for .json, YAML otherwise) and every non-editable
+// field (name, environment, variables, scripts, timeout) verbatim. An unset
+// draft auth (Inherit) removes any existing auth block; `type: none` writes
+// the explicit block. expectedVersion must match the current on-disk
+// fingerprint, taken from OpenedRequest.Version; a mismatch returns
+// ErrFileChangedOnDisk without touching the file. The returned string is the
+// new fingerprint of the saved file, to be used as the tab's next baseline
+// version.
 func (s *WorkspaceService) SaveRequest(path string, draft request.Request, expectedVersion string) (string, error) {
 	if s.root == "" {
 		return "", fmt.Errorf("no workspace found: open a reqly workspace to save requests")
@@ -221,9 +223,12 @@ func (s *WorkspaceService) SaveRequest(path string, draft request.Request, expec
 	return requestfile.Fingerprint(saved), nil
 }
 
-// mergedBuilderRequest carries only the editable builder fields from draft
-// onto the file's original request, preserving id, name, auth, and timeout
-// verbatim so a save can never alter what the editor cannot edit.
+// mergedBuilderRequest carries the editable builder fields from draft onto the
+// file's original request, preserving id, name, and timeout verbatim so a save
+// can never alter what the editor cannot edit. Auth IS editable: the draft's
+// auth is authoritative — a typed scheme writes its block, `type: none` writes
+// the explicit block, and an unset auth (Inherit) drops any existing block so
+// the file truly declares none.
 func mergedBuilderRequest(original, draft request.Request) request.Request {
 	return request.Request{
 		ID:      original.ID,
@@ -233,7 +238,7 @@ func mergedBuilderRequest(original, draft request.Request) request.Request {
 		Headers: draft.Headers,
 		Query:   draft.Query,
 		Body:    draft.Body,
-		Auth:    original.Auth,
+		Auth:    draft.Auth,
 		Timeout: original.Timeout,
 	}
 }

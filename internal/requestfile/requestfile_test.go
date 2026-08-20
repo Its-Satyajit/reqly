@@ -302,6 +302,49 @@ request:
 	}
 }
 
+func TestSaveClearedAuthOmitsBlock(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "list.yaml")
+	src := `request:
+  method: GET
+  url: https://x
+  auth:
+    type: basic
+    config:
+      username: u
+      password: p
+`
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	orig, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Inherit: the draft carries no auth, so the saved file must drop the
+	// auth block rather than keep it.
+	orig.Request.Auth = request.Auth{}
+	if err := Save(path, orig); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, unwanted := range []string{"auth:", "username:", "password:"} {
+		if strings.Contains(string(data), unwanted) {
+			t.Fatalf("saved file still contains %q after clearing auth:\n%s", unwanted, data)
+		}
+	}
+	got, err := Parse(data)
+	if err != nil {
+		t.Fatalf("saved file does not parse: %v\n%s", err, data)
+	}
+	if got.Request.Auth.Type != "" || len(got.Request.Auth.Config) != 0 {
+		t.Fatalf("auth not cleared on round trip: %+v", got.Request.Auth)
+	}
+}
+
 func TestSaveRequiresURL(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "list.yaml")

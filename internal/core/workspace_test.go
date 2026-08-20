@@ -546,10 +546,12 @@ func TestWorkspaceServiceResolveSendAppliesDraft(t *testing.T) {
 	}
 }
 
-func TestWorkspaceServiceResolveSendPreservesFileOwnAuth(t *testing.T) {
+func TestWorkspaceServiceResolveSendInheritAppliesContainerAuth(t *testing.T) {
 	dir := t.TempDir()
 	writeResolvableWorkspace(t, dir)
-	// A file with its own auth: the send-time substitution must not clobber it.
+	// A file with its own auth that the draft leaves unset (Inherit): the
+	// send must treat the draft as authoritative, so the container's inherited
+	// auth applies rather than the file's now-dropped auth.
 	path := "collections/users/own-auth.yaml"
 	full := `request:
   method: GET
@@ -565,16 +567,186 @@ func TestWorkspaceServiceResolveSendPreservesFileOwnAuth(t *testing.T) {
 	}
 
 	svc := NewWorkspaceService(dir)
-	// The draft carries only builder fields (no auth) — that is what the
-	// editor sends.
+	// The draft carries builder fields and no auth — that is what the Auth tab
+	// sends for Inherit.
 	resolved, err := svc.ResolveSend("users/own-auth", request.Request{Method: "GET", URL: "edited"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.Request.Auth.Type != "basic" || resolved.Request.Auth.Config["username"] != "file-user" {
-		t.Fatalf("file-owned auth lost on re-resolve: %+v", resolved.Request.Auth)
+	if resolved.Request.Auth.Type != "bearer" {
+		t.Fatalf("auth = %q, want inherited bearer (draft Inherit drops file auth)", resolved.Request.Auth.Type)
 	}
 	if resolved.Request.URL != "https://api.example.com/v1/edited" {
 		t.Fatalf("URL = %q, want https://api.example.com/v1/edited", resolved.Request.URL)
+	}
+}
+
+func TestWorkspaceServiceSaveRequestWritesDraftAuth(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+	// A file with no own auth: the draft's typed auth becomes the file's.
+	path := "collections/users/own-auth.yaml"
+	full := `request:
+  method: GET
+  url: own
+`
+	if err := os.WriteFile(filepath.Join(dir, path), []byte(full), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewWorkspaceService(dir)
+	opened, err := svc.OpenRequest("users/own-auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	draft := opened.FileRequest
+	draft.Auth = request.Auth{Type: "bearer", Config: map[string]string{"token": "t0ken"}}
+	if _, err := svc.SaveRequest("users/own-auth", draft, opened.Version); err != nil {
+		t.Fatal(err)
+	}
+
+	reloaded, err := svc.OpenRequest("users/own-auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.FileRequest.Auth.Type != "bearer" || reloaded.FileRequest.Auth.Config["token"] != "t0ken" {
+		t.Fatalf("draft auth not written to file: %+v", reloaded.FileRequest.Auth)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"type: bearer", "token: t0ken"} {
+		if !strings.Contains(string(raw), want) {
+			t.Fatalf("saved file lost %q:\n%s", want, raw)
+		}
+	}
+}
+
+func TestWorkspaceServiceSaveRequestNoneWritesExplicitBlock(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+	path := "collections/users/own-auth.yaml"
+	full := `request:
+  method: GET
+  url: own
+`
+	if err := os.WriteFile(filepath.Join(dir, path), []byte(full), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewWorkspaceService(dir)
+	opened, err := svc.OpenRequest("users/own-auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	draft := opened.FileRequest
+	draft.Auth = request.Auth{Type: "none"}
+	if _, err := svc.SaveRequest("users/own-auth", draft, opened.Version); err != nil {
+		t.Fatal(err)
+	}
+
+	reloaded, err := svc.OpenRequest("users/own-auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.FileRequest.Auth.Type != "none" {
+		t.Fatalf("auth = %+v, want explicit type: none", reloaded.FileRequest.Auth)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "type: none") {
+		t.Fatalf("saved file lacks explicit none block:\n%s", raw)
+	}
+}
+
+func TestWorkspaceServiceSaveRequestInheritRemovesAuth(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+	path := "collections/users/own-auth.yaml"
+	full := `request:
+  method: GET
+  url: own
+  auth:
+    type: basic
+    config:
+      username: u
+      password: p
+`
+	if err := os.WriteFile(filepath.Join(dir, path), []byte(full), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewWorkspaceService(dir)
+	opened, err := svc.OpenRequest("users/own-auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	draft := opened.FileRequest
+	draft.Auth = request.Auth{}
+	if _, err := svc.SaveRequest("users/own-auth", draft, opened.Version); err != nil {
+		t.Fatal(err)
+	}
+
+	reloaded, err := svc.OpenRequest("users/own-auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.FileRequest.Auth.Type != "" {
+		t.Fatalf("auth = %+v, want the block removed (Inherit)", reloaded.FileRequest.Auth)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "auth:") || strings.Contains(string(raw), "username:") {
+		t.Fatalf("saved file still holds an auth block:\n%s", raw)
+	}
+	// Non-auth fields survive the removal.
+	if !strings.Contains(string(raw), "url: own") {
+		t.Fatalf("saved file lost the request:\n%s", raw)
+	}
+}
+
+func TestWorkspaceServiceResolveSendDraftAuthOverridesInherited(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+
+	svc := NewWorkspaceService(dir)
+	draft := request.Request{
+		Method: "GET",
+		URL:    "custom",
+		Auth:   request.Auth{Type: "basic", Config: map[string]string{"username": "u", "password": "p"}},
+	}
+	resolved, err := svc.ResolveSend("users/list-users", draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Request.Auth.Type != "basic" || resolved.Request.Auth.Config["username"] != "u" {
+		t.Fatalf("auth = %+v, want draft basic overriding inherited bearer", resolved.Request.Auth)
+	}
+}
+
+func TestWorkspaceServiceResolveSendNoneDisablesInherited(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+
+	svc := NewWorkspaceService(dir)
+	draft := request.Request{
+		Method: "GET",
+		URL:    "custom",
+		Auth:   request.Auth{Type: "none"},
+	}
+	resolved, err := svc.ResolveSend("users/list-users", draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Request.Auth.Type != "none" {
+		t.Fatalf("auth = %+v, want explicit none disabling the inherited bearer", resolved.Request.Auth)
 	}
 }
