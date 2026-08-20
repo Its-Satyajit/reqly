@@ -13,9 +13,19 @@
   ],
   "scripts": {
     "dev": "nub run --filter @reqly/desktop dev",
+    "dev:all": "cd apps/desktop/backend && wails3 dev",
     "build": "nub run --filter @reqly/desktop build",
+    "build:all": "cd apps/desktop/backend && wails3 build",
+    "build:dev": "nub run --filter @reqly/desktop build:dev",
+    "preview": "nub run --filter @reqly/desktop preview",
     "typecheck": "nub run --recursive --if-present typecheck",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "lint:frontend": "nub run --recursive --if-present lint",
+    "go:test": "go test ./...",
+    "go:race": "go test -race ./...",
+    "go:bench": "go test -bench=. ./...",
+    "cli:build": "go build -o reqly ./apps/cli",
+    "desktop:bindings": "cd apps/desktop/backend && wails3 generate bindings -d frontend/bindings -i -ts"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.79.0",
