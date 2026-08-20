@@ -57,7 +57,7 @@ jobs:
       - uses: nubjs/setup-nub@47e5e7393d50f4e9544ddaf756aa277972afba2d # v0
         with:
           node-version-file: .node-version
-          cache-dependency-path: nub.lock
+          cache-dependency-path: pnpm-lock.yaml
       - name: Generate Wails bindings
         run: |
           if [ ! -x "$GOBIN/wails3" ]; then
