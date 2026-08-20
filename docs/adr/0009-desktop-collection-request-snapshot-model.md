@@ -16,3 +16,14 @@ Sending an opened collection request uses the **open-time snapshot**: the resolv
 ## Consequences
 - **Positive:** WYSIWYG — what you saw is what's sent; safe against files changing or moving while a request is open; consistent with the per-tab draft model; matches the existing `request.Request` + `variables.Set` send seam.
 - **Trade-off:** Disk edits to a request file are not reflected in an already-open tab until it is re-opened; the Variables tab shows the open-time values.
+
+## Amendment (Milestone 17): Draft-based Editing with Send-time Re-resolution
+
+### Context
+M16 shipped the open-time snapshot as a *send* decision, but the editor was still read-only. M17 makes collection tabs editable (Save, dirty tracking, conflict handling), which forces a re-examination: a saved file's inherited config can change under a tab, and the file's own non-builder fields (auth, timeout, scripts) must survive editing.
+
+### Decision
+File-backed tabs become **drafts over the raw file request**. Opening seeds the editor from the file's *unmerged* request (builder fields only: url/method/headers/query/body); saving writes only those fields back, preserving format (JSON/YAML by extension) and every non-editable field verbatim via an atomic temp-file+rename. Sends re-resolve the **live draft** through the full inheritance chain at send time (`ResolveSend`), so inherited base URL/headers/auth and the variable scopes are recomputed from the containers rather than taken from an open-time snapshot; the environment scope layers below them. A content fingerprint taken at open guards saves against concurrent on-disk edits, surfacing a changed-on-disk conflict (Overwrite/Reload) instead of clobbering. The scratchpad tab keeps its raw-send behavior.
+
+### Supersedes
+For file-backed tabs, the send-time snapshot from the original Decision is replaced by send-time re-resolution of the live draft. The open-time *resolved* view still drives display (Effective URL line, inherited-headers group) and the Variables tab; the environment pill and its layering rules are unchanged. The scratchpad was never snapshot-based.

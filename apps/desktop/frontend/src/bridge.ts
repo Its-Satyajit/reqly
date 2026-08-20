@@ -45,11 +45,7 @@ export const wailsSender: RequestSender = async (
 		} as never,
 		{
 			env: req.env ?? "",
-			vars: (req.vars ?? []).map(({ name, value, scope }) => ({
-				name,
-				value,
-				scope,
-			})),
+			requestPath: req.requestPath ?? "",
 		} as never,
 	);
 	if (!res) {
@@ -205,12 +201,23 @@ const normalizeOpenedRequest = (
 				}
 			: undefined,
 	},
+	fileRequest: {
+		method: o.fileRequest?.method ?? "GET",
+		url: o.fileRequest?.url ?? "",
+		headers: (o.fileRequest?.headers ?? []).map(({ key, value }) => ({
+			key,
+			value,
+		})),
+		query: (o.fileRequest?.query ?? []).map(({ key, value }) => ({ key, value })),
+		body: o.fileRequest?.body ?? "",
+	},
 	variables: (o.variables ?? []).map(({ name, value, scope }) => ({
 		name,
 		value,
 		scope,
 	})),
 	fileEnv: o.fileEnv ?? "",
+	version: o.version ?? "",
 });
 
 /**
@@ -288,6 +295,26 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 			throw new Error("core returned an empty opened request");
 		}
 		return normalizeOpenedRequest(opened);
+	},
+	save: async (path, draft, expectedVersion) => {
+		const version = await AppService.WorkspaceSaveRequest(
+			path,
+			{
+				method: draft.method,
+				url: draft.url,
+				headers: (draft.headers ?? []).map(({ key, value }) => ({
+					key,
+					value,
+				})),
+				query: (draft.query ?? []).map(({ key, value }) => ({ key, value })),
+				body: draft.body,
+			} as never,
+			expectedVersion,
+		);
+		if (!version) {
+			throw new Error("core returned an empty version after save");
+		}
+		return version;
 	},
 	run: async (path, env, failFast, onEvent) => {
 		const id = await AppService.WorkspaceRunCollection(path, env ?? "", failFast);

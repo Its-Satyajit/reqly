@@ -19,10 +19,14 @@
 package core
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/requestfile"
 )
 
 // writeCollectionWorkspace builds a temp-dir workspace with one collection
@@ -332,5 +336,245 @@ func TestWorkspaceServiceOpenRequestWithoutWorkspaceErrors(t *testing.T) {
 	svc := NewWorkspaceService(dir)
 	if _, err := svc.OpenRequest("users/list-users"); err == nil {
 		t.Fatal("expected error without a workspace, got nil")
+	}
+}
+
+func TestWorkspaceServiceOpenRequestIncludesFileRequestAndVersion(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+
+	svc := NewWorkspaceService(dir)
+	opened, err := svc.OpenRequest("users/list-users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// FileRequest is the raw, unmerged file-owned request: the editor seed,
+	// without inherited base URL, headers, or auth.
+	if opened.FileRequest.URL != "users" {
+		t.Fatalf("fileRequest URL = %q, want users (unmerged)", opened.FileRequest.URL)
+	}
+	if len(opened.FileRequest.Headers) != 0 {
+		t.Fatalf("fileRequest headers = %v, want none", opened.FileRequest.Headers)
+	}
+	if opened.FileRequest.Auth.Type != "" {
+		t.Fatalf("fileRequest auth = %q, want none (inherited only)", opened.FileRequest.Auth.Type)
+	}
+
+	// Version fingerprints the raw file bytes so saves can detect concurrent
+	// on-disk edits.
+	raw, err := os.ReadFile(filepath.Join(dir, "collections/users/list-users.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opened.Version != requestfile.Fingerprint(raw) {
+		t.Fatalf("version = %q, want fingerprint of the raw file", opened.Version)
+	}
+}
+
+func TestWorkspaceServiceSaveRequestWritesBuilderFieldsOnly(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+	// A file exercising every preserved field.
+	path := "collections/users/edit-me.yaml"
+	full := `name: Edit Me
+environment: staging
+variables:
+  TOKEN: file-token
+preRequest: console.log("pre")
+postRequest: reqly.test("ok", true)
+request:
+  method: POST
+  url: edit
+  headers:
+    - key: X-Own
+      value: mine
+  auth:
+    type: basic
+    config:
+      username: u
+      password: p
+  timeout: 2500
+`
+	if err := os.WriteFile(filepath.Join(dir, path), []byte(full), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewWorkspaceService(dir)
+	opened, err := svc.OpenRequest("users/edit-me")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	draft := opened.FileRequest
+	draft.URL = "edited"
+	draft.Method = "PUT"
+	draft.Headers = []request.Header{{Key: "X-Own", Value: "changed"}}
+	draft.Query = []request.Parameter{{Key: "q", Value: "1"}}
+	draft.Body = `{"x":1}`
+
+	version, err := svc.SaveRequest("users/edit-me", draft, opened.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version == "" {
+		t.Fatal("expected a new version fingerprint")
+	}
+
+	reloaded, err := svc.OpenRequest("users/edit-me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Builder fields written.
+	if reloaded.Request.URL != "https://api.example.com/v1/edited" {
+		t.Fatalf("saved URL = %q, want https://api.example.com/v1/edited", reloaded.Request.URL)
+	}
+	if reloaded.Request.Method != "PUT" {
+		t.Fatalf("saved method = %q, want PUT", reloaded.Request.Method)
+	}
+	if reloaded.Request.Body != `{"x":1}` {
+		t.Fatalf("saved body = %q", reloaded.Request.Body)
+	}
+	if len(reloaded.Request.Query) != 1 || reloaded.Request.Query[0].Key != "q" {
+		t.Fatalf("saved query = %v", reloaded.Request.Query)
+	}
+	headers := map[string]string{}
+	for _, h := range reloaded.Request.Headers {
+		headers[h.Key] = h.Value
+	}
+	if headers["X-Own"] != "changed" {
+		t.Fatalf("saved headers = %v", reloaded.Request.Headers)
+	}
+	// Non-editable fields preserved verbatim.
+	if reloaded.FileRequest.Auth.Type != "basic" || reloaded.FileRequest.Auth.Config["username"] != "u" {
+		t.Fatalf("auth not preserved: %+v", reloaded.FileRequest.Auth)
+	}
+	if reloaded.FileRequest.Timeout != 2500 {
+		t.Fatalf("timeout not preserved: %d", reloaded.FileRequest.Timeout)
+	}
+	if reloaded.FileEnv != "staging" {
+		t.Fatalf("environment not preserved: %q", reloaded.FileEnv)
+	}
+	// Request-file-level fields (name, variables, scripts) preserved on disk.
+	raw, err := os.ReadFile(filepath.Join(dir, path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"name: Edit Me", "TOKEN: file-token", "preRequest", "postRequest", `console.log("pre")`} {
+		if !strings.Contains(string(raw), want) {
+			t.Fatalf("saved file lost %q:\n%s", want, raw)
+		}
+	}
+}
+
+func TestWorkspaceServiceSaveRequestRejectsChangedOnDisk(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+
+	svc := NewWorkspaceService(dir)
+	opened, err := svc.OpenRequest("users/list-users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Another editor changes the file on disk after it was opened.
+	path := filepath.Join(dir, "collections/users/list-users.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(data, []byte("\n# external edit\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := svc.SaveRequest("users/list-users", opened.FileRequest, opened.Version); !errors.Is(err, ErrFileChangedOnDisk) {
+		t.Fatalf("expected ErrFileChangedOnDisk, got %v", err)
+	}
+	// The file must be untouched after a rejected save.
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "external edit") {
+		t.Fatal("file was modified despite rejected save")
+	}
+}
+
+func TestWorkspaceServiceSaveRequestMissingFileErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+
+	svc := NewWorkspaceService(dir)
+	if _, err := svc.SaveRequest("users/nope", request.Request{}, "v"); err == nil {
+		t.Fatal("expected error saving an unknown request")
+	}
+}
+
+func TestWorkspaceServiceResolveSendAppliesDraft(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+
+	svc := NewWorkspaceService(dir)
+	draft := request.Request{
+		Method:  "POST",
+		URL:     "custom",
+		Headers: []request.Header{{Key: "X-Own", Value: "mine"}},
+	}
+	resolved, err := svc.ResolveSend("users/list-users", draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resolved.Request.URL != "https://api.example.com/v1/custom" {
+		t.Fatalf("URL = %q, want https://api.example.com/v1/custom", resolved.Request.URL)
+	}
+	if resolved.Request.Method != "POST" {
+		t.Fatalf("method = %q, want POST", resolved.Request.Method)
+	}
+	headers := map[string]string{}
+	for _, h := range resolved.Request.Headers {
+		headers[h.Key] = h.Value
+	}
+	if headers["X-Workspace"] != "ws" || headers["X-Collection"] != "users" || headers["X-Own"] != "mine" {
+		t.Fatalf("headers = %v", resolved.Request.Headers)
+	}
+	if resolved.Request.Auth.Type != "bearer" {
+		t.Fatalf("auth = %q, want inherited bearer", resolved.Request.Auth.Type)
+	}
+	if v, ok := resolved.Vars.Resolve("TOKEN"); !ok || v != "req-token" {
+		t.Fatalf("TOKEN = %q, %v; want req-token from the request scope", v, ok)
+	}
+}
+
+func TestWorkspaceServiceResolveSendPreservesFileOwnAuth(t *testing.T) {
+	dir := t.TempDir()
+	writeResolvableWorkspace(t, dir)
+	// A file with its own auth: the send-time substitution must not clobber it.
+	path := "collections/users/own-auth.yaml"
+	full := `request:
+  method: GET
+  url: own
+  auth:
+    type: basic
+    config:
+      username: file-user
+      password: file-pass
+`
+	if err := os.WriteFile(filepath.Join(dir, path), []byte(full), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewWorkspaceService(dir)
+	// The draft carries only builder fields (no auth) — that is what the
+	// editor sends.
+	resolved, err := svc.ResolveSend("users/own-auth", request.Request{Method: "GET", URL: "edited"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Request.Auth.Type != "basic" || resolved.Request.Auth.Config["username"] != "file-user" {
+		t.Fatalf("file-owned auth lost on re-resolve: %+v", resolved.Request.Auth)
+	}
+	if resolved.Request.URL != "https://api.example.com/v1/edited" {
+		t.Fatalf("URL = %q, want https://api.example.com/v1/edited", resolved.Request.URL)
 	}
 }

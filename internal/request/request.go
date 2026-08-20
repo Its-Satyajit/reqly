@@ -25,17 +25,17 @@ package request
 // The transport remains abstract so additional protocols (WebSocket, gRPC,
 // SSE, MQTT, ...) can be added without changing the application architecture.
 type Request struct {
-	ID     string `json:"id,omitempty"`
-	Name   string `json:"name,omitempty"`
-	Method Method `json:"method,omitempty"`
-	URL    string `json:"url,omitempty"`
+	ID     string `json:"id,omitempty" yaml:"id,omitempty"`
+	Name   string `json:"name,omitempty" yaml:"name,omitempty"`
+	Method Method `json:"method,omitempty" yaml:"method,omitempty"`
+	URL    string `json:"url,omitempty" yaml:"url,omitempty"`
 
-	Headers []Header    `json:"headers,omitempty"`
-	Query   []Parameter `json:"query,omitempty"`
-	Body    string      `json:"body,omitempty"`
+	Headers []Header    `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Query   []Parameter `json:"query,omitempty" yaml:"query,omitempty"`
+	Body    string      `json:"body,omitempty" yaml:"body,omitempty"`
 
-	Auth    Auth  `json:"auth,omitempty"`
-	Timeout int64 `json:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
+	Auth    Auth  `json:"auth,omitempty" yaml:"auth,omitempty"`
+	Timeout int64 `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
 }
 
 // Method is an HTTP method.
@@ -53,19 +53,19 @@ const (
 
 // Header is a single request header.
 type Header struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key   string `json:"key" yaml:"key,omitempty"`
+	Value string `json:"value" yaml:"value,omitempty"`
 }
 
 // Parameter is a query or path parameter.
 type Parameter struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key   string `json:"key" yaml:"key,omitempty"`
+	Value string `json:"value" yaml:"value,omitempty"`
 }
 
 // Auth describes the authentication configuration attached to a request.
 // Implementations live in the auth package and are dispatched by type.
 type Auth struct {
-	Type   string            `json:"type,omitempty"`
-	Config map[string]string `json:"config,omitempty"`
+	Type   string            `json:"type,omitempty" yaml:"type,omitempty"`
+	Config map[string]string `json:"config,omitempty" yaml:"config,omitempty"`
 }

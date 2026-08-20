@@ -79,32 +79,57 @@ func NewAppService() *AppService {
 	return svc
 }
 
-// SendOptions carries the per-send environment + snapshot variable overlay
-// for tabs opened from the collections browser. Env is the environment pill
-// (a request file's environment: field); when empty, the app's active
-// environment applies. Vars is the opened request's effective variable chain
-// (workspace → collection → folder → request, low → high scope) so
-// request-file variables win over the environment while preserving scope
-// precedence at send time.
+// SendOptions carries the per-send environment pill plus, for file-backed
+// tabs, the request file's workspace-relative path. Env is the environment
+// pill (a request file's environment: field); when empty, the app's active
+// environment applies. When RequestPath is non-empty, the sent request is
+// treated as the tab's live draft and the full inheritance chain (base URL,
+// merged headers, inherited auth, variable scopes) is re-resolved against it
+// at send time; when empty, the request is sent as-is (scratchpad).
 type SendOptions struct {
-	Env  string                  `json:"env"`
-	Vars []core.ResolvedVariable `json:"vars"`
+	Env string `json:"env"`
+	// RequestPath is the workspace-relative Request Path of the request file
+	// this send belongs to (e.g. "users/auth/login").
+	RequestPath string `json:"requestPath"`
 }
 
 // SendRequest executes an HTTP request through the core and returns the
 // bridge-friendly response for the frontend to render. The active environment
 // is resolved from the workspace rooted at the app's working directory; the
-// SendOptions environment pill (if any) overrides it, and the snapshot
-// variables are layered under the request for interpolation.
+// SendOptions environment pill (if any) overrides it. For file-backed sends
+// (RequestPath set) the request is re-resolved against the live draft so
+// inherited fields always reflect the current container chain, with the
+// request-file variable scopes layered above the environment; scratchpad
+// sends interpolate with the environment scope alone.
 func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.SendResponse, error) {
 	vars, err := resolveAppEnvironment(opts.Env)
 	if err != nil {
 		return nil, err
 	}
-	for _, v := range opts.Vars {
-		vars.Set(variables.Scope(v.Scope), v.Name, v.Value)
+	if opts.RequestPath != "" {
+		resolved, err := s.workspace.ResolveSend(opts.RequestPath, r)
+		if err != nil {
+			return nil, err
+		}
+		layerVars(vars, resolved.Vars)
+		return s.requests.Send(resolved.Request, vars)
 	}
 	return s.requests.Send(r, vars)
+}
+
+// layerVars overlays every scope of overlay onto base, preserving the
+// low → high scope precedence (global < collection < folder < request).
+func layerVars(base, overlay *variables.Set) {
+	for _, scope := range []variables.Scope{
+		variables.ScopeGlobal,
+		variables.ScopeCollection,
+		variables.ScopeFolder,
+		variables.ScopeRequest,
+	} {
+		overlay.Range(scope, func(key, value string) {
+			base.Set(scope, key, value)
+		})
+	}
 }
 
 // AuthLogin runs an interactive OAuth 2.0 login (authorization_code or
@@ -294,6 +319,15 @@ var emitRunEvent = func(name string, data any) {
 	if app := application.Get(); app != nil {
 		app.Event.EmitEvent(&application.CustomEvent{Name: name, Data: data})
 	}
+}
+
+// WorkspaceSaveRequest persists a request file's editable builder fields back
+// to disk, preserving format and every non-editable field. expectedVersion
+// must match the file's on-disk fingerprint from OpenedRequest.Version; a
+// mismatch surfaces as a changed-on-disk conflict instead of clobbering the
+// external edit. The returned string is the new baseline version for the tab.
+func (s *AppService) WorkspaceSaveRequest(path string, draft request.Request, expectedVersion string) (string, error) {
+	return s.workspace.SaveRequest(path, draft, expectedVersion)
 }
 
 // resolveAppEnvironment loads the process-env scope plus the environment
