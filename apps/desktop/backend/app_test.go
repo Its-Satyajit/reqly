@@ -24,7 +24,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/request"
@@ -653,5 +655,261 @@ func TestEnvDeleteBridgeRemovesFileAndClearsActive(t *testing.T) {
 	}
 	if list.Active != "" || len(list.Environments) != 0 {
 		t.Fatalf("got active=%q envs=%d, want empty", list.Active, len(list.Environments))
+	}
+}
+
+func writeRunWorkspace(t *testing.T, root, baseURL string) {
+	t.Helper()
+	writeWorkspace(t, root)
+	if err := os.MkdirAll(filepath.Join(root, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "collections", "users", "tests"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"collections/users/reqly.yaml":       "name: users\nbaseURL: " + baseURL + "\n",
+		"collections/users/a.yaml":           "name: A\nrequest: {method: GET, url: /a}\n",
+		"collections/users/b.yaml":           "name: B\nrequest: {method: GET, url: /b}\n",
+		"collections/users/tests/c.yaml":     "name: C\nrequest: {method: GET, url: /c}\n",
+		"collections/users/tests/reqly.yaml": "name: tests\n",
+	}
+	for path, contents := range files {
+		if err := os.WriteFile(filepath.Join(root, path), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// waitForRunFinish polls until the run goroutine has fully finished: the
+// service is idle and the run id has been dropped from the cancel registry
+// (which happens only after its final event is emitted). Guarding on the
+// registry prevents the run goroutine's last emit from racing test teardown,
+// which would otherwise restore the real emitter and panic without an app.
+func waitForRunFinish(t *testing.T, svc *AppService, id string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for svc.runs.Active() {
+		if time.Now().After(deadline) {
+			t.Fatal("timed out waiting for collection run to finish")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	svc.runMu.Lock()
+	_, stillTracked := svc.runCancels[id]
+	svc.runMu.Unlock()
+	for stillTracked {
+		if time.Now().After(deadline) {
+			t.Fatal("timed out waiting for run goroutine cleanup")
+		}
+		time.Sleep(10 * time.Millisecond)
+		svc.runMu.Lock()
+		_, stillTracked = svc.runCancels[id]
+		svc.runMu.Unlock()
+	}
+}
+
+func TestWorkspaceRunCollectionStreamsEvents(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	writeRunWorkspace(t, dir, srv.URL)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	var mu sync.Mutex
+	var names []string
+	var steps []core.RunStep
+	var done *core.RunReport
+	orig := emitRunEvent
+	emitRunEvent = func(name string, data any) {
+		mu.Lock()
+		defer mu.Unlock()
+		names = append(names, name)
+		switch v := data.(type) {
+		case core.RunStep:
+			steps = append(steps, v)
+		case *core.RunReport:
+			done = v
+		}
+	}
+	defer func() { emitRunEvent = orig }()
+
+	id, err := svc.WorkspaceRunCollection("users", "dev", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id == "" {
+		t.Fatal("expected a run id, got empty")
+	}
+	waitForRunFinish(t, svc, id)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(names) != 4 {
+		t.Fatalf("events = %v, want 3 step + 1 done", names)
+	}
+	if len(steps) != 3 {
+		t.Fatalf("steps = %+v, want 3", steps)
+	}
+	for _, ev := range names {
+		if !strings.HasPrefix(ev, "reqly.run."+id+".") {
+			t.Fatalf("event %q does not belong to run %q", ev, id)
+		}
+	}
+	if steps[0].RequestPath != "users/a" || steps[1].RequestPath != "users/b" || steps[2].RequestPath != "users/tests/c" {
+		t.Fatalf("step paths = %q/%q/%q, want users/a users/b users/tests/c", steps[0].RequestPath, steps[1].RequestPath, steps[2].RequestPath)
+	}
+	if !steps[0].Passed || !steps[1].Passed || !steps[2].Passed {
+		t.Fatalf("steps not passed: %+v", steps)
+	}
+	if done == nil {
+		t.Fatal("no done event")
+	}
+	if done.Total != 3 || done.Passed != 3 || done.Failed != 0 || !done.OK {
+		t.Fatalf("report = %+v", done)
+	}
+}
+
+func TestWorkspaceRunCollectionFolderScope(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	writeRunWorkspace(t, dir, srv.URL)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	var mu sync.Mutex
+	var steps []core.RunStep
+	orig := emitRunEvent
+	emitRunEvent = func(name string, data any) {
+		if !strings.HasSuffix(name, ".step") {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if v, ok := data.(core.RunStep); ok {
+			steps = append(steps, v)
+		}
+	}
+	defer func() { emitRunEvent = orig }()
+
+	id, err := svc.WorkspaceRunCollection("users/tests", "dev", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForRunFinish(t, svc, id)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(steps) != 1 || steps[0].RequestPath != "users/tests/c" {
+		t.Fatalf("steps = %+v, want only users/tests/c", steps)
+	}
+}
+
+func TestWorkspaceRunCollectionWithoutWorkspaceErrors(t *testing.T) {
+	dir := t.TempDir() // no reqly.yaml
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if _, err := svc.WorkspaceRunCollection("users", "dev", false); err == nil || !strings.Contains(err.Error(), "no workspace found") {
+		t.Fatalf("err = %v, want no-workspace error", err)
+	}
+}
+
+func TestWorkspaceRunCollectionSingleFlight(t *testing.T) {
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	writeRunWorkspace(t, dir, srv.URL)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	orig := emitRunEvent
+	emitRunEvent = func(string, any) {}
+	defer func() { emitRunEvent = orig }()
+
+	id, err := svc.WorkspaceRunCollection("users", "dev", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer svc.WorkspaceRunCancel(id)
+
+	if _, err := svc.WorkspaceRunCollection("users", "dev", false); err == nil || !strings.Contains(err.Error(), "already in progress") {
+		t.Fatalf("second run err = %v, want single-flight error", err)
+	}
+	close(release)
+	waitForRunFinish(t, svc, id)
+}
+
+func TestWorkspaceRunCancelAbortsRun(t *testing.T) {
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+	}))
+	defer func() {
+		close(release)
+	}()
+	defer srv.Close()
+
+	dir := t.TempDir()
+	writeRunWorkspace(t, dir, srv.URL)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	var mu sync.Mutex
+	var sawDone bool
+	var sawErrorEvent string
+	orig := emitRunEvent
+	emitRunEvent = func(name string, data any) {
+		mu.Lock()
+		defer mu.Unlock()
+		if strings.HasSuffix(name, ".done") {
+			sawDone = true
+		}
+		if strings.HasSuffix(name, ".error") {
+			if s, ok := data.(string); ok {
+				sawErrorEvent = s
+			}
+		}
+	}
+	defer func() { emitRunEvent = orig }()
+
+	id, err := svc.WorkspaceRunCollection("users", "dev", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.WorkspaceRunCancel(id); err != nil {
+		t.Fatalf("cancel err = %v", err)
+	}
+	// The blocking server would hang the run until release is closed in
+	// teardown, so a prompt finish proves the in-flight request was aborted.
+	waitForRunFinish(t, svc, id)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if !sawDone {
+		t.Fatalf("expected the run to finish after cancel, error event = %q", sawErrorEvent)
+	}
+}
+
+func TestWorkspaceRunCancelUnknownIDErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+	t.Chdir(dir)
+
+	svc := NewAppService()
+	if err := svc.WorkspaceRunCancel("nope"); err == nil || !strings.Contains(err.Error(), "no active collection run") {
+		t.Fatalf("err = %v, want unknown-id error", err)
 	}
 }

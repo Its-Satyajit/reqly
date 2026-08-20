@@ -152,6 +152,78 @@ func TestRunCollectionFailFast(t *testing.T) {
 	}
 }
 
+func TestRunCollectionOnStep(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := buildWorkspace(t, srv.URL)
+	collDir := filepath.Join(dir, "collections/main")
+	writeFile(t, collDir, "a.yaml", "request:\n  method: GET\n  url: /a\n")
+	writeFile(t, collDir, "b.yaml", "request:\n  method: GET\n  url: /b\n")
+	ws, coll := loadWorkspace(t, dir)
+
+	var onStep []string
+	report, err := RunCollection(context.Background(), ws, coll, nil, Options{OnStep: func(s StepResult) { onStep = append(onStep, s.Name) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(onStep) != 2 || onStep[0] != "a" || onStep[1] != "b" {
+		t.Fatalf("onStep = %v", onStep)
+	}
+	for i, s := range report.Steps {
+		if s.Name != onStep[i] {
+			t.Fatalf("onStep order %v != report order %v", onStep, s.Name)
+		}
+	}
+}
+
+func TestRunCollectionOnStepNil(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := buildWorkspace(t, srv.URL)
+	collDir := filepath.Join(dir, "collections/main")
+	writeFile(t, collDir, "a.yaml", "request:\n  method: GET\n  url: /a\n")
+	ws, coll := loadWorkspace(t, dir)
+
+	report, err := RunCollection(context.Background(), ws, coll, nil, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Total != 1 || !report.OK() {
+		t.Fatalf("report = %+v", report)
+	}
+}
+
+func TestRunCollectionCancelStopsScheduling(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var onStep []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cancel()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := buildWorkspace(t, srv.URL)
+	collDir := filepath.Join(dir, "collections/main")
+	writeFile(t, collDir, "a.yaml", "request:\n  method: GET\n  url: /a\n")
+	writeFile(t, collDir, "b.yaml", "request:\n  method: GET\n  url: /b\n")
+	ws, coll := loadWorkspace(t, dir)
+
+	report, err := RunCollection(ctx, ws, coll, nil, Options{OnStep: func(s StepResult) { onStep = append(onStep, s.Name) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Steps) != 1 || len(onStep) != 1 || onStep[0] != "a" {
+		t.Fatalf("expected only step a, steps=%d onStep=%v", len(report.Steps), onStep)
+	}
+}
+
 func TestRunCollectionFolderOrder(t *testing.T) {
 	var hits []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -177,6 +249,37 @@ func TestRunCollectionFolderOrder(t *testing.T) {
 	// Root request runs before folder requests (folder traversal happens after
 	// the container's own requests).
 	if hits[0] != "/z-root" || hits[1] != "/sub-folder" {
+		t.Fatalf("unexpected order: %v", hits)
+	}
+}
+
+func TestRunFolder(t *testing.T) {
+	var hits []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits = append(hits, r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	dir := buildWorkspace(t, srv.URL)
+	collDir := filepath.Join(dir, "collections/main")
+	writeFile(t, collDir, "root.yaml", "request:\n  method: GET\n  url: /root\n")
+	writeFile(t, collDir, "sub/reqly.yaml", "name: sub\n")
+	writeFile(t, collDir, "sub/a.yaml", "request:\n  method: GET\n  url: /sub/a\n")
+	writeFile(t, collDir, "sub/nested/reqly.yaml", "name: nested\n")
+	writeFile(t, collDir, "sub/nested/b.yaml", "request:\n  method: GET\n  url: /sub/nested/b\n")
+	ws, coll := loadWorkspace(t, dir)
+
+	folder := coll.Folders[0]
+	report, err := RunFolder(context.Background(), ws, coll, folder, nil, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Steps) != 2 {
+		t.Fatalf("expected 2 steps (folder + nested), got %d: %+v", len(report.Steps), report.Steps)
+	}
+	// Folder's own requests run before its nested folders.
+	if hits[0] != "/sub/a" || hits[1] != "/sub/nested/b" {
 		t.Fatalf("unexpected order: %v", hits)
 	}
 }

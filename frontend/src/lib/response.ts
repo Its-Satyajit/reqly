@@ -4,7 +4,8 @@
 export type HeaderMap = Record<string, string[]>
 
 export function contentType(headers: HeaderMap | undefined): string {
-  const value = (headers ?? {})['content-type']?.[0]
+  const newLocal = 'content-type';
+  const value = headers?.[newLocal]?.[0]
   return value ?? ''
 }
 
@@ -33,7 +34,7 @@ export function suggestedFilename(
   headers: HeaderMap | undefined,
   contentType: string,
 ): string {
-  const disposition = (headers ?? {})['content-disposition']?.[0]
+  const disposition = headers?.['content-disposition']?.[0]
   const match = disposition?.match(/filename="?([^";]+)"?/i)
   if (match?.[1]) return match[1]
   const type = contentType.split(';')[0].trim().toLowerCase()

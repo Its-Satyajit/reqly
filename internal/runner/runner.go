@@ -87,6 +87,9 @@ func (r *Report) OK() bool { return r.Failed == 0 }
 type Options struct {
 	// FailFast stops the run after the first failing step.
 	FailFast bool
+	// OnStep, if non-nil, is invoked once per completed step, in execution
+	// order, immediately after the step finishes.
+	OnStep func(StepResult)
 	// Client executes requests (nil uses request.NewClient()).
 	Client *request.Client
 	// ClientOptions are applied when Client is nil.
@@ -97,6 +100,22 @@ type Options struct {
 // deterministic order. Vars are the starting variable store shared across all
 // steps.
 func RunCollection(ctx context.Context, ws *collections.Workspace, coll *collections.Collection, vars *variables.Set, opts Options) (*Report, error) {
+	steps := []step{}
+	collectSteps(&steps, coll.Requests, coll.Folders, nil)
+	return run(ctx, ws, coll, vars, opts, steps), nil
+}
+
+// RunFolder runs every request in the folder (and nested folders) in
+// deterministic order, sharing the same engine, variables, and seams as
+// RunCollection.
+func RunFolder(ctx context.Context, ws *collections.Workspace, coll *collections.Collection, folder *collections.Folder, vars *variables.Set, opts Options) (*Report, error) {
+	steps := []step{}
+	collectSteps(&steps, folder.Requests, folder.Folders, []*collections.Folder{folder})
+	return run(ctx, ws, coll, vars, opts, steps), nil
+}
+
+// run executes a pre-collected step list against a shared variable store.
+func run(ctx context.Context, ws *collections.Workspace, coll *collections.Collection, vars *variables.Set, opts Options, steps []step) *Report {
 	if vars == nil {
 		vars = ws.VariablesSet()
 	}
@@ -107,12 +126,18 @@ func RunCollection(ctx context.Context, ws *collections.Workspace, coll *collect
 		r.client = request.NewClient(opts.ClientOptions...)
 	}
 
-	steps := []step{}
-	collectSteps(&steps, coll.Requests, coll.Folders, nil)
 	report := &Report{Started: time.Now(), Total: len(steps)}
 	for _, s := range steps {
+		// A cancelled context stops scheduling further steps; the current
+		// step may finish.
+		if ctx.Err() != nil {
+			break
+		}
 		result := r.runStep(ctx, ws, coll, s.chain, s.entry)
 		report.Steps = append(report.Steps, result)
+		if opts.OnStep != nil {
+			opts.OnStep(result)
+		}
 		if result.Passed {
 			report.Passed++
 		} else {
@@ -124,7 +149,7 @@ func RunCollection(ctx context.Context, ws *collections.Workspace, coll *collect
 	}
 	report.Finished = time.Now()
 	report.Duration = report.Finished.Sub(report.Started)
-	return report, nil
+	return report
 }
 
 // step pairs a request entry with its folder ancestor chain.

@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
-import { ThemeToggle, WorkspaceSidebar, RequestTabs } from "../components";
+import { RequestTabs, RunView, ThemeToggle, WorkspaceSidebar } from "../components";
+import { EnvironmentsView } from "../features/environments-view/EnvironmentsView";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
-import { EnvironmentsView } from "../features/environments-view/EnvironmentsView";
 import { useThemeStore, useWorkspaceStore } from "../stores";
 import { NEW_REQUEST_TAB_ID } from "../stores/useRequestStore";
+import "../index.css"
 
 export function App() {
 	const theme = useThemeStore((s) => s.theme);
@@ -17,10 +18,13 @@ export function App() {
 	const setActiveEnvironment = useWorkspaceStore((s) => s.setActiveEnvironment);
 	const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments);
 	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
+	const openTabs = useWorkspaceStore((s) => s.openTabs);
+	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
 
 	const activeEnvironment = environments.find(
 		(e) => e.id === activeEnvironmentId,
 	);
+	const activeTab = openTabs.find((t) => t.id === activeTabId);
 
 	useEffect(() => {
 		void refreshEnvironments();
@@ -81,19 +85,23 @@ export function App() {
 							<EnvironmentsView />
 						</section>
 					) : (
-						<>
-							<section className="flex min-h-0 flex-1 flex-col">
+						<section className="flex min-h-0 flex-1 flex-col">
 								<RequestTabs />
-								<div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-									<div className="min-h-0 flex-1 border-r border-border lg:w-1/2">
-										<RequestEditor />
+								{activeTab?.kind === "run" ? (
+									<div className="min-h-0 flex-1">
+										<RunView />
 									</div>
-									<div className="min-h-0 flex-1 lg:w-1/2">
-										<ResponseViewer />
+								) : (
+									<div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+										<div className="min-h-0 flex-1 border-r border-border lg:w-1/2">
+											<RequestEditor />
+										</div>
+										<div className="min-h-0 flex-1 lg:w-1/2">
+											<ResponseViewer />
+										</div>
 									</div>
-								</div>
+								)}
 							</section>
-						</>
 					)}
 				</main>
 			</div>

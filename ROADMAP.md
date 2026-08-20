@@ -22,14 +22,16 @@
 The project skeleton, build system, and the first two core primitives.
 
 ### 0.1 Repository & build infra
+
 - [x] Go module `github.com/Its-Satyajit/reqly` (Go 1.25)
-- [x] npm workspaces + nub package manager (`nub.lock` committed)
+- [x] npm workspaces + nub package manager (`pnpm-lock.yaml` committed)
 - [x] Wails v3 desktop project (`apps/desktop/backend`) with Taskfile + build assets
 - [x] CI workflow (frontend typecheck/build job; Go vet/gofmt/race/coverage job)
 - [x] Makefile task aliases
 - [x] GPL-3.0 license + SPDX headers on all Go sources
 
 ### 0.2 Desktop shell (Wails v3)
+
 - [x] `main.go` — Wails v3 `application.New`, window (1280×800), dark background
 - [x] `AppService` binding registered + `Greet` bridge proof → replaced by real `SendRequest` binding (see §1.5)
 - [x] Go ↔ TypeScript bindings generated (`wails3 generate bindings`)
@@ -37,6 +39,7 @@ The project skeleton, build system, and the first two core primitives.
 - [x] `wails3 build` produces `bin/reqly`
 
 ### 0.3 Shared UI shell (`frontend/`)
+
 - [x] App shell (header, sidebar, split request/response panes)
 - [x] Light/dark theming with Reqly brand colors + theme store + toggle
 - [x] Dark/light logo in header; logo as app icon
@@ -44,12 +47,14 @@ The project skeleton, build system, and the first two core primitives.
 - [x] CodeMirror 6 editor wrapper (json/js/xml/yaml/markdown/text)
 
 ### 0.4 Core primitives (first implementations, TDD)
+
 - [~] `internal/variables` — scope-precedence resolution + interpolation (7 tests) — **missing** 5 of 6 scopes, env files, `.env`, validation, diff
 - [~] `internal/scripting` — lazy Goja runtime (4 tests) — **missing** request/response API, pre/post-request wiring, dynamic values
 - [~] `internal/request` + `internal/response` — request engine + response model (see §1.1)
 - [~] `internal/testing` — assertion engine + JSONPath + suite runner + test-file loader (see §1.11)
 
 ### 0.5 CLI skeleton
+
 - [x] Cobra command tree: `run`, `test`, `collection run`, `mock`, `validate`, `diff`, `docs`
 - [~] 12 CLI commands wired to the Go core — `run`, `test`, `collection run`, `collection list`, `collection test`, `import curl`, `import openapi`, `export postman`, `ws`, `sse`, `mock` done; `validate`, `diff`, `docs` still stubs
 
@@ -60,6 +65,7 @@ The project skeleton, build system, and the first two core primitives.
 The minimum set to make Reqly a serious API client.
 
 ### 1.1 Request engine (foundation for everything)
+
 - [x] `internal/request` — full HTTP request model (URL, method, path/query params, headers, body, auth, certs, proxy, settings)
 - [x] Request engine: HTTP/1.1 transport, timeouts, redirects, compression
 - [x] Request execution shared by Desktop + CLI (single engine, no duplication)
@@ -69,6 +75,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] SQLite local metadata (history, search index, execution results, cache) + request replay
 
 ### 1.2 Variables & environments
+
 - [~] All 8 variable scopes (global, environment, collection, folder, request, runtime, prompt, process env) — core has 6 scopes; request files carry `variables` maps
 - [~] `{{key}}` interpolation wired through request builder + scripting — works in `run`/`test` via request files
 - [x] Environment management — `internal/environments` + `reqly env list/show/use` (Git-native `environments/<name>.yaml`, `REQLY_ENV`/`--env`/file/descriptor selection precedence) + desktop Environments UI ([Milestone 15](https://github.com/Its-Satyajit/reqly/issues/84))
@@ -76,12 +83,14 @@ The minimum set to make Reqly a serious API client.
 - [ ] Dynamic values & template tags (UUID, timestamp, random, runtime)
 
 ### 1.2a Request files (plain-text, Git-native)
+
 - [x] `internal/requestfile` — JSON/YAML request file format (`name`, `variables`, `request`)
 - [x] `reqly run <file>` — load request + variables from file, flags override file fields
 - [x] `reqly test <file>` — test files accept YAML and `variables` (interpolated at runtime)
 - [x] Shared file format for collections/folders (`internal/collections` descriptor format, see §1.5)
 
 ### 1.3 Authentication
+
 - [x] Basic, Bearer, API key — `internal/auth` scheme registry, `request.Auth` dispatch, secret masking ([ADR 0005](docs/adr/0005-git-native-auth-schemes.md))
 - [~] JWT — HS256/384/512 per-request signing shipped; decode/claims-viewer CLI (`reqly jwt`) deferred (per ADR 0005)
 - [~] Digest — challenge/response shipped (SHA-256 fallback, request-body aware); NTLM deferred
@@ -91,11 +100,13 @@ The minimum set to make Reqly a serious API client.
 - [ ] OAuth 1.0, AWS Signature, Akamai EdgeGrid, custom auth + auth inheritance
 
 ### 1.4 Secrets
+
 - [x] Encrypted-at-rest secret storage + OS keychain — token stores behind the `secrets.Store` interface: FileStore (plain-text 0600 `.reqly/tokens.json`, default) and KeychainStore (OS keychain via go-keyring; keychain default on desktop), backend selection `--store keychain`/`REQLY_TOKEN_STORE` with graceful file-store fallback
 - [x] Secret variables + masking (CLI output, logs, test output) — `environments/<name>.yaml` `secrets:` maps render as `[SECRET]`; masking wired through run/test/collection/validate/diff; acquired OAuth tokens masked post-request
 - [~] `.env` support — dotenv parsing (process-env scope, OS env wins); external managers (Vault, AWS, Azure) — P3
 
 ### 1.5 Workspaces, collections & storage
+
 - [x] `internal/collections` — workspaces, collections, nested folders
 - [x] Plain-text, Git-native project files (mirror workspace → filesystem)
 - [x] `internal/core` — application services layer shared by Desktop/CLI/MCP (`RequestService.Send`)
@@ -105,6 +116,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] Save/export a workspace (write descriptors + request files back to disk)
 
 ### 1.5a Core → Desktop bridge (from 0.2 `Greet` proof)
+
 - [x] `internal/core` `RequestService` — wraps `request.Client`, bridge-friendly `SendResponse` DTO
 - [x] Desktop `AppService.SendRequest` delegates to core (thin Wails boundary; `Greet` removed)
 - [x] Regenerated Wails bindings → `appservice.ts` `SendRequest` + `models.ts` (`Request`, `SendResponse`)
@@ -113,6 +125,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] Per-tab request/response state (multiple tabs), cancel in-flight request
 
 ### 1.6 Request builder & response viewer (UI)
+
 - [x] Method select, URL bar, Send → real response data flow
 - [x] Params/headers/body tabs in the builder
 - [~] Body editors: JSON/XML/raw via CodeMirror, form-data/urlencoded via key-value rows, auto Content-Type (manual wins) — [Milestone 14 T2](https://github.com/Its-Satyajit/reqly/issues/73); binary + GraphQL bodies pending
@@ -122,6 +135,7 @@ The minimum set to make Reqly a serious API client.
 - [~] Cookies: view from `Set-Cookie` response headers (name, value, domain, path, expiry, Secure/HttpOnly/SameSite flags) — [Milestone 14 T5](https://github.com/Its-Satyajit/reqly/issues/76); edit/delete, persistence, domain/path matching pending
 
 ### 1.7 Scripting & automation
+
 - [x] Pre-request / post-request scripts (Goja) — `reqly` sandbox (request/response access, variable get/set, `reqly.test()`, console)
 - [~] Test scripts + assertion library (core assertion engine shipped: status, header, body, JSON, response-time)
 - [x] Request chaining (login → extract token → next request) — runtime variables persist across collection steps
@@ -129,6 +143,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Collection runner (sequential, variable passing, assertions, fail-fast) — `reqly collection test`
 
 ### 1.8 Protocols (P0: REST-first, then extended)
+
 - [ ] **REST** — complete builder (see §1.1/§1.6)
 - [x] **WebSocket** — connection mgmt, message composer, in/out inspection (`internal/websocket` + `reqly ws`)
 - [x] **SSE** — live event stream, inspection, event history (`internal/sse` + `reqly sse`)
@@ -137,6 +152,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] **SOAP** — WSDL import, operation discovery, XML builder
 
 ### 1.9 Import / export
+
 - [x] Import cURL — `reqly import curl` (method, headers, JSON/raw/data bodies, basic auth, user-agent, cookies, GET-style query data; unsupported features reported)
 - [x] Import OpenAPI 3.x — `reqly import openapi` (servers, paths, operations, params, JSON bodies; writes a Git-native workspace)
 - [x] Export Postman collection v2.1 — `reqly export postman` (flat list, inherited base URL/headers applied)
@@ -145,6 +161,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] Import preservation (env/auth/scripts) + unsupported-feature reporting
 
 ### 1.10 OpenAPI & JSON Schema
+
 - [~] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); OpenAPI 2.x import via hand-rolled parser; 3.1 partial
 - [ ] Endpoint explorer + generate requests from spec
 - [ ] JSON Schema: edit, validate, inspect, generate
@@ -152,6 +169,7 @@ The minimum set to make Reqly a serious API client.
 - [~] Generate mocks from OpenAPI (see P1) — `reqly mock` serves schema/example-driven responses
 
 ### 1.11 CLI (P0 commands)
+
 - [x] `reqly run` — send a request from the CLI (URL or JSON/YAML request file, flags override file)
 - [x] `reqly test` — run tests against a request (JSON or YAML test file, variables interpolated)
 - [x] `reqly collection run` — run a request in a collection with inherited config (workspace/collection/folder resolution); `collection list` shows the tree
@@ -165,6 +183,7 @@ The minimum set to make Reqly a serious API client.
 - [ ] `reqly docs` — generate documentation
 
 ### 1.12 Cross-platform desktop
+
 - [ ] Linux build (WebKit) — verified
 - [ ] macOS build (WebKit) — needs CI/signing
 - [ ] Windows build (WebView2) — needs CI/signing
@@ -264,6 +283,7 @@ Every checked feature must pass the full checklist:
 - [ ] Frontend unit tests (Vitest) — **currently TBD**
 
 ### Release gates
+
 - **Fast checks** (every change): formatting, linting, typechecking, unit tests — ✅ running in CI
 - **PR CI:** unit + integration + race + frontend + build + coverage validation — ⏳ partial (no integration/E2E yet)
 - **Release CI:** full E2E, performance, security, cross-platform builds, import/export compat, install/upgrade — ❌ not set up
@@ -272,17 +292,18 @@ Every checked feature must pass the full checklist:
 
 ## Progress Tracker
 
-| Phase | Scope | Status | Est. complete |
-| --- | --- | --- | --- |
-| Phase 0 | Foundation | Foundation done; CLI commands + core primitives partial | ~95% |
-| Phase 1 | Core API Client (P0) | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner + OpenAPI parsing + mock server + env management/validation/masking/diff + auth schemes (basic/bearer/apikey/jwt/digest/none + masking) shipped + OAuth 2.0 Client Credentials + Authorization Code/PKCE + Device flow with cached tokens, refresh-token reuse, `reqly auth login`/`status`/`logout`, auto-login, OS-keychain store, custom-scheme redirects, desktop auth panel + desktop request builder (params/headers/body tabs, response views/search/actions/JSONPath, cookies view) + desktop environments manager (list/create/edit/set-active/delete, masked secret editing, inline validation); AWS/EdgeGrid auth, cookie persistence pending | ~58% |
-| Phase 2 | Differentiating (P1) | Not started | 0% |
-| Phase 3 | Power-User (P2) | Not started | 0% |
-| Phase 4 | Ecosystem (P3) | Not started | 0% |
-| Phase 5 | MCP / AI / Extensibility | Not started | 0% |
-| Quality | DoD + release gates | Fast checks green; Vitest/E2E/integration TBD | ~20% |
+| Phase   | Scope                    | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Est. complete |
+| ------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Phase 0 | Foundation               | Foundation done; CLI commands + core primitives partial                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | ~95%          |
+| Phase 1 | Core API Client (P0)     | Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner + OpenAPI parsing + mock server + env management/validation/masking/diff + auth schemes (basic/bearer/apikey/jwt/digest/none + masking) shipped + OAuth 2.0 Client Credentials + Authorization Code/PKCE + Device flow with cached tokens, refresh-token reuse, `reqly auth login`/`status`/`logout`, auto-login, OS-keychain store, custom-scheme redirects, desktop auth panel + desktop request builder (params/headers/body tabs, response views/search/actions/JSONPath, cookies view) + desktop environments manager (list/create/edit/set-active/delete, masked secret editing, inline validation); AWS/EdgeGrid auth, cookie persistence pending | ~58%          |
+| Phase 2 | Differentiating (P1)     | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | 0%            |
+| Phase 3 | Power-User (P2)          | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | 0%            |
+| Phase 4 | Ecosystem (P3)           | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | 0%            |
+| Phase 5 | MCP / AI / Extensibility | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | 0%            |
+| Quality | DoD + release gates      | Fast checks green; Vitest/E2E/integration TBD                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | ~20%          |
 
 ### Next milestones (suggested order)
+
 1. ~~**Request file loading**~~ — `reqly run`/`test` from a plain-text request file (JSON/YAML request format + vars) — ✅ shipped
 2. ~~**Core → Desktop bridge**~~ — `AppService.SendRequest` → core `RequestService`; `RequestEditor` Send wired to `useRequestStore` — ✅ shipped
 3. ~~**Workspaces & collections on disk**~~ — Git-native storage + inheritance (build on `requestfile`) — ✅ shipped

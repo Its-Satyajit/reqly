@@ -138,3 +138,15 @@ The desktop sidebar surface that loads the workspace and renders its collections
 ### Request Tab
 The desktop's per-request working area, one per opened request (deduplicated by **Request Path**, plus a persistent *New Request* scratchpad for ad-hoc sends). Each tab owns its editable resolved-request fields, its response, a read-only effective-variables view, and an environment pill showing which environment the tab will send with — the request file's `environment:` if set, else the header-selected one.
 
+### Collection Run
+Executing every **Request Entry** in a **Collection** (or a **Folder**) in deterministic, name-sorted order through the shared runner engine (`internal/runner`). Steps share one variable store across the run, so a post-request script can extract a token that a later request interpolates; pre/post scripts and `reqly.test()` assertions are evaluated per step. A run reads **fresh from disk** — it is a statement about the workspace, not about the editor session, so unsaved **Request Tab** drafts are never part of a run. Runs are sequential and single-flight in the desktop: only one run at a time.
+
+### Run Step
+One **Request Entry** as executed within a **Collection Run**: its request name and **Request Path**, whether it passed (request succeeded *and* every test passed), the transport/pre-script error if any, the response received, the `reqly.test()` results, and the script console logs. Credential values are resolved per step for masking and never serialized.
+
+### Run Report
+The aggregate result of a **Collection Run**: the ordered **Run Steps**, start/finish times, totals (total/passed/failed), and duration. The desktop receives it streamed — one event per completed **Run Step** for live progress, then a final event carrying the complete report.
+
+### Run View
+The desktop surface that presents a **Collection Run**: a dedicated tab (distinct from **Request Tab**) showing each **Run Step** with live status, status code, duration, expandable tests/logs/response, a fail-fast toggle, and a cancel control for the in-flight run. Clicking a **Run Step** opens its request into a normal **Request Tab** for inspection without stopping the run.
+
