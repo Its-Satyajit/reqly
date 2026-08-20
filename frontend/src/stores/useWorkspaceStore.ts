@@ -120,8 +120,9 @@ export const bodyTypeFor = (req: {
 }
 
 /** draftFromFileRequest maps the raw file-owned request onto the editor draft
- * shape, preserving placeholders for send-time interpolation. Only builder
- * fields are editable; inherited fields are recomputed at send. */
+ * shape, preserving placeholders for send-time interpolation. Builder fields
+ * plus the file's own auth are editable; inherited fields are recomputed at
+ * send. */
 export const draftFromFileRequest = (file: FileRequestInput): Partial<TabDraft> => {
   const toRows = (rows: { key: string; value: string }[]) =>
     rows.map(({ key, value }) => ({ key, value, enabled: true }))
@@ -132,6 +133,7 @@ export const draftFromFileRequest = (file: FileRequestInput): Partial<TabDraft> 
     headers: toRows(file.headers),
     bodyType: bodyTypeFor(file),
     body: file.body,
+    auth: file.auth,
   }
 }
 

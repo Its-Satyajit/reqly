@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
+import { AuthEditor } from '../auth-editor/AuthEditor'
 import { useRequestStore, useWorkspaceStore } from '../../stores'
 import { tabIsDirty } from '../../stores/useRequestStore'
 import { effectiveUrlFor } from '../../stores/useWorkspaceStore'
@@ -11,11 +12,12 @@ import type { ResolvedVariable } from '../../lib/collections'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
 
-type Tab = 'params' | 'headers' | 'body' | 'variables'
+type Tab = 'params' | 'headers' | 'auth' | 'body' | 'variables'
 
 const tabs: { id: Tab; label: string }[] = [
   { id: 'params', label: 'Params' },
   { id: 'headers', label: 'Headers' },
+  { id: 'auth', label: 'Auth' },
   { id: 'body', label: 'Body' },
   { id: 'variables', label: 'Variables' },
 ]
@@ -115,7 +117,7 @@ export function RequestEditor() {
       form: sentRows(draft.form),
       env: meta?.env,
       requestPath,
-      auth: meta?.auth,
+      auth: draft.auth,
     })
   }
 
@@ -256,6 +258,8 @@ export function RequestEditor() {
               </div>
             )}
           </div>
+        ) : tab === 'auth' ? (
+          <AuthEditor auth={draft.auth} onChange={(auth) => patch({ auth })} />
         ) : tab === 'variables' ? (
           <VariablesView
             variables={meta?.variables ?? []}

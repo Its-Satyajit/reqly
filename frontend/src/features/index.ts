@@ -1,6 +1,7 @@
 export * from './request-editor/RequestEditor'
 export * from './response-viewer/ResponseViewer'
 export * from './auth-panel/AuthPanel'
+export * from './auth-editor/AuthEditor'
 export * from './environments-view/EnvironmentsView'
 export * from './environments-view/EnvironmentEditor'
 export * from './environments-view/SecretsEditor'

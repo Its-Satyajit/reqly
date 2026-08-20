@@ -17,6 +17,9 @@ export interface TabDraft {
   form: KeyValueRow[]
   params: KeyValueRow[]
   headers: KeyValueRow[]
+  /** The request's own auth (Inherit when unset — no own auth, the request
+   * inherits from its containers). */
+  auth?: RequestAuth
 }
 
 /** Per-tab metadata for requests opened from a collection: the source request
@@ -66,13 +69,15 @@ export const emptyTabDraft = (): TabDraft => ({
  * file-owned request shape a save writes to disk: the body type + body/form
  * collapse into request.body, with the implied Content-Type pushed onto the
  * headers (unless a manual Content-Type is already present) so the file
- * round-trips through the editor. */
+ * round-trips through the editor. The draft's own auth rides along (Inherit
+ * writes none, so an existing file auth block is removed). */
 export function fileInputFromDraft(draft: TabDraft): {
   method: string
   url: string
   headers: RequestHeader[]
   query: { key: string; value: string }[]
   body: string
+  auth?: RequestAuth
 } {
   const headers = sentRows(draft.headers).map(({ key, value }) => ({ key, value }))
   const hasManualType = headers.some((h) => h.key.toLowerCase() === 'content-type')
@@ -84,6 +89,7 @@ export function fileInputFromDraft(draft: TabDraft): {
     headers,
     query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
     body: body ?? '',
+    auth: draft.auth,
   }
 }
 
