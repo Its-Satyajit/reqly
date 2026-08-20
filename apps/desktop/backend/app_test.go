@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/request"
 )
 

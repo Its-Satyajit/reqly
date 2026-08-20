@@ -6,7 +6,6 @@
 // the Go core, while browser dev mode uses fetchSender.
 
 import { serializeBody, type BodyType } from './body'
-import type { RequestAuth } from './collections'
 import type { ResolvedVariable } from './collections'
 
 export interface RequestHeader {
