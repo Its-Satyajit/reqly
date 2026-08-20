@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* The desktop host imports this stylesheet from outside its Vite root, where
+ * Tailwind's automatic content detection does not reach the shared package's
+ * sources. Scan them explicitly so utility classes are generated. */
+@source "./";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
