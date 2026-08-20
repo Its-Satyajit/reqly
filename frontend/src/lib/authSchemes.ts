@@ -54,7 +54,7 @@ export const OAUTH2_GRANTS: OAuth2Grant[] = [
 		fields: [
 			{ key: "token_url", label: "Token URL", placeholder: "https://idp.example.com/token" },
 			{ key: "client_id", label: "Client ID", placeholder: "client id" },
-			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true, optional: true },
+			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true },
 			{ key: "scope", label: "Scope", placeholder: "openid profile", optional: true },
 			{ key: "audience", label: "Audience", placeholder: "api://default", optional: true },
 			{ key: "token_name", label: "Token name", placeholder: "default", optional: true },
@@ -67,7 +67,7 @@ export const OAUTH2_GRANTS: OAuth2Grant[] = [
 			{ key: "authorization_url", label: "Authorization URL", placeholder: "https://idp.example.com/authorize" },
 			{ key: "token_url", label: "Token URL", placeholder: "https://idp.example.com/token" },
 			{ key: "client_id", label: "Client ID", placeholder: "client id" },
-			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true, optional: true },
+			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true },
 			{ key: "redirect_uri", label: "Redirect URI", placeholder: "https://app.example.com/callback", optional: true },
 			{ key: "scope", label: "Scope", placeholder: "openid profile", optional: true },
 			{ key: "audience", label: "Audience", placeholder: "api://default", optional: true },
@@ -81,7 +81,7 @@ export const OAUTH2_GRANTS: OAuth2Grant[] = [
 			{ key: "device_authorization_url", label: "Device Authorization URL", placeholder: "https://idp.example.com/device" },
 			{ key: "token_url", label: "Token URL", placeholder: "https://idp.example.com/token" },
 			{ key: "client_id", label: "Client ID", placeholder: "client id" },
-			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true, optional: true },
+			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true },
 			{ key: "scope", label: "Scope", placeholder: "openid profile", optional: true },
 			{ key: "audience", label: "Audience", placeholder: "api://default", optional: true },
 			{ key: "token_name", label: "Token name", placeholder: "default", optional: true },
@@ -138,7 +138,7 @@ export const AUTH_SCHEMES: AuthScheme[] = [
 				placeholder: '{"sub":"user","iss":"reqly"}',
 				optional: true,
 			},
-			{ key: "expiresIn", label: "Expires in", placeholder: "5m", help: "Go duration, e.g. 5m or 1h.", optional: true },
+			{ key: "expiresIn", label: "Expires in", placeholder: "3600", help: "Number of seconds the token stays valid (integer).", optional: true },
 		],
 	},
 	{
@@ -231,23 +231,14 @@ export const schemeFieldValue = (
 ): string => auth?.config?.[key] ?? ""
 
 /** isSensitiveKey reports whether a config key is a secret for the given
- * scheme (mirrors the core scheme's SecretKeys). */
+ * scheme. It derives from the scheme's field metadata (`secret: true`),
+ * which mirrors the core scheme's SecretKeys. */
 export const isSensitiveKey = (scheme: AuthSchemeId, key: string): boolean => {
-	switch (scheme) {
-		case "basic":
-		case "digest":
-			return key === "password"
-		case "bearer":
-			return key === "token"
-		case "apikey":
-			return key === "value"
-		case "jwt":
-			return key === "secret"
-		case "oauth2":
-			return key === "client_secret"
-		default:
-			return false
+	if (scheme === "oauth2") {
+		return OAUTH2_GRANTS.some((g) => g.fields.some((f) => f.key === key && f.secret))
 	}
+	const s = AUTH_SCHEMES.find((x) => x.id === scheme)
+	return s?.fields.some((f) => f.key === key && f.secret) ?? false
 }
 
 /** authWarnings lists the non-blocking save warnings for a request's own

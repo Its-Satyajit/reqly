@@ -22,6 +22,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -581,94 +582,38 @@ func TestWorkspaceServiceResolveSendInheritAppliesContainerAuth(t *testing.T) {
 	}
 }
 
-func TestWorkspaceServiceSaveRequestWritesDraftAuth(t *testing.T) {
-	dir := t.TempDir()
-	writeResolvableWorkspace(t, dir)
-	// A file with no own auth: the draft's typed auth becomes the file's.
-	path := "collections/users/own-auth.yaml"
-	full := `request:
+func TestWorkspaceServiceSaveRequestAuthSemantics(t *testing.T) {
+	cases := []struct {
+		name         string
+		initial      string
+		draftAuth    request.Auth
+		wantAuth     request.Auth
+		wantContains []string
+		wantNot      []string
+	}{
+		{
+			name: "typed draft auth becomes the file's",
+			initial: `request:
   method: GET
   url: own
-`
-	if err := os.WriteFile(filepath.Join(dir, path), []byte(full), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	svc := NewWorkspaceService(dir)
-	opened, err := svc.OpenRequest("users/own-auth")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	draft := opened.FileRequest
-	draft.Auth = request.Auth{Type: "bearer", Config: map[string]string{"token": "t0ken"}}
-	if _, err := svc.SaveRequest("users/own-auth", draft, opened.Version); err != nil {
-		t.Fatal(err)
-	}
-
-	reloaded, err := svc.OpenRequest("users/own-auth")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reloaded.FileRequest.Auth.Type != "bearer" || reloaded.FileRequest.Auth.Config["token"] != "t0ken" {
-		t.Fatalf("draft auth not written to file: %+v", reloaded.FileRequest.Auth)
-	}
-	raw, err := os.ReadFile(filepath.Join(dir, path))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"type: bearer", "token: t0ken"} {
-		if !strings.Contains(string(raw), want) {
-			t.Fatalf("saved file lost %q:\n%s", want, raw)
-		}
-	}
-}
-
-func TestWorkspaceServiceSaveRequestNoneWritesExplicitBlock(t *testing.T) {
-	dir := t.TempDir()
-	writeResolvableWorkspace(t, dir)
-	path := "collections/users/own-auth.yaml"
-	full := `request:
+`,
+			draftAuth:    request.Auth{Type: "bearer", Config: map[string]string{"token": "t0ken"}},
+			wantAuth:     request.Auth{Type: "bearer", Config: map[string]string{"token": "t0ken"}},
+			wantContains: []string{"type: bearer", "token: t0ken"},
+		},
+		{
+			name: "none writes an explicit block",
+			initial: `request:
   method: GET
   url: own
-`
-	if err := os.WriteFile(filepath.Join(dir, path), []byte(full), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	svc := NewWorkspaceService(dir)
-	opened, err := svc.OpenRequest("users/own-auth")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	draft := opened.FileRequest
-	draft.Auth = request.Auth{Type: "none"}
-	if _, err := svc.SaveRequest("users/own-auth", draft, opened.Version); err != nil {
-		t.Fatal(err)
-	}
-
-	reloaded, err := svc.OpenRequest("users/own-auth")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reloaded.FileRequest.Auth.Type != "none" {
-		t.Fatalf("auth = %+v, want explicit type: none", reloaded.FileRequest.Auth)
-	}
-	raw, err := os.ReadFile(filepath.Join(dir, path))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(raw), "type: none") {
-		t.Fatalf("saved file lacks explicit none block:\n%s", raw)
-	}
-}
-
-func TestWorkspaceServiceSaveRequestInheritRemovesAuth(t *testing.T) {
-	dir := t.TempDir()
-	writeResolvableWorkspace(t, dir)
-	path := "collections/users/own-auth.yaml"
-	full := `request:
+`,
+			draftAuth:    request.Auth{Type: "none"},
+			wantAuth:     request.Auth{Type: "none"},
+			wantContains: []string{"type: none"},
+		},
+		{
+			name: "inherit removes an existing block",
+			initial: `request:
   method: GET
   url: own
   auth:
@@ -676,40 +621,56 @@ func TestWorkspaceServiceSaveRequestInheritRemovesAuth(t *testing.T) {
     config:
       username: u
       password: p
-`
-	if err := os.WriteFile(filepath.Join(dir, path), []byte(full), 0o644); err != nil {
-		t.Fatal(err)
+`,
+			draftAuth:    request.Auth{},
+			wantAuth:     request.Auth{},
+			wantContains: []string{"url: own"},
+			wantNot:      []string{"auth:", "username:"},
+		},
 	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeResolvableWorkspace(t, dir)
+			path := "collections/users/own-auth.yaml"
+			if err := os.WriteFile(filepath.Join(dir, path), []byte(tc.initial), 0o644); err != nil {
+				t.Fatal(err)
+			}
 
-	svc := NewWorkspaceService(dir)
-	opened, err := svc.OpenRequest("users/own-auth")
-	if err != nil {
-		t.Fatal(err)
-	}
+			svc := NewWorkspaceService(dir)
+			opened, err := svc.OpenRequest("users/own-auth")
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	draft := opened.FileRequest
-	draft.Auth = request.Auth{}
-	if _, err := svc.SaveRequest("users/own-auth", draft, opened.Version); err != nil {
-		t.Fatal(err)
-	}
+			draft := opened.FileRequest
+			draft.Auth = tc.draftAuth
+			if _, err := svc.SaveRequest("users/own-auth", draft, opened.Version); err != nil {
+				t.Fatal(err)
+			}
 
-	reloaded, err := svc.OpenRequest("users/own-auth")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reloaded.FileRequest.Auth.Type != "" {
-		t.Fatalf("auth = %+v, want the block removed (Inherit)", reloaded.FileRequest.Auth)
-	}
-	raw, err := os.ReadFile(filepath.Join(dir, path))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(raw), "auth:") || strings.Contains(string(raw), "username:") {
-		t.Fatalf("saved file still holds an auth block:\n%s", raw)
-	}
-	// Non-auth fields survive the removal.
-	if !strings.Contains(string(raw), "url: own") {
-		t.Fatalf("saved file lost the request:\n%s", raw)
+			reloaded, err := svc.OpenRequest("users/own-auth")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(reloaded.FileRequest.Auth, tc.wantAuth) {
+				t.Fatalf("auth = %+v, want %+v", reloaded.FileRequest.Auth, tc.wantAuth)
+			}
+			raw, err := os.ReadFile(filepath.Join(dir, path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range tc.wantContains {
+				if !strings.Contains(string(raw), want) {
+					t.Fatalf("saved file lost %q:\n%s", want, raw)
+				}
+			}
+			for _, want := range tc.wantNot {
+				if strings.Contains(string(raw), want) {
+					t.Fatalf("saved file still holds %q:\n%s", want, raw)
+				}
+			}
+		})
 	}
 }
 

@@ -3,11 +3,13 @@ import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
 import { AuthEditor } from '../auth-editor/AuthEditor'
+import { authWarnings } from '../../lib/authSchemes'
 import { useRequestStore, useWorkspaceStore } from '../../stores'
 import { tabIsDirty } from '../../stores/useRequestStore'
 import { effectiveUrlFor } from '../../stores/useWorkspaceStore'
 import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
+import type { RequestAuth } from '../../lib/request'
 import type { ResolvedVariable } from '../../lib/collections'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
@@ -40,13 +42,14 @@ const bodyLanguage: Record<BodyType, 'json' | 'xml' | 'text'> = {
 
 /** saveWarnings validates a draft before it is persisted. Warnings do not
  * block a save — they flag values that would survive onto disk (unknown
- * method, malformed body) so the user can fix them instead of persisting
- * garbage. */
+ * method, malformed body, incomplete auth config) so the user can fix them
+ * instead of persisting garbage. */
 function saveWarnings(draft: {
   method: string
   url: string
   bodyType: BodyType
   body: string
+  auth?: RequestAuth
 }): string[] {
   const warnings: string[] = []
   if (!methods.includes(draft.method as (typeof methods)[number])) {
@@ -59,6 +62,7 @@ function saveWarnings(draft: {
       warnings.push('The JSON body is malformed and will be saved as-is.')
     }
   }
+  warnings.push(...authWarnings(draft.auth))
   return warnings
 }
 

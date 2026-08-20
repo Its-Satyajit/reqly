@@ -211,7 +211,7 @@ func (s *WorkspaceService) SaveRequest(path string, draft request.Request, expec
 	}
 
 	file := *entry.File
-	file.Request = mergedBuilderRequest(entry.File.Request, draft)
+	file.Request = mergeDraftRequest(entry.File.Request, draft)
 	if err := requestfile.Save(entry.Path, &file); err != nil {
 		return "", fmt.Errorf("save request file %q: %w", entry.Path, err)
 	}
@@ -223,13 +223,13 @@ func (s *WorkspaceService) SaveRequest(path string, draft request.Request, expec
 	return requestfile.Fingerprint(saved), nil
 }
 
-// mergedBuilderRequest carries the editable builder fields from draft onto the
+// mergeDraftRequest carries the editable fields from draft onto the
 // file's original request, preserving id, name, and timeout verbatim so a save
 // can never alter what the editor cannot edit. Auth IS editable: the draft's
 // auth is authoritative — a typed scheme writes its block, `type: none` writes
 // the explicit block, and an unset auth (Inherit) drops any existing block so
 // the file truly declares none.
-func mergedBuilderRequest(original, draft request.Request) request.Request {
+func mergeDraftRequest(original, draft request.Request) request.Request {
 	return request.Request{
 		ID:      original.ID,
 		Name:    original.Name,
@@ -263,7 +263,7 @@ func (s *WorkspaceService) ResolveSend(path string, draft request.Request) (*col
 	}
 	sub := *entry
 	file := *entry.File
-	file.Request = mergedBuilderRequest(entry.File.Request, draft)
+	file.Request = mergeDraftRequest(entry.File.Request, draft)
 	sub.File = &file
 	return ws.ResolveRequest(coll, chain, &sub)
 }

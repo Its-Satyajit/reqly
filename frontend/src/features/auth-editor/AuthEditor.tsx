@@ -3,6 +3,10 @@
 // controlled form over the request's own auth — every change flows through
 // onChange into the tab's draft, so auth is dirty-tracked, saved to the
 // file, and used at send like any other builder field.
+//
+// Values are plaintext-editable (per ADR 0011) — sensitive fields carry a
+// visual "secret" flag derived from the scheme metadata instead of being
+// masked, so they read naturally in the file and the form.
 
 import { Field } from "@base-ui/react/field"
 import { Input } from "../../components/ui/input"
@@ -18,6 +22,7 @@ import {
   schemeFor,
   oauth2GrantFor,
   isSensitiveKey,
+  type AuthField,
   type AuthSchemeId,
 } from "../../lib/authSchemes"
 import type { RequestAuth } from "../../lib/request"
@@ -91,45 +96,75 @@ export function AuthEditor({ auth, onChange, inherited }: AuthEditorProps) {
       ) : (
         <div className="flex flex-col gap-3">
           {fields.map((field) => (
-            <Field.Root key={field.key} className="flex flex-col gap-1">
-              <Label className="flex items-center gap-1.5">
-                {field.label}
-                {isSensitiveKey(scheme, field.key) && (
-                  <span className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-1 text-[9px] font-medium uppercase tracking-wide text-amber-600">
-                    secret
-                  </span>
-                )}
-              </Label>
-              {field.options ? (
-                <select
-                  value={schemeFieldValue(auth, field.key) || field.options[0]}
-                  onChange={(e) => setField(field.key, e.target.value)}
-                  className={`${selectClass} w-full sm:w-48`}
-                >
-                  {field.options.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <Input
-                  value={schemeFieldValue(auth, field.key)}
-                  onChange={(e) => setField(field.key, e.target.value)}
-                  placeholder={field.placeholder}
-                  type={field.secret ? "password" : "text"}
-                  spellCheck={false}
-                  autoComplete="off"
-                />
-              )}
-              {field.help ? (
-                <p className="text-[11px] text-muted-foreground/70">{field.help}</p>
-              ) : null}
-            </Field.Root>
+            <AuthFieldRow
+              key={field.key}
+              scheme={scheme}
+              field={field}
+              value={schemeFieldValue(auth, field.key)}
+              onValueChange={(v) => setField(field.key, v)}
+            />
           ))}
         </div>
       )}
     </div>
+  )
+}
+
+/** AuthFieldRow renders one auth config field: label (with secret flag),
+ * enum select or plaintext input, and optional help text. Shared by the
+ * per-scheme forms and the oauth2 grant form. */
+function AuthFieldRow({
+  scheme,
+  field,
+  value,
+  onValueChange,
+}: {
+  scheme: AuthSchemeId
+  field: AuthField
+  value: string
+  onValueChange: (value: string) => void
+}) {
+  return (
+    <Field.Root className="flex flex-col gap-1">
+      <Label className="flex items-center gap-1.5">
+        {field.label}
+        {isSensitiveKey(scheme, field.key) && <SecretBadge />}
+      </Label>
+      {field.options ? (
+        <select
+          value={value || field.options[0]}
+          onChange={(e) => onValueChange(e.target.value)}
+          className={`${selectClass} w-full sm:w-48`}
+        >
+          {field.options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <Input
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          placeholder={field.placeholder}
+          type="text"
+          spellCheck={false}
+          autoComplete="off"
+        />
+      )}
+      {field.help ? (
+        <p className="text-[11px] text-muted-foreground/70">{field.help}</p>
+      ) : null}
+    </Field.Root>
+  )
+}
+
+/** SecretBadge is the visual flag on sensitive auth fields. */
+function SecretBadge() {
+  return (
+    <span className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-1 text-[9px] font-medium uppercase tracking-wide text-amber-600">
+      secret
+    </span>
   )
 }
 
@@ -168,27 +203,13 @@ function OAuth2Fields({
       </Field.Root>
 
       {fields.map((field) => (
-        <Field.Root key={field.key} className="flex flex-col gap-1">
-          <Label className="flex items-center gap-1.5">
-            {field.label}
-            {isSensitiveKey("oauth2", field.key) && (
-              <span className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-1 text-[9px] font-medium uppercase tracking-wide text-amber-600">
-                secret
-              </span>
-            )}
-          </Label>
-          <Input
-            value={schemeFieldValue(auth, field.key)}
-            onChange={(e) => setField(field.key, e.target.value)}
-            placeholder={field.placeholder}
-            type={field.secret ? "password" : "text"}
-            spellCheck={false}
-            autoComplete="off"
-          />
-          {field.help ? (
-            <p className="text-[11px] text-muted-foreground/70">{field.help}</p>
-          ) : null}
-        </Field.Root>
+        <AuthFieldRow
+          key={field.key}
+          scheme="oauth2"
+          field={field}
+          value={schemeFieldValue(auth, field.key)}
+          onValueChange={(v) => setField(field.key, v)}
+        />
       ))}
 
       <button
