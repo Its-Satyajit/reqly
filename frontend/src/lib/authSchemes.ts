@@ -30,6 +30,9 @@ export interface AuthField {
 	/** Enum select options; a plain text input otherwise. */
 	options?: string[]
 	help?: string
+	/** Missing required fields surface as non-blocking save warnings. Defaults
+	 * to required; mark optional for fields the core defaults or tolerates. */
+	optional?: boolean
 }
 
 export interface AuthScheme {
@@ -51,10 +54,10 @@ export const OAUTH2_GRANTS: OAuth2Grant[] = [
 		fields: [
 			{ key: "token_url", label: "Token URL", placeholder: "https://idp.example.com/token" },
 			{ key: "client_id", label: "Client ID", placeholder: "client id" },
-			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true },
-			{ key: "scope", label: "Scope", placeholder: "openid profile" },
-			{ key: "audience", label: "Audience", placeholder: "api://default" },
-			{ key: "token_name", label: "Token name", placeholder: "default" },
+			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true, optional: true },
+			{ key: "scope", label: "Scope", placeholder: "openid profile", optional: true },
+			{ key: "audience", label: "Audience", placeholder: "api://default", optional: true },
+			{ key: "token_name", label: "Token name", placeholder: "default", optional: true },
 		],
 	},
 	{
@@ -64,11 +67,11 @@ export const OAUTH2_GRANTS: OAuth2Grant[] = [
 			{ key: "authorization_url", label: "Authorization URL", placeholder: "https://idp.example.com/authorize" },
 			{ key: "token_url", label: "Token URL", placeholder: "https://idp.example.com/token" },
 			{ key: "client_id", label: "Client ID", placeholder: "client id" },
-			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true },
-			{ key: "redirect_uri", label: "Redirect URI", placeholder: "https://app.example.com/callback" },
-			{ key: "scope", label: "Scope", placeholder: "openid profile" },
-			{ key: "audience", label: "Audience", placeholder: "api://default" },
-			{ key: "token_name", label: "Token name", placeholder: "default" },
+			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true, optional: true },
+			{ key: "redirect_uri", label: "Redirect URI", placeholder: "https://app.example.com/callback", optional: true },
+			{ key: "scope", label: "Scope", placeholder: "openid profile", optional: true },
+			{ key: "audience", label: "Audience", placeholder: "api://default", optional: true },
+			{ key: "token_name", label: "Token name", placeholder: "default", optional: true },
 		],
 	},
 	{
@@ -78,10 +81,10 @@ export const OAUTH2_GRANTS: OAuth2Grant[] = [
 			{ key: "device_authorization_url", label: "Device Authorization URL", placeholder: "https://idp.example.com/device" },
 			{ key: "token_url", label: "Token URL", placeholder: "https://idp.example.com/token" },
 			{ key: "client_id", label: "Client ID", placeholder: "client id" },
-			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true },
-			{ key: "scope", label: "Scope", placeholder: "openid profile" },
-			{ key: "audience", label: "Audience", placeholder: "api://default" },
-			{ key: "token_name", label: "Token name", placeholder: "default" },
+			{ key: "client_secret", label: "Client Secret", placeholder: "••••••••", secret: true, optional: true },
+			{ key: "scope", label: "Scope", placeholder: "openid profile", optional: true },
+			{ key: "audience", label: "Audience", placeholder: "api://default", optional: true },
+			{ key: "token_name", label: "Token name", placeholder: "default", optional: true },
 		],
 	},
 ]
@@ -113,6 +116,7 @@ export const AUTH_SCHEMES: AuthScheme[] = [
 				label: "Send as",
 				options: ["header", "query"],
 				help: "Header or query parameter; defaults to header.",
+				optional: true,
 			},
 		],
 	},
@@ -126,13 +130,15 @@ export const AUTH_SCHEMES: AuthScheme[] = [
 				label: "Algorithm",
 				options: ["HS256", "HS384", "HS512"],
 				help: "Defaults to HS256.",
+				optional: true,
 			},
 			{
 				key: "claims",
 				label: "Claims (JSON)",
 				placeholder: '{"sub":"user","iss":"reqly"}',
+				optional: true,
 			},
-			{ key: "expiresIn", label: "Expires in", placeholder: "5m", help: "Go duration, e.g. 5m or 1h." },
+			{ key: "expiresIn", label: "Expires in", placeholder: "5m", help: "Go duration, e.g. 5m or 1h.", optional: true },
 		],
 	},
 	{
@@ -141,12 +147,13 @@ export const AUTH_SCHEMES: AuthScheme[] = [
 		fields: [
 			{ key: "username", label: "Username", placeholder: "user@example.com" },
 			{ key: "password", label: "Password", placeholder: "••••••••", secret: true },
-			{ key: "realm", label: "Realm", placeholder: "challenge realm (optional)" },
+			{ key: "realm", label: "Realm", placeholder: "challenge realm (optional)", optional: true },
 			{
 				key: "algorithm",
 				label: "Algorithm",
 				options: ["MD5", "SHA-256"],
 				help: "Fallback when the server's challenge omits one.",
+				optional: true,
 			},
 		],
 	},
@@ -241,4 +248,26 @@ export const isSensitiveKey = (scheme: AuthSchemeId, key: string): boolean => {
 		default:
 			return false
 	}
+}
+
+/** authWarnings lists the non-blocking save warnings for a request's own
+ * auth: required config fields that are still empty. Inherit and No Auth
+ * never warn. */
+export const authWarnings = (auth: RequestAuth | undefined): string[] => {
+	if (!auth || !auth.type) return []
+	if (auth.type === "none") return []
+	const scheme = AUTH_SCHEMES.find((s) => s.id === auth.type)
+	if (!scheme) return []
+	const fields =
+		auth.type === "oauth2"
+			? (OAUTH2_GRANTS.find((g) => g.id === oauth2GrantFor(auth))?.fields ?? [])
+			: scheme.fields
+	const warnings: string[] = []
+	for (const field of fields) {
+		if (field.optional) continue
+		if (!auth.config?.[field.key]) {
+			warnings.push(`${field.label} is required for ${scheme.label} auth`)
+		}
+	}
+	return warnings
 }

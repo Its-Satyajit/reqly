@@ -13,6 +13,7 @@ import {
   ORDERED_AUTH_SCHEMES,
   AUTH_SCHEME_LABELS,
   authForScheme,
+  authWarnings,
   schemeFieldValue,
   schemeFor,
   oauth2GrantFor,
@@ -27,6 +28,9 @@ const selectClass =
 export interface AuthEditorProps {
   auth: RequestAuth | undefined
   onChange: (auth: RequestAuth | undefined) => void
+  /** The effective auth the request will use once inheritance is applied
+   * (read-only, shown under the Inherit state). */
+  inherited?: RequestAuth
 }
 
 /** scrollToAuthPanel focuses the sidebar's OAuth tokens panel. */
@@ -36,9 +40,10 @@ const scrollToAuthPanel = () => {
     ?.scrollIntoView({ behavior: "smooth", block: "nearest" })
 }
 
-export function AuthEditor({ auth, onChange }: AuthEditorProps) {
+export function AuthEditor({ auth, onChange, inherited }: AuthEditorProps) {
   const scheme = schemeFor(auth)
   const fields = AUTH_SCHEMES.find((s) => s.id === scheme)?.fields ?? []
+  const warnings = authWarnings(auth)
 
   const setScheme = (next: AuthSchemeId) => onChange(authForScheme(next, auth))
 
@@ -48,6 +53,17 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
 
   return (
     <div className="flex flex-col gap-4">
+      {warnings.length > 0 ? (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+          <p className="font-medium">Auth needs attention before send</p>
+          <ul className="mt-1 list-disc pl-4">
+            {warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-1">
         <Label>Auth type</Label>
         <select
@@ -64,10 +80,7 @@ export function AuthEditor({ auth, onChange }: AuthEditorProps) {
       </div>
 
       {scheme === "inherit" ? (
-        <p className="text-xs text-muted-foreground">
-          This request declares no own auth and will inherit from its
-          workspace / collection / folder. No auth block is written on save.
-        </p>
+        <InheritedAuth inherited={inherited} />
       ) : scheme === "none" ? (
         <p className="text-xs text-muted-foreground">
           Sends unauthenticated, even under an auth-bearing collection or
@@ -185,6 +198,46 @@ function OAuth2Fields({
       >
         Log in / manage tokens in the sidebar OAuth panel →
       </button>
+    </div>
+  )
+}
+
+/** InheritedAuth is the read-only view shown under the Inherit state: the
+ * auth the request will actually use once its workspace/collection/folder
+ * chain is applied. */
+function InheritedAuth({ inherited }: { inherited: RequestAuth | undefined }) {
+  if (!inherited || !inherited.type) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        No inherited auth — this request will send unauthenticated. No auth
+        block is written on save.
+      </p>
+    )
+  }
+
+  const schemeId = inherited.type as AuthSchemeId
+  const label = AUTH_SCHEME_LABELS[schemeId] ?? inherited.type
+  const hasSecrets = Object.keys(inherited.config ?? {}).some((k) =>
+    isSensitiveKey(schemeId, k),
+  )
+  const publicValues = Object.entries(inherited.config ?? {})
+    .filter(([k]) => k !== "grant_type" && !isSensitiveKey(schemeId, k))
+    .map(([k, v]) => `${k}: ${v}`)
+
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        Inherited from workspace / collection / folder
+      </p>
+      <p className="mt-1 text-xs text-foreground">
+        {label}
+        {publicValues.length > 0 ? ` · ${publicValues.join(", ")}` : ""}
+      </p>
+      {hasSecrets ? (
+        <p className="mt-1 text-[11px] text-muted-foreground/70">
+          Secret values are masked and only applied at send.
+        </p>
+      ) : null}
     </div>
   )
 }

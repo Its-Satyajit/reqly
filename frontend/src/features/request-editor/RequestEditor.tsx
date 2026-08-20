@@ -259,7 +259,11 @@ export function RequestEditor() {
             )}
           </div>
         ) : tab === 'auth' ? (
-          <AuthEditor auth={draft.auth} onChange={(auth) => patch({ auth })} />
+          <AuthEditor
+            auth={draft.auth}
+            onChange={(auth) => patch({ auth })}
+            inherited={meta?.auth}
+          />
         ) : tab === 'variables' ? (
           <VariablesView
             variables={meta?.variables ?? []}
