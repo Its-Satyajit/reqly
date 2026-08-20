@@ -167,7 +167,7 @@ export const AUTH_SCHEMES: AuthScheme[] = [
 
 /** AUTH_SCHEME_LABELS maps every picker state (including Inherit and No Auth)
  * to its display label. */
-export const AUTH_SCHEME_LABELS: Record<AuthSchemeId, string> = {
+export const AUTH_SCHEME_LABELS = {
 	inherit: "Inherit",
 	none: "No Auth",
 	basic: "Basic",
@@ -176,7 +176,7 @@ export const AUTH_SCHEME_LABELS: Record<AuthSchemeId, string> = {
 	jwt: "JWT",
 	digest: "Digest",
 	oauth2: "OAuth 2.0",
-}
+} satisfies Record<AuthSchemeId, string>
 
 /** DEFAULT_OAUTH2_GRANT is used when a request's oauth2 config has not pinned
  * grant_type (the core default). */

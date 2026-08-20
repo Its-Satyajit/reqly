@@ -18,7 +18,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -53,7 +53,7 @@ export function AuthEditor({ auth, onChange, inherited }: AuthEditorProps) {
   const setScheme = (next: AuthSchemeId) => onChange(authForScheme(next, auth))
 
   const setField = (key: string, value: string) => {
-    onChange({ type: scheme, config: { ...(auth?.config ?? {}), [key]: value } })
+    onChange({ type: scheme, config: { ...auth?.config, [key]: value } })
   }
 
   return (
@@ -182,7 +182,7 @@ function OAuth2Fields({
   const fields = OAUTH2_GRANTS.find((g) => g.id === grant)?.fields ?? []
 
   const setField = (key: string, value: string) => {
-    onChange({ type: "oauth2", config: { ...(auth?.config ?? {}), [key]: value } })
+    onChange({ type: "oauth2", config: { ...auth?.config, [key]: value } })
   }
 
   return (

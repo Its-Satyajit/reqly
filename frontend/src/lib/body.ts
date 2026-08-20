@@ -14,11 +14,11 @@ export const bodyTypes: { id: BodyType; label: string }[] = [
   { id: 'raw', label: 'Raw text' },
 ]
 
-const CONTENT_TYPES: Record<Exclude<BodyType, 'none' | 'form-data' | 'raw'>, string> = {
+const CONTENT_TYPES = {
   json: 'application/json',
   xml: 'application/xml',
   urlencoded: 'application/x-www-form-urlencoded',
-}
+} satisfies Record<Exclude<BodyType, 'none' | 'form-data' | 'raw'>, string>
 
 /** contentTypeFor returns the Content-Type header a body type implies, or ''
  * when the type has no canonical type (raw text stays untyped, multipart needs

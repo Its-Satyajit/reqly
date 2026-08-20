@@ -36,6 +36,7 @@ A change is done only when all unit and integration tests pass with no dummy fal
 - **Go core & CLI:** `go test ./...` (use `go test -race ./...` before shipping)
 - **CLI binary:** `go build -o reqly ./apps/cli`
 - **Frontend:** `cd apps/desktop/backend/frontend && npm run typecheck` (no test suite exists)
+- **Lint:** `npm run lint` from the repo root (oxlint + vendored anti-slop rules; must exit 0 — warnings from the four relaxed JSON-boundary rules are expected)
 - **Style:** gofmt; follow [`docs/reference/go.md`](./docs/reference/go.md)
 
 ## 6. Domain Glossary

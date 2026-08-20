@@ -17,7 +17,7 @@ export function headerRows(headers: HeaderMap | undefined): { key: string; value
   return rows
 }
 
-const EXTENSIONS: Record<string, string> = {
+const EXTENSIONS = {
   json: 'json',
   xml: 'xml',
   html: 'html',
@@ -25,7 +25,7 @@ const EXTENSIONS: Record<string, string> = {
   csv: 'csv',
   javascript: 'js',
   'x-www-form-urlencoded': 'txt',
-}
+} satisfies Record<string, string>
 
 /** suggestedFilename picks a download name for a response body: the
  * Content-Disposition filename when present, else `response.<ext>` derived
@@ -39,7 +39,8 @@ export function suggestedFilename(
   if (match?.[1]) return match[1]
   const type = contentType.split(';')[0].trim().toLowerCase()
   const media = type.split('/')[1] ?? ''
-  const ext = EXTENSIONS[media] ?? 'txt'
+  // SAFETY: EXTENSIONS is an open map; a miss falls back to the default ext.
+  const ext = EXTENSIONS[media as keyof typeof EXTENSIONS] ?? 'txt'
   return `response.${ext}`
 }
 

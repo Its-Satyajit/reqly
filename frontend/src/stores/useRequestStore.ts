@@ -65,20 +65,23 @@ export const emptyTabDraft = (): TabDraft => ({
   headers: [],
 })
 
-/** fileInputFromDraft serializes a tab's editable fields into the
- * file-owned request shape a save writes to disk: the body type + body/form
- * collapse into request.body, with the implied Content-Type pushed onto the
- * headers (unless a manual Content-Type is already present) so the file
- * round-trips through the editor. The draft's own auth rides along (Inherit
- * writes none, so an existing file auth block is removed). */
-export function fileInputFromDraft(draft: TabDraft): {
+/** FileDraftInput is the file-owned request shape a save writes to disk. */
+export interface FileDraftInput {
   method: string
   url: string
   headers: RequestHeader[]
   query: { key: string; value: string }[]
   body: string
   auth?: RequestAuth
-} {
+}
+
+/** fileInputFromDraft serializes a tab's editable fields into the
+ * file-owned request shape a save writes to disk: the body type + body/form
+ * collapse into request.body, with the implied Content-Type pushed onto the
+ * headers (unless a manual Content-Type is already present) so the file
+ * round-trips through the editor. The draft's own auth rides along (Inherit
+ * writes none, so an existing file auth block is removed). */
+export function fileInputFromDraft(draft: TabDraft): FileDraftInput {
   const headers = sentRows(draft.headers).map(({ key, value }) => ({ key, value }))
   const hasManualType = headers.some((h) => h.key.toLowerCase() === 'content-type')
   const { body, contentType } = serializeBody(draft)

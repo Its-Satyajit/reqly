@@ -31,14 +31,14 @@ const tabClass = (active: boolean) =>
       : 'text-muted-foreground hover:text-foreground'
   }`
 
-const bodyLanguage: Record<BodyType, 'json' | 'xml' | 'text'> = {
+const bodyLanguage = {
   none: 'text',
   json: 'json',
   xml: 'xml',
   'form-data': 'text',
   urlencoded: 'text',
   raw: 'text',
-}
+} satisfies Record<BodyType, 'json' | 'xml' | 'text'>
 
 /** saveWarnings validates a draft before it is persisted. Warnings do not
  * block a save — they flag values that would survive onto disk (unknown

@@ -93,7 +93,7 @@ export const wailsAuthAdapter: AuthAdapter = {
  */
 const normalizeVariables = (
 	v: Record<string, string | undefined> | null | undefined,
-): Record<string, string> => {
+) => {
 	const out: Record<string, string> = {};
 	for (const [k, val] of Object.entries(v ?? {})) {
 		if (typeof val === "string") out[k] = val;

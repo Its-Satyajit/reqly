@@ -13,7 +13,7 @@ const DEFAULT_CONFIG = JSON.stringify(
 	2,
 );
 
-function parseConfig(raw: string): Record<string, string> {
+function parseConfig(raw: string) {
 	const parsed: unknown = JSON.parse(raw);
 	if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
 		throw new Error("Config must be a JSON object");

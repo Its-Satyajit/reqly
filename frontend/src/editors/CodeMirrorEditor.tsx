@@ -17,14 +17,14 @@ export type EditorLanguage =
 	| "markdown"
 	| "text";
 
-const languageExtensions: Record<EditorLanguage, Extension> = {
+const languageExtensions = {
 	json: json(),
 	javascript: javascript(),
 	xml: xml(),
 	yaml: yaml(),
 	markdown: markdown(),
 	text: [],
-};
+} satisfies Record<EditorLanguage, Extension>;
 
 export interface CodeMirrorEditorProps {
 	value?: string;

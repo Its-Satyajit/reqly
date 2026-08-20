@@ -14,7 +14,12 @@
   "scripts": {
     "dev": "nub run --filter @reqly/desktop dev",
     "build": "nub run --filter @reqly/desktop build",
-    "typecheck": "nub run --recursive --if-present typecheck"
+    "typecheck": "nub run --recursive --if-present typecheck",
+    "lint": "oxlint"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.79.0",
+    "oxlint": "1.79.0"
   },
   "allowBuilds": {
     "esbuild": true
