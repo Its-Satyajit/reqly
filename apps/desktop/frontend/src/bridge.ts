@@ -178,6 +178,16 @@ type WailsOpened = NonNullable<
 	Awaited<ReturnType<typeof AppService.WorkspaceOpenRequest>>
 >;
 
+const normalizeAuth = (
+	a: { type?: string; config?: Record<string, string | undefined> } | null | undefined,
+): import("@reqly/frontend").RequestAuth | undefined =>
+	a
+		? {
+				type: a.type,
+				config: a.config ? normalizeVariables(a.config) : undefined,
+			}
+		: undefined;
+
 const normalizeOpenedRequest = (
 	o: WailsOpened,
 ): import("@reqly/frontend").OpenedRequest => ({
@@ -192,14 +202,7 @@ const normalizeOpenedRequest = (
 		})),
 		query: (o.request?.query ?? []).map(({ key, value }) => ({ key, value })),
 		body: o.request?.body ?? "",
-		auth: o.request?.auth
-			? {
-					type: o.request.auth.type,
-					config: o.request.auth.config
-						? normalizeVariables(o.request.auth.config)
-						: undefined,
-				}
-			: undefined,
+		auth: normalizeAuth(o.request?.auth),
 	},
 	fileRequest: {
 		method: o.fileRequest?.method ?? "GET",
@@ -210,6 +213,7 @@ const normalizeOpenedRequest = (
 		})),
 		query: (o.fileRequest?.query ?? []).map(({ key, value }) => ({ key, value })),
 		body: o.fileRequest?.body ?? "",
+		auth: normalizeAuth(o.fileRequest?.auth),
 	},
 	variables: (o.variables ?? []).map(({ name, value, scope }) => ({
 		name,
@@ -308,6 +312,7 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 				})),
 				query: (draft.query ?? []).map(({ key, value }) => ({ key, value })),
 				body: draft.body,
+				auth: draft.auth,
 			} as never,
 			expectedVersion,
 		);

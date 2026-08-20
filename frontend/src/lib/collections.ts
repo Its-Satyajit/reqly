@@ -128,14 +128,17 @@ export interface ResolvedRequestInput {
 
 /** FileRequestInput is the raw, unmerged file-owned request: the editor seed.
  * It carries only what the file declares (no inherited base URL, headers, or
- * auth), and only its builder fields are editable — everything else is
- * preserved verbatim on save. */
+ * auth), and its builder fields (url/method/headers/query/body) plus its own
+ * auth are editable — everything else is preserved verbatim on save. */
 export interface FileRequestInput {
   method: string
   url: string
   headers: { key: string; value: string }[]
   query: { key: string; value: string }[]
   body: string
+  /** The file's own auth (""/unset when the request declares none and inherits
+   * from its containers). */
+  auth?: RequestAuth
 }
 
 /** OpenedRequest is a request file combined with its inherited configuration
