@@ -16,7 +16,7 @@ build_out/
 /backend
 /cli
 /reqly
-
+.freebuff
 # Wails v3
 apps/desktop/backend/bin/
 apps/desktop/backend/build/linux/*.desktop
