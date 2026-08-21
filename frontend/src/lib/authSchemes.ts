@@ -18,6 +18,8 @@ export type AuthSchemeId =
 	| "jwt"
 	| "digest"
 	| "oauth2"
+	| "aws"
+	| "edgegrid"
 
 export interface AuthField {
 	/** The flat config key the scheme's core Apply reads. */
@@ -163,6 +165,27 @@ export const AUTH_SCHEMES: AuthScheme[] = [
 		label: "OAuth 2.0",
 		fields: [],
 	},
+	{
+		id: "aws",
+		label: "AWS SigV4",
+		fields: [
+			{ key: "accessKey", label: "Access key ID", placeholder: "AKIA..." },
+			{ key: "secretKey", label: "Secret access key", placeholder: "••••••••", secret: true },
+			{ key: "region", label: "Region", placeholder: "us-east-1" },
+			{ key: "service", label: "Service", placeholder: "execute-api" },
+			{ key: "sessionToken", label: "Session token", placeholder: "••••••••", secret: true, optional: true },
+		],
+	},
+	{
+		id: "edgegrid",
+		label: "Akamai EdgeGrid",
+		fields: [
+			{ key: "clientToken", label: "Client token", placeholder: "akab-..." },
+			{ key: "clientSecret", label: "Client secret", placeholder: "••••••••", secret: true },
+			{ key: "accessToken", label: "Access token", placeholder: "akab-..." , secret: true },
+			{ key: "host", label: "Host", placeholder: "akab-xxxx.luna.akamaiapis.net" },
+		],
+	},
 ]
 
 /** AUTH_SCHEME_LABELS maps every picker state (including Inherit and No Auth)
@@ -176,6 +199,8 @@ export const AUTH_SCHEME_LABELS = {
 	jwt: "JWT",
 	digest: "Digest",
 	oauth2: "OAuth 2.0",
+	aws: "AWS SigV4",
+	edgegrid: "Akamai EdgeGrid",
 } satisfies Record<AuthSchemeId, string>
 
 /** DEFAULT_OAUTH2_GRANT is used when a request's oauth2 config has not pinned
@@ -201,6 +226,8 @@ export const ORDERED_AUTH_SCHEMES: AuthSchemeId[] = [
 	"jwt",
 	"digest",
 	"oauth2",
+	"aws",
+	"edgegrid",
 ]
 
 /** schemeFor maps a request's own auth onto the picker state. */
