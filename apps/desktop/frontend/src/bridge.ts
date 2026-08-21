@@ -329,15 +329,15 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 		// Subscribe before returning so no streamed event is missed: the run
 		// executes on the core's goroutine and the first step can arrive while
 		// the binding's response is still in flight.
-		const offStep = Events.On(`reqly.run.${id}.step`, (e: { data: any }) => {
+		const offStep = Events.On(`reqly.run.${id}.step`, (e: { data: unknown }) => {
 			onEvent({ type: "step", step: normalizeRunStep(e.data as Parameters<typeof normalizeRunStep>[0]) });
 		});
-		const offDone = Events.On(`reqly.run.${id}.done`, (e: { data: any }) => {
+		const offDone = Events.On(`reqly.run.${id}.done`, (e: { data: unknown }) => {
 			onEvent({ type: "done", report: normalizeRunReport(e.data as Parameters<typeof normalizeRunReport>[0]) });
 			offStep();
 			offDone();
 		});
-		const offError = Events.On(`reqly.run.${id}.error`, (e: { data: any }) => {
+		const offError = Events.On(`reqly.run.${id}.error`, (e: { data: unknown }) => {
 			onEvent({ type: "error", message: String(e.data ?? "") });
 			offStep();
 			offDone();

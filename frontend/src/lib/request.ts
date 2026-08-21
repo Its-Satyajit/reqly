@@ -21,11 +21,15 @@ export interface RequestAuth {
 }
 
 /** A key-value row in the builder: enabled rows are sent, disabled are kept
- * but skipped; blank keys are dropped. */
+ * but skipped; blank keys are dropped. `file` holds a Git-native relative
+ * file path for `form-data` file entries (M21); `filename` overrides the
+ * uploaded file name. */
 export interface KeyValueRow {
 	key: string;
 	value: string;
 	enabled: boolean;
+	file?: string;
+	filename?: string;
 }
 
 export interface RequestInput {

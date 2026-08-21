@@ -49,17 +49,54 @@ export function encodeUrlEncoded(rows: KeyValueRow[]): string {
 }
 
 /** encodeFormData serializes rows into a multipart/form-data body with the
- * given boundary. Disabled rows and blank keys are dropped. */
+ * given boundary. Disabled rows and blank keys are dropped. File rows
+ * (`row.file`) produce a `filename` + `Content-Type` part; the file bytes
+ * are read at send time by the Go core (or bridge) from the Git-native path. */
 export function encodeFormData(rows: KeyValueRow[], boundary: string): string {
   const parts: string[] = []
   for (const row of rows) {
     if (!row.enabled || row.key.trim() === '') continue
-    parts.push(
-      `--${boundary}\r\nContent-Disposition: form-data; name="${row.key}"\r\n\r\n${row.value}`,
-    )
+    if (row.file) {
+      const filename = row.filename || row.file.split('/').pop() || 'file'
+      const contentType = mimeForFile(row.file) || 'application/octet-stream'
+      // File bytes are read at send; the placeholder is the file path.
+      parts.push(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${row.key}"; filename="${filename}"\r\nContent-Type: ${contentType}\r\n\r\n[FILE:${row.file}]`,
+      )
+    } else {
+      parts.push(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${row.key}"\r\n\r\n${row.value}`,
+      )
+    }
   }
   if (parts.length === 0) return ''
   return `${parts.join('\r\n')}\r\n--${boundary}--\r\n`
+}
+
+/** mimeForFile returns a mime type from a file extension, or '' if unknown. */
+function mimeForFile(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'json':
+      return 'application/json'
+    case 'xml':
+      return 'application/xml'
+    case 'txt':
+      return 'text/plain'
+    case 'html':
+      return 'text/html'
+    case 'csv':
+      return 'text/csv'
+    case 'png':
+      return 'image/png'
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg'
+    case 'pdf':
+      return 'application/pdf'
+    default:
+      return ''
+  }
 }
 
 export interface SerializedBody {
@@ -96,26 +133,27 @@ export function serializeBody(input: {
     case 'binary': {
       const body = input.body ?? ''
       if (body === '') return { contentType: '' }
-      return { body, contentType: contentTypeFor('binary') }
+      const mime = mimeForFile(body) || contentTypeFor('binary')
+      return { body, contentType: mime }
     }
     case 'graphql': {
       const query = input.graphqlQuery ?? input.body ?? ''
       if (query.trim() === '') return { contentType: '' }
-      let variables: unknown = {}
+      let variables: Record<string, unknown> = {}
       if (input.graphqlVariables?.trim()) {
         try {
-          variables = JSON.parse(input.graphqlVariables)
+          variables = JSON.parse(input.graphqlVariables) as Record<string, unknown>
         } catch {
           // Invalid JSON will be surfaced as save warning; send empty variables.
           variables = {}
         }
       } else if (input.form?.length) {
         // Fallback: variables from form rows (key-value) if provided.
-        const vars: Record<string, string> = {}
+        const vars = {} as Record<string, string>
         for (const row of input.form) {
           if (row.enabled && row.key.trim() !== '') vars[row.key] = row.value
         }
-        variables = vars
+        variables = vars as unknown as Record<string, unknown>
       }
       const body = JSON.stringify({ query, variables })
       return { body, contentType: contentTypeFor('graphql') }

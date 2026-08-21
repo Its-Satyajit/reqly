@@ -39,8 +39,8 @@ const bodyLanguage = {
   urlencoded: 'text',
   raw: 'text',
   binary: 'text',
-  graphql: 'text',
-} satisfies Record<BodyType, 'json' | 'xml' | 'text'>
+  graphql: 'graphql',
+} satisfies Record<BodyType, 'json' | 'xml' | 'text' | 'graphql'>
 
 /** saveWarnings validates a draft before it is persisted. Warnings do not
  * block a save — they flag values that would survive onto disk (unknown
@@ -51,6 +51,9 @@ function saveWarnings(draft: {
   url: string
   bodyType: BodyType
   body: string
+  form?: KeyValueRow[]
+  graphqlQuery?: string
+  graphqlVariables?: string
   auth?: RequestAuth
 }): string[] {
   const warnings: string[] = []
@@ -62,6 +65,26 @@ function saveWarnings(draft: {
       JSON.parse(draft.body)
     } catch {
       warnings.push('The JSON body is malformed and will be saved as-is.')
+    }
+  }
+  if (draft.bodyType === 'binary' && draft.body.trim() === '') {
+    warnings.push('Binary body requires a file path.')
+  }
+  if (draft.bodyType === 'graphql') {
+    const vars = draft.graphqlVariables ?? ''
+    if (vars.trim() !== '') {
+      try {
+        JSON.parse(vars)
+      } catch {
+        warnings.push('GraphQL variables are not valid JSON and will be saved as-is.')
+      }
+    }
+  }
+  if (draft.bodyType === 'form-data' && draft.form) {
+    for (const row of draft.form) {
+      if (row.enabled && row.file !== undefined && !row.file.trim()) {
+        warnings.push(`Form-data field "${row.key || 'unnamed'}" has an empty file path.`)
+      }
     }
   }
   warnings.push(...authWarnings(draft.auth))
@@ -121,6 +144,8 @@ export function RequestEditor() {
       bodyType: draft.bodyType,
       body: draft.body,
       form: sentRows(draft.form),
+      graphqlQuery: draft.graphqlQuery,
+      graphqlVariables: draft.graphqlVariables,
       env: meta?.env,
       requestPath,
       auth: draft.auth,
@@ -298,6 +323,51 @@ export function RequestEditor() {
                   keyPlaceholder="field"
                   valuePlaceholder="value"
                 />
+              </div>
+            ) : draft.bodyType === 'binary' ? (
+              <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-md border border-border p-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    value={draft.body}
+                    onChange={(e) => patch({ body: e.target.value })}
+                    placeholder="file path (relative to request file)"
+                    spellCheck={false}
+                    className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground"
+                  />
+                  <label className="shrink-0 cursor-pointer rounded-md border border-input bg-muted px-2 py-1 text-xs hover:bg-muted/80">
+                    Browse
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) patch({ body: file.name })
+                      }}
+                    />
+                  </label>
+                </div>
+                {draft.body && <p className="text-[11px] text-muted-foreground">File path is Git-native, relative to the request file’s collection. Read at send.</p>}
+              </div>
+            ) : draft.bodyType === 'graphql' ? (
+              <div className="flex min-h-0 flex-1 flex-col gap-2">
+                <div className="flex min-h-0 flex-1 flex-col gap-1">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Query</span>
+                  <CodeMirrorEditor
+                    value={draft.graphqlQuery ?? draft.body}
+                    language="graphql"
+                    onChange={(graphqlQuery) => patch({ graphqlQuery })}
+                    className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
+                  />
+                </div>
+                <div className="flex min-h-0 flex-1 flex-col gap-1">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Variables (JSON)</span>
+                  <CodeMirrorEditor
+                    value={draft.graphqlVariables ?? '{\n  \n}'}
+                    language="json"
+                    onChange={(graphqlVariables) => patch({ graphqlVariables })}
+                    className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
+                  />
+                </div>
               </div>
             ) : (
               <CodeMirrorEditor

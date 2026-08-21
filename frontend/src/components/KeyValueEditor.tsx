@@ -39,13 +39,36 @@ export function KeyValueEditor({
             spellCheck={false}
             className={`${inputClass} min-w-0 flex-1 font-mono ${row.enabled ? '' : 'opacity-50'}`}
           />
-          <input
-            value={row.value}
-            onChange={(e) => update(i, { value: e.target.value })}
-            placeholder={valuePlaceholder}
-            spellCheck={false}
-            className={`${inputClass} min-w-0 flex-1 font-mono ${row.enabled ? '' : 'opacity-50'}`}
-          />
+          {row.file !== undefined ? (
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              <input
+                value={row.file}
+                onChange={(e) => update(i, { file: e.target.value })}
+                placeholder="file path"
+                spellCheck={false}
+                className={`${inputClass} min-w-0 flex-1 font-mono ${row.enabled ? '' : 'opacity-50'}`}
+              />
+              <input
+                value={row.filename ?? ''}
+                onChange={(e) => update(i, { filename: e.target.value || undefined })}
+                placeholder="filename"
+                spellCheck={false}
+                className={`${inputClass} w-24 font-mono ${row.enabled ? '' : 'opacity-50'}`}
+              />
+              <Button type="button" variant="ghost" size="icon-xs" title="Use text value" onClick={() => update(i, { file: undefined, filename: undefined })}>T</Button>
+            </div>
+          ) : (
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              <input
+                value={row.value}
+                onChange={(e) => update(i, { value: e.target.value })}
+                placeholder={valuePlaceholder}
+                spellCheck={false}
+                className={`${inputClass} min-w-0 flex-1 font-mono ${row.enabled ? '' : 'opacity-50'}`}
+              />
+              <Button type="button" variant="ghost" size="icon-xs" title="Use file" onClick={() => update(i, { file: '', filename: undefined })}>F</Button>
+            </div>
+          )}
           <Button
             type="button"
             variant="ghost"
