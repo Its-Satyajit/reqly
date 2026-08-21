@@ -9,7 +9,7 @@ import { tabIsDirty } from '../../stores/useRequestStore'
 import { effectiveUrlFor } from '../../stores/useWorkspaceStore'
 import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
-import type { RequestAuth } from '../../lib/request'
+import type { KeyValueRow, RequestAuth } from '../../lib/request'
 import type { ResolvedVariable } from '../../lib/collections'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
