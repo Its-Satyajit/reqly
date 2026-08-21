@@ -115,7 +115,16 @@ The in-memory, editable auth state of a **Request Tab** — one of **Inherit** (
 The effective auth a request receives from its container chain (workspace → collection → folder) under **Auth Inheritance**, shown read-only in the **Auth Editor** when the request has no own auth — mirroring the inherited-headers group in the Headers tab.
 
 ### Body Type
-A request-body kind selected in the builder's Body tab: **none / JSON / XML / form-data / urlencoded / raw text**. JSON/XML/raw use a CodeMirror editor with the matching language; form-data and urlencoded use key-value rows. Selecting a type sets the appropriate `Content-Type` (or `multipart/form-data` with a generated boundary) unless the user set one manually.
+A request-body kind selected in the builder's Body tab: **none / JSON / XML / form-data / urlencoded / raw text / binary / GraphQL**. JSON/XML/raw/GraphQL use a CodeMirror editor with the matching language; form-data and urlencoded use key-value rows (form-data rows can carry a file). Binary is a single file picker. Selecting a type sets the appropriate `Content-Type` (or `multipart/form-data` with a generated boundary) unless the user set one manually.
+
+### Binary Body
+A body kind for single-file uploads (`BodyType: binary`): a file picker (and drag-drop) stores a Git-native relative file path (`request.body: { file: "./path" }`), `serializeBody` reads the file at send and sends its bytes with `Content-Type: application/octet-stream` (or the file’s mime).
+
+### GraphQL Body
+A body kind for GraphQL (`BodyType: graphql`): two editors — query (`graphql` lang) and variables JSON — stored as structured `request.body: { query, variables }`, `serializeBody` JSON-stringifies them to `{"query","variables"}` with `Content-Type: application/json`.
+
+### File Upload
+Attaching a file to a request: `binary` as a single file body, or `form-data` rows with `file` + optional `filename` (each row toggles between text value and file path), producing `multipart/form-data` via `boundaryFor` (`frontend/src/lib/body.ts:32`). File paths are Git-native relative and resolved at send time.
 
 ### Response View
 One of the desktop response viewer's tabs: **Raw** (as-received), **Pretty** (JSON pretty-printed, XML re-indented when parseable), **Headers** (key/value table), **Tree** (recursive expand/collapse JSON tree), or **Cookies** (parsed `Set-Cookie` response headers). A search box filters the active view; the JSONPath query bar replaces the body area with query matches while active.
