@@ -114,6 +114,39 @@ func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.Sen
 	if err != nil {
 		return nil, err
 	}
+	attachHistoryCookies := func(req *request.Request) {
+		if s.history == nil {
+			return
+		}
+		cookies, err := s.history.Cookies(context.Background(), opts.Env)
+		if err != nil || len(cookies) == 0 {
+			return
+		}
+		isHTTPS := len(req.URL) >= 8 && req.URL[:8] == "https://"
+		matched := history.FilterCookies(cookies, req.URL, isHTTPS)
+		if len(matched) == 0 {
+			return
+		}
+		var parts []string
+		for _, c := range matched {
+			parts = append(parts, c.Name+"="+c.Value)
+		}
+		cookieVal := ""
+		for i, p := range parts {
+			if i == 0 {
+				cookieVal = p
+			} else {
+				cookieVal += "; " + p
+			}
+		}
+		for i, h := range req.Headers {
+			if h.Key == "Cookie" || h.Key == "cookie" {
+				req.Headers[i].Value = h.Value + "; " + cookieVal
+				return
+			}
+		}
+		req.Headers = append(req.Headers, request.Header{Key: "Cookie", Value: cookieVal})
+	}
 	var resp *core.SendResponse
 	if opts.RequestPath != "" {
 		resolved, err := s.workspace.ResolveSend(opts.RequestPath, r)
@@ -121,6 +154,7 @@ func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.Sen
 			return nil, err
 		}
 		layerVars(vars, resolved.Vars)
+		attachHistoryCookies(&resolved.Request)
 		resp, err = s.requests.Send(resolved.Request, vars)
 		if err != nil {
 			return nil, err
@@ -128,6 +162,7 @@ func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.Sen
 		s.recordHistory(opts.RequestPath, resolved.Request, resp, opts.Env)
 		return resp, nil
 	}
+	attachHistoryCookies(&r)
 	resp, err = s.requests.Send(r, vars)
 	if err != nil {
 		return nil, err
