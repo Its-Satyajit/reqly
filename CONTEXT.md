@@ -159,6 +159,21 @@ The desktop surface for local history: sidebar **History** entry → table (`tim
 ### History Adapter
 The frontend seam through which the desktop UI reads history and triggers replay/clear. Host injects a Wails-backed adapter; browser dev mode uses a read-only fallback, mirroring the request/auth/environment adapter pattern.
 
+### Dynamic Value
+A generated, non-persistent value produced at request-send time via a template tag (e.g. `{{$uuid}}`), distinct from `variables` scopes. Generated per occurrence (each `{{$tag}}` placeholder in one request yields a fresh value) and interpolated through the same `variables.Interpolate` pass that resolves URLs, headers, query params, bodies, auth config, and scripting scopes. Stored in history as the resolved bytes, not the raw tag; the request file on disk retains the raw `{{$tag}}` template.
+
+### Template Tag
+The `{{$name}}` syntax for dynamic values (Postman-compatible `{{$` prefix, zero-arg for M23; space-separated args reserved for future parametric tags e.g. `{{$randomInt 1 100}}`). Five built-ins for M23: `{{$uuid}}` (v4), `{{$timestamp}}` (unix sec), `{{$isoTimestamp}}` (ISO8601), `{{$randomInt}}` (0-1000), `{{$randomString}}` (8-char alphanumeric). Unknown tags are left literal with a non-blocking `saveWarnings` ("Unknown dynamic tag `{{$unknown}}` will be sent as-is"); args are ignored in M23 and generate the default range; custom tags are out of scope for M23.
+
+### Tag Generator
+The internal `variables` seam that produces dynamic values: `Generate(tag string, args []string) (string, bool)` where `bool` indicates a known tag. The default generator uses `uuid.New`, `time.Now`, `math/rand`; tests inject a `fixedGenerator` for deterministic `FixedUUID` etc. Custom `RegisterTag` is deferred — the interface is in place for a future plugin registry while M23 ships only the 5 built-ins.
+
+### Dynamic Tag Picker
+The desktop affordance for inserting template tags: a `{{$}}` pill button beside URL/Body/Params/Headers editors plus `{{$` autocomplete (filtering the 5 tags) — typing inserts the tag at the cursor. History stores resolved values, so the picker never persists beyond insertion; the tag remains as `{{$name}}` in the request file.
+
+### Parametric Tag (deferred)
+Space-separated args for a tag (`{{$randomInt min max}}`, `{{$randomString length}}`) — parsed but ignored in M23 (generates default). Tracks as M23b follow-up; the regex `\{\{\$(.*?)\}\}` already captures args for future use without changing `Interpolate` seams.
+
 ### Workspace
 The top-level Git-native unit of Reqly: a directory containing a `reqly.yaml` descriptor plus optional `collections/` and `environments/` directories. Discovered by walking up from the current directory to the nearest descriptor. It owns the workspace-level configuration (base URL, headers, auth, variables, active environment) that its collections inherit.
 
