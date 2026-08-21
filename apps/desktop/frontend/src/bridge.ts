@@ -179,7 +179,7 @@ type WailsOpened = NonNullable<
 >;
 
 const normalizeAuth = (
-	a: { type?: string; config?: Record<string, string | undefined> } | null | undefined,
+	a: { type?: string; config?: Record<string, string | undefined> | null } | null | undefined,
 ): import("@reqly/frontend").RequestAuth | undefined =>
 	a
 		? {
