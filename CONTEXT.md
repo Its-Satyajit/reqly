@@ -96,11 +96,17 @@ The one-shot local HTTP listener that receives the provider's authorization redi
 ### Refresh Token Grant
 RFC 6749 §6 renewal: a form POST to `token_url` with `grant_type=refresh_token` and the stored `refresh_token`, using the cached credentials. The response yields a new access token and may carry a new refresh token (rotation — persisted when present; the previous one is kept otherwise). `reqly auth login` and the engine's refresh paths use it so expired tokens recover without reopening the browser.
 
+### AWS Signature V4
+A per-request signing scheme (`internal/auth/aws.go`, `auth.type: aws`) for AWS APIs: HMAC-SHA256 over the canonical request (method, URI, query, headers, payload hash) with `accessKey`/`secretKey`/`region`/`service` (plus optional `sessionToken` for STS), producing `Authorization: AWS4-HMAC-SHA256 ...` + `X-Amz-Date`/`X-Amz-Content-Sha256`.
+
+### Akamai EdgeGrid
+A per-request signing scheme (`internal/auth/edgegrid.go`, `auth.type: edgegrid`) for Akamai OPEN APIs: HMAC-SHA256 over timestamp + method + host + path with `clientToken`/`clientSecret`/`accessToken`/`host`, producing `Authorization: EG1-HMAC-SHA256 ...`.
+
 ### Request Builder Tabs
 The desktop request editor's tab bar (**Params / Headers / Auth / Body / Variables**) from milestones 14 and 19. Params and Headers are key-value row editors (add/remove/toggle-enabled); the Auth tab edits the request's own auth (see **Auth Editor**); the Body tab holds a body-type picker. The send path maps the tabs onto `request.Request{Query, Headers, Auth, Body}`; the engine's existing merge semantics apply (query params override the URL's, a manual `Content-Type` header beats the body type's default).
 
 ### Auth Editor
-The desktop request-editor surface (the **Auth** tab) for editing a request's own authentication. It shows a scheme picker (**Inherit / No Auth / Basic / Bearer / API Key / JWT / Digest / OAuth 2.0**) with per-scheme field forms; sensitive config values are plaintext inputs flagged as sensitive, mirroring the Git-native request file. Distinct from the sidebar **Auth Panel**, which manages the workspace's OAuth token lifecycle (login/status/logout); the editor edits grant *config* only.
+The desktop request-editor surface (the **Auth** tab) for editing a request's own authentication. It shows a scheme picker (**Inherit / No Auth / Basic / Bearer / API Key / JWT / Digest / OAuth 2.0 / AWS SigV4 / Akamai EdgeGrid**) with per-scheme field forms; sensitive config values are plaintext inputs flagged as sensitive, mirroring the Git-native request file. Distinct from the sidebar **Auth Panel**, which manages the workspace's OAuth token lifecycle (login/status/logout); the editor edits grant *config* only.
 
 ### Auth Draft
 The in-memory, editable auth state of a **Request Tab** — one of **Inherit** (the request declares no auth and receives its containers'), **No Auth** (`auth.type: none`, which explicitly disables inherited auth), or a typed scheme with config values. It is dirty-tracked like any builder field and written to the file on save: choosing **Inherit** *removes* any existing auth block, so the file truly has none.
