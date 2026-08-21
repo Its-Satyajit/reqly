@@ -26,7 +26,7 @@ import { AppService } from "../bindings/github.com/Its-Satyajit/reqly/apps/deskt
 export const wailsSender: RequestSender = async (
 	req: RequestInput,
 ): Promise<ResponseData> => {
-	const headers = (req.headers ?? []).map(({ key, value }) => ({ key, value }));
+	const headers = (req.headers ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value }));
 	const { body, contentType } = serializeBody(req);
 	const hasManualType = headers.some(
 		(h) => h.key.toLowerCase() === "content-type",
@@ -39,7 +39,7 @@ export const wailsSender: RequestSender = async (
 			method: req.method,
 			url: req.url,
 			headers,
-			query: (req.params ?? []).map(({ key, value }) => ({ key, value })),
+			query: (req.params ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
 			body,
 			auth: req.auth,
 		} as never,
@@ -74,7 +74,7 @@ export const wailsAuthAdapter: AuthAdapter = {
 		}
 		return {
 			backend: status.backend,
-			tokens: (status.tokens ?? []).map((t) => ({
+			tokens: (status.tokens ?? []).map((t: NonNullable<typeof status.tokens>[number]) => ({
 				endpoint: t.endpoint,
 				grantType: t.grantType,
 				expiry: t.expiry,
@@ -109,7 +109,7 @@ export const wailsEnvAdapter: EnvAdapter = {
 		}
 		return {
 			active: data.active ?? "",
-			environments: (data.environments ?? []).map((e) => ({
+			environments: (data.environments ?? []).map((e: { name: string; description?: string; variables?: Record<string, string | undefined> | null; secrets?: string[] }) => ({
 				name: e.name,
 				description: e.description ?? "",
 				variables: normalizeVariables(e.variables),
@@ -196,26 +196,26 @@ const normalizeOpenedRequest = (
 	request: {
 		method: o.request?.method ?? "GET",
 		url: o.request?.url ?? "",
-		headers: (o.request?.headers ?? []).map(({ key, value }) => ({
+		headers: (o.request?.headers ?? []).map(({ key, value }: { key: string; value: string }) => ({
 			key,
 			value,
 		})),
-		query: (o.request?.query ?? []).map(({ key, value }) => ({ key, value })),
+		query: (o.request?.query ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
 		body: o.request?.body ?? "",
 		auth: normalizeAuth(o.request?.auth),
 	},
 	fileRequest: {
 		method: o.fileRequest?.method ?? "GET",
 		url: o.fileRequest?.url ?? "",
-		headers: (o.fileRequest?.headers ?? []).map(({ key, value }) => ({
+		headers: (o.fileRequest?.headers ?? []).map(({ key, value }: { key: string; value: string }) => ({
 			key,
 			value,
 		})),
-		query: (o.fileRequest?.query ?? []).map(({ key, value }) => ({ key, value })),
+		query: (o.fileRequest?.query ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
 		body: o.fileRequest?.body ?? "",
 		auth: normalizeAuth(o.fileRequest?.auth),
 	},
-	variables: (o.variables ?? []).map(({ name, value, scope }) => ({
+	variables: (o.variables ?? []).map(({ name, value, scope }: { name: string; value: string; scope: string }) => ({
 		name,
 		value,
 		scope,
@@ -285,7 +285,7 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 		return {
 			name: tree.name ?? "",
 			path: tree.path ?? "",
-			collections: (tree.collections ?? []).map((c) => ({
+			collections: (tree.collections ?? []).map((c: WailsCollection) => ({
 				name: c.name,
 				path: c.path,
 				folders: (c.folders ?? []).map(normalizeFolder),
@@ -306,11 +306,11 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 			{
 				method: draft.method,
 				url: draft.url,
-				headers: (draft.headers ?? []).map(({ key, value }) => ({
+				headers: (draft.headers ?? []).map(({ key, value }: { key: string; value: string }) => ({
 					key,
 					value,
 				})),
-				query: (draft.query ?? []).map(({ key, value }) => ({ key, value })),
+				query: (draft.query ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
 				body: draft.body,
 				auth: draft.auth,
 			} as never,
@@ -329,15 +329,15 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 		// Subscribe before returning so no streamed event is missed: the run
 		// executes on the core's goroutine and the first step can arrive while
 		// the binding's response is still in flight.
-		const offStep = Events.On(`reqly.run.${id}.step`, (e) => {
+		const offStep = Events.On(`reqly.run.${id}.step`, (e: { data: unknown }) => {
 			onEvent({ type: "step", step: normalizeRunStep(e.data) });
 		});
-		const offDone = Events.On(`reqly.run.${id}.done`, (e) => {
+		const offDone = Events.On(`reqly.run.${id}.done`, (e: { data: unknown }) => {
 			onEvent({ type: "done", report: normalizeRunReport(e.data) });
 			offStep();
 			offDone();
 		});
-		const offError = Events.On(`reqly.run.${id}.error`, (e) => {
+		const offError = Events.On(`reqly.run.${id}.error`, (e: { data: unknown }) => {
 			onEvent({ type: "error", message: String(e.data ?? "") });
 			offStep();
 			offDone();

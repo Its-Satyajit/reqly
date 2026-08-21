@@ -64,7 +64,7 @@ jobs:
             go install github.com/wailsapp/wails/v3/cmd/wails3@$WAILS_VERSION
           fi
           cd apps/desktop/backend
-          $GOBIN/wails3 generate bindings -clean=true -ts -i
+          $GOBIN/wails3 generate bindings -d ../frontend/bindings -clean=true -ts -i
       - run: nub ci
       - run: nub run -r --if-present typecheck
       - run: nub run --filter @reqly/desktop build
