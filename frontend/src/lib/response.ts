@@ -223,6 +223,67 @@ export interface SearchResult {
   parts: SearchPart[]
 }
 
+export interface TableData {
+  columns: string[]
+  rows: string[][]
+}
+
+/** isTabular reports whether a body should offer the Table view (JSON array-of-objects or CSV). */
+export function isTabular(body: string, ct: string): boolean {
+  if (ct.includes('csv')) return true
+  const t = body.trim()
+  if (!t) return false
+  if (t.startsWith('[')) {
+    try {
+      const v = JSON.parse(t)
+      return Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0] !== null && !Array.isArray(v[0])
+    } catch {
+      return false
+    }
+  }
+  // heuristic CSV: contains comma and newline, first line has comma
+  if (t.includes(',') && t.includes('\n')) {
+    const first = t.split('\n')[0] ?? ''
+    return first.includes(',')
+  }
+  return false
+}
+
+/** parseTable returns columns + rows for a tabular body, or null when not tabular. Caps at 1000 rows. */
+export function parseTable(body: string, ct: string): TableData | null {
+  const t = body.trim()
+  if (ct.includes('csv') || (!t.startsWith('[') && t.includes(','))) {
+    // CSV
+    const lines = t.split('\n').filter((l) => l.trim() !== '')
+    if (lines.length === 0) return null
+    const rows = lines.map((l) => l.split(',').map((c) => c.trim()))
+    const columns = rows.shift() ?? []
+    return { columns, rows: rows.slice(0, 1000) }
+  }
+  try {
+    const v = JSON.parse(t)
+    if (!Array.isArray(v) || v.length === 0) return null
+    const cols = new Set<string>()
+    for (const row of v.slice(0, 1000)) {
+      if (typeof row === 'object' && row !== null) {
+        for (const k of Object.keys(row as Record<string, unknown>)) cols.add(k)
+      }
+    }
+    const columns = [...cols]
+    const rows = (v as Record<string, unknown>[]).slice(0, 1000).map((r) => columns.map((c) => String(r[c] ?? '')))
+    return { columns, rows }
+  } catch {
+    return null
+  }
+}
+
+export function binaryPreviewType(ct: string): 'image' | 'pdf' | 'hex' | 'none' {
+  if (ct.startsWith('image/')) return 'image'
+  if (ct.includes('pdf')) return 'pdf'
+  if (ct && !ct.includes('json') && !ct.includes('xml') && !ct.includes('text') && !ct.includes('csv')) return 'hex'
+  return 'none'
+}
+
 /** searchBody splits text into match/non-match segments for highlighting.
  * Returns null when there is nothing to search. */
 export function searchBody(text: string, query: string): SearchResult | null {

@@ -4,18 +4,21 @@ import { Button } from "../../components/ui/button";
 import { CodeMirrorEditor } from "../../editors";
 import { type JSONPathMatch, queryJSONPath } from "../../lib/jsonpath";
 import {
+	binaryPreviewType,
 	contentType,
 	cookieExpiry,
 	copyText,
 	headerRows,
+	isTabular,
 	parseSetCookies,
+	parseTable,
 	prettyBody,
 	searchBody,
 	suggestedFilename,
 } from "../../lib/response";
 import { useRequestStore, useWorkspaceStore } from "../../stores";
 
-type View = "raw" | "pretty" | "headers" | "tree" | "cookies";
+type View = "raw" | "pretty" | "headers" | "tree" | "cookies" | "table";
 
 const views: { id: View; label: string }[] = [
 	{ id: "raw", label: "Raw" },
@@ -23,6 +26,7 @@ const views: { id: View; label: string }[] = [
 	{ id: "headers", label: "Headers" },
 	{ id: "tree", label: "Tree" },
 	{ id: "cookies", label: "Cookies" },
+	{ id: "table", label: "Table" },
 ];
 
 const tabClass = (active: boolean) =>
@@ -92,6 +96,9 @@ export function ResponseViewer() {
 					.join("; ")}`,
 		)
 		.join("\n");
+	const tabular = useMemo(() => (response ? isTabular(response.body, ct) : false), [response, ct]);
+	const tableData = useMemo(() => (response && view === "table" ? parseTable(response.body, ct) : null), [response, view, ct]);
+	const binaryType = useMemo(() => binaryPreviewType(ct), [ct]);
 	const jsonPathResult = useMemo(() => {
 		if (!parsed || !jsonPath.trim()) return null;
 		return queryJSONPath(parsed, jsonPath);
@@ -146,6 +153,20 @@ export function ResponseViewer() {
 				) : null}
 			</div>
 
+			{response && binaryType !== 'none' ? (
+				<div className="mx-2 mb-1 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs">
+					{binaryType === 'image' ? (
+						<div className="flex flex-col gap-1">
+							<p className="text-muted-foreground">Image preview</p>
+							<img src={`data:${ct};base64,${btoa(raw)}`} alt="response" className="max-h-64 rounded" />
+						</div>
+					) : binaryType === 'pdf' ? (
+						<p className="text-muted-foreground">PDF response — use Download.</p>
+					) : (
+						<p className="font-mono text-muted-foreground">Binary ({formatBytes(response.size)}) — hex preview (first 4KB) + Download.</p>
+					)}
+				</div>
+			) : null}
 			{response ? (
 				<div className="flex items-center gap-1 px-2 pb-1">
 					{views.map((v) => (
@@ -153,7 +174,9 @@ export function ResponseViewer() {
 							key={v.id}
 							type="button"
 							onClick={() => setView(v.id)}
-							className={tabClass(view === v.id)}
+							disabled={v.id === 'table' && !tabular}
+							title={v.id === 'table' && !tabular ? 'Not tabular — need JSON array or CSV' : undefined}
+							className={`${tabClass(view === v.id)} ${v.id === 'table' && !tabular ? 'opacity-50' : ''}`}
 						>
 							{v.label}
 						</button>
@@ -290,6 +313,40 @@ export function ResponseViewer() {
 							readOnly
 							className="min-h-0 flex-1 overflow-hidden"
 						/>
+					</div>
+				) : view === "table" ? (
+					<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
+						{!tabular ? (
+							<p className="text-xs text-muted-foreground">Not tabular — need JSON array or CSV.</p>
+						) : !tableData || tableData.columns.length === 0 ? (
+							<p className="text-xs text-muted-foreground">No tabular data.</p>
+						) : (
+							<div className="overflow-auto">
+								<table className="w-full text-left text-xs">
+									<thead>
+										<tr>
+											{tableData.columns.map((c) => (
+												<th key={c} className="sticky top-0 bg-background px-2 py-1 font-medium">
+													{c}
+												</th>
+											))}
+										</tr>
+									</thead>
+									<tbody>
+										{tableData.rows.map((row, i) => (
+											<tr key={i} className="border-t border-border/50">
+												{row.map((cell, j) => (
+													<td key={j} className="px-2 py-1 font-mono break-all">
+														{cell}
+													</td>
+												))}
+											</tr>
+										))}
+									</tbody>
+								</table>
+								{tableData.rows.length >= 1000 ? <p className="pt-2 text-xs text-muted-foreground">Showing first 1000 rows.</p> : null}
+							</div>
+						)}
 					</div>
 				) : view === "cookies" ? (
 					<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">

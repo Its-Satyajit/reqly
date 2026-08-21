@@ -7,6 +7,8 @@ package core
 
 import (
 	"context"
+	"net/http"
+	"time"
 
 	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
@@ -27,9 +29,45 @@ func NewHistoryService(store *history.Store, client *request.Client) *HistorySer
 	return &HistoryService{store: store, client: client}
 }
 
-// Record persists an entry.
+// Record persists an entry and ingests Set-Cookie into the jar.
 func (s *HistoryService) Record(ctx context.Context, e *history.Entry) error {
-	return s.store.Insert(ctx, e)
+	if err := s.store.Insert(ctx, e); err != nil {
+		return err
+	}
+	// Use net/http to parse Set-Cookie (handles Expires/Max-Age, Domain, Path, Secure)
+	h := http.Header{}
+	for k, vals := range e.RespHeaders {
+		for _, v := range vals {
+			h.Add(k, v)
+		}
+	}
+	for _, c := range (&http.Response{Header: h}).Cookies() {
+		exp := c.Expires
+		if exp.IsZero() && c.MaxAge > 0 {
+			exp = time.Now().Add(time.Duration(c.MaxAge) * time.Second)
+		}
+		sameSite := ""
+		switch c.SameSite {
+		case http.SameSiteLaxMode:
+			sameSite = "Lax"
+		case http.SameSiteStrictMode:
+			sameSite = "Strict"
+		case http.SameSiteNoneMode:
+			sameSite = "None"
+		}
+		_ = s.store.InsertCookie(ctx, history.Cookie{
+			Name:      c.Name,
+			Value:     c.Value,
+			Domain:    c.Domain,
+			Path:      c.Path,
+			ExpiresAt: exp,
+			Secure:    c.Secure,
+			HttpOnly:  c.HttpOnly,
+			SameSite:  sameSite,
+			Env:       e.Env,
+		})
+	}
+	return nil
 }
 
 // List returns masked entries.
@@ -70,6 +108,24 @@ func (s *HistoryService) Search(ctx context.Context, q string, limit int) ([]his
 func (s *HistoryService) Clear(ctx context.Context, env *string) error {
 	return s.store.Clear(ctx, env)
 }
+
+// Cookies returns cookies for env.
+func (s *HistoryService) Cookies(ctx context.Context, env string) ([]history.Cookie, error) {
+	return s.store.ListCookies(ctx, env)
+}
+
+// DeleteCookie deletes one.
+func (s *HistoryService) DeleteCookie(ctx context.Context, name, domain, path, env string) error {
+	return s.store.DeleteCookie(ctx, name, domain, path, env)
+}
+
+// ClearCookies clears cookies.
+func (s *HistoryService) ClearCookies(ctx context.Context, env *string) error {
+	return s.store.ClearCookies(ctx, env)
+}
+
+// Close closes the underlying store.
+func (s *HistoryService) Close() error { return s.store.Close() }
 
 func maskEntry(e *history.Entry) {
 	for k, vals := range e.ReqHeaders {

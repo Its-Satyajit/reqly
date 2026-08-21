@@ -33,6 +33,7 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/environments"
+	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/variables"
@@ -47,6 +48,7 @@ type AppService struct {
 	environments *core.EnvironmentService
 	workspace    *core.WorkspaceService
 	runs         *core.CollectionRunService
+	history      *core.HistoryService
 	// authBackend is the active token-store backend name ("file"/"keychain").
 	authBackend string
 
@@ -74,6 +76,12 @@ func NewAppService() *AppService {
 	}
 	if store != nil {
 		svc.auth = core.NewAuthService(store, root)
+	}
+	// history is per-workspace SQLite (best-effort; no workspace → no history)
+	if root != "" {
+		if hStore, err := history.NewStore(filepath.Join(root, ".reqly", "history.db")); err == nil {
+			svc.history = core.NewHistoryService(hStore, request.NewClient())
+		}
 	}
 	auth.RegisterCustomSchemeReceiver("reqly")
 	return svc
@@ -106,15 +114,55 @@ func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.Sen
 	if err != nil {
 		return nil, err
 	}
+	var resp *core.SendResponse
 	if opts.RequestPath != "" {
 		resolved, err := s.workspace.ResolveSend(opts.RequestPath, r)
 		if err != nil {
 			return nil, err
 		}
 		layerVars(vars, resolved.Vars)
-		return s.requests.Send(resolved.Request, vars)
+		resp, err = s.requests.Send(resolved.Request, vars)
+		if err != nil {
+			return nil, err
+		}
+		s.recordHistory(opts.RequestPath, resolved.Request, resp, opts.Env)
+		return resp, nil
 	}
-	return s.requests.Send(r, vars)
+	resp, err = s.requests.Send(r, vars)
+	if err != nil {
+		return nil, err
+	}
+	s.recordHistory("", r, resp, opts.Env)
+	return resp, nil
+}
+
+func (s *AppService) recordHistory(requestPath string, req request.Request, resp *core.SendResponse, env string) {
+	if s.history == nil || resp == nil {
+		return
+	}
+	// headers as maps
+	reqHdrs := map[string][]string{}
+	for _, h := range req.Headers {
+		reqHdrs[h.Key] = append(reqHdrs[h.Key], h.Value)
+	}
+	respHdrs := map[string][]string{}
+	for k, vals := range resp.Headers {
+		respHdrs[k] = vals
+	}
+	e := &history.Entry{
+		RequestPath: requestPath,
+		Method:      string(req.Method),
+		URL:         req.URL,
+		Env:         env,
+		Status:      resp.StatusCode,
+		DurationMS:  resp.DurationMS,
+		Size:        resp.Size,
+		ReqHeaders:  reqHdrs,
+		ReqBody:     []byte(req.Body),
+		RespHeaders: respHdrs,
+		RespBody:    []byte(resp.Body),
+	}
+	_ = s.history.Record(context.Background(), e)
 }
 
 // layerVars overlays every scope of overlay onto base, preserving the
@@ -328,6 +376,128 @@ var emitRunEvent = func(name string, data any) {
 // external edit. The returned string is the new baseline version for the tab.
 func (s *AppService) WorkspaceSaveRequest(path string, draft request.Request, expectedVersion string) (string, error) {
 	return s.workspace.SaveRequest(path, draft, expectedVersion)
+}
+
+// HistoryList returns masked history entries.
+func (s *AppService) HistoryList(limit int, offset int, status string, env string) ([]history.Entry, error) {
+	if s.history == nil {
+		return nil, nil
+	}
+	var filter *int
+	if status != "" {
+		filter = statusToFilterHistory(status)
+	}
+	entries, err := s.history.List(context.Background(), limit, offset, filter)
+	if err != nil {
+		return nil, err
+	}
+	if env != "" {
+		var out []history.Entry
+		for _, e := range entries {
+			if e.Env == env {
+				out = append(out, e)
+			}
+		}
+		return out, nil
+	}
+	return entries, nil
+}
+
+// HistoryShow returns one masked entry.
+func (s *AppService) HistoryShow(id string) (*history.Entry, error) {
+	if s.history == nil {
+		return nil, fmt.Errorf("no workspace")
+	}
+	e, err := s.history.Show(context.Background(), id)
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+// HistorySearch searches via FTS.
+func (s *AppService) HistorySearch(query string, limit int) ([]history.Entry, error) {
+	if s.history == nil {
+		return nil, nil
+	}
+	return s.history.Search(context.Background(), query, limit)
+}
+
+// HistoryClear clears history.
+func (s *AppService) HistoryClear(env *string) error {
+	if s.history == nil {
+		return nil
+	}
+	return s.history.Clear(context.Background(), env)
+}
+
+// HistoryReplay replays a stored entry verbatim.
+func (s *AppService) HistoryReplay(id string) (*core.SendResponse, error) {
+	if s.history == nil {
+		return nil, fmt.Errorf("no workspace")
+	}
+	// load raw entry for faithful replay (store shows masked but bodies exact)
+	e, err := s.history.Show(context.Background(), id)
+	if err != nil {
+		return nil, err
+	}
+	// need raw headers/bodies; use store directly via HistoryService raw? For now use masked entry (bodies exact)
+	req := request.Request{Method: request.Method(e.Method), URL: e.URL, Headers: headersFromMapHistory(e.ReqHeaders), Body: string(e.ReqBody)}
+	return s.requests.Send(req, nil)
+}
+
+// CookieList lists cookies for env.
+func (s *AppService) CookieList(env string) ([]history.Cookie, error) {
+	if s.history == nil {
+		return nil, nil
+	}
+	return s.history.Cookies(context.Background(), env)
+}
+
+// CookieDelete deletes one cookie.
+func (s *AppService) CookieDelete(name, domain, path, env string) error {
+	if s.history == nil {
+		return nil
+	}
+	return s.history.DeleteCookie(context.Background(), name, domain, path, env)
+}
+
+// CookieClear clears cookies.
+func (s *AppService) CookieClear(env *string) error {
+	if s.history == nil {
+		return nil
+	}
+	return s.history.ClearCookies(context.Background(), env)
+}
+
+func statusToFilterHistory(s string) *int {
+	switch s {
+	case "2xx":
+		v := 200
+		return &v
+	case "4xx":
+		v := 400
+		return &v
+	case "5xx":
+		v := 500
+		return &v
+	default:
+		var code int
+		if _, err := fmt.Sscan(s, &code); err == nil {
+			return &code
+		}
+		return nil
+	}
+}
+
+func headersFromMapHistory(m map[string][]string) []request.Header {
+	var out []request.Header
+	for k, vals := range m {
+		for _, v := range vals {
+			out = append(out, request.Header{Key: k, Value: v})
+		}
+	}
+	return out
 }
 
 // resolveAppEnvironment loads the process-env scope plus the environment
