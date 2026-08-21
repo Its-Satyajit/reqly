@@ -34,10 +34,14 @@ export interface RequestInput {
 	headers?: RequestHeader[];
 	params?: KeyValueRow[];
 	bodyType?: BodyType;
-	/** Body text for json/xml/raw body types; serialized form fields for
-	 * form-data/urlencoded live in `form`. */
+	/** Body text for json/xml/raw/binary body types; serialized form fields for
+	 * form-data/urlencoded live in `form`. For graphql, `body` holds the query
+	 * when `graphqlQuery` is not set. */
 	body?: string;
 	form?: KeyValueRow[];
+	/** GraphQL query and variables (JSON string) for graphql body type. */
+	graphqlQuery?: string;
+	graphqlVariables?: string;
 	timeout?: number;
 	/** Environment pill (a request file's environment: field) used at send;
 	 * empty falls back to the app's active environment. */

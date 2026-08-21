@@ -3,7 +3,7 @@
 
 import type { KeyValueRow } from './request'
 
-export type BodyType = 'none' | 'json' | 'xml' | 'form-data' | 'urlencoded' | 'raw'
+export type BodyType = 'none' | 'json' | 'xml' | 'form-data' | 'urlencoded' | 'raw' | 'binary' | 'graphql'
 
 export const bodyTypes: { id: BodyType; label: string }[] = [
   { id: 'none', label: 'None' },
@@ -12,12 +12,16 @@ export const bodyTypes: { id: BodyType; label: string }[] = [
   { id: 'form-data', label: 'Form data' },
   { id: 'urlencoded', label: 'URL encoded' },
   { id: 'raw', label: 'Raw text' },
+  { id: 'binary', label: 'Binary' },
+  { id: 'graphql', label: 'GraphQL' },
 ]
 
 const CONTENT_TYPES = {
   json: 'application/json',
   xml: 'application/xml',
   urlencoded: 'application/x-www-form-urlencoded',
+  graphql: 'application/json',
+  binary: 'application/octet-stream',
 } satisfies Record<Exclude<BodyType, 'none' | 'form-data' | 'raw'>, string>
 
 /** contentTypeFor returns the Content-Type header a body type implies, or ''
@@ -66,12 +70,14 @@ export interface SerializedBody {
 }
 
 /** serializeBody turns a RequestInput's body type + fields into the wire body
- * and implied Content-Type. 'none' yields no body; json/xml/raw send the
- * editor text; form-data/urlencoded encode the key-value rows. */
+ * and implied Content-Type. 'none' yields no body; json/xml/raw/binary/graphql
+ * send the editor text; form-data/urlencoded encode the key-value rows. */
 export function serializeBody(input: {
   bodyType?: BodyType
   body?: string
   form?: KeyValueRow[]
+  graphqlQuery?: string
+  graphqlVariables?: string
 }): SerializedBody {
   switch (input.bodyType ?? 'none') {
     case 'none':
@@ -86,6 +92,33 @@ export function serializeBody(input: {
       const body = encodeUrlEncoded(input.form ?? [])
       if (body === '') return { contentType: '' }
       return { body, contentType: 'application/x-www-form-urlencoded' }
+    }
+    case 'binary': {
+      const body = input.body ?? ''
+      if (body === '') return { contentType: '' }
+      return { body, contentType: contentTypeFor('binary') }
+    }
+    case 'graphql': {
+      const query = input.graphqlQuery ?? input.body ?? ''
+      if (query.trim() === '') return { contentType: '' }
+      let variables: unknown = {}
+      if (input.graphqlVariables?.trim()) {
+        try {
+          variables = JSON.parse(input.graphqlVariables)
+        } catch {
+          // Invalid JSON will be surfaced as save warning; send empty variables.
+          variables = {}
+        }
+      } else if (input.form?.length) {
+        // Fallback: variables from form rows (key-value) if provided.
+        const vars: Record<string, string> = {}
+        for (const row of input.form) {
+          if (row.enabled && row.key.trim() !== '') vars[row.key] = row.value
+        }
+        variables = vars
+      }
+      const body = JSON.stringify({ query, variables })
+      return { body, contentType: contentTypeFor('graphql') }
     }
     default: {
       const body = input.body ?? ''

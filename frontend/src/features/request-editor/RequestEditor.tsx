@@ -38,6 +38,8 @@ const bodyLanguage = {
   'form-data': 'text',
   urlencoded: 'text',
   raw: 'text',
+  binary: 'text',
+  graphql: 'text',
 } satisfies Record<BodyType, 'json' | 'xml' | 'text'>
 
 /** saveWarnings validates a draft before it is persisted. Warnings do not

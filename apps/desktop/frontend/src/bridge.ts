@@ -109,7 +109,7 @@ export const wailsEnvAdapter: EnvAdapter = {
 		}
 		return {
 			active: data.active ?? "",
-			environments: (data.environments ?? []).map((e: { name: string; description?: string; variables?: Record<string, string | undefined> | null; secrets?: string[] }) => ({
+			environments: (data.environments ?? []).map((e: { name: string; description?: string; variables?: Record<string, string | undefined> | null; secrets?: string[] | null }) => ({
 				name: e.name,
 				description: e.description ?? "",
 				variables: normalizeVariables(e.variables),
@@ -329,15 +329,15 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 		// Subscribe before returning so no streamed event is missed: the run
 		// executes on the core's goroutine and the first step can arrive while
 		// the binding's response is still in flight.
-		const offStep = Events.On(`reqly.run.${id}.step`, (e: { data: unknown }) => {
-			onEvent({ type: "step", step: normalizeRunStep(e.data) });
+		const offStep = Events.On(`reqly.run.${id}.step`, (e: { data: any }) => {
+			onEvent({ type: "step", step: normalizeRunStep(e.data as Parameters<typeof normalizeRunStep>[0]) });
 		});
-		const offDone = Events.On(`reqly.run.${id}.done`, (e: { data: unknown }) => {
-			onEvent({ type: "done", report: normalizeRunReport(e.data) });
+		const offDone = Events.On(`reqly.run.${id}.done`, (e: { data: any }) => {
+			onEvent({ type: "done", report: normalizeRunReport(e.data as Parameters<typeof normalizeRunReport>[0]) });
 			offStep();
 			offDone();
 		});
-		const offError = Events.On(`reqly.run.${id}.error`, (e: { data: unknown }) => {
+		const offError = Events.On(`reqly.run.${id}.error`, (e: { data: any }) => {
 			onEvent({ type: "error", message: String(e.data ?? "") });
 			offStep();
 			offDone();
