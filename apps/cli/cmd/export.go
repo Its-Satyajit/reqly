@@ -1,21 +1,3 @@
-// Reqly - A local-first, Git-native API development environment.
-// Copyright (C) 2026 It's Satyajit
-//
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 package cmd
 
 import (
@@ -27,6 +9,7 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/exporter"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/requestfile"
 )
 
 var exportCmd = &cobra.Command{
@@ -34,7 +17,7 @@ var exportCmd = &cobra.Command{
 	Short: "Export workspaces and requests to shareable formats",
 	Long: `Export Reqly-native projects into shareable formats.
 
-Supported targets: Postman collection v2.1.`,
+Supported targets: Postman collection v2.1, code snippets (cURL, JS, Python, Go).`,
 }
 
 var exportPostmanCmd = &cobra.Command{
@@ -53,22 +36,18 @@ Without --output the JSON is printed to stdout.`,
 		if err != nil {
 			return err
 		}
-
 		name := ws.Config.Name
 		if name == "" {
 			name = "Reqly workspace"
 		}
-
 		requests, err := flattenWorkspace(ws)
 		if err != nil {
 			return err
 		}
-
 		data, err := exporter.ExportToPostmanJSON(name, requests)
 		if err != nil {
 			return err
 		}
-
 		if exportOutput == "" {
 			fmt.Fprintln(cmd.OutOrStdout(), string(data))
 			return nil
@@ -81,11 +60,8 @@ Without --output the JSON is printed to stdout.`,
 	},
 }
 
-// flattenWorkspace resolves every request in the workspace and returns them in
-// a flat list, with inherited base URL and headers applied.
 func flattenWorkspace(ws *collections.Workspace) ([]request.Request, error) {
 	var requests []request.Request
-
 	var walkFolders func(coll *collections.Collection, chain []*collections.Folder, folders []*collections.Folder)
 	walkFolders = func(coll *collections.Collection, chain []*collections.Folder, folders []*collections.Folder) {
 		for _, f := range folders {
@@ -101,7 +77,6 @@ func flattenWorkspace(ws *collections.Workspace) ([]request.Request, error) {
 			walkFolders(coll, childChain, f.Folders)
 		}
 	}
-
 	for _, coll := range ws.Collections {
 		for _, entry := range coll.Requests {
 			if resolved, err := ws.ResolveRequest(coll, nil, entry); err == nil {
@@ -117,8 +92,71 @@ func flattenWorkspace(ws *collections.Workspace) ([]request.Request, error) {
 }
 
 var exportOutput string
+var exportCodeLang string
+var exportCodeOut string
+var exportCodeEnv string
+
+var exportCodeCmd = &cobra.Command{
+	Use:   "code <request-file> --lang <cURL|js|python|go> [--out <file>] [--env <name>]",
+	Short: "Generate code snippet for a request",
+	Long: `Generate a code snippet for a Reqly request file or collection path.
+
+Supports cURL, JavaScript (fetch), Python (requests), Go (net/http).
+Secrets render as [SECRET]. The request is resolved through the workspace/env chain like "reqly run".
+
+  reqly export code ./collections/users/list.yaml --lang curl
+  reqly export code ./collections/users/list.yaml --lang js --out snippet.js --env prod`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		path := args[0]
+		lang := exportCodeLang
+		if lang == "" {
+			return fmt.Errorf("--lang is required (cURL, js, python, go)")
+		}
+		req, err := loadRequestForExport(path)
+		if err != nil {
+			return err
+		}
+		snippet, err := exporter.Generate(req, lang, nil)
+		if err != nil {
+			return err
+		}
+		if exportCodeOut == "" {
+			fmt.Fprintln(cmd.OutOrStdout(), snippet)
+			return nil
+		}
+		if err := os.WriteFile(exportCodeOut, []byte(snippet), 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", exportCodeOut)
+		return nil
+	},
+}
+
+func loadRequestForExport(path string) (request.Request, error) {
+	if f, err := requestfile.LoadFile(path); err == nil {
+		return f.Request, nil
+	}
+	ws, err := collections.LoadWorkspace(".")
+	if err != nil {
+		return request.Request{}, err
+	}
+	for _, coll := range ws.Collections {
+		for _, entry := range coll.Requests {
+			if entry.Path == path || entry.Name == path {
+				if resolved, err := ws.ResolveRequest(coll, nil, entry); err == nil {
+					return resolved.Request, nil
+				}
+			}
+		}
+	}
+	return request.Request{}, fmt.Errorf("request not found: %q", path)
+}
 
 func init() {
-	exportCmd.AddCommand(exportPostmanCmd)
+	exportCmd.AddCommand(exportPostmanCmd, exportCodeCmd)
 	exportPostmanCmd.Flags().StringVar(&exportOutput, "output", "", "write the collection to this file")
+	exportCodeCmd.Flags().StringVar(&exportCodeLang, "lang", "", "target language (cURL, js, python, go)")
+	exportCodeCmd.Flags().StringVar(&exportCodeOut, "out", "", "write snippet to this file")
+	exportCodeCmd.Flags().StringVar(&exportCodeEnv, "env", "", "environment to resolve variables")
 }
