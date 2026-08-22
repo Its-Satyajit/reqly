@@ -3,10 +3,12 @@
 // plus wildcard support: `$`, dot and bracket segments, `*`, and array indexes.
 // Kept as plain functions so they can be exercised without a component tree.
 
+import { isRecord, type JsonObject, type JsonValue } from "./typeGuards"
+
 export interface JSONPathMatch {
   /** Canonical path of the match, e.g. `$.users[0].name`. */
   path: string
-  value: unknown
+  value: JsonValue
 }
 
 export interface JSONPathResult {
@@ -24,7 +26,7 @@ type Step =
  * every node the path selects (wildcards fan out) with its canonical path, or
  * a specific error for malformed paths. Missing values yield zero matches,
  * never an error. */
-export function queryJSONPath(root: unknown, path: string): JSONPathResult {
+export function queryJSONPath(root: JsonValue, path: string): JSONPathResult {
   const parsed = parsePath(path)
   if ('error' in parsed) return { matches: [], error: parsed.error }
 
@@ -34,7 +36,7 @@ export function queryJSONPath(root: unknown, path: string): JSONPathResult {
 }
 
 function walk(
-  node: unknown,
+  node: JsonValue,
   steps: Step[],
   i: number,
   currentPath: string,
@@ -53,10 +55,13 @@ function walk(
       })
       return
     }
-    if (node !== null && typeof node === 'object') {
-      for (const key of Object.keys(node as Record<string, unknown>)) {
+    if (isRecord(node)) {
+      // SAFETY: isRecord narrows JsonValue to JsonObject with concrete JsonValue values
+      const obj = node as JsonObject
+      for (const key of Object.keys(obj)) {
+        // SAFETY: JsonObject values are JsonValue; key existence validated via Object.keys
         walk(
-          (node as Record<string, unknown>)[key],
+          obj[key] as JsonValue,
           steps,
           i + 1,
           `${currentPath}.${key}`,
@@ -71,11 +76,13 @@ function walk(
   if (Array.isArray(node)) {
     const idx = Number(step.key)
     if (!Number.isInteger(idx) || idx < 0 || idx >= node.length) return
-    walk(node[idx], steps, i + 1, `${currentPath}[${idx}]`, matches)
+    // SAFETY: array bounds checked above; element is JsonValue per JsonValue definition
+    walk(node[idx] as JsonValue, steps, i + 1, `${currentPath}[${idx}]`, matches)
     return
   }
-  if (node !== null && typeof node === 'object') {
-    const value = (node as Record<string, unknown>)[step.key]
+  if (isRecord(node)) {
+    // SAFETY: isRecord guarantees JsonObject with JsonValue values; missing key yields undefined
+    const value = (node as JsonObject)[step.key]
     if (value === undefined) return
     walk(value, steps, i + 1, `${currentPath}.${step.key}`, matches)
     return

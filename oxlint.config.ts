@@ -48,14 +48,12 @@ export default defineConfig({
 		"anti-slop/no-unknown-returns": "error",
 		"anti-slop/no-unknown-type-aliases": "error",
 		"anti-slop/no-widen-then-assert": "error",
-		// The four rules below are deliberately relaxed to warnings: Reqly's
-		// JSON tree, JSONPath, response-parsing and Wails-DTO code operates on
-		// data that just crossed an I/O boundary, where ad hoc `typeof` guards
-		// and `as` casts are the accepted boundary-parsing style. They stay
-		// visible so each site can be revisited and re-promoted to error.
-		"anti-slop/no-runtime-typeof": "warn",
-		"anti-slop/no-unknown-parameters": "warn",
-		"anti-slop/no-unsafe-dictionary-type": "warn",
-		"anti-slop/require-safety-comment-for-type-assertion": "warn",
+		// All anti-slop rules enforced as errors — 0 warnings tolerated.
+		// Boundary parsing uses `typeGuards.ts` (isRecord/isString) + explicit domain types;
+		// every `as` carries `// SAFETY:` (see `frontend/src/lib/typeGuards.ts`).
+		"anti-slop/no-runtime-typeof": ["error", { allowInTypeGuards: true }],
+		"anti-slop/no-unknown-parameters": "error",
+		"anti-slop/no-unsafe-dictionary-type": "error",
+		"anti-slop/require-safety-comment-for-type-assertion": "error",
 	},
 });

@@ -3,6 +3,7 @@ import { JsonTree } from "../../components/JsonTree";
 import { Button } from "../../components/ui/button";
 import { CodeMirrorEditor } from "../../editors";
 import { type JSONPathMatch, queryJSONPath } from "../../lib/jsonpath";
+import { isRecord, type JsonValue } from "../../lib/typeGuards";
 import {
 	binaryPreviewType,
 	contentType,
@@ -68,7 +69,8 @@ export function ResponseViewer() {
 	const parsed = useMemo(() => {
 		if (!response) return null;
 		try {
-			return JSON.parse(response.body) as unknown;
+			// SAFETY: JSON response body parsed at I/O boundary; validated as JsonValue via isRecord/Array checks in viewers
+			return JSON.parse(response.body) as JsonValue;
 		} catch {
 			return null;
 		}
@@ -469,7 +471,7 @@ function JsonPathMatchRow({ match }: { match: JSONPathMatch }) {
 		() =>
 			match.value === null
 				? "null"
-				: typeof match.value === "object"
+				: isRecord(match.value) || Array.isArray(match.value)
 					? JSON.stringify(match.value, null, 2)
 					: String(match.value),
 		[match.value],

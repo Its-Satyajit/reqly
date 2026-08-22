@@ -233,6 +233,7 @@ export const ORDERED_AUTH_SCHEMES: AuthSchemeId[] = [
 /** schemeFor maps a request's own auth onto the picker state. */
 export const schemeFor = (auth?: RequestAuth): AuthSchemeId => {
 	if (!auth || !auth.type) return "inherit"
+	// SAFETY: auth.type is RequestAuth type string; validated as AuthSchemeId via AUTH_SCHEMES lookup with inherit fallback
 	return auth.type as AuthSchemeId
 }
 

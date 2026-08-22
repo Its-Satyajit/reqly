@@ -1,6 +1,8 @@
 // Response-view helpers shared by the viewer features. Kept as plain
 // functions so they can be exercised without a component tree.
 
+import { isRecord, type JsonObject, type JsonValue } from "./typeGuards"
+
 export type HeaderMap = Record<string, string[]>
 
 export function contentType(headers: HeaderMap | undefined): string {
@@ -200,15 +202,17 @@ export function prettyBody(body: string, contentType: string): string {
 }
 
 /** jsonText renders a parsed JSON value as plain text (for tree search). */
-export function jsonText(value: unknown): string {
+export function jsonText(value: JsonValue): string {
   if (value === null) return 'null'
-  if (typeof value === 'object') {
-    if (Array.isArray(value)) {
-      return value.map((v) => jsonText(v)).join(' ')
-    }
-    return Object.entries(value as Record<string, unknown>)
+  if (isRecord(value)) {
+    // SAFETY: isRecord narrows JsonValue to JsonObject with JsonValue values
+    const obj = value as JsonObject
+    return Object.entries(obj)
       .map(([k, v]) => `${k} ${jsonText(v)}`)
       .join(' ')
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => jsonText(v)).join(' ')
   }
   return String(value)
 }
@@ -235,8 +239,10 @@ export function isTabular(body: string, ct: string): boolean {
   if (!t) return false
   if (t.startsWith('[')) {
     try {
-      const v = JSON.parse(t)
-      return Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0] !== null && !Array.isArray(v[0])
+      // SAFETY: JSON body parsed at I/O boundary; shape validated via Array.isArray below
+      const v = JSON.parse(t) as JsonValue
+      // SAFETY: Array.isArray check establishes JsonValue[]; isRecord validates element is JsonObject
+      return Array.isArray(v) && v.length > 0 && isRecord((v as JsonValue[])[0])
     } catch {
       return false
     }
@@ -261,16 +267,19 @@ export function parseTable(body: string, ct: string): TableData | null {
     return { columns, rows: rows.slice(0, 1000) }
   }
   try {
-    const v = JSON.parse(t)
+    // SAFETY: JSON body parsed at I/O boundary; array shape validated below
+    const v = JSON.parse(t) as JsonValue
     if (!Array.isArray(v) || v.length === 0) return null
     const cols = new Set<string>()
-    for (const row of v.slice(0, 1000)) {
-      if (typeof row === 'object' && row !== null) {
-        for (const k of Object.keys(row as Record<string, unknown>)) cols.add(k)
+    // SAFETY: Array.isArray check establishes JsonValue[]; slice elements are JsonValue
+    for (const row of (v as JsonValue[]).slice(0, 1000)) {
+      if (isRecord(row)) {
+        for (const k of Object.keys(row)) cols.add(k)
       }
     }
     const columns = [...cols]
-    const rows = (v as Record<string, unknown>[]).slice(0, 1000).map((r) => columns.map((c) => String(r[c] ?? '')))
+    // SAFETY: tabular JSON validated as array of objects above; each row is JsonObject
+    const rows = (v as JsonObject[]).slice(0, 1000).map((r) => columns.map((c) => String(r[c] ?? '')))
     return { columns, rows }
   } catch {
     return null

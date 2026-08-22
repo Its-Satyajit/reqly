@@ -63,7 +63,7 @@ function saveWarnings(draft: {
   headers?: KeyValueRow[]
 }): string[] {
   const warnings: string[] = []
-  if (!methods.includes(draft.method as (typeof methods)[number])) {
+  if (!methods.some((m) => m === draft.method)) {
     warnings.push(`Unknown method "${draft.method}" will be written to the file.`)
   }
   // dynamic tag unknowns across url/body/headers/params
@@ -235,7 +235,10 @@ export function RequestEditor() {
         <Button size="sm" onClick={handleSend} disabled={loading}>
           {loading ? 'Sending…' : 'Send'}
         </Button>
-        <select value={codeLang} onChange={(e) => setCodeLang(e.target.value as typeof codeLang)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+        <select value={codeLang} onChange={(e) => {
+          const v = e.target.value
+          if (v === "curl" || v === "js" || v === "python" || v === "go") setCodeLang(v)
+        }} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
           <option value="curl">cURL</option>
           <option value="js">JS</option>
           <option value="python">Python</option>
