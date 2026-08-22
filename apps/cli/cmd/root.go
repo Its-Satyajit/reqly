@@ -68,5 +68,6 @@ func init() {
 		docsCmd,
 		versionCmd,
 		jwtCmd,
+		paginationCmd,
 	)
 }
