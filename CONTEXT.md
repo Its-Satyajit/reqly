@@ -261,3 +261,27 @@ HTTP Archive 1.2 (`log.entries[]` with `request`/`response`/`timings`/`startedDa
 ### HAR Replay
 Replaying a captured HAR via Reqly: `import har` materializes the captured traffic as a `har-import` collection, then `reqly collection run har-import` (or `reqly history replay <id>` for a prior `history.Entry` verbatim via `Client.Send`, `CONTEXT.md:154`). Exact replay only for M28 — no re-interpolation of `{{variables}}` against the HAR.
 
+### JWT Tooling
+Offline JWT inspection and creation utilities (`internal/jwt` + `reqly jwt`). Distinct from `JWT Auth` (per-request HS signing via `auth.type: jwt`): tooling never sends a request, it decodes/inspects or locally signs a token string. M29 ships decode only; sign/verify are M29b.
+
+### JWT Decode
+`reqly jwt decode <token> [--json]` — base64url-decodes a JWT's header and payload without verification, pretty-prints each as JSON, reports `alg` + signature presence, and detects expiry via `exp`/`nbf`/`iat` (expired / not-yet-valid / time-to-expiry). Works for any `alg` (`HS*`, `RS*`, `ES*`, `none`) because it never checks the signature; malformed segments or non-JSON payload surface as explicit errors. No secret, no network, no masking needed — the token string itself is the input.
+
+### JWT Verify (deferred)
+`reqly jwt verify <token> --secret <s> [--alg HS256]` — HS256/384/512 HMAC verification reusing `internal/auth/jwt.go:79` `jwtHashes`, like `JWT Auth` but offline. Deferred to M29b; decode stays algorithm-agnostic.
+
+### JWT Sign (deferred)
+`reqly jwt sign --secret <s> [--alg HS256] [--claims '{"sub":"u1"}'] [--expiresIn 3600]` — produces a compact JWS via the same `signJWT` seam as `JWT Auth`. Deferred to M29b; no CLI flags in M29.
+
+### Pagination Runner
+Iteratively executes a paginated request, advancing the pagination variable(s) per step and collecting responses until a stop condition. M30 supports four strategies via declarative `pagination: {strategy, param, nextPath, maxPages}` on a request or collection: `page` (`?page=1` + `pageSize`), `offset` (`?offset=0` + `limit`), `cursor` (`?cursor=<nextCursor>` extracted via JSONPath `$.nextCursor` from prior body), and `link-header` (`Link: <url>; rel="next"`). Loop stops on empty body, missing next, status ≠2xx, or `maxPages` (default 100). No aggregation export for M30 — responses are streamed per step via the runner.
+
+### Pagination Strategy
+One of `page|offset|cursor|link-header`. `page` increments `page` param, `offset` adds `limit` to offset, `cursor` replaces the cursor param with the value at `nextPath`, `link-header` follows the `rel="next"` URL. All strategies reuse variable interpolation (`{{page}}` etc.) and the existing runner history/cookie seams.
+
+### Pagination Stop Condition
+When the loop terminates: no `next` value (cursor/link empty), empty array body, non-2xx, or `maxPages` reached. M30 no `while` expression (defer); stop is structural, not scripted.
+
+### Pagination Aggregation (deferred)
+Concatenating paginated JSON arrays into one result (`--out` / `aggregate: true`) — deferred to M30b; M30 streams per-step results only, matching the collection runner `OnStep` callback.
+
