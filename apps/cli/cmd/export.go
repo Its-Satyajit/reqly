@@ -95,6 +95,7 @@ var exportOutput string
 var exportCodeLang string
 var exportCodeOut string
 var exportCodeEnv string
+var exportWorkspaceOut string
 
 var exportCodeCmd = &cobra.Command{
 	Use:   "code <request-file> --lang <cURL|js|python|go> [--out <file>] [--env <name>]",
@@ -153,10 +154,42 @@ func loadRequestForExport(path string) (request.Request, error) {
 	return request.Request{}, fmt.Errorf("request not found: %q", path)
 }
 
+var exportWorkspaceCmd = &cobra.Command{
+	Use:   "workspace [src] --out <dir>",
+	Short: "Copy a workspace to a new directory",
+	Long: `Copy a Reqly workspace (descriptors + request files) to a new directory.
+
+  reqly export workspace . --out /tmp/new-ws
+  reqly export workspace ./my-ws --out /tmp/copy
+
+The destination is created via SaveWorkspace (pruning, atomic, format-preserving).
+src defaults to the current workspace (.). --out is required.`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		src := "."
+		if len(args) > 0 {
+			src = args[0]
+		}
+		if exportWorkspaceOut == "" {
+			return fmt.Errorf("--out <dir> is required")
+		}
+		ws, err := collections.LoadWorkspace(src)
+		if err != nil {
+			return err
+		}
+		if err := collections.SaveWorkspace(exportWorkspaceOut, ws); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "exported workspace to %s (%d collections)\n", exportWorkspaceOut, len(ws.Collections))
+		return nil
+	},
+}
+
 func init() {
-	exportCmd.AddCommand(exportPostmanCmd, exportCodeCmd)
+	exportCmd.AddCommand(exportPostmanCmd, exportCodeCmd, exportWorkspaceCmd)
 	exportPostmanCmd.Flags().StringVar(&exportOutput, "output", "", "write the collection to this file")
 	exportCodeCmd.Flags().StringVar(&exportCodeLang, "lang", "", "target language (cURL, js, python, go)")
 	exportCodeCmd.Flags().StringVar(&exportCodeOut, "out", "", "write snippet to this file")
 	exportCodeCmd.Flags().StringVar(&exportCodeEnv, "env", "", "environment to resolve variables")
+	exportWorkspaceCmd.Flags().StringVar(&exportWorkspaceOut, "out", "", "destination directory")
 }
