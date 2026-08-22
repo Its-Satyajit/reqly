@@ -398,7 +398,8 @@ export const wailsHistoryAdapter = {
 	},
 	clear: async (env: string | null) => {
 		const svc = AppService as unknown as { HistoryClear(a: unknown): Promise<void> }
-		await svc.HistoryClear(env ?? undefined as unknown as string)
+		// SAFETY: HistoryClear accepts string | undefined (null maps to clear workspace)
+		await svc.HistoryClear(env ?? undefined)
 	},
 	replay: async (id: string) => {
 		const svc = AppService as unknown as { HistoryReplay(a: string): Promise<unknown> }
@@ -406,6 +407,7 @@ export const wailsHistoryAdapter = {
 	},
 	listCookies: async (env: string) => {
 		const svc = AppService as unknown as { CookieList(a: string): Promise<unknown[]> }
+		// SAFETY: Wails binding returns History.Cookie[] with string fields; fallback to empty array is safe.
 		const data = (await svc.CookieList(env)) as unknown as { name: string; value: string; domain?: string; path?: string; env?: string }[]
 		return (data ?? []).map((c) => ({
 			name: c.name,
@@ -421,7 +423,8 @@ export const wailsHistoryAdapter = {
 	},
 	clearCookies: async (env: string | null) => {
 		const svc = AppService as unknown as { CookieClear(a: unknown): Promise<void> }
-		await svc.CookieClear(env ?? undefined as unknown as string)
+		// SAFETY: CookieClear accepts string | undefined (null maps to clear workspace)
+		await svc.CookieClear(env ?? undefined)
 	},
 };
 

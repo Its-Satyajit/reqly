@@ -11,6 +11,8 @@ import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
 import type { KeyValueRow, RequestAuth } from '../../lib/request'
 import type { ResolvedVariable } from '../../lib/collections'
+import { TagPicker } from '../../components/TagPicker'
+import { tagWarnings } from '../../lib/tags'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
 
@@ -55,10 +57,17 @@ function saveWarnings(draft: {
   graphqlQuery?: string
   graphqlVariables?: string
   auth?: RequestAuth
+  params?: KeyValueRow[]
+  headers?: KeyValueRow[]
 }): string[] {
   const warnings: string[] = []
   if (!methods.includes(draft.method as (typeof methods)[number])) {
     warnings.push(`Unknown method "${draft.method}" will be written to the file.`)
+  }
+  // dynamic tag unknowns across url/body/headers/params
+  const tagSources = [draft.url, draft.body, draft.graphqlQuery ?? "", draft.graphqlVariables ?? "", ...(draft.headers ?? []).map((h) => `${h.key} ${h.value}`), ...(draft.params ?? []).map((p) => `${p.key} ${p.value}`)]
+  for (const src of tagSources) {
+    warnings.push(...tagWarnings(src))
   }
   if (draft.bodyType === 'json' && draft.body.trim() !== '') {
     try {
@@ -234,6 +243,9 @@ export function RequestEditor() {
           </code>
         </div>
       )}
+      <div className="px-2 pb-1">
+        <TagPicker onInsert={(tag) => patch({ url: draft.url + tag })} />
+      </div>
 
       <div className="flex items-center gap-1 px-2">
         {tabs
