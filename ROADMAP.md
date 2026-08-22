@@ -28,7 +28,7 @@ The project skeleton, build system, and the first two core primitives.
 - [x] Wails v3 desktop project (`apps/desktop/backend`) with Taskfile + build assets
 - [x] CI workflow (frontend typecheck/build job; Go vet/gofmt/race/coverage job)
 - [x] Makefile task aliases
-- [x] GPL-3.0 license + SPDX headers on all Go sources
+- [x] Apache-2.0 license + SPDX headers on all Go sources
 
 ### 0.2 Desktop shell (Wails v3)
 
