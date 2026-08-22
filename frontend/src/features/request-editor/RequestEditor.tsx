@@ -13,6 +13,8 @@ import type { KeyValueRow, RequestAuth } from '../../lib/request'
 import type { ResolvedVariable } from '../../lib/collections'
 import { TagPicker } from '../../components/TagPicker'
 import { tagWarnings } from '../../lib/tags'
+import { generateCode } from '../../lib/codegen'
+import { copyText } from '../../lib/response'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
 
@@ -113,6 +115,8 @@ export function RequestEditor() {
   const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId)
   const environments = useWorkspaceStore((s) => s.environments)
   const [tab, setTab] = useState<Tab>('params')
+  const [codeLang, setCodeLang] = useState<'curl' | 'js' | 'python' | 'go'>('curl')
+  const [copiedCode, setCopiedCode] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -230,6 +234,34 @@ export function RequestEditor() {
         )}
         <Button size="sm" onClick={handleSend} disabled={loading}>
           {loading ? 'Sending…' : 'Send'}
+        </Button>
+        <select value={codeLang} onChange={(e) => setCodeLang(e.target.value as typeof codeLang)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+          <option value="curl">cURL</option>
+          <option value="js">JS</option>
+          <option value="python">Python</option>
+          <option value="go">Go</option>
+        </select>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const code = generateCode(
+              {
+                method: draft.method,
+                url: draft.url,
+                headers: sentRows(draft.headers).map(({ key, value }) => ({ key, value })),
+                query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
+                body: draft.body,
+                auth: draft.auth,
+              },
+              codeLang,
+            )
+            void copyText(code)
+            setCopiedCode(true)
+            setTimeout(() => setCopiedCode(false), 1500)
+          }}
+        >
+          {copiedCode ? 'Copied' : 'Copy as'}
         </Button>
       </div>
 

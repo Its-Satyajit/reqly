@@ -216,3 +216,18 @@ The aggregate result of a **Collection Run**: the ordered **Run Steps**, start/f
 ### Run View
 The desktop surface that presents a **Collection Run**: a dedicated tab (distinct from **Request Tab**) showing each **Run Step** with live status, status code, duration, expandable tests/logs/response, a fail-fast toggle, and a cancel control for the in-flight run. Clicking a **Run Step** opens its request into a normal **Request Tab** for inspection without stopping the run.
 
+### Code Generation
+Turning a resolved `Request` (method, URL, headers, body, auth) into a snippet for another client: `cURL` (`curl --request --header --data-raw/--form/--data-binary`), `JavaScript` (`fetch`), `Python` (`requests`), `Go` (`net/http`). Generated via `internal/exporter.Generate(req Request, lang string, mask func(string) string)` (beside `postman.go`) — pure function, no network, reuses `request.Request` directly; secrets render as `[SECRET]` with a comment, never plaintext. Single-request only for M24 (history entry or file-backed draft or scratchpad); collection bulk and signing (`aws/edgegrid/oauth2/digest`) are deferred.
+
+### Code Export (CLI)
+`reqly export code <request-file|collection-path> --lang cURL|js|python|go [--out <file>]` (like `reqly run`) — resolves the request through the workspace/env chain, then `exporter.Generate` to stdout (or `--out` file). `--env` respected, secrets masked. History entry can also be exported via `reqly history show <id> | reqly export code` (resolved bytes).
+
+### Copy as (Desktop)
+The desktop “Copy as ▾” affordance (RequestEditor header bar + HistoryView row + ResponseViewer) that copies the generated snippet to the clipboard via `copyText` (no file download for M24). Shares `internal/exporter` via the `HistoryAdapter`/`RequestAdapter` pattern; the picker offers `cURL` (default), `JavaScript`, `Python`, `Go`.
+
+### Exporter
+The `internal/exporter` package seam for sharing request shapes: `postman.go` (Postman v2.1) and `code.go` (`Generate` for code generation). The highest seam for code generation — `exporter.Generate` is the single pure function both CLI and desktop call; `request`/`variables` stay untouched.
+
+### Golden File
+A `exporter/testdata/<lang>.golden` fixture for table-driven `TestGenerate_<Lang>` — input `request.Request` fixture → expected snippet literal. Prior art `postman_test.go`; deterministic, no `rand`, no network.
+
