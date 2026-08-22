@@ -21,14 +21,48 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Its-Satyajit/reqly/internal/collections"
+	"github.com/Its-Satyajit/reqly/internal/docs"
 )
 
 var docsCmd = &cobra.Command{
 	Use:   "docs",
 	Short: "Generate API documentation",
+	Long:  `Generate Markdown docs for a workspace.`,
+}
+
+var docsGenerateCmd = &cobra.Command{
+	Use:   "generate [src] --out <dir> [--env <name>]",
+	Short: "Generate Markdown docs to a directory",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO(core): dispatch to the documentation generator.
-		fmt.Fprintln(cmd.OutOrStdout(), "docs: not implemented yet")
+		src := "."
+		if len(args) > 0 {
+			src = args[0]
+		}
+		out, _ := cmd.Flags().GetString("out")
+		if out == "" {
+			return fmt.Errorf("--out <dir> is required")
+		}
+		env, _ := cmd.Flags().GetString("env")
+		ws, err := collections.LoadWorkspace(src)
+		if err != nil {
+			return err
+		}
+		if err := docs.Generate(out, ws, env); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "generated docs to %s (%d collections)\n", out, len(ws.Collections))
 		return nil
 	},
+}
+
+var docsOut string
+var docsEnv string
+
+func init() {
+	docsCmd.AddCommand(docsGenerateCmd)
+	docsGenerateCmd.Flags().StringVar(&docsOut, "out", "", "output directory")
+	docsGenerateCmd.Flags().StringVar(&docsEnv, "env", "", "environment for resolved curl examples")
 }
