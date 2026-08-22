@@ -67,5 +67,6 @@ func init() {
 		diffCmd,
 		docsCmd,
 		versionCmd,
+		jwtCmd,
 	)
 }
