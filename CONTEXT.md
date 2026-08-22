@@ -240,3 +240,12 @@ Copying a `Workspace` to a new directory via `SaveWorkspace(out, ws)` after `Loa
 ### SaveWorkspace
 The `internal/collections.SaveWorkspace(root string, ws *Workspace) error` seam beside `LoadWorkspace` — writes descriptors + request files, creates dirs, `0600`/`0644`, atomic, prune deleted. Highest seam for save/export — `export workspace` is thin Cobra wrapper (`LoadWorkspace(src)` → `SaveWorkspace(out, ws)`), no new `internal/exporter` code.
 
+### Docs Generation
+Generating Markdown documentation from a `Workspace` (`collections` + `requestfile` only for M26): `reqly docs generate [src] --out <dir> [--env <name>]` writes `<out>/index.md` (collections list) + `<out>/<coll>.md` per collection via `text/template` (method/URL/headers/query/body/auth + `cURL` example via `exporter.Generate` `curl` with `[SECRET]` masked). Shows raw `{{var}}` as in file plus resolved `cURL` block (when `--env` set via `environments.ResolveSet`). No `openapi`/`history`/`GraphQL` in M26 (M26b adds HTML/`goldmark`/`openapi`).
+
+### Docs Generator
+The `internal/docs.Generate(outDir string, ws *Workspace, env string) error` seam in new `internal/docs` package (beside `exporter`, pure function, `LoadWorkspace` + `flattenWorkspace` + `template` + `exporter.Generate` for `curl`, `os.MkdirAll` + atomic `WriteFile`, `0644`). Highest seam for docs — CLI `docs generate` is thin wrapper, desktop UI is M26b.
+
+### Docs Golden File
+A `docs/testdata/<collection>.golden` fixture for table-driven `TestGenerate` — `Workspace` fixture (2 colls, `{{var}}` + `auth` + `body`) → expected Markdown `index.md` + `<coll>.md` literals. Prior art `exporter/postman_test.go` + `collections/save_test.go`; deterministic, no `rand`, no network.
+
