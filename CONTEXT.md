@@ -273,3 +273,15 @@ Offline JWT inspection and creation utilities (`internal/jwt` + `reqly jwt`). Di
 ### JWT Sign (deferred)
 `reqly jwt sign --secret <s> [--alg HS256] [--claims '{"sub":"u1"}'] [--expiresIn 3600]` — produces a compact JWS via the same `signJWT` seam as `JWT Auth`. Deferred to M29b; no CLI flags in M29.
 
+### Pagination Runner
+Iteratively executes a paginated request, advancing the pagination variable(s) per step and collecting responses until a stop condition. M30 supports four strategies via declarative `pagination: {strategy, param, nextPath, maxPages}` on a request or collection: `page` (`?page=1` + `pageSize`), `offset` (`?offset=0` + `limit`), `cursor` (`?cursor=<nextCursor>` extracted via JSONPath `$.nextCursor` from prior body), and `link-header` (`Link: <url>; rel="next"`). Loop stops on empty body, missing next, status ≠2xx, or `maxPages` (default 100). No aggregation export for M30 — responses are streamed per step via the runner.
+
+### Pagination Strategy
+One of `page|offset|cursor|link-header`. `page` increments `page` param, `offset` adds `limit` to offset, `cursor` replaces the cursor param with the value at `nextPath`, `link-header` follows the `rel="next"` URL. All strategies reuse variable interpolation (`{{page}}` etc.) and the existing runner history/cookie seams.
+
+### Pagination Stop Condition
+When the loop terminates: no `next` value (cursor/link empty), empty array body, non-2xx, or `maxPages` reached. M30 no `while` expression (defer); stop is structural, not scripted.
+
+### Pagination Aggregation (deferred)
+Concatenating paginated JSON arrays into one result (`--out` / `aggregate: true`) — deferred to M30b; M30 streams per-step results only, matching the collection runner `OnStep` callback.
+

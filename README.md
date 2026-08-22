@@ -1,5 +1,10 @@
 # Reqly
 
+> [!CAUTION]
+> ## ⚠️ Alpha — Not Stable. Expect Breakage.
+> **Reqly is in alpha (pre-1.0). The app may crash, corrupt local data, behave abnormally, or break between commits most of the time.** There are no stability guarantees, no migration, and no semver until `v1.0.0`.
+> **If you need a stable API client for production work, use a mature alternative** (Postman / Insomnia / Bruno / HTTPie) and revisit Reqly after the `ROADMAP.md` P0/P1 milestones are complete.
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="frontend/src/assets/logo-dark.svg">
@@ -9,7 +14,7 @@
 </p>
 
 <p align="center">
-  <b>The Local-First, Git-Native API Development Environment</b>
+  <b>The Local-First, Git-Native API Development Environment</b> — <i>Alpha, unstable</i>
 </p>
 
 <p align="center">
@@ -118,6 +123,17 @@ wails3 dev
 - **Architecture & Tech Stack:** [`docs/technology-stack.md`](./docs/technology-stack.md)
 - **Testing Strategy:** [`docs/testing-strategy.md`](./docs/testing-strategy.md)
 - **Full Feature Set:** [`docs/features.md`](./docs/features.md)
+
+---
+
+## Stability & Alternatives
+
+Reqly is **alpha-quality research software**. Until `v1.0`:
+- Crashes, hangs, data loss (`~/.reqly` / `.reqly/history.db` / workspace YAML), and silent misbehavior are **expected**.
+- CLI flags, request file schema, and IPC bindings may break without deprecation notes — pin a commit if you experiment.
+- No SLA, no security audit, no stable import/export round-trips.
+
+If you need a reliable daily driver, stay on **Postman, Insomnia, Bruno, HTTPie, or Restish** for now — Reqly will be worth revisiting once `ROADMAP.md` reaches P1 ~100%.
 
 ---
 
