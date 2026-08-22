@@ -109,7 +109,7 @@ export const wailsEnvAdapter: EnvAdapter = {
 		}
 		return {
 			active: data.active ?? "",
-			environments: (data.environments ?? []).map((e: { name: string; description?: string; variables?: Record<string, string | undefined> | null; secrets?: string[] }) => ({
+			environments: (data.environments ?? []).map((e: { name: string; description?: string; variables?: Record<string, string | undefined> | null; secrets?: string[] | null }) => ({
 				name: e.name,
 				description: e.description ?? "",
 				variables: normalizeVariables(e.variables),
@@ -330,10 +330,10 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 		// executes on the core's goroutine and the first step can arrive while
 		// the binding's response is still in flight.
 		const offStep = Events.On(`reqly.run.${id}.step`, (e: { data: unknown }) => {
-			onEvent({ type: "step", step: normalizeRunStep(e.data) });
+			onEvent({ type: "step", step: normalizeRunStep(e.data as Parameters<typeof normalizeRunStep>[0]) });
 		});
 		const offDone = Events.On(`reqly.run.${id}.done`, (e: { data: unknown }) => {
-			onEvent({ type: "done", report: normalizeRunReport(e.data) });
+			onEvent({ type: "done", report: normalizeRunReport(e.data as Parameters<typeof normalizeRunReport>[0]) });
 			offStep();
 			offDone();
 		});
@@ -347,6 +347,81 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 	},
 	cancelRun: async (id) => {
 		await AppService.WorkspaceRunCancel(id);
+	},
+};
+
+export const wailsHistoryAdapter = {
+	list: async (limit: number, offset: number, status: string, env: string) => {
+		const svc = AppService as unknown as {
+			HistoryList(a: number, b: number, c: string, d: string): Promise<unknown[]>
+			HistoryShow(a: string): Promise<unknown>
+			HistorySearch(a: string, b: number): Promise<unknown[]>
+			HistoryClear(a: unknown): Promise<void>
+			HistoryReplay(a: string): Promise<unknown>
+			CookieList(a: string): Promise<unknown[]>
+			CookieDelete(a: string, b: string, c: string, d: string): Promise<void>
+			CookieClear(a: unknown): Promise<void>
+		}
+		const data = (await svc.HistoryList(limit, offset, status, env)) as unknown as { id: string; requestPath?: string; method?: string; url?: string; env?: string; status?: number; durationMs?: number; size?: number; createdAt?: string }[]
+		return (data ?? []).map((e) => ({
+			id: e.id,
+			requestPath: e.requestPath ?? "",
+			method: e.method ?? "",
+			url: e.url ?? "",
+			env: e.env ?? "",
+			status: e.status ?? 0,
+			durationMs: e.durationMs ?? 0,
+			size: e.size ?? 0,
+			createdAt: e.createdAt ?? "",
+		}))
+	},
+	show: async (id: string) => {
+		const svc = AppService as unknown as { HistoryShow(a: string): Promise<unknown> }
+		const e = await svc.HistoryShow(id)
+		if (!e) throw new Error("not found")
+		return e as never
+	},
+	search: async (q: string, limit: number) => {
+		const svc = AppService as unknown as { HistorySearch(a: string, b: number): Promise<unknown[]> }
+		const data = (await svc.HistorySearch(q, limit)) as unknown as { id: string; requestPath?: string; method?: string; url?: string; env?: string; status?: number; durationMs?: number; size?: number; createdAt?: string }[]
+		return (data ?? []).map((e) => ({
+			id: e.id,
+			requestPath: e.requestPath ?? "",
+			method: e.method ?? "",
+			url: e.url ?? "",
+			env: e.env ?? "",
+			status: e.status ?? 0,
+			durationMs: e.durationMs ?? 0,
+			size: e.size ?? 0,
+			createdAt: e.createdAt ?? "",
+		}))
+	},
+	clear: async (env: string | null) => {
+		const svc = AppService as unknown as { HistoryClear(a: unknown): Promise<void> }
+		await svc.HistoryClear(env ?? undefined as unknown as string)
+	},
+	replay: async (id: string) => {
+		const svc = AppService as unknown as { HistoryReplay(a: string): Promise<unknown> }
+		await svc.HistoryReplay(id)
+	},
+	listCookies: async (env: string) => {
+		const svc = AppService as unknown as { CookieList(a: string): Promise<unknown[]> }
+		const data = (await svc.CookieList(env)) as unknown as { name: string; value: string; domain?: string; path?: string; env?: string }[]
+		return (data ?? []).map((c) => ({
+			name: c.name,
+			value: c.value,
+			domain: c.domain ?? "",
+			path: c.path ?? "/",
+			env: c.env ?? "",
+		}))
+	},
+	deleteCookie: async (name: string, domain: string, path: string, env: string) => {
+		const svc = AppService as unknown as { CookieDelete(a: string, b: string, c: string, d: string): Promise<void> }
+		await svc.CookieDelete(name, domain, path, env)
+	},
+	clearCookies: async (env: string | null) => {
+		const svc = AppService as unknown as { CookieClear(a: unknown): Promise<void> }
+		await svc.CookieClear(env ?? undefined as unknown as string)
 	},
 };
 

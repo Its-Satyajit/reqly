@@ -15,6 +15,7 @@ export type EditorLanguage =
 	| "xml"
 	| "yaml"
 	| "markdown"
+	| "graphql"
 	| "text";
 
 const languageExtensions = {
@@ -23,6 +24,7 @@ const languageExtensions = {
 	xml: xml(),
 	yaml: yaml(),
 	markdown: markdown(),
+	graphql: [],
 	text: [],
 } satisfies Record<EditorLanguage, Extension>;
 

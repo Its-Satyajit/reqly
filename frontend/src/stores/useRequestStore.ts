@@ -17,6 +17,9 @@ export interface TabDraft {
   form: KeyValueRow[]
   params: KeyValueRow[]
   headers: KeyValueRow[]
+  /** GraphQL query and variables JSON for graphql body type. */
+  graphqlQuery?: string
+  graphqlVariables?: string
   /** The request's own auth (Inherit when unset — no own auth, the request
    * inherits from its containers). */
   auth?: RequestAuth
@@ -63,6 +66,8 @@ export const emptyTabDraft = (): TabDraft => ({
   form: [],
   params: [],
   headers: [],
+  graphqlQuery: '',
+  graphqlVariables: '{\n  \n}',
 })
 
 /** FileDraftInput is the file-owned request shape a save writes to disk. */
@@ -84,7 +89,13 @@ export interface FileDraftInput {
 export function fileInputFromDraft(draft: TabDraft): FileDraftInput {
   const headers = sentRows(draft.headers).map(({ key, value }) => ({ key, value }))
   const hasManualType = headers.some((h) => h.key.toLowerCase() === 'content-type')
-  const { body, contentType } = serializeBody(draft)
+  const { body, contentType } = serializeBody({
+    bodyType: draft.bodyType,
+    body: draft.body,
+    form: draft.form,
+    graphqlQuery: draft.graphqlQuery,
+    graphqlVariables: draft.graphqlVariables,
+  })
   if (contentType && !hasManualType) headers.push({ key: 'Content-Type', value: contentType })
   return {
     method: draft.method,

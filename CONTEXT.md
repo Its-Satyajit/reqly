@@ -115,7 +115,16 @@ The in-memory, editable auth state of a **Request Tab** — one of **Inherit** (
 The effective auth a request receives from its container chain (workspace → collection → folder) under **Auth Inheritance**, shown read-only in the **Auth Editor** when the request has no own auth — mirroring the inherited-headers group in the Headers tab.
 
 ### Body Type
-A request-body kind selected in the builder's Body tab: **none / JSON / XML / form-data / urlencoded / raw text**. JSON/XML/raw use a CodeMirror editor with the matching language; form-data and urlencoded use key-value rows. Selecting a type sets the appropriate `Content-Type` (or `multipart/form-data` with a generated boundary) unless the user set one manually.
+A request-body kind selected in the builder's Body tab: **none / JSON / XML / form-data / urlencoded / raw text / binary / GraphQL**. JSON/XML/raw/GraphQL use a CodeMirror editor with the matching language; form-data and urlencoded use key-value rows (form-data rows can carry a file). Binary is a single file picker. Selecting a type sets the appropriate `Content-Type` (or `multipart/form-data` with a generated boundary) unless the user set one manually.
+
+### Binary Body
+A body kind for single-file uploads (`BodyType: binary`): a file picker (and drag-drop) stores a Git-native relative file path (`request.body: { file: "./path" }`), `serializeBody` reads the file at send and sends its bytes with `Content-Type: application/octet-stream` (or the file’s mime).
+
+### GraphQL Body
+A body kind for GraphQL (`BodyType: graphql`): two editors — query (`graphql` lang) and variables JSON — stored as structured `request.body: { query, variables }`, `serializeBody` JSON-stringifies them to `{"query","variables"}` with `Content-Type: application/json`.
+
+### File Upload
+Attaching a file to a request: `binary` as a single file body, or `form-data` rows with `file` + optional `filename` (each row toggles between text value and file path), producing `multipart/form-data` via `boundaryFor` (`frontend/src/lib/body.ts:32`). File paths are Git-native relative and resolved at send time.
 
 ### Response View
 One of the desktop response viewer's tabs: **Raw** (as-received), **Pretty** (JSON pretty-printed, XML re-indented when parseable), **Headers** (key/value table), **Tree** (recursive expand/collapse JSON tree), or **Cookies** (parsed `Set-Cookie` response headers). A search box filters the active view; the JSONPath query bar replaces the body area with query matches while active.
@@ -124,7 +133,31 @@ One of the desktop response viewer's tabs: **Raw** (as-received), **Pretty** (JS
 A dependency-free evaluator (`frontend/src/lib/jsonpath.ts`) over the response's JSON body: `$` root, dot/bracket segments (`$.user.name`, `$['users'][0]`), wildcard `*`, and array indexes. Returns a match list with canonical paths, or a specific per-segment error for invalid paths; zero matches render as an empty state, not an error.
 
 ### Response Cookie
-A cookie parsed from a `Set-Cookie` response header (RFC 6265 §5.2) for display: name, value, domain, path, expiry (normalized from `Expires` or `Max-Age`), and `Secure`/`HttpOnly`/`SameSite` flags. Milestone 14 is display-only — there is no cookie jar, so cookies are not persisted or replayed on later requests (separate roadmap item).
+A cookie parsed from a `Set-Cookie` response header (RFC 6265 §5.2) for display: name, value, domain, path, expiry (normalized from `Expires` or `Max-Age`), and `Secure`/`HttpOnly`/`SameSite` flags. Milestone 14 was display-only; Milestone 22 adds the **Cookie Jar** (see below).
+
+### Cookie Jar
+A per-workspace, `env`-partitioned persistent store for `Response Cookie`s in the same SQLite database as history (`<workspace>/.reqly/history.db` `cookies` table: `name, value, domain, path, expires_at, secure, http_only, same_site, env`). Populated automatically from `Set-Cookie` on each response (via `net/http` `ReadSetCookies`, RFC 6265), queried by `request.Client` before send for domain/path/secure matching (auto-attached as `Cookie:`), and shown in the desktop response Cookies tab with delete/clear controls. Partitioned by `env` so **Clear per environment** (`DELETE WHERE env=?`) and **Clear per workspace** (`DELETE WHERE workspace=?`) are distinct. Edit is delete+re-add; a per-request opt-out (`CookieJar: false`) is available.
+
+### Table View
+A response-viewer tab for tabular bodies: a **JSON array of objects** (union of keys → columns, first 1000 rows virtualized, client-side search/sort) or **CSV** (`encoding/csv`). The Table tab is always visible but disabled with a hint when the body is not tabular (needs JSON array or CSV, detected via `Content-Type` + `JSON.parse` probe). CSV pretty is the Table itself; no separate CSV pretty.
+
+### Binary Preview
+How non-JSON bodies are shown: `image/*` renders inline via `data:` URL, `application/pdf` shows a download banner, other binary shows a hex dump (first 4KB) + download. This covers the remaining `ROADMAP.md:74` response body parsing (XML/HTML/CSV/binary) — JSON stays Pretty/Tree, XML stays Pretty-indented, CSV uses Table, binary uses this preview.
+
+### History Entry
+One row per executed request in the per-workspace SQLite history (`<workspace>/.reqly/history.db` `history` table): `id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body_path, resp_headers_json, resp_body_path, created_at` plus FTS5 on `url, request_path`. Bodies >1MB spill to `<workspace>/.reqly/history/blobs/<id>.bin`; otherwise inline. The file is 0600 and `.reqly/` is `.gitignore`d. Stored bytes are exact (for faithful replay) but masked on display via `environments.MaskValues`.
+
+### History Store
+The `internal/history` persistence layer over `modernc.org/sqlite` (pure-Go, no CGO, WAL mode): `List`, `Show`, `Search` (FTS5), `Clear`, and `EnforceRetention` (keep last 500 per workspace, prune oldest). Shared by Desktop and CLI via `internal/core`.
+
+### Replay
+Re-sending a **History Entry**'s fully-resolved request verbatim (`Client.Send(storedReq)`) via the History view's **Replay** button or `reqly history replay <id>`. Exact replay only for M22 — no re-interpolation of `{{variables}}`; a future `history replay --env <name>` can target another env.
+
+### History View
+The desktop surface for local history: sidebar **History** entry → table (`time ↓, method, url/path, status, duration, env`, paginated 50/page, status filter 2xx/4xx/5xx, FTS search, Clear button). Clicking a row shows masked request/response with a Replay button; replay uses the History Entry's stored request.
+
+### History Adapter
+The frontend seam through which the desktop UI reads history and triggers replay/clear. Host injects a Wails-backed adapter; browser dev mode uses a read-only fallback, mirroring the request/auth/environment adapter pattern.
 
 ### Workspace
 The top-level Git-native unit of Reqly: a directory containing a `reqly.yaml` descriptor plus optional `collections/` and `environments/` directories. Discovered by walking up from the current directory to the nearest descriptor. It owns the workspace-level configuration (base URL, headers, auth, variables, active environment) that its collections inherit.

@@ -21,11 +21,15 @@ export interface RequestAuth {
 }
 
 /** A key-value row in the builder: enabled rows are sent, disabled are kept
- * but skipped; blank keys are dropped. */
+ * but skipped; blank keys are dropped. `file` holds a Git-native relative
+ * file path for `form-data` file entries (M21); `filename` overrides the
+ * uploaded file name. */
 export interface KeyValueRow {
 	key: string;
 	value: string;
 	enabled: boolean;
+	file?: string;
+	filename?: string;
 }
 
 export interface RequestInput {
@@ -34,10 +38,14 @@ export interface RequestInput {
 	headers?: RequestHeader[];
 	params?: KeyValueRow[];
 	bodyType?: BodyType;
-	/** Body text for json/xml/raw body types; serialized form fields for
-	 * form-data/urlencoded live in `form`. */
+	/** Body text for json/xml/raw/binary body types; serialized form fields for
+	 * form-data/urlencoded live in `form`. For graphql, `body` holds the query
+	 * when `graphqlQuery` is not set. */
 	body?: string;
 	form?: KeyValueRow[];
+	/** GraphQL query and variables (JSON string) for graphql body type. */
+	graphqlQuery?: string;
+	graphqlVariables?: string;
 	timeout?: number;
 	/** Environment pill (a request file's environment: field) used at send;
 	 * empty falls back to the app's active environment. */
