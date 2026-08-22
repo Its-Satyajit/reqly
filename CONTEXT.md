@@ -285,3 +285,12 @@ When the loop terminates: no `next` value (cursor/link empty), empty array body,
 ### Pagination Aggregation (deferred)
 Concatenating paginated JSON arrays into one result (`--out` / `aggregate: true`) — deferred to M30b; M30 streams per-step results only, matching the collection runner `OnStep` callback.
 
+### Bulk Runner
+Executes one request repeatedly against many input rows (CSV header→values or JSON array of objects), interpolating each row's fields as `{{var}}` via `variables` scopes. M31 supports CSV+JSON MVP, sequential default, parallel with `--parallel` + `--concurrency N` (semaphore, output ordered), `--continue-on-error` flag. Variable/generated dataset inputs deferred to M31b.
+
+### Bulk Input Row
+One map of variables per iteration (`map[string]string`), e.g. CSV row `id,name` → `{"id":"1","name":"a"}` or JSON object `{"id":1}` → stringified values. Interpolated per send via `variables.ScopeRuntime`.
+
+### Bulk Concurrency
+Parallel execution via semaphore `concurrency` (default 5 when `--parallel`, 1 sequential); results streamed via `OnStep` but collected in input order for reporting, matching `collection run` streaming.
+
