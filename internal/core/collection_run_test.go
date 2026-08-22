@@ -250,7 +250,7 @@ func TestCollectionRunServiceMasksSecrets(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
 		"reqly.yaml":                   fmt.Sprintf("name: demo\nbaseURL: %s\nenvironment: prod\n", srv.URL),
-"environments/prod.yaml":         "variables:\n  env: prod\nsecrets:\n  token: superSecret\n",
+		"environments/prod.yaml":       "variables:\n  env: prod\nsecrets:\n  token: superSecret\n",
 		"collections/users/reqly.yaml": "name: users\n",
 		"collections/users/a.yaml":     "request: {method: GET, url: /a}\npostRequest: |\n  console.log(reqly.response.body);\n",
 	}

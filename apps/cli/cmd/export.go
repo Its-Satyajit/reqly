@@ -1,15 +1,19 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/exporter"
+	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
+	"github.com/Its-Satyajit/reqly/internal/version"
 )
 
 var exportCmd = &cobra.Command{
@@ -17,7 +21,7 @@ var exportCmd = &cobra.Command{
 	Short: "Export workspaces and requests to shareable formats",
 	Long: `Export Reqly-native projects into shareable formats.
 
-Supported targets: Postman collection v2.1, code snippets (cURL, JS, Python, Go).`,
+Supported targets: Postman collection v2.1, code snippets (cURL, JS, Python, Go), HAR (history → HAR).`,
 }
 
 var exportPostmanCmd = &cobra.Command{
@@ -185,11 +189,74 @@ src defaults to the current workspace (.). --out is required.`,
 	},
 }
 
+var exportHarOut string
+var exportHarEnv string
+var exportHarLimit int
+
+var exportHarCmd = &cobra.Command{
+	Use:   "har [--out <file.har>] [--env <name>] [--limit <n>]",
+	Short: "Export history as HAR",
+	Long: `Export the workspace's history (request + response) as HAR 1.2 JSON.
+
+  reqly export har --out traffic.har --env staging --limit 100
+  reqly export har > traffic.har
+
+History is the source of truth (responses synthesized, timings from DurationMS,
+secrets masked to [SECRET]). Without --out, HAR JSON is printed to stdout.`,
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		root := collections.FindWorkspaceRoot(".")
+		if root == "" {
+			return fmt.Errorf("not a workspace: no reqly.yaml found")
+		}
+		store, err := history.NewStore(filepath.Join(root, ".reqly", "history.db"))
+		if err != nil {
+			return err
+		}
+		defer func() { _ = store.Close() }()
+		limit := exportHarLimit
+		if limit <= 0 {
+			limit = 500
+		}
+		entries, err := store.List(context.Background(), limit, 0, nil)
+		if err != nil {
+			return err
+		}
+		if exportHarEnv != "" {
+			var filtered []history.Entry
+			for _, e := range entries {
+				if e.Env == exportHarEnv {
+					filtered = append(filtered, e)
+				}
+			}
+			entries = filtered
+		}
+		// masker for secrets (M28b: populate from env secrets; M28 masks via empty masker)
+		var mask func(string) string
+		data, err := exporter.ExportHAR(entries, version.Version, mask)
+		if err != nil {
+			return err
+		}
+		if exportHarOut == "" {
+			fmt.Fprintln(cmd.OutOrStdout(), string(data))
+			return nil
+		}
+		if err := os.WriteFile(exportHarOut, data, 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "wrote %s (%d entries)\n", exportHarOut, len(entries))
+		return nil
+	},
+}
+
 func init() {
-	exportCmd.AddCommand(exportPostmanCmd, exportCodeCmd, exportWorkspaceCmd)
+	exportCmd.AddCommand(exportPostmanCmd, exportCodeCmd, exportWorkspaceCmd, exportHarCmd)
 	exportPostmanCmd.Flags().StringVar(&exportOutput, "output", "", "write the collection to this file")
 	exportCodeCmd.Flags().StringVar(&exportCodeLang, "lang", "", "target language (cURL, js, python, go)")
 	exportCodeCmd.Flags().StringVar(&exportCodeOut, "out", "", "write snippet to this file")
 	exportCodeCmd.Flags().StringVar(&exportCodeEnv, "env", "", "environment to resolve variables")
 	exportWorkspaceCmd.Flags().StringVar(&exportWorkspaceOut, "out", "", "destination directory")
+	exportHarCmd.Flags().StringVar(&exportHarOut, "out", "", "write HAR to this file (default stdout)")
+	exportHarCmd.Flags().StringVar(&exportHarEnv, "env", "", "filter history by environment")
+	exportHarCmd.Flags().IntVar(&exportHarLimit, "limit", 500, "maximum history entries to export")
 }

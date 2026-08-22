@@ -7,6 +7,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -31,6 +32,9 @@ func NewHistoryService(store *history.Store, client *request.Client) *HistorySer
 
 // Record persists an entry and ingests Set-Cookie into the jar.
 func (s *HistoryService) Record(ctx context.Context, e *history.Entry) error {
+	if s == nil || s.store == nil {
+		return fmt.Errorf("no workspace found: open a reqly workspace to record history")
+	}
 	if err := s.store.Insert(ctx, e); err != nil {
 		return err
 	}
@@ -72,6 +76,9 @@ func (s *HistoryService) Record(ctx context.Context, e *history.Entry) error {
 
 // List returns masked entries.
 func (s *HistoryService) List(ctx context.Context, limit, offset int, statusFilter *int) ([]history.Entry, error) {
+	if s == nil || s.store == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to view history")
+	}
 	entries, err := s.store.List(ctx, limit, offset, statusFilter)
 	if err != nil {
 		return nil, err
@@ -84,6 +91,9 @@ func (s *HistoryService) List(ctx context.Context, limit, offset int, statusFilt
 
 // Show returns one masked entry.
 func (s *HistoryService) Show(ctx context.Context, id string) (history.Entry, error) {
+	if s == nil || s.store == nil {
+		return history.Entry{}, fmt.Errorf("no workspace found: open a reqly workspace to view history")
+	}
 	e, err := s.store.Show(ctx, id)
 	if err != nil {
 		return history.Entry{}, err

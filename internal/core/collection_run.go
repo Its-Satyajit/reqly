@@ -99,6 +99,9 @@ func NewCollectionRunService(root string) *CollectionRunService {
 // deterministic order through the shared runner, streaming each completed
 // step through opts.OnStep. Only one run may be in flight at a time.
 func (s *CollectionRunService) Run(ctx context.Context, path string, opts RunOptions) (*RunReport, error) {
+	if s == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to run collections")
+	}
 	if s.root == "" {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to run collections")
 	}

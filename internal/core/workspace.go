@@ -114,6 +114,9 @@ func NewWorkspaceService(root string) *WorkspaceService {
 // workspace without a collections/ directory yields an empty tree, not an
 // error; a missing descriptor is an error.
 func (s *WorkspaceService) Load() (*WorkspaceTree, error) {
+	if s == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to browse collections")
+	}
 	if s.root == "" {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to browse collections")
 	}
@@ -131,6 +134,9 @@ func (s *WorkspaceService) Load() (*WorkspaceTree, error) {
 // environment field. Placeholders are preserved for send-time interpolation.
 // An unknown path is an error.
 func (s *WorkspaceService) OpenRequest(path string) (*OpenedRequest, error) {
+	if s == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to open requests")
+	}
 	if s.root == "" {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to open requests")
 	}
@@ -189,6 +195,9 @@ func openedRequestDTO(path string, entry *collections.RequestEntry, resolved *co
 // new fingerprint of the saved file, to be used as the tab's next baseline
 // version.
 func (s *WorkspaceService) SaveRequest(path string, draft request.Request, expectedVersion string) (string, error) {
+	if s == nil {
+		return "", fmt.Errorf("no workspace found: open a reqly workspace to save requests")
+	}
 	if s.root == "" {
 		return "", fmt.Errorf("no workspace found: open a reqly workspace to save requests")
 	}
@@ -249,6 +258,9 @@ func mergeDraftRequest(original, draft request.Request) request.Request {
 // every inherited field is recomputed from the containers, not from an
 // already-resolved snapshot.
 func (s *WorkspaceService) ResolveSend(path string, draft request.Request) (*collections.ResolvedRequest, error) {
+	if s == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to send requests")
+	}
 	if s.root == "" {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to send requests")
 	}
