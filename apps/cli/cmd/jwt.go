@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -90,8 +89,14 @@ var jwtDecodeCmd = &cobra.Command{
 		}
 
 		// Human pretty.
-		headerPretty, _ := json.MarshalIndent(tok.Header, "", "  ")
-		payloadPretty, _ := json.MarshalIndent(tok.Payload, "", "  ")
+		headerPretty, err := json.MarshalIndent(tok.Header, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal header: %w", err)
+		}
+		payloadPretty, err := json.MarshalIndent(tok.Payload, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal payload: %w", err)
+		}
 		fmt.Fprintln(cmd.OutOrStdout(), "Header:")
 		fmt.Fprintln(cmd.OutOrStdout(), string(headerPretty))
 		fmt.Fprintln(cmd.OutOrStdout(), "")
@@ -112,36 +117,40 @@ var jwtDecodeCmd = &cobra.Command{
 }
 
 func formatJWTExpiry(e jwtpkg.ExpiryStatus) string {
+	base := ""
 	switch e.Status {
 	case "no_expiry":
-		if e.Iat != nil {
-			age := time.Since(time.Unix(*e.Iat, 0)).Round(time.Second)
-			if age < 0 {
-				age = -age
-			}
-			return fmt.Sprintf("no expiry (issued %s ago)", age)
-		}
-		return "no expiry"
+		base = "no expiry"
 	case "not_yet_valid":
-		d := time.Duration(e.Remaining) * time.Second
-		return fmt.Sprintf("not yet valid (nbf in %s)", d)
+		base = fmt.Sprintf("not yet valid (nbf in %s)", time.Duration(e.Remaining)*time.Second)
 	case "expired":
-		d := time.Duration(-e.Remaining) * time.Second
-		return fmt.Sprintf("expired %s ago", d)
+		base = fmt.Sprintf("expired %s ago", time.Duration(-e.Remaining)*time.Second)
 	case "valid":
-		d := time.Duration(e.Remaining) * time.Second
 		if e.Exp != nil {
-			return fmt.Sprintf("valid for %s", d)
+			base = fmt.Sprintf("valid for %s", time.Duration(e.Remaining)*time.Second)
+		} else {
+			base = "valid"
 		}
-		return "valid"
 	default:
-		return e.Status
+		base = e.Status
 	}
+	if e.Iat != nil {
+		iatTime := time.Unix(*e.Iat, 0)
+		age := jwtpkg.Now().Sub(iatTime).Round(time.Second)
+		if age < 0 {
+			age = -age
+		}
+		if e.Status == "no_expiry" {
+			return fmt.Sprintf("%s (issued %s ago)", base, age)
+		}
+		if base != "" && age != 0 {
+			return fmt.Sprintf("%s (issued %s ago)", base, age)
+		}
+	}
+	return base
 }
 
 func init() {
-	// Ensure unused import os is referenced for go vet (stdin fallback via os.Stdin is used via InOrStdin).
-	_ = os.Stdin
 	jwtDecodeCmd.Flags().BoolVar(&jwtDecodeJSON, "json", false, "output machine JSON")
 	jwtCmd.AddCommand(jwtDecodeCmd)
 }

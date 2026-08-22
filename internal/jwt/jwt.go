@@ -105,6 +105,9 @@ func Decode(token string) (*Token, error) {
 	return tok, nil
 }
 
+// IsExpired reports whether a unix expiry is in the past relative to Now.
+func IsExpired(expiry int64) bool { return Now().UTC().Unix() > expiry }
+
 func computeExpiry(payload map[string]any) (ExpiryStatus, error) {
 	var st ExpiryStatus
 	var fieldErr error
@@ -118,18 +121,6 @@ func computeExpiry(payload map[string]any) (ExpiryStatus, error) {
 		switch n := v.(type) {
 		case float64:
 			i := int64(n)
-			return &i, nil
-		case int:
-			i := int64(n)
-			return &i, nil
-		case int64:
-			return &n, nil
-		case json.Number:
-			f, err := n.Float64()
-			if err != nil {
-				return nil, fmt.Errorf("invalid %s: not numeric: %w", key, err)
-			}
-			i := int64(f)
 			return &i, nil
 		default:
 			return nil, fmt.Errorf("invalid %s: not numeric (got %T)", key, v)
