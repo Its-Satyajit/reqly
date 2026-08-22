@@ -231,3 +231,12 @@ The `internal/exporter` package seam for sharing request shapes: `postman.go` (P
 ### Golden File
 A `exporter/testdata/<lang>.golden` fixture for table-driven `TestGenerate_<Lang>` — input `request.Request` fixture → expected snippet literal. Prior art `postman_test.go`; deterministic, no `rand`, no network.
 
+### Workspace Save
+Bulk in-place persistence of a `Workspace` to its root: writes `reqly.yaml` + `collections/<coll>/reqly.yaml` + `collections/<coll>/requests/*.yaml` (or `.json` per `isJSONPath`) via `requestfile.Save` (format-preserving, atomic temp-file + rename, `0644`, `0600` for secrets) and `collections.SaveWorkspace` (creates `collections/` + `environments/` dirs as needed). Prunes `collections/<coll>` dirs/files that no longer exist in `ws` (delete on disk). No `changed-on-disk` version check for bulk (bulk is “write what’s in memory”); per-file `WorkspaceSaveRequest` keeps version check.
+
+### Workspace Export
+Copying a `Workspace` to a new directory via `SaveWorkspace(out, ws)` after `LoadWorkspace(src)` — `reqly export workspace [src] --out <dir>` (src `.` when omitted, `--out` required; no `--out` → error, in-place bulk is `SaveWorkspace` directly). Reuses `SaveWorkspace` — no `tar.gz` in M25 (M25b adds `archive/tar`). Git-native, plain-text, like `Save`.
+
+### SaveWorkspace
+The `internal/collections.SaveWorkspace(root string, ws *Workspace) error` seam beside `LoadWorkspace` — writes descriptors + request files, creates dirs, `0600`/`0644`, atomic, prune deleted. Highest seam for save/export — `export workspace` is thin Cobra wrapper (`LoadWorkspace(src)` → `SaveWorkspace(out, ws)`), no new `internal/exporter` code.
+
