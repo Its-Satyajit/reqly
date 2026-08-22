@@ -123,4 +123,4 @@ wails3 dev
 
 ## License
 
-Distributed under the **[GPL-3.0 License](./LICENSE)**. Built for developers who care about code ownership.
+Distributed under the **[Apache 2.0 License](./LICENSE)**. Built for developers who care about code ownership.
