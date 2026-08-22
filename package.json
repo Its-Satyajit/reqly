@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "A local-first, Git-native API development environment",
-  "license": "GPL-3.0-only",
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=24"
   },
