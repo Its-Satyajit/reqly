@@ -1,7 +1,7 @@
 # ADR 0022: Pagination Runner (M30)
 
 ## Status
-Draft — grill Q1 settled (4 strategies MVP)
+Accepted
 
 ## Context
 `ROADMAP.md:345` (`Pagination runner — page/offset/cursor/link-header traversal, stop conditions, aggregation`) and `docs/features.md:27` (page/pageSize, offset/limit, cursor, link headers, automatic traversal, stop, aggregation, maxPages) remain unchecked. `internal/runner` is sequential single-flight, `internal/collections` descriptors hold plain request files, and `internal/variables` already interpolates `{{var}}` per request. Design questions: which strategies ship in M30, where pagination config lives (`request.pagination` vs collection-level), how `next` is extracted (JSONPath vs header), stop semantics, and CLI shape (`reqly pagination run` vs `reqly collection run --paginate`).

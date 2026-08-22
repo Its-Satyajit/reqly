@@ -33,8 +33,23 @@ type Request struct {
 	Query   []Parameter `json:"query,omitempty" yaml:"query,omitempty"`
 	Body    string      `json:"body,omitempty" yaml:"body,omitempty"`
 
-	Auth    Auth  `json:"auth,omitempty" yaml:"auth,omitempty"`
-	Timeout int64 `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
+	Auth       Auth       `json:"auth,omitempty" yaml:"auth,omitempty"`
+	Pagination *Pagination `json:"pagination,omitempty" yaml:"pagination,omitempty"`
+	Timeout    int64      `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
+}
+
+// Pagination configures iterative fetching for a paginated endpoint.
+type Pagination struct {
+	Strategy      string `json:"strategy" yaml:"strategy"` // page|offset|cursor|link-header
+	PageParam     string `json:"pageParam,omitempty" yaml:"pageParam,omitempty"`
+	PageSizeParam string `json:"pageSizeParam,omitempty" yaml:"pageSizeParam,omitempty"`
+	OffsetParam   string `json:"offsetParam,omitempty" yaml:"offsetParam,omitempty"`
+	LimitParam    string `json:"limitParam,omitempty" yaml:"limitParam,omitempty"`
+	CursorParam   string `json:"cursorParam,omitempty" yaml:"cursorParam,omitempty"`
+	NextPath      string `json:"nextPath,omitempty" yaml:"nextPath,omitempty"`
+	MaxPages      int    `json:"maxPages,omitempty" yaml:"maxPages,omitempty"`
+	PageSize      int    `json:"pageSize,omitempty" yaml:"pageSize,omitempty"`
+	Limit         int    `json:"limit,omitempty" yaml:"limit,omitempty"`
 }
 
 // Method is an HTTP method.
