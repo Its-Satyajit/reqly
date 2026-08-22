@@ -249,3 +249,15 @@ The `internal/docs.Generate(outDir string, ws *Workspace, env string) error` sea
 ### Docs Golden File
 A `docs/testdata/<collection>.golden` fixture for table-driven `TestGenerate` — `Workspace` fixture (2 colls, `{{var}}` + `auth` + `body`) → expected Markdown `index.md` + `<coll>.md` literals. Prior art `exporter/postman_test.go` + `collections/save_test.go`; deterministic, no `rand`, no network.
 
+### HAR
+HTTP Archive 1.2 (`log.entries[]` with `request`/`response`/`timings`/`startedDateTime`): `request: {method,url,headers,cookies,queryString,postData:{mimeType,text,encoding,params}}` + `response: {status,headers,content:{text,encoding,mimeType}}`. Browser DevTools `Copy as HAR` / `Export HAR` produces it; Reqly consumes it for import and produces it from history for sharing. Stored on disk as plain JSON (`.har`), never as workspace YAML.
+
+### HAR Import
+`reqly import har <har-file> [--out <dir>] [--collection <name>]` (default `--collection har-import`): parses HAR JSON, maps each `log.entries[i].request` to a `RequestEntry` file (`collections/<name>/<method>-<host>-<path>.yaml`, deduped `get-users-2`), `headers+cookies→Headers` (`Cookie:` merged), `queryString→Query`, `postData.text→Body` (base64 decoded when `encoding=="base64"`, `mimeType→Content-Type` only when no explicit header). Bodies >1MB spill to `blobs/<id>.bin` via `request.body: {file:"./blobs/..."}`. Unknown `pageref`/`timings`/`cache`/`_resourceType` dropped with `unsupported-feature` warning (like `curl`/`openapi`).
+
+### HAR Export
+`reqly export har [--out <file.har>] [--env <name>] [--limit 500]` (default stdout when `--out` absent): serializes `history.Store` entries (filtered by `env` partition) into HAR `log.entries[]` via `internal/exporter/har.go` `Export([]history.Entry) ([]byte,error)` beside `postman.go`/`code.go` (pure function, `0644` atomic). `request` from `history.Entry.ReqHeaders/ReqBody` exact bytes, `response.content.text` base64 when binary, `timings` synthesized from `DurationMS` (`send/wait/receive`), secrets masked to `[SECRET]` via `environments.MaskValues`.
+
+### HAR Replay
+Replaying a captured HAR via Reqly: `import har` materializes the captured traffic as a `har-import` collection, then `reqly collection run har-import` (or `reqly history replay <id>` for a prior `history.Entry` verbatim via `Client.Send`, `CONTEXT.md:154`). Exact replay only for M28 — no re-interpolation of `{{variables}}` against the HAR.
+

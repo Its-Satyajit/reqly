@@ -63,6 +63,9 @@ type LoginRequest struct {
 // Login performs the interactive grant and caches the token under the same
 // key the request engine uses, so subsequent requests reuse it.
 func (s *AuthService) Login(ctx context.Context, req LoginRequest) (auth.Token, error) {
+	if s == nil || s.store == nil {
+		return auth.Token{}, fmt.Errorf("no workspace found: open a reqly workspace to log in")
+	}
 	cfg := make(map[string]string, len(req.Config))
 	for k, v := range req.Config {
 		cfg[k] = v
@@ -108,6 +111,9 @@ type AuthTokenStatus struct {
 
 // Status lists the cached tokens with masked values and the store backend.
 func (s *AuthService) Status() ([]AuthTokenStatus, error) {
+	if s == nil || s.store == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to see auth status")
+	}
 	keys, err := s.store.Keys()
 	if err != nil {
 		return nil, fmt.Errorf("read token store: %w", err)
@@ -151,6 +157,9 @@ func (s *AuthService) Status() ([]AuthTokenStatus, error) {
 // Logout clears every cached token for the workspace and returns how many
 // were removed.
 func (s *AuthService) Logout() (int, error) {
+	if s == nil || s.store == nil {
+		return 0, fmt.Errorf("no workspace found: nothing to clear")
+	}
 	keys, err := s.store.Keys()
 	if err != nil {
 		return 0, fmt.Errorf("read token store: %w", err)

@@ -109,6 +109,9 @@ type SendOptions struct {
 // request-file variable scopes layered above the environment; scratchpad
 // sends interpolate with the environment scope alone.
 func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.SendResponse, error) {
+	if s == nil || s.requests == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to send requests")
+	}
 	vars, err := resolveAppEnvironment(opts.Env)
 	if err != nil {
 		return nil, err
@@ -276,6 +279,9 @@ func (s *AppService) DeliverCustomSchemeCallback(uri string) error {
 // EnvList lists the workspace's environments plus the active one. Secret
 // values never cross the bridge — only their names are returned.
 func (s *AppService) EnvList() (*core.EnvListResponse, error) {
+	if s == nil || s.environments == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to list environments")
+	}
 	return s.environments.List()
 }
 
@@ -319,6 +325,9 @@ func (s *AppService) EnvSetActive(name string) error {
 // folders → requests, all name-sorted) with workspace-relative Request Paths.
 // A workspace without a collections/ directory yields an empty tree.
 func (s *AppService) WorkspaceLoad() (*core.WorkspaceTree, error) {
+	if s == nil || s.workspace == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to browse collections")
+	}
 	return s.workspace.Load()
 }
 
@@ -326,6 +335,9 @@ func (s *AppService) WorkspaceLoad() (*core.WorkspaceTree, error) {
 // Request Path into its fully resolved form (effective URL, merged headers,
 // inherited auth, variable chain, file environment), ready for the editor.
 func (s *AppService) WorkspaceOpenRequest(path string) (*core.OpenedRequest, error) {
+	if s == nil || s.workspace == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to open requests")
+	}
 	return s.workspace.OpenRequest(path)
 }
 
@@ -409,6 +421,9 @@ var emitRunEvent = func(name string, data any) {
 // mismatch surfaces as a changed-on-disk conflict instead of clobbering the
 // external edit. The returned string is the new baseline version for the tab.
 func (s *AppService) WorkspaceSaveRequest(path string, draft request.Request, expectedVersion string) (string, error) {
+	if s == nil || s.workspace == nil {
+		return "", fmt.Errorf("no workspace found: open a reqly workspace to save requests")
+	}
 	return s.workspace.SaveRequest(path, draft, expectedVersion)
 }
 
@@ -467,6 +482,9 @@ func (s *AppService) HistoryClear(env *string) error {
 
 // HistoryReplay replays a stored entry verbatim.
 func (s *AppService) HistoryReplay(id string) (*core.SendResponse, error) {
+	if s == nil || s.requests == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to replay history")
+	}
 	if s.history == nil {
 		return nil, fmt.Errorf("no workspace")
 	}

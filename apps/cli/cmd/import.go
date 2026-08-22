@@ -34,7 +34,7 @@ var importCmd = &cobra.Command{
 	Short: "Import external API artifacts",
 	Long: `Import external API artifacts into Reqly-native project structures.
 
-Supported sources: cURL, OpenAPI 3.x.`,
+Supported sources: cURL, OpenAPI 3.x, HAR.`,
 }
 
 var importCurlCmd = &cobra.Command{
@@ -111,9 +111,53 @@ Without --output, the workspace is written into ./imported-openapi.`,
 }
 
 var importOutput string
+var importHarCollection string
+
+var importHarCmd = &cobra.Command{
+	Use:   "har <file> [--output <dir>] [--collection <name>]",
+	Short: "Import a HAR file into a workspace",
+	Long: `Parse a HAR 1.2 file (Chrome DevTools Network → Export HAR) and write it as a
+Git-native workspace: reqly.yaml plus collections/<name>/<request>.yaml files.
+
+  reqly import har capture.har
+  reqly import har capture.har --output ./ws --collection chrome
+
+Supports method/url/headers/cookies/queryString/postData (base64 decoded, mimeType→Content-Type);
+drops pageref/timings/cache with warnings. Bodies >1MB spill to .reqly/blobs.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		data, err := os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("read HAR: %w", err)
+		}
+		result, warnings, err := importer.ParseHAR(data)
+		if err != nil {
+			return err
+		}
+		for _, w := range warnings {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
+		}
+		out := importOutput
+		if out == "" {
+			out = "."
+		}
+		coll := importHarCollection
+		if coll == "" {
+			coll = "har-import"
+		}
+		if err := result.Write(out, coll); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "imported %s into %s (%d requests, collection %q)\n",
+			filepath.Base(args[0]), out, len(result.Requests), coll)
+		return nil
+	},
+}
 
 func init() {
-	importCmd.AddCommand(importCurlCmd, importOpenAPICmd)
+	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd)
 	importCurlCmd.Flags().StringVar(&importOutput, "output", "", "write a request file to this path")
 	importOpenAPICmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
+	importHarCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
+	importHarCmd.Flags().StringVar(&importHarCollection, "collection", "har-import", "collection name for HAR entries")
 }

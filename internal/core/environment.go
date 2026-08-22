@@ -64,6 +64,9 @@ func NewEnvironmentService(root string) *EnvironmentService {
 // workspace descriptor. An empty root or a missing environments/ directory
 // yields an empty list without error.
 func (s *EnvironmentService) List() (*EnvListResponse, error) {
+	if s == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to list environments")
+	}
 	names, err := environments.List(s.root)
 	if err != nil {
 		// A missing environments/ directory is valid for an env-less project:
@@ -94,6 +97,9 @@ func (s *EnvironmentService) List() (*EnvListResponse, error) {
 
 // Read returns a single environment by name, without its secret values.
 func (s *EnvironmentService) Read(name string) (*Environment, error) {
+	if s == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to manage environments")
+	}
 	if s.root == "" {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to manage environments")
 	}
@@ -109,6 +115,9 @@ func (s *EnvironmentService) Read(name string) (*Environment, error) {
 // to environments/<name>.yaml. An empty or unsafe name, or an environment
 // that already exists, is an error. Without a workspace, this is an error.
 func (s *EnvironmentService) Create(name, description string, variables map[string]string) error {
+	if s == nil {
+		return fmt.Errorf("no workspace found: open a reqly workspace to create an environment")
+	}
 	if s.root == "" {
 		return fmt.Errorf("no workspace found: open a reqly workspace to create an environment")
 	}
@@ -128,6 +137,9 @@ func (s *EnvironmentService) Create(name, description string, variables map[stri
 // the service). A missing environment or workspace is an error, as is a
 // variable key that collides with an existing secret name.
 func (s *EnvironmentService) Update(name, description string, variables map[string]string) error {
+	if s == nil {
+		return fmt.Errorf("no workspace found: open a reqly workspace to update an environment")
+	}
 	if s.root == "" {
 		return fmt.Errorf("no workspace found: open a reqly workspace to update an environment")
 	}
@@ -154,6 +166,9 @@ func (s *EnvironmentService) Update(name, description string, variables map[stri
 // (existing ones keep their on-disk values); `remove` lists secret names to
 // delete. A missing environment or workspace is an error.
 func (s *EnvironmentService) UpdateSecrets(name string, values map[string]string, remove []string) error {
+	if s == nil {
+		return fmt.Errorf("no workspace found: open a reqly workspace to edit secrets")
+	}
 	if s.root == "" {
 		return fmt.Errorf("no workspace found: open a reqly workspace to edit secrets")
 	}
@@ -189,6 +204,9 @@ func (s *EnvironmentService) UpdateSecrets(name string, values map[string]string
 // workspace's active one, the descriptor's selection is cleared. A missing
 // environment or workspace is an error.
 func (s *EnvironmentService) Delete(name string) error {
+	if s == nil {
+		return fmt.Errorf("no workspace found: open a reqly workspace to delete an environment")
+	}
 	if s.root == "" {
 		return fmt.Errorf("no workspace found: open a reqly workspace to delete an environment")
 	}
@@ -212,6 +230,9 @@ func (s *EnvironmentService) Delete(name string) error {
 // descriptor. An empty name clears the selection. Without a workspace, this
 // is an error.
 func (s *EnvironmentService) SetActive(name string) error {
+	if s == nil {
+		return fmt.Errorf("no workspace found: open a reqly workspace to set an active environment")
+	}
 	if s.root == "" {
 		return fmt.Errorf("no workspace found: open a reqly workspace to set an active environment")
 	}

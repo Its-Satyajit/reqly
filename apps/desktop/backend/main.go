@@ -30,7 +30,7 @@ func main() {
 		Name:        "reqly",
 		Description: "A local-first, Git-native API development environment",
 		Services: []application.Service{
-			application.NewService(&AppService{}),
+			application.NewService(NewAppService()),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(desktopassets.FrontendDist),

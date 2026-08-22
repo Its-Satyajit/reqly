@@ -19,6 +19,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
@@ -68,6 +69,9 @@ type SendResponse struct {
 // request could not be sent. An optional variable set is used for
 // interpolation; when omitted, an empty set is used.
 func (s *RequestService) Send(r request.Request, vars ...*variables.Set) (*SendResponse, error) {
+	if s == nil || s.client == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to send requests")
+	}
 	set := variables.NewSet()
 	if len(vars) > 0 && vars[0] != nil {
 		set = vars[0]

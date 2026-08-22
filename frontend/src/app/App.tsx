@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
 import { RequestTabs, RunView, ThemeToggle, WorkspaceSidebar } from "../components";
+import { Toaster } from "../components/ui/toast";
 import { EnvironmentsView } from "../features/environments-view/EnvironmentsView";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
@@ -50,7 +51,9 @@ export function App() {
 	};
 
 	return (
-		<div className="flex h-screen flex-col">
+		<>
+			<Toaster />
+			<div className="flex h-screen flex-col">
 			<header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
 				<div className="flex items-center gap-2">
 					<img
@@ -106,5 +109,6 @@ export function App() {
 				</main>
 			</div>
 		</div>
+		</>
 	);
 }

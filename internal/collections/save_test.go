@@ -24,9 +24,9 @@ func TestSaveWorkspace_RoundTrip(t *testing.T) {
 				},
 				Folders: []*Folder{
 					{
-						Name:   "auth",
-						Dir:    filepath.Join(dir, "collections", "users", "auth"),
-						Config: Config{Name: "auth"},
+						Name:     "auth",
+						Dir:      filepath.Join(dir, "collections", "users", "auth"),
+						Config:   Config{Name: "auth"},
 						Requests: []*RequestEntry{{Name: "login", Path: filepath.Join(dir, "collections", "users", "auth", "login.json"), File: &requestfile.File{Request: request.Request{Method: "POST", URL: "https://api.example.com/login"}}}},
 					},
 				},

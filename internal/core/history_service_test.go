@@ -43,8 +43,8 @@ func TestHistoryServiceMasking(t *testing.T) {
 	// inject secret via env? For now test that Authorization header is masked on display
 	ctx := context.Background()
 	e := &history.Entry{
-		URL:        "https://api.example.com/a",
-		ReqHeaders: map[string][]string{"Authorization": {"Bearer secret123"}},
+		URL:         "https://api.example.com/a",
+		ReqHeaders:  map[string][]string{"Authorization": {"Bearer secret123"}},
 		RespHeaders: map[string][]string{"Set-Cookie": {"sess=abc"}},
 	}
 	_ = svc.Record(ctx, e)
