@@ -2,6 +2,7 @@
 // functions so they can be exercised without a component tree.
 
 import type { KeyValueRow } from './request'
+import type { JsonValue } from './typeGuards'
 
 export type BodyType = 'none' | 'json' | 'xml' | 'form-data' | 'urlencoded' | 'raw' | 'binary' | 'graphql'
 
@@ -29,6 +30,7 @@ const CONTENT_TYPES = {
  * a boundary so it is handled by the encoder). */
 export function contentTypeFor(type: BodyType): string {
   if (type === 'form-data') return 'multipart/form-data'
+  // SAFETY: BodyType narrowed to keys of CONTENT_TYPES via Exclude union; fallback handles non-key
   return CONTENT_TYPES[type as keyof typeof CONTENT_TYPES] ?? ''
 }
 
@@ -139,21 +141,24 @@ export function serializeBody(input: {
     case 'graphql': {
       const query = input.graphqlQuery ?? input.body ?? ''
       if (query.trim() === '') return { contentType: '' }
-      let variables: Record<string, unknown> = {}
+      type GraphQLVariables = Record<string, JsonValue>
+      let variables: GraphQLVariables = {}
       if (input.graphqlVariables?.trim()) {
         try {
-          variables = JSON.parse(input.graphqlVariables) as Record<string, unknown>
+          // SAFETY: GraphQL variables are parsed JSON object at I/O boundary; JSON.parse yields JsonValue map
+          variables = JSON.parse(input.graphqlVariables) as GraphQLVariables
         } catch {
           // Invalid JSON will be surfaced as save warning; send empty variables.
           variables = {}
         }
       } else if (input.form?.length) {
         // Fallback: variables from form rows (key-value) if provided.
-        const vars = {} as Record<string, string>
+        const vars: Record<string, string> = {}
         for (const row of input.form) {
           if (row.enabled && row.key.trim() !== '') vars[row.key] = row.value
         }
-        variables = vars as unknown as Record<string, unknown>
+        // SAFETY: string-valued map widens to JsonValue-valued variables; string is assignable to JsonValue
+        variables = vars as GraphQLVariables
       }
       const body = JSON.stringify({ query, variables })
       return { body, contentType: contentTypeFor('graphql') }

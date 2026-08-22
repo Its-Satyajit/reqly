@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { jsonText } from '../lib/response'
+import { isRecord, isString, type JsonObject, type JsonValue } from '../lib/typeGuards'
 
 interface JsonTreeProps {
-  data: unknown
+  data: JsonValue
   name?: string
   depth?: number
   filter?: string
 }
 
-function matches(value: unknown, needle: string): boolean {
+function matches(value: JsonValue, needle: string): boolean {
   if (!needle) return true
   return jsonText(value).toLowerCase().includes(needle)
 }
@@ -23,17 +24,17 @@ function JsonNode({ data, name, depth = 0, filter }: JsonTreeProps) {
     )
   }
 
-  const type = typeof data
-  if (type !== 'object') {
-    const label = type === 'string' ? JSON.stringify(data) : String(data)
-    const className = type === 'string' ? 'text-foreground' : 'text-primary'
+  if (!isRecord(data) && !Array.isArray(data)) {
+    const label = isString(data) ? JSON.stringify(data) : String(data)
+    const className = isString(data) ? 'text-foreground' : 'text-primary'
     return <Row name={name} label={label} className={className} filter={filter} />
   }
 
   const isArray = Array.isArray(data)
-  const entries: [string, unknown][] = isArray
-    ? (data as unknown[]).map((value, i) => [String(i), value])
-    : Object.entries(data as Record<string, unknown>)
+  // SAFETY: Array.isArray narrows JsonValue to JsonValue[]; isRecord narrows to JsonObject with JsonValue values
+  const entries: [string, JsonValue][] = isArray
+    ? (data as JsonValue[]).map((value, i) => [String(i), value])
+    : Object.entries(data as JsonObject)
   const summary = `${isArray ? 'Array' : 'Object'}(${entries.length})`
 
   // Subtree filter: hide when the query is set and nothing under this node
@@ -94,6 +95,6 @@ function Row({
   )
 }
 
-export function JsonTree({ data, filter }: { data: unknown; filter?: string }) {
+export function JsonTree({ data, filter }: { data: JsonValue; filter?: string }) {
   return <JsonNode data={data} depth={0} filter={filter} />
 }

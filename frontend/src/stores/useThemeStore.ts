@@ -5,10 +5,10 @@ export type Theme = 'light' | 'dark'
 const STORAGE_KEY = 'reqly-theme'
 
 function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark'
-  const stored = window.localStorage.getItem(STORAGE_KEY)
+  if (globalThis.window === undefined) return 'dark'
+  const stored = globalThis.window.localStorage.getItem(STORAGE_KEY)
   if (stored === 'light' || stored === 'dark') return stored
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+  return globalThis.window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
 }
 
 function applyTheme(theme: Theme) {

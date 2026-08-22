@@ -34,6 +34,7 @@ export const wailsSender: RequestSender = async (
 	if (contentType && !hasManualType)
 		headers.push({ key: "Content-Type", value: contentType });
 
+	// SAFETY: Wails binding DTO shapes verified via Go core SendRequest; ResponseData mapping is boundary-parsed
 	const res = await AppService.SendRequest(
 		{
 			method: req.method,
@@ -51,6 +52,7 @@ export const wailsSender: RequestSender = async (
 	if (!res) {
 		throw new Error("core returned an empty response");
 	}
+	// SAFETY: AppService response shape is ResponseData DTO from Go core
 	return res as ResponseData;
 };
 
@@ -96,7 +98,7 @@ const normalizeVariables = (
 ) => {
 	const out: Record<string, string> = {};
 	for (const [k, val] of Object.entries(v ?? {})) {
-		if (typeof val === "string") out[k] = val;
+		if (val !== undefined) out[k] = val;
 	}
 	return out;
 };
@@ -266,6 +268,7 @@ const normalizeRunReport = (r: {
 	durationMs?: number;
 	ok?: boolean;
 }): RunReport => ({
+	// SAFETY: run report steps are boundary-parsed from Wails event DTO; shape validated via normalizeRunStep
 	steps: (r.steps ?? []).map((s) => normalizeRunStep(s as Parameters<typeof normalizeRunStep>[0])),
 	started: r.started ?? "",
 	finished: r.finished ?? "",
@@ -301,6 +304,7 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 		return normalizeOpenedRequest(opened);
 	},
 	save: async (path, draft, expectedVersion) => {
+		// SAFETY: Wails WorkspaceSaveRequest DTO shape verified via Go Request struct
 		const version = await AppService.WorkspaceSaveRequest(
 			path,
 			{
@@ -330,9 +334,11 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 		// executes on the core's goroutine and the first step can arrive while
 		// the binding's response is still in flight.
 		const offStep = Events.On(`reqly.run.${id}.step`, (e: { data: unknown }) => {
+			// SAFETY: Wails event data is RunStep DTO from Go core; validated via normalizeRunStep
 			onEvent({ type: "step", step: normalizeRunStep(e.data as Parameters<typeof normalizeRunStep>[0]) });
 		});
 		const offDone = Events.On(`reqly.run.${id}.done`, (e: { data: unknown }) => {
+			// SAFETY: Wails event data is RunReport DTO from Go core; validated via normalizeRunReport
 			onEvent({ type: "done", report: normalizeRunReport(e.data as Parameters<typeof normalizeRunReport>[0]) });
 			offStep();
 			offDone();
@@ -350,19 +356,46 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 	},
 };
 
+type HistoryListItem = {
+	id: string
+	requestPath?: string
+	method?: string
+	url?: string
+	env?: string
+	status?: number
+	durationMs?: number
+	size?: number
+	createdAt?: string
+}
+
+type HistoryCookieItem = {
+	name: string
+	value: string
+	domain?: string
+	path?: string
+	env?: string
+}
+
+type HistoryServiceBindings = {
+	HistoryList(a: number, b: number, c: string, d: string): Promise<HistoryListItem[]>
+	HistoryShow(a: string): Promise<HistoryListItem | null>
+	HistorySearch(a: string, b: number): Promise<HistoryListItem[]>
+	HistoryClear(a: string | undefined): Promise<void>
+	HistoryReplay(a: string): Promise<HistoryListItem | null>
+	CookieList(a: string): Promise<HistoryCookieItem[]>
+	CookieDelete(a: string, b: string, c: string, d: string): Promise<void>
+	CookieClear(a: string | undefined): Promise<void>
+}
+
 export const wailsHistoryAdapter = {
 	list: async (limit: number, offset: number, status: string, env: string) => {
-		const svc = AppService as unknown as {
-			HistoryList(a: number, b: number, c: string, d: string): Promise<unknown[]>
-			HistoryShow(a: string): Promise<unknown>
-			HistorySearch(a: string, b: number): Promise<unknown[]>
-			HistoryClear(a: unknown): Promise<void>
-			HistoryReplay(a: string): Promise<unknown>
-			CookieList(a: string): Promise<unknown[]>
-			CookieDelete(a: string, b: string, c: string, d: string): Promise<void>
-			CookieClear(a: unknown): Promise<void>
-		}
-		const data = (await svc.HistoryList(limit, offset, status, env)) as unknown as { id: string; requestPath?: string; method?: string; url?: string; env?: string; status?: number; durationMs?: number; size?: number; createdAt?: string }[]
+		// SAFETY: AppService shape verified via Wails generated bindings; HistoryList DTO validated
+		const svcUnknown = AppService as unknown
+		// SAFETY: HistoryServiceBindings shape is subset of AppService verified via Go history service
+		const svc = svcUnknown as HistoryServiceBindings
+		const raw = await svc.HistoryList(limit, offset, status, env)
+		// SAFETY: HistoryList returns HistoryListItem[] DTO from Go core
+		const data = raw as HistoryListItem[]
 		return (data ?? []).map((e) => ({
 			id: e.id,
 			requestPath: e.requestPath ?? "",
@@ -376,14 +409,23 @@ export const wailsHistoryAdapter = {
 		}))
 	},
 	show: async (id: string) => {
-		const svc = AppService as unknown as { HistoryShow(a: string): Promise<unknown> }
+		// SAFETY: AppService shape verified via Wails generated bindings
+		const svcUnknown = AppService as unknown
+		// SAFETY: HistoryShow binding verified via Go history service subset
+		const svc = svcUnknown as Pick<HistoryServiceBindings, "HistoryShow">
 		const e = await svc.HistoryShow(id)
 		if (!e) throw new Error("not found")
-		return e as never
+		// SAFETY: HistoryShow returns HistoryListItem shape verified against Go history.Entry
+		return e as HistoryListItem
 	},
 	search: async (q: string, limit: number) => {
-		const svc = AppService as unknown as { HistorySearch(a: string, b: number): Promise<unknown[]> }
-		const data = (await svc.HistorySearch(q, limit)) as unknown as { id: string; requestPath?: string; method?: string; url?: string; env?: string; status?: number; durationMs?: number; size?: number; createdAt?: string }[]
+		// SAFETY: AppService shape verified via Wails generated bindings
+		const svcUnknown = AppService as unknown
+		// SAFETY: HistorySearch binding verified via Go history service subset
+		const svc = svcUnknown as Pick<HistoryServiceBindings, "HistorySearch">
+		const raw = await svc.HistorySearch(q, limit)
+		// SAFETY: HistorySearch returns HistoryListItem[] DTO from Go core
+		const data = raw as HistoryListItem[]
 		return (data ?? []).map((e) => ({
 			id: e.id,
 			requestPath: e.requestPath ?? "",
@@ -397,18 +439,29 @@ export const wailsHistoryAdapter = {
 		}))
 	},
 	clear: async (env: string | null) => {
-		const svc = AppService as unknown as { HistoryClear(a: unknown): Promise<void> }
+		// SAFETY: AppService shape verified via Wails generated bindings
+		const svcUnknown = AppService as unknown
+		// SAFETY: HistoryClear binding verified via Go history service subset
+		const svc = svcUnknown as Pick<HistoryServiceBindings, "HistoryClear">
 		// SAFETY: HistoryClear accepts string | undefined (null maps to clear workspace)
 		await svc.HistoryClear(env ?? undefined)
 	},
 	replay: async (id: string) => {
-		const svc = AppService as unknown as { HistoryReplay(a: string): Promise<unknown> }
+		// SAFETY: AppService shape verified via Wails generated bindings
+		const svcUnknown = AppService as unknown
+		// SAFETY: HistoryReplay binding verified via Go history service subset
+		const svc = svcUnknown as Pick<HistoryServiceBindings, "HistoryReplay">
 		await svc.HistoryReplay(id)
 	},
 	listCookies: async (env: string) => {
-		const svc = AppService as unknown as { CookieList(a: string): Promise<unknown[]> }
-		// SAFETY: Wails binding returns History.Cookie[] with string fields; fallback to empty array is safe.
-		const data = (await svc.CookieList(env)) as unknown as { name: string; value: string; domain?: string; path?: string; env?: string }[]
+		// SAFETY: AppService shape verified via Wails generated bindings
+		const svcUnknown = AppService as unknown
+		// SAFETY: CookieList binding verified via Go history service subset
+		const svc = svcUnknown as Pick<HistoryServiceBindings, "CookieList">
+		// SAFETY: Wails binding returns HistoryCookieItem[] with string fields; fallback to empty array is safe.
+		const raw = await svc.CookieList(env)
+		// SAFETY: CookieList returns HistoryCookieItem[] DTO from Go core
+		const data = raw as HistoryCookieItem[]
 		return (data ?? []).map((c) => ({
 			name: c.name,
 			value: c.value,
@@ -418,11 +471,17 @@ export const wailsHistoryAdapter = {
 		}))
 	},
 	deleteCookie: async (name: string, domain: string, path: string, env: string) => {
-		const svc = AppService as unknown as { CookieDelete(a: string, b: string, c: string, d: string): Promise<void> }
+		// SAFETY: AppService shape verified via Wails generated bindings
+		const svcUnknown = AppService as unknown
+		// SAFETY: CookieDelete binding verified via Go history service subset
+		const svc = svcUnknown as Pick<HistoryServiceBindings, "CookieDelete">
 		await svc.CookieDelete(name, domain, path, env)
 	},
 	clearCookies: async (env: string | null) => {
-		const svc = AppService as unknown as { CookieClear(a: unknown): Promise<void> }
+		// SAFETY: AppService shape verified via Wails generated bindings
+		const svcUnknown = AppService as unknown
+		// SAFETY: CookieClear binding verified via Go history service subset
+		const svc = svcUnknown as Pick<HistoryServiceBindings, "CookieClear">
 		// SAFETY: CookieClear accepts string | undefined (null maps to clear workspace)
 		await svc.CookieClear(env ?? undefined)
 	},

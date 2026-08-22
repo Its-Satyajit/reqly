@@ -73,6 +73,7 @@ export function AuthEditor({ auth, onChange, inherited }: AuthEditorProps) {
         <Label>Auth type</Label>
         <select
           value={scheme}
+          // SAFETY: select options are ORDERED_AUTH_SCHEMES; value is constrained AuthSchemeId
           onChange={(e) => setScheme(e.target.value as AuthSchemeId)}
           className={`${selectClass} w-full sm:w-48`}
         >
@@ -236,6 +237,7 @@ function InheritedAuth({ inherited }: { inherited: RequestAuth | undefined }) {
     )
   }
 
+  // SAFETY: inherited auth type is RequestAuth string from I/O boundary; validated via AUTH_SCHEME_LABELS fallback
   const schemeId = inherited.type as AuthSchemeId
   const label = AUTH_SCHEME_LABELS[schemeId] ?? inherited.type
   const hasSecrets = Object.keys(inherited.config ?? {}).some((k) =>

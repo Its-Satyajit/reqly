@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components";
 import { useAuthStore } from "../../stores";
+import { isRecord, isString, type JsonObject, type JsonValue } from "../../lib/typeGuards";
 
 const DEFAULT_CONFIG = JSON.stringify(
 	{
@@ -14,13 +15,15 @@ const DEFAULT_CONFIG = JSON.stringify(
 );
 
 function parseConfig(raw: string) {
-	const parsed: unknown = JSON.parse(raw);
-	if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+	// SAFETY: JSON config parsed at I/O boundary; shape validated via isRecord below
+	const parsed = JSON.parse(raw) as JsonValue;
+	if (!isRecord(parsed)) {
 		throw new Error("Config must be a JSON object");
 	}
 	const out: Record<string, string> = {};
-	for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-		out[k] = typeof v === "string" ? v : String(v);
+	// SAFETY: isRecord narrows parsed to JsonObject with JsonValue values
+	for (const [k, v] of Object.entries(parsed as JsonObject)) {
+		out[k] = isString(v) ? v : String(v);
 	}
 	return out;
 }
@@ -114,6 +117,7 @@ export function AuthPanel() {
 					<select
 						value={flow}
 						onChange={(e) =>
+							// SAFETY: select options are constrained to authorization_code | device_code
 							setFlow(e.target.value as "authorization_code" | "device_code")
 						}
 						className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground"

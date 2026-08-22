@@ -53,7 +53,7 @@ export default defineConfig({
 		// data that just crossed an I/O boundary, where ad hoc `typeof` guards
 		// and `as` casts are the accepted boundary-parsing style. They stay
 		// visible so each site can be revisited and re-promoted to error.
-		"anti-slop/no-runtime-typeof": "warn",
+		"anti-slop/no-runtime-typeof": ["warn", { allowInTypeGuards: true }],
 		"anti-slop/no-unknown-parameters": "warn",
 		"anti-slop/no-unsafe-dictionary-type": "warn",
 		"anti-slop/require-safety-comment-for-type-assertion": "warn",

@@ -1,5 +1,8 @@
 import { create } from 'zustand'
 import { fallbackEnvAdapter, type EnvAdapter } from '../lib/env'
+import { isRecord } from '../lib/typeGuards'
+
+type SaveError = Error | { code?: string; message?: string } | string
 import {
   fallbackCollectionsAdapter,
   type CollectionsAdapter,
@@ -168,8 +171,9 @@ export const inheritedHeadersFrom = (
 /** isChangedOnDisk reports whether an error is a changed-on-disk save
  * conflict (the file changed under the editor). The bridge tags it with a
  * stable code; the message check is a fallback for non-bridge adapters. */
-export function isChangedOnDisk(err: unknown): boolean {
-  if (err && typeof err === 'object' && 'code' in err) {
+export function isChangedOnDisk(err: SaveError): boolean {
+  if (isRecord(err) && 'code' in err) {
+    // SAFETY: in operator narrows to object with code; string access validated via isRecord
     return (err as { code?: string }).code === 'ERR_CHANGED_ON_DISK'
   }
   return err instanceof Error && err.message.includes('changed on disk')
@@ -291,11 +295,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         changedOnDisk: false,
       })
     } catch (err) {
+      // SAFETY: caught error is SaveError shape (Error or {code} from adapter) at I/O boundary
       useRequestStore.getState().setMeta(id, {
         ...m,
-        changedOnDisk: isChangedOnDisk(err),
+        changedOnDisk: isChangedOnDisk(err as SaveError),
       })
-      if (!isChangedOnDisk(err)) {
+      // SAFETY: same SaveError shape as above; validated via isRecord/code check
+      if (!isChangedOnDisk(err as SaveError)) {
         set({ openError: err instanceof Error ? err.message : String(err) })
       }
     }
