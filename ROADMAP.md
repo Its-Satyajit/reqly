@@ -127,7 +127,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Regenerated Wails bindings → `appservice.ts` `SendRequest` + `models.ts` (`Request`, `SendResponse`)
 - [x] Shared `useRequestStore` + pluggable `RequestSender` (Wails bridge in host; `fetchSender` fallback in browser dev)
 - [x] `RequestEditor` Send → core; `ResponseViewer` renders status/headers/pretty body
-- [x] Per-tab request/response state (multiple tabs) — desktop collections browser tabs ([T2 #132](https://github.com/Its-Satyajit/reqly/issues/132)); cancel in-flight request pending
+- [x] Per-tab request/response state (multiple tabs) + cancel in-flight request — per-tab state ([T2 #132](https://github.com/Its-Satyajit/reqly/issues/132)); Stop-button send cancellation via `SendOptions.sendId` + `CancelSend` binding, no history artifacts for cancelled sends ([M33](docs/spec/m33-cancel-in-flight-request.md))
 
 ### 1.6 Request builder & response viewer (UI)
 
