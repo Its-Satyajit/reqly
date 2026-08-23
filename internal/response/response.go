@@ -36,6 +36,9 @@ type Response struct {
 	Duration time.Duration
 	// Size is the body size in bytes.
 	Size int64
+	// Attempts is the number of sends this response took, including retries
+	// (1 means the request succeeded or failed on its first attempt).
+	Attempts int
 	// AuthToken is the resolved access token used for this request, when an
 	// auth scheme acquired one (e.g. oauth2). It exists so callers can mask
 	// it in output; it is never serialized.

@@ -44,6 +44,8 @@ type Client struct {
 	// schemes (e.g. oauth2). When set, tokens are reused across requests
 	// until they near expiry instead of being re-acquired each time.
 	tokens *TokenCache
+	// onRetry, when set, is notified before each automatic retry wait.
+	onRetry func(RetryEvent)
 }
 
 // TokenCache configures store-backed caching of tokens acquired by TokenSource
@@ -90,6 +92,14 @@ func WithTokenCache(store secrets.Store, root string) Option {
 	}
 }
 
+// WithOnRetry registers a callback invoked before each automatic retry wait,
+// giving callers visibility into transient failures without parsing output.
+func WithOnRetry(fn func(RetryEvent)) Option {
+	return func(c *Client) {
+		c.onRetry = fn
+	}
+}
+
 // NewClient returns a Client with the given options.
 func NewClient(opts ...Option) *Client {
 	c := &Client{http: &http.Client{}}
@@ -101,6 +111,13 @@ func NewClient(opts ...Option) *Client {
 
 // Execute runs a Request and returns the response. Variables are interpolated
 // into the URL, headers, query parameters, and body before sending.
+//
+// When the request declares a Retry policy, failed attempts — network errors,
+// or responses whose status is in the policy's retry set — are automatically
+// re-sent with computed backoff (or the server's Retry-After) until Count is
+// exhausted. Each attempt includes any auth challenge/refresh round-trips;
+// those never consume retry budget. The returned response reports how many
+// attempts it took in Attempts.
 func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator) (*response.Response, error) {
 	if r.Timeout > 0 {
 		var cancel context.CancelFunc
@@ -108,6 +125,59 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 		defer cancel()
 	}
 
+	var policy *Retry
+	totalAttempts := 1
+	if r.Retry != nil && r.Retry.Count > 0 {
+		policy = r.Retry.normalized()
+		totalAttempts = policy.Count + 1
+	}
+
+	for attempt := 1; ; attempt++ {
+		resp, err := c.sendOnce(ctx, r, vars)
+		if resp != nil {
+			resp.Attempts = attempt
+		}
+		if err == nil && (policy == nil || !policy.retryable(resp.StatusCode)) {
+			return resp, nil
+		}
+		if err != nil {
+			if isContextErr(err) || policy == nil {
+				return nil, err
+			}
+		}
+		if attempt >= totalAttempts {
+			return resp, err
+		}
+
+		delay := policy.delayFor(resp, attempt, time.Now())
+		if c.onRetry != nil {
+			event := RetryEvent{
+				Attempt:       attempt,
+				TotalAttempts: totalAttempts,
+				Delay:         delay,
+			}
+			if err != nil {
+				event.Err = err
+			} else {
+				event.StatusCode = resp.StatusCode
+			}
+			c.onRetry(event)
+		}
+
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return resp, ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+// sendOnce performs exactly one send of the request: build, transport,
+// challenge-based auth handling, and body read. It is the unit a retry
+// policy counts; auth re-sends inside it stay within one attempt.
+func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolator) (*response.Response, error) {
 	req, authToken, err := c.build(ctx, r, vars)
 	if err != nil {
 		return nil, err

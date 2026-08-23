@@ -33,9 +33,21 @@ type Request struct {
 	Query   []Parameter `json:"query,omitempty" yaml:"query,omitempty"`
 	Body    string      `json:"body,omitempty" yaml:"body,omitempty"`
 
-	Auth       Auth       `json:"auth,omitempty" yaml:"auth,omitempty"`
+	Auth       Auth        `json:"auth,omitempty" yaml:"auth,omitempty"`
 	Pagination *Pagination `json:"pagination,omitempty" yaml:"pagination,omitempty"`
-	Timeout    int64      `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
+	Retry      *Retry      `json:"retry,omitempty" yaml:"retry,omitempty"`
+	Timeout    int64       `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
+}
+
+// Retry configures automatic re-sending of a failed request. Count is the
+// number of retries after the initial attempt; a nil Retry or Count <= 0
+// disables retrying entirely.
+type Retry struct {
+	Count      int    `json:"count,omitempty" yaml:"count,omitempty"`
+	DelayMs    int64  `json:"delayMs,omitempty" yaml:"delayMs,omitempty"`
+	Strategy   string `json:"strategy,omitempty" yaml:"strategy,omitempty"` // fixed | exponential
+	MaxDelayMs int64  `json:"maxDelayMs,omitempty" yaml:"maxDelayMs,omitempty"`
+	RetryOn    []int  `json:"retryOn,omitempty" yaml:"retryOn,omitempty"`
 }
 
 // Pagination configures iterative fetching for a paginated endpoint.
