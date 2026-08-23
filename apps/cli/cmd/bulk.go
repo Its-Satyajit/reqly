@@ -25,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -109,30 +108,7 @@ JSON: array of objects (values stringified)
 		}
 
 		onStep := func(s bulk.Step) {
-			if s.Err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "step %d: error: %v\n", s.Index, s.Err)
-				return
-			}
-			if s.Response != nil {
-				url := s.Request.URL
-				if len(s.Request.Query) > 0 {
-					q := ""
-					for i, p := range s.Request.Query {
-						if i > 0 {
-							q += "&"
-						}
-						q += p.Key + "=" + p.Value
-					}
-					if q != "" {
-						sep := "?"
-						if strings.Contains(url, "?") {
-							sep = "&"
-						}
-						url = url + sep + q
-					}
-				}
-				fmt.Fprintf(cmd.OutOrStdout(), "step %d: %d %s (%s) %s\n", s.Index, s.Response.StatusCode, s.Response.StatusText, s.Response.Duration.Round(time.Millisecond), url)
-			}
+			printStep(cmd.OutOrStdout(), cmd.ErrOrStderr(), s.Index, s.Request, s.Response, s.Err)
 		}
 
 		if err := bulk.Run(context.Background(), f.Request, rows, opts, sendFn, onStep); err != nil {

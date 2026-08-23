@@ -21,8 +21,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -92,35 +90,9 @@ Strategies: page, offset, cursor (needs nextPath: $.nextCursor), link-header.
 			opts.MaxPages = paginationMaxPages
 		}
 
-		// OnStep prints progress
+		// OnStep prints progress via the shared runner step printer.
 		onStep := func(s pagination.Step) {
-			if s.Err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "step %d: error: %v\n", s.Index, s.Err)
-				return
-			}
-			if s.Response != nil {
-				url := s.Request.URL
-				// include query for visibility
-				if len(s.Request.Query) > 0 {
-					// reconstruct URL with query for display
-					// keep simple: show request URL + query string
-					q := ""
-					for i, p := range s.Request.Query {
-						if i > 0 {
-							q += "&"
-						}
-						q += p.Key + "=" + p.Value
-					}
-					if q != "" {
-						sep := "?"
-						if len(url) > 0 && (url[len(url)-1] == '?' || strings.Contains(url, "?")) {
-							sep = "&"
-						}
-						url = url + sep + q
-					}
-				}
-				fmt.Fprintf(cmd.OutOrStdout(), "step %d: %d %s (%s) %s\n", s.Index, s.Response.StatusCode, s.Response.StatusText, s.Response.Duration.Round(time.Millisecond), url)
-			}
+			printStep(cmd.OutOrStdout(), cmd.ErrOrStderr(), s.Index, s.Request, s.Response, s.Err)
 		}
 
 		ctx := context.Background()
