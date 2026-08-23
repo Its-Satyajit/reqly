@@ -71,8 +71,10 @@ function OperationGroups({ operations }: { operations: ImportedOperation[] }) {
                 {tag} · {ops.length}
               </p>
               <ul className="flex flex-col divide-y divide-border/60 rounded-md border border-border">
-                {visible.map((op, i) => (
-                  <li key={i} className="flex items-baseline gap-2 px-2 py-1 font-mono text-[11px]">
+                {visible.map((op) => {
+                  const key = `${op.method}-${op.path}-${op.operationId ?? ""}`;
+                  return (
+                  <li key={key} className="flex items-baseline gap-2 px-2 py-1 font-mono text-[11px]">
                     <span className="w-12 shrink-0 font-sans text-[10px] font-semibold text-status-info">
                       {op.method}
                     </span>
@@ -83,7 +85,8 @@ function OperationGroups({ operations }: { operations: ImportedOperation[] }) {
                       </span>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           );
@@ -178,6 +181,7 @@ export function ImportDialog({ onImported }: { onImported?: () => void }) {
                 ref={fileInputRef}
                 type="file"
                 accept=".json,.yaml,.yml,.har,.txt"
+                aria-label="Choose import file"
                 className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0];

@@ -77,27 +77,29 @@ export function ImportReportView({ report }: { report: ImportReport | null | und
                 {CATEGORY_LABELS.get(category) ?? category}
               </span>
               <span className="ml-auto flex items-center gap-1">
-                {Object.entries(tally)
-                  .filter(([, count]) => count > 0)
-                  .map(([severity, count]) => {
-                    const badge: SeverityBadge = SEVERITY_BADGES.get(severity) ?? {
-                      label: severity,
-                    };
-                    return (
-                      <Badge
-                        key={severity}
-                        variant={badge.variant ?? "outline"}
-                        className={cn("tabular-nums", badge.className)}
-                      >
-                        {count} {badge.label}
-                      </Badge>
-                    );
-                  })}
+                {[...tally.entries()].flatMap(([severity, count]) => {
+                  if (count === 0) return [];
+                  const badge: SeverityBadge = SEVERITY_BADGES.get(severity) ?? {
+                    label: severity,
+                  };
+                  return [
+                    <Badge
+                      key={severity}
+                      variant={badge.variant ?? "outline"}
+                      className={cn("tabular-nums", badge.className)}
+                    >
+                      {count} {badge.label}
+                    </Badge>,
+                  ];
+                })}
               </span>
             </div>
             <ul className="flex flex-col divide-y divide-border/60">
-              {entries.map((entry, i) => (
-                <li key={i} className="px-3 py-1.5 text-xs">
+              {entries.map((entry) => (
+                <li
+                  key={`${entry.severity}-${entry.itemPath}-${entry.message}`}
+                  className="px-3 py-1.5 text-xs"
+                >
                   {entry.itemPath !== "" && (
                     <span className="font-mono text-[11px] text-muted-foreground">
                       {entry.itemPath}
