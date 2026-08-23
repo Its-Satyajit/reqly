@@ -240,8 +240,9 @@ func (p *pmAuthParams) UnmarshalJSON(data []byte) error {
 // ParsePostman parses a Postman collection (v2.x JSON) into a PostmanResult.
 // Both export shapes are accepted: the bare collection object and the
 // wrapped envelope {"collection": {...}}. Unsupported features (scripts,
-// file bodies, unmappable auth) are reported as warnings rather than errors.
-func ParsePostman(data []byte) (*PostmanResult, []string, error) {
+// file bodies, unmappable auth) are recorded as report entries rather than
+// errors.
+func ParsePostman(data []byte) (*PostmanResult, *ImportReport, error) {
 	data = bytes.TrimSpace(data)
 	if len(data) == 0 || data[0] != '{' {
 		return nil, nil, fmt.Errorf("parse Postman collection: not a JSON object")
@@ -260,7 +261,7 @@ func ParsePostman(data []byte) (*PostmanResult, []string, error) {
 	return parsePostmanCollection(data)
 }
 
-func parsePostmanCollection(data []byte) (*PostmanResult, []string, error) {
+func parsePostmanCollection(data []byte) (*PostmanResult, *ImportReport, error) {
 	var col pmCollection
 	if err := json.Unmarshal(data, &col); err != nil {
 		return nil, nil, fmt.Errorf("parse Postman collection: %w", err)
@@ -279,52 +280,50 @@ func parsePostmanCollection(data []byte) (*PostmanResult, []string, error) {
 			res.Variables[v.Key] = v.Value
 		}
 	}
-	var warnings []string
+	rep := NewReport("postman")
 	if col.Info.Schema != "" && !strings.Contains(col.Info.Schema, "v2.1") {
-		warnings = append(warnings, fmt.Sprintf("unsupported schema %q (want a v2.1 collection)", col.Info.Schema))
+		rep.Add("", CategorySchema, SeverityWarned, "unsupported schema %q (want a v2.1 collection)", col.Info.Schema)
 	}
 	if col.Auth != nil {
 		auth, warn := convertAuth(*col.Auth)
 		res.Auth = auth
 		if warn != "" {
-			warnings = append(warnings, warn)
+			rep.Add("", CategoryAuth, SeverityWarned, "%s", warn)
 		}
 	}
-	walkItems(col.Item, res.Root, res, &warnings)
-	return res, warnings, nil
+	walkItems(col.Item, res.Root, res, rep)
+	return res, rep, nil
 }
 
 // walkItems converts an item list into dst, recursing into nested folders.
 // An item may carry a request, sub-items, or both (Postman allows a request
 // with children); both facets are preserved when present.
-func walkItems(items []json.RawMessage, dst *PostmanFolder, res *PostmanResult, warnings *[]string) {
+func walkItems(items []json.RawMessage, dst *PostmanFolder, res *PostmanResult, rep *ImportReport) {
 	for _, raw := range items {
 		var it pmItem
 		if err := json.Unmarshal(raw, &it); err != nil {
-			*warnings = append(*warnings, fmt.Sprintf("item skipped: %v", err))
+			rep.Add("", CategoryOther, SeverityDropped, "item skipped: %v", err)
 			continue
 		}
 		hasRequest := len(it.Request) > 0 && string(it.Request) != "null"
 		switch {
 		case hasRequest && len(it.Item) == 0:
-			file, warns := postmanItemToFile(&it, res)
-			*warnings = append(*warnings, warns...)
+			file := postmanItemToFile(&it, res, rep)
 			if file != nil {
 				dst.Requests = append(dst.Requests, file)
 			}
 		case hasRequest || len(it.Item) > 0:
 			folder := &PostmanFolder{Name: it.Name}
 			if hasRequest {
-				file, warns := postmanItemToFile(&it, res)
-				*warnings = append(*warnings, warns...)
+				file := postmanItemToFile(&it, res, rep)
 				if file != nil {
 					folder.Requests = append(folder.Requests, file)
 				}
 			}
-			walkItems(it.Item, folder, res, warnings)
+			walkItems(it.Item, folder, res, rep)
 			dst.Folders = append(dst.Folders, folder)
 		default:
-			*warnings = append(*warnings, fmt.Sprintf("item %q has neither requests nor sub-folders; skipped", it.Name))
+			rep.Add(it.Name, CategoryOther, SeverityDropped, "item %q has neither requests nor sub-folders; skipped", it.Name)
 		}
 	}
 }
@@ -335,9 +334,9 @@ func mustQuote(s string) json.RawMessage {
 	return b
 }
 
-// postmanItemToFile converts one Postman request item into a request file.
-func postmanItemToFile(it *pmItem, res *PostmanResult) (*requestfile.File, []string) {
-	var warnings []string
+// postmanItemToFile converts one Postman request item into a request file,
+// recording degradations on rep.
+func postmanItemToFile(it *pmItem, res *PostmanResult, rep *ImportReport) *requestfile.File {
 	for _, e := range it.Event {
 		var ev struct {
 			Listen string `json:"listen"`
@@ -347,7 +346,7 @@ func postmanItemToFile(it *pmItem, res *PostmanResult) (*requestfile.File, []str
 		if listen == "" {
 			listen = "script"
 		}
-		warnings = append(warnings, fmt.Sprintf("%s: %s script not imported", it.Name, listen))
+		rep.Add(it.Name, CategoryScript, SeverityDropped, "%s: %s script not imported", it.Name, listen)
 	}
 
 	var pr pmRequest
@@ -357,8 +356,8 @@ func postmanItemToFile(it *pmItem, res *PostmanResult) (*requestfile.File, []str
 		if err2 := json.Unmarshal(it.Request, &rawURL); err2 == nil {
 			pr = pmRequest{Method: "GET", URL: mustQuote(rawURL)}
 		} else {
-			warnings = append(warnings, fmt.Sprintf("%s: bad request JSON (%v); skipped", it.Name, err))
-			return nil, warnings
+			rep.Add(it.Name, CategoryOther, SeverityDropped, "%s: bad request JSON (%v); skipped", it.Name, err)
+			return nil
 		}
 	}
 
@@ -368,8 +367,8 @@ func postmanItemToFile(it *pmItem, res *PostmanResult) (*requestfile.File, []str
 	}
 	reqURL, query := convertURL(pr.URL)
 	if reqURL == "" {
-		warnings = append(warnings, fmt.Sprintf("%s: request has no URL; skipped", it.Name))
-		return nil, warnings
+		rep.Add(it.Name, CategoryOther, SeverityDropped, "%s: request has no URL; skipped", it.Name)
+		return nil
 	}
 	headers := make([]request.Header, 0, len(pr.Header))
 	headerSet := map[string]bool{}
@@ -382,7 +381,7 @@ func postmanItemToFile(it *pmItem, res *PostmanResult) (*requestfile.File, []str
 	}
 
 	body, ct, bodyWarns := convertBody(pr.Body, headerSet)
-	warnings = append(warnings, bodyWarns...)
+	rep.AddAll(it.Name, CategoryBody, SeverityWarned, bodyWarns)
 	if ct != "" && !headerSet["content-type"] {
 		headers = append(headers, request.Header{Key: "Content-Type", Value: ct})
 	}
@@ -392,7 +391,7 @@ func postmanItemToFile(it *pmItem, res *PostmanResult) (*requestfile.File, []str
 		converted, warn := convertAuth(*pr.Auth)
 		auth = converted
 		if warn != "" {
-			warnings = append(warnings, fmt.Sprintf("%s: %s", it.Name, warn))
+			rep.Add(it.Name, CategoryAuth, SeverityWarned, "%s: %s", it.Name, warn)
 		}
 	}
 
@@ -420,7 +419,7 @@ func postmanItemToFile(it *pmItem, res *PostmanResult) (*requestfile.File, []str
 			Auth:    auth,
 		},
 	}
-	return file, warnings
+	return file
 }
 
 // convertURL normalizes both Postman URL forms into Reqly's raw-URL + query

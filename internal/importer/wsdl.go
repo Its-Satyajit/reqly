@@ -219,7 +219,7 @@ type xsdShape struct {
 
 // ParseWSDL parses a WSDL 1.1 document into per-service collections of
 // generated requests.
-func ParseWSDL(data []byte) (*WSDLResult, []string, error) {
+func ParseWSDL(data []byte) (*WSDLResult, *ImportReport, error) {
 	root, err := parseTree(data)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse XML: %w", err)
@@ -229,10 +229,10 @@ func ParseWSDL(data []byte) (*WSDLResult, []string, error) {
 	}
 
 	res := &WSDLResult{Title: firstNonEmpty(root.attr("name"), "SOAP Service")}
-	var warnings []string
+	rep := NewReport("wsdl")
 	targetNS := root.attr("targetNamespace")
 
-	shapes := collectSchemas(root, &warnings)
+	shapes := collectSchemas(root, rep)
 	messages := collectMessages(targetNS, root)
 	portTypes := collectPortTypes(targetNS, root)
 	bindings := collectBindings(targetNS, root)
@@ -241,29 +241,29 @@ func ParseWSDL(data []byte) (*WSDLResult, []string, error) {
 		coll := &WSDLCollection{Name: firstNonEmpty(svc.attr("name"), "Service")}
 		address, bindingQ, extraPorts := firstSOAPPort(svc)
 		if len(extraPorts) > 0 {
-			warnings = append(warnings, fmt.Sprintf("service %q: additional ports beyond the first SOAP port ignored: %s", coll.Name, strings.Join(extraPorts, ", ")))
+			rep.Add(coll.Name, CategorySchema, SeverityWarned, "service %q: additional ports beyond the first SOAP port ignored: %s", coll.Name, strings.Join(extraPorts, ", "))
 		}
 		if address == "" {
-			warnings = append(warnings, fmt.Sprintf("service %q has no SOAP port; skipped", coll.Name))
+			rep.Add(coll.Name, CategoryOther, SeverityDropped, "service %q has no SOAP port; skipped", coll.Name)
 			continue
 		}
 		binding := bindings[bindingQ.String()]
 		if binding == nil {
-			warnings = append(warnings, fmt.Sprintf("service %q: binding %q not found; skipped", coll.Name, bindingQ.Local))
+			rep.Add(coll.Name, CategorySchema, SeverityDropped, "service %q: binding %q not found; skipped", coll.Name, bindingQ.Local)
 			continue
 		}
 		pt := portTypes[binding.portType.String()]
 		if pt == nil {
-			warnings = append(warnings, fmt.Sprintf("binding %q: portType %q not found; skipped", binding.name, binding.portType.Local))
+			rep.Add(binding.name, CategorySchema, SeverityDropped, "binding %q: portType %q not found; skipped", binding.name, binding.portType.Local)
 			continue
 		}
-		coll.Request = buildRequests(pt, binding, address, shapes, messages, &warnings)
+		coll.Request = buildRequests(pt, binding, address, shapes, messages, rep)
 		res.Collections = append(res.Collections, coll)
 	}
 	if len(res.Collections) == 0 {
-		return nil, warnings, fmt.Errorf("no services with SOAP ports found")
+		return nil, rep, fmt.Errorf("no services with SOAP ports found")
 	}
-	return res, warnings, nil
+	return res, rep, nil
 }
 
 // wsdlBinding captures soap:binding version/style plus per-operation details.
@@ -402,15 +402,15 @@ type wsdlPart struct {
 	hasEl   bool
 }
 
-func collectSchemas(root *wsdlNode, warnings *[]string) map[string]*xsdShape {
+func collectSchemas(root *wsdlNode, rep *ImportReport) map[string]*xsdShape {
 	shapes := map[string]*xsdShape{} // "{ns}Name" → shape
 	addSchema := func(schema *wsdlNode) {
 		targetNS := schema.attr("targetNamespace")
 		for _, imp := range schema.all("import") {
-			*warnings = append(*warnings, fmt.Sprintf("external xsd:import %q not followed; affected elements get skeleton-only bodies", imp.attr("schemaLocation")))
+			rep.Add("", CategorySchema, SeverityWarned, "external xsd:import %q not followed; affected elements get skeleton-only bodies", imp.attr("schemaLocation"))
 		}
 		for _, inc := range schema.all("include") {
-			*warnings = append(*warnings, fmt.Sprintf("external xsd:include %q not followed; affected elements get skeleton-only bodies", inc.attr("schemaLocation")))
+			rep.Add("", CategorySchema, SeverityWarned, "external xsd:include %q not followed; affected elements get skeleton-only bodies", inc.attr("schemaLocation"))
 		}
 		for _, el := range schema.all("element") {
 			shape := &xsdShape{NS: targetNS}
@@ -490,7 +490,7 @@ func findSoapAddress(port *wsdlNode) string {
 	return ""
 }
 
-func buildRequests(pt *wsdlPortType, binding *wsdlBinding, address string, shapes map[string]*xsdShape, messages map[string]*wsdlMessage, warnings *[]string) []*wsdlEntry {
+func buildRequests(pt *wsdlPortType, binding *wsdlBinding, address string, shapes map[string]*xsdShape, messages map[string]*wsdlMessage, rep *ImportReport) []*wsdlEntry {
 	envNS, contentType := soap11Env, "text/xml; charset=utf-8"
 	if binding.soap12 {
 		envNS, contentType = soap12Env, "application/soap+xml; charset=utf-8"
@@ -499,10 +499,10 @@ func buildRequests(pt *wsdlPortType, binding *wsdlBinding, address string, shape
 	for _, op := range pt.operations {
 		bo := binding.operations[op.name]
 		if bo == nil {
-			*warnings = append(*warnings, fmt.Sprintf("operation %q has no binding entry; skipped", op.name))
+			rep.Add(op.name, CategorySchema, SeverityDropped, "operation %q has no binding entry; skipped", op.name)
 			continue
 		}
-		body := renderBody(op, bo, binding, envNS, shapes, messages, warnings)
+		body := renderBody(op, bo, binding, envNS, shapes, messages, rep)
 		name := op.name
 		displayName := op.name
 		if op.doc != "" {
@@ -542,13 +542,13 @@ func summarize(doc string) string {
 }
 
 // renderBody builds the full envelope for one operation.
-func renderBody(op *wsdlPortTypeOp, bo *bindingOp, binding *wsdlBinding, envNS string, shapes map[string]*xsdShape, messages map[string]*wsdlMessage, warnings *[]string) string {
+func renderBody(op *wsdlPortTypeOp, bo *bindingOp, binding *wsdlBinding, envNS string, shapes map[string]*xsdShape, messages map[string]*wsdlMessage, rep *ImportReport) string {
 	var inner string
 	if binding.style == "rpc" || bo.use == "encoded" {
-		*warnings = append(*warnings, fmt.Sprintf("operation %q uses rpc/%s style; envelope is best-effort and may need manual editing", op.name, bo.use))
+		rep.Add(op.name, CategorySchema, SeverityWarned, "operation %q uses rpc/%s style; envelope is best-effort and may need manual editing", op.name, bo.use)
 		inner = rpcWrapper(op, messages)
 	} else {
-		inner = literalWrapper(op, messages, shapes, warnings)
+		inner = literalWrapper(op, messages, shapes, rep)
 	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "<soapenv:Envelope xmlns:soapenv=%q>\n", envNS)
@@ -560,20 +560,20 @@ func renderBody(op *wsdlPortTypeOp, bo *bindingOp, binding *wsdlBinding, envNS s
 }
 
 // literalWrapper renders the document/literal input element tree.
-func literalWrapper(op *wsdlPortTypeOp, messages map[string]*wsdlMessage, shapes map[string]*xsdShape, warnings *[]string) string {
+func literalWrapper(op *wsdlPortTypeOp, messages map[string]*wsdlMessage, shapes map[string]*xsdShape, rep *ImportReport) string {
 	msg := messages[op.inputMsg.String()]
 	if msg == nil || len(msg.parts) == 0 {
-		*warnings = append(*warnings, fmt.Sprintf("operation %q: input message %q not found; empty body used", op.name, op.inputMsg.Local))
+		rep.Add(op.name, CategorySchema, SeverityWarned, "operation %q: input message %q not found; empty body used", op.name, op.inputMsg.Local)
 		return "<soapenv:Fault>message not resolvable</soapenv:Fault>"
 	}
 	part := msg.parts[0]
 	if !part.hasEl {
-		*warnings = append(*warnings, fmt.Sprintf("operation %q: message part is not element-typed; skeleton-only body", op.name))
+		rep.Add(op.name, CategorySchema, SeverityWarned, "operation %q: message part is not element-typed; skeleton-only body", op.name)
 		return fmt.Sprintf("<%s/>", part.element.Local)
 	}
 	shape := shapes[part.element.String()]
 	if shape == nil {
-		*warnings = append(*warnings, fmt.Sprintf("operation %q: element %q not defined inline; skeleton-only body", op.name, part.element.Local))
+		rep.Add(op.name, CategorySchema, SeverityWarned, "operation %q: element %q not defined inline; skeleton-only body", op.name, part.element.Local)
 		return fmt.Sprintf("<%s xmlns=%q/>", part.element.Local, part.element.NS)
 	}
 	var sb strings.Builder

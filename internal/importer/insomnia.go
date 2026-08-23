@@ -86,8 +86,9 @@ type inRequestCore struct {
 }
 
 // ParseInsomnia parses an Insomnia export (v4 JSON or v5 YAML) into an
-// InsomniaResult. Structural errors hard-error; version mismatches warn.
-func ParseInsomnia(data []byte) (*InsomniaResult, []string, error) {
+// InsomniaResult. Structural errors hard-error; version mismatches are
+// recorded as report entries.
+func ParseInsomnia(data []byte) (*InsomniaResult, *ImportReport, error) {
 	trimmed := strings.TrimSpace(string(data))
 	if trimmed == "" {
 		return nil, nil, fmt.Errorf("parse Insomnia export: empty input")
@@ -114,14 +115,14 @@ type inV4Export struct {
 	Resources    []inV4Resource `json:"resources"`
 }
 
-func parseInsomniaV4(data []byte) (*InsomniaResult, []string, error) {
+func parseInsomniaV4(data []byte) (*InsomniaResult, *ImportReport, error) {
 	var exp inV4Export
 	if err := json.Unmarshal(data, &exp); err != nil {
 		return nil, nil, fmt.Errorf("parse Insomnia v4 export: %w", err)
 	}
-	var warnings []string
+	rep := NewReport("insomnia")
 	if exp.ExportFormat != 0 && exp.ExportFormat != 4 {
-		warnings = append(warnings, fmt.Sprintf("__export_format is %d, expected 4; attempting best-effort import", exp.ExportFormat))
+		rep.Add("", CategoryOther, SeverityWarned, "__export_format is %d, expected 4; attempting best-effort import", exp.ExportFormat)
 	}
 	res := &InsomniaResult{Collection: "insomnia-import", Root: &PostmanFolder{Name: ""}}
 
@@ -156,18 +157,17 @@ func parseInsomniaV4(data []byte) (*InsomniaResult, []string, error) {
 	for _, r := range exp.Resources {
 		switch r.Type {
 		case "request":
-			file, warns := insomniaRequestToFile(&r.inRequestCore, r.Name)
-			warnings = append(warnings, warns...)
+			file := insomniaRequestToFile(&r.inRequestCore, r.Name, rep)
 			if file != nil {
 				folderOf(r).Requests = append(folderOf(r).Requests, file)
 			}
 		case "environment":
 			env := buildInsomniaEnvironment(r.Name, r.Data)
 			res.Environments = append(res.Environments, env)
-			warnings = append(warnings, env.Warnings...)
+			rep.AddAll(r.Name, CategoryEnvironment, SeverityWarned, env.Warnings)
 		}
 	}
-	return res, warnings, nil
+	return res, rep, nil
 }
 
 // ---- v5: hierarchical YAML collection ----
@@ -202,7 +202,7 @@ type inV5Doc struct {
 	CookieJar     map[string]any   `yaml:"cookieJar"`
 }
 
-func parseInsomniaV5(data []byte) (*InsomniaResult, []string, error) {
+func parseInsomniaV5(data []byte) (*InsomniaResult, *ImportReport, error) {
 	var doc inV5Doc
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, nil, fmt.Errorf("parse Insomnia v5 export: %w", err)
@@ -210,13 +210,13 @@ func parseInsomniaV5(data []byte) (*InsomniaResult, []string, error) {
 	if doc.Collection == nil {
 		return nil, nil, fmt.Errorf("not a valid Insomnia v5 export: missing collection block")
 	}
-	var warnings []string
+	rep := NewReport("insomnia")
 	const v5Prefix = "collection.insomnia.rest/"
 	if doc.Type != "" && !strings.HasPrefix(doc.Type, v5Prefix) {
 		return nil, nil, fmt.Errorf("not a valid Insomnia v5 export: type %q", doc.Type)
 	}
 	if strings.TrimPrefix(doc.Type, v5Prefix) != "5.0" && doc.Type != "" {
-		warnings = append(warnings, fmt.Sprintf("collection type %q differs from %s5.0; attempting best-effort import", doc.Type, v5Prefix))
+		rep.Add("", CategorySchema, SeverityWarned, "collection type %q differs from %s5.0; attempting best-effort import", doc.Type, v5Prefix)
 	}
 
 	res := &InsomniaResult{
@@ -224,66 +224,64 @@ func parseInsomniaV5(data []byte) (*InsomniaResult, []string, error) {
 		Collection: "insomnia-import",
 		Root:       &PostmanFolder{Name: ""},
 	}
-	collectV5Items(*doc.Collection, res.Root, &warnings)
+	collectV5Items(*doc.Collection, res.Root, rep)
 
 	// Environments: single object with subEnvironments (v5) or a plain list.
 	if doc.Environments != nil {
 		env := buildInsomniaEnvironment(doc.Environments.Name, doc.Environments.Data)
 		res.Environments = append(res.Environments, env)
-		warnings = append(warnings, env.Warnings...)
+		rep.AddAll(env.Name, CategoryEnvironment, SeverityWarned, env.Warnings)
 		for _, sub := range doc.Environments.SubEnvironments {
 			name, _ := sub["name"].(string)
 			data, _ := sub["data"].(map[string]any)
 			subEnv := buildInsomniaEnvironment(name, data)
 			res.Environments = append(res.Environments, subEnv)
-			warnings = append(warnings, subEnv.Warnings...)
+			rep.AddAll(subEnv.Name, CategoryEnvironment, SeverityWarned, subEnv.Warnings)
 		}
 	}
-	return res, warnings, nil
+	return res, rep, nil
 }
 
 // collectV5Items walks the v5 tree: items with children become folders,
 // items with a URL become requests; both facets are preserved when present.
-func collectV5Items(items []inV5Item, dst *PostmanFolder, warnings *[]string) {
+func collectV5Items(items []inV5Item, dst *PostmanFolder, rep *ImportReport) {
 	for _, it := range items {
 		hasURL := strings.TrimSpace(it.URL) != ""
 		switch {
 		case hasURL && len(it.Children) == 0:
-			file, warns := insomniaRequestToFile(&inRequestCore{
+			file := insomniaRequestToFile(&inRequestCore{
 				Name: it.Name, Method: it.Method, URL: it.URL,
 				Headers: it.Headers, Parameters: it.Parameters,
 				Body: it.Body, Authentication: it.Authentication,
-			}, it.Name)
-			*warnings = append(*warnings, warns...)
+			}, it.Name, rep)
 			if file != nil {
 				dst.Requests = append(dst.Requests, file)
 			}
 		case hasURL || len(it.Children) > 0:
 			folder := &PostmanFolder{Name: it.Name}
 			if hasURL {
-				file, warns := insomniaRequestToFile(&inRequestCore{
+				file := insomniaRequestToFile(&inRequestCore{
 					Name: it.Name, Method: it.Method, URL: it.URL,
 					Headers: it.Headers, Parameters: it.Parameters,
 					Body: it.Body, Authentication: it.Authentication,
-				}, it.Name)
-				*warnings = append(*warnings, warns...)
+				}, it.Name, rep)
 				if file != nil {
 					folder.Requests = append(folder.Requests, file)
 				}
 			}
-			collectV5Items(it.Children, folder, warnings)
+			collectV5Items(it.Children, folder, rep)
 			dst.Folders = append(dst.Folders, folder)
 		default:
-			*warnings = append(*warnings, fmt.Sprintf("item %q has neither requests nor children; skipped", it.Name))
+			rep.Add(it.Name, CategoryOther, SeverityDropped, "item %q has neither requests nor children; skipped", it.Name)
 		}
 	}
 }
 
 // ---- shared request/auth/body/environment conversion ----
 
-// insomniaRequestToFile converts one Insomnia request into a request file.
-func insomniaRequestToFile(core *inRequestCore, fallbackName string) (*requestfile.File, []string) {
-	var warnings []string
+// insomniaRequestToFile converts one Insomnia request into a request file,
+// recording degradations on rep.
+func insomniaRequestToFile(core *inRequestCore, fallbackName string, rep *ImportReport) *requestfile.File {
 	headers := make([]request.Header, 0, len(core.Headers))
 	headerSet := map[string]bool{}
 	for _, h := range core.Headers {
@@ -302,14 +300,14 @@ func insomniaRequestToFile(core *inRequestCore, fallbackName string) (*requestfi
 	}
 
 	body, ct, bodyWarns := convertInsomniaBody(core.Body, headerSet)
-	warnings = append(warnings, bodyWarns...)
+	rep.AddAll(fallbackName, CategoryBody, SeverityWarned, bodyWarns)
 	if ct != "" && !headerSet["content-type"] {
 		headers = append(headers, request.Header{Key: "Content-Type", Value: ct})
 	}
 
 	auth, authWarn := convertInsomniaAuth(core.Authentication)
 	if authWarn != "" {
-		warnings = append(warnings, fmt.Sprintf("%s: %s", fallbackName, authWarn))
+		rep.Add(fallbackName, CategoryAuth, SeverityWarned, "%s: %s", fallbackName, authWarn)
 	}
 
 	method := strings.ToUpper(strings.TrimSpace(core.Method))
@@ -335,7 +333,7 @@ func insomniaRequestToFile(core *inRequestCore, fallbackName string) (*requestfi
 			Auth:    auth,
 		},
 	}
-	return file, warnings
+	return file
 }
 
 // convertInsomniaBody maps an Insomnia body onto Reqly's wire-body model.

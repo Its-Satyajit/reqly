@@ -67,7 +67,7 @@ const insomniaV4Inline = `{
 }`
 
 func TestParseInsomniaV4(t *testing.T) {
-	res, warnings, err := ParseInsomnia([]byte(insomniaV4Inline))
+	res, report, err := ParseInsomnia([]byte(insomniaV4Inline))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestParseInsomniaV4(t *testing.T) {
 	if env.Variables["user.name"] != "admin" || env.Variables["retries"] != "3" {
 		t.Fatalf("flattened vars = %v", env.Variables)
 	}
-	joined := strings.Join(append(warnings, env.Warnings...), "\n")
+	joined := strings.Join(append(report.Messages(), env.Warnings...), "\n")
 	if !strings.Contains(joined, "dotted key") {
 		t.Fatalf("expected flattening warning, got %s", joined)
 	}
@@ -119,7 +119,7 @@ func TestParseInsomniaV4(t *testing.T) {
 
 func TestParseInsomniaV5YAML(t *testing.T) {
 	data := fixtureBytes(t, filepath.Join("insomnia", "fixtures", "insomnia-v5.yaml"))
-	res, warnings, err := ParseInsomnia(data)
+	res, report, err := ParseInsomnia(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestParseInsomniaV5YAML(t *testing.T) {
 	if loginReq.Method != "POST" || !strings.Contains(loginReq.URL, "auth/login") {
 		t.Fatalf("login request = %s %s", loginReq.Method, loginReq.URL)
 	}
-	bodyWarnFree := strings.Join(warnings, "\n")
+	bodyWarnFree := strings.Join(report.Messages(), "\n")
 	_ = bodyWarnFree
 }
 
@@ -192,14 +192,14 @@ func TestParseInsomniaInvalidInputs(t *testing.T) {
 
 func TestParseInsomniaDatesFixture(t *testing.T) {
 	data := fixtureBytes(t, filepath.Join("insomnia", "fixtures", "insomnia-v5-dates.yaml"))
-	res, warnings, err := ParseInsomnia(data)
+	res, report, err := ParseInsomnia(data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res.RequestCount() == 0 && len(res.Root.Folders) == 0 {
 		t.Fatal("dates fixture imported nothing")
 	}
-	_ = warnings
+	_ = report
 }
 
 func TestParseInsomniaSniffingAndEmpty(t *testing.T) {

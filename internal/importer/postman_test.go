@@ -98,7 +98,7 @@ func postmanCollection(t string) string {
 }
 
 func TestParsePostmanV21(t *testing.T) {
-	res, warnings, err := ParsePostman([]byte(postmanCollection(postmanV21)))
+	res, report, err := ParsePostman([]byte(postmanCollection(postmanV21)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestParsePostmanV21(t *testing.T) {
 		t.Fatalf("graphql body = %q", gql.Body)
 	}
 
-	joined := strings.Join(warnings, "\n")
+	joined := strings.Join(report.Messages(), "\n")
 	for _, want := range []string{"script not imported", "file field", "local path", "file mode"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("warnings missing %q:\n%s", want, joined)
@@ -176,7 +176,7 @@ func TestParsePostmanAuthMappingAndOverrides(t *testing.T) {
     { "name": "hawk", "request": { "method": "GET", "url": "https://x.test/", "auth": { "type": "hawk", "hawk": {} } } }
   ]
 }`
-	res, warnings, err := ParsePostman([]byte(data))
+	res, report, err := ParsePostman([]byte(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,8 +188,8 @@ func TestParsePostmanAuthMappingAndOverrides(t *testing.T) {
 	if own.Auth.Type != "apikey" || own.Auth.Config["in"] != "header" {
 		t.Fatalf("request auth override = %+v", own.Auth)
 	}
-	if !strings.Contains(strings.Join(warnings, "\n"), "hawk") {
-		t.Fatalf("unsupported auth type must warn, got %v", warnings)
+	if !strings.Contains(strings.Join(report.Messages(), "\n"), "hawk") {
+		t.Fatalf("unsupported auth type must warn, got %v", report.Messages())
 	}
 }
 
@@ -198,12 +198,12 @@ func TestParsePostmanRejectsNonJSONAndOldSchema(t *testing.T) {
 		t.Fatal("expected error for non-JSON input")
 	}
 	old := `{"info": {"name": "old", "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"}, "item": []}`
-	res, warnings, err := ParsePostman([]byte(old))
+	res, report, err := ParsePostman([]byte(old))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(strings.Join(warnings, "\n"), "v2.0") {
-		t.Fatalf("expected schema-version warning, got %v", warnings)
+	if !strings.Contains(strings.Join(report.Messages(), "\n"), "v2.0") {
+		t.Fatalf("expected schema-version warning, got %v", report.Messages())
 	}
 	if res.Title != "old" {
 		t.Fatalf("title = %q", res.Title)
@@ -414,7 +414,7 @@ func TestParsePostmanImportSuite(t *testing.T) {
 func TestParsePostmanWrappedEnvelope(t *testing.T) {
 	inner := postmanCollection(postmanV21)
 	wrapped := `{"collection": ` + inner + `}`
-	res, warnings, err := ParsePostman([]byte(wrapped))
+	res, report, err := ParsePostman([]byte(wrapped))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -428,7 +428,7 @@ func TestParsePostmanWrappedEnvelope(t *testing.T) {
 	if bare.Title != res.Title || bare.RequestCount() != res.RequestCount() {
 		t.Fatal("wrapped and bare parses diverge")
 	}
-	_ = warnings
+	_ = report
 }
 
 func TestParsePostmanNormalizesMethods(t *testing.T) {

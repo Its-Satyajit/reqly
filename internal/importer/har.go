@@ -138,8 +138,8 @@ type harPostParam struct {
 	Comment     string `json:"comment"`
 }
 
-// ParseHAR parses HAR JSON 1.2. It returns a HARResult plus warnings for dropped fields.
-func ParseHAR(data []byte) (*HARResult, []string, error) {
+// ParseHAR parses HAR JSON 1.2. It returns a HARResult plus a report of dropped fields.
+func ParseHAR(data []byte) (*HARResult, *ImportReport, error) {
 	var f harFile
 	if err := json.Unmarshal(data, &f); err != nil {
 		return nil, nil, fmt.Errorf("parse HAR: %w", err)
@@ -147,12 +147,12 @@ func ParseHAR(data []byte) (*HARResult, []string, error) {
 	if f.Log.Entries == nil {
 		return nil, nil, fmt.Errorf("not a HAR file (missing log.entries)")
 	}
-	var warnings []string
+	rep := NewReport("har")
 	if f.Log.Version != "" && f.Log.Version != "1.2" {
-		warnings = append(warnings, fmt.Sprintf("unsupported HAR version %q: expected 1.2, parsing as 1.2", f.Log.Version))
+		rep.Add("", CategorySchema, SeverityWarned, "unsupported HAR version %q: expected 1.2, parsing as 1.2", f.Log.Version)
 	}
 	if len(f.Log.Pages) > 0 {
-		warnings = append(warnings, fmt.Sprintf("dropped %d pageref pages (grouping deferred to M28b)", len(f.Log.Pages)))
+		rep.Add("", CategoryOther, SeverityDropped, "dropped %d pageref pages (grouping deferred to M28b)", len(f.Log.Pages))
 	}
 	result := &HARResult{
 		Title:      "har-import",
@@ -160,24 +160,25 @@ func ParseHAR(data []byte) (*HARResult, []string, error) {
 	}
 	seen := map[string]int{}
 	for i, e := range f.Log.Entries {
+		path := fmt.Sprintf("entry %d", i)
 		if e.Pageref != "" {
 			// warn once per entry with pageref
-			warnings = append(warnings, fmt.Sprintf("entry %d: pageref %q dropped (M28b)", i, e.Pageref))
+			rep.Add(path, CategoryOther, SeverityDropped, "%s: pageref %q dropped (M28b)", path, e.Pageref)
 		}
 		if e.Cache != nil {
-			warnings = append(warnings, fmt.Sprintf("entry %d: cache dropped", i))
+			rep.Add(path, CategoryOther, SeverityDropped, "%s: cache dropped", path)
 		}
 		if e.Timings != nil {
-			warnings = append(warnings, fmt.Sprintf("entry %d: timings dropped (re-synthesized on export)", i))
+			rep.Add(path, CategoryOther, SeverityDropped, "%s: timings dropped (re-synthesized on export)", path)
 		}
 		if e.ServerIPAddress != "" || e.Connection != "" {
-			warnings = append(warnings, fmt.Sprintf("entry %d: serverIPAddress/connection dropped", i))
+			rep.Add(path, CategoryOther, SeverityDropped, "%s: serverIPAddress/connection dropped", path)
 		}
 		// response is intentionally discarded for M28
 		req, w, err := harEntryToRequest(e, i, seen)
-		warnings = append(warnings, w...)
+		rep.AddAll(path, CategoryBody, SeverityWarned, w)
 		if err != nil {
-			warnings = append(warnings, fmt.Sprintf("entry %d skipped: %v", i, err))
+			rep.Add(path, CategoryOther, SeverityDropped, "%s skipped: %v", path, err)
 			continue
 		}
 		if req == nil {
@@ -186,10 +187,10 @@ func ParseHAR(data []byte) (*HARResult, []string, error) {
 		result.Requests = append(result.Requests, req)
 	}
 	if len(result.Requests) == 0 && len(f.Log.Entries) > 0 {
-		warnings = append(warnings, "no requests imported (all entries skipped)")
+		rep.Add("", CategoryOther, SeverityWarned, "no requests imported (all entries skipped)")
 	}
-	result.Warnings = warnings
-	return result, warnings, nil
+	result.Warnings = rep.Messages()
+	return result, rep, nil
 }
 
 func harEntryToRequest(e harEntry, idx int, seen map[string]int) (*requestfile.File, []string, error) {

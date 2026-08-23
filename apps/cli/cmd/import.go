@@ -37,6 +37,14 @@ var importCmd = &cobra.Command{
 Supported sources: cURL, OpenAPI 3.x, HAR.`,
 }
 
+// printImportReport renders a structured import report on stderr: entries
+// grouped by category with item paths, then a severity tally line.
+func printImportReport(cmd *cobra.Command, rep *importer.ImportReport) {
+	if s := rep.String(); s != "" {
+		fmt.Fprint(cmd.ErrOrStderr(), s)
+	}
+}
+
 var importCurlCmd = &cobra.Command{
 	Use:   "curl <command>",
 	Short: "Import a cURL command",
@@ -130,13 +138,11 @@ drops pageref/timings/cache with warnings. Bodies >1MB spill to .reqly/blobs.`,
 		if err != nil {
 			return fmt.Errorf("read HAR: %w", err)
 		}
-		result, warnings, err := importer.ParseHAR(data)
+		result, report, err := importer.ParseHAR(data)
 		if err != nil {
 			return err
 		}
-		for _, w := range warnings {
-			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
-		}
+		printImportReport(cmd, report)
 		out := importOutput
 		if out == "" {
 			out = "."
@@ -171,13 +177,11 @@ and basic/bearer/apikey auth. Scripts and unsupported features are reported as w
 		if err != nil {
 			return fmt.Errorf("read Postman collection: %w", err)
 		}
-		result, warnings, err := importer.ParsePostman(data)
+		result, report, err := importer.ParsePostman(data)
 		if err != nil {
 			return err
 		}
-		for _, w := range warnings {
-			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
-		}
+		printImportReport(cmd, report)
 		out := importOutput
 		if out == "" {
 			out = importer.SanitizeDirName(result.Title)
@@ -209,13 +213,11 @@ reported as warnings.`,
 		if err != nil {
 			return fmt.Errorf("read Insomnia export: %w", err)
 		}
-		result, warnings, err := importer.ParseInsomnia(data)
+		result, report, err := importer.ParseInsomnia(data)
 		if err != nil {
 			return err
 		}
-		for _, w := range warnings {
-			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
-		}
+		printImportReport(cmd, report)
 		out := importOutput
 		if out == "" {
 			out = importer.SanitizeDirName(result.Title)
@@ -251,13 +253,11 @@ Directory imports are not supported — export the collection as a single JSON f
 		if err != nil {
 			return fmt.Errorf("read Bruno collection: %w", err)
 		}
-		result, warnings, err := importer.ParseBruno(data)
+		result, report, err := importer.ParseBruno(data)
 		if err != nil {
 			return err
 		}
-		for _, w := range warnings {
-			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
-		}
+		printImportReport(cmd, report)
 		out := importOutput
 		if out == "" {
 			out = importer.SanitizeDirName(result.Title)
@@ -294,13 +294,11 @@ best-effort and reported as warnings.`,
 		if err != nil {
 			return fmt.Errorf("read WSDL document: %w", err)
 		}
-		result, warnings, err := importer.ParseWSDL(data)
+		result, report, err := importer.ParseWSDL(data)
 		if err != nil {
 			return err
 		}
-		for _, w := range warnings {
-			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
-		}
+		printImportReport(cmd, report)
 		out := importOutput
 		if out == "" {
 			out = importer.SanitizeDirName(result.Title)

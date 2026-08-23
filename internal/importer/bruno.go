@@ -173,7 +173,7 @@ func (e *brTolerantEnvs) UnmarshalJSON(data []byte) error {
 }
 
 // ParseBruno parses a Bruno collection export JSON into a BrunoResult.
-func ParseBruno(data []byte) (*BrunoResult, []string, error) {
+func ParseBruno(data []byte) (*BrunoResult, *ImportReport, error) {
 	var col brCollection
 	if err := json.Unmarshal(data, &col); err != nil {
 		return nil, nil, fmt.Errorf("parse Bruno collection: %w", err)
@@ -184,13 +184,13 @@ func ParseBruno(data []byte) (*BrunoResult, []string, error) {
 		Root:       &PostmanFolder{Name: ""},
 	}
 
-	var warnings []string
+	rep := NewReport("bruno")
 	if col.Root != nil && col.Root.Request != nil {
 		if col.Root.Request.Auth != nil {
 			auth, warn := convertBrunoAuth(col.Root.Request.Auth)
 			res.Auth = auth
 			if warn != "" {
-				warnings = append(warnings, warn)
+				rep.Add("", CategoryAuth, SeverityWarned, "%s", warn)
 			}
 		}
 		for _, h := range col.Root.Request.Headers {
@@ -199,24 +199,23 @@ func ParseBruno(data []byte) (*BrunoResult, []string, error) {
 			}
 		}
 	}
-	collectBrunoItems(col.Items, res.Root, res, &warnings)
+	collectBrunoItems(col.Items, res.Root, res, rep)
 	for _, env := range col.Environments {
 		res.Environments = append(res.Environments, buildBrunoEnvironment(env))
 	}
-	return res, warnings, nil
+	return res, rep, nil
 }
 
 // collectBrunoItems walks the items tree; unknown item types warn+skip.
-func collectBrunoItems(items []brItem, dst *PostmanFolder, res *BrunoResult, warnings *[]string) {
+func collectBrunoItems(items []brItem, dst *PostmanFolder, res *BrunoResult, rep *ImportReport) {
 	for _, it := range items {
 		switch it.Type {
 		case "folder":
 			folder := &PostmanFolder{Name: it.Name}
-			collectBrunoItems(it.Items, folder, res, warnings)
+			collectBrunoItems(it.Items, folder, res, rep)
 			dst.Folders = append(dst.Folders, folder)
 		case "http", "graphql":
-			file, warns := brunoItemToFile(&it, res)
-			*warnings = append(*warnings, warns...)
+			file := brunoItemToFile(&it, res, rep)
 			if file != nil {
 				dst.Requests = append(dst.Requests, file)
 			}
@@ -225,22 +224,24 @@ func collectBrunoItems(items []brItem, dst *PostmanFolder, res *BrunoResult, war
 			if name == "" {
 				name = "(unnamed)"
 			}
-			*warnings = append(*warnings, fmt.Sprintf("item %q has unsupported type %q; skipped", name, it.Type))
+			rep.Add(name, CategoryOther, SeverityDropped, "item %q has unsupported type %q; skipped", name, it.Type)
 		}
 	}
 }
 
-// brunoItemToFile converts one item into a request file.
-func brunoItemToFile(it *brItem, res *BrunoResult) (*requestfile.File, []string) {
-	var warnings []string
+// brunoItemToFile converts one item into a request file, recording
+// degradations on rep.
+func brunoItemToFile(it *brItem, res *BrunoResult, rep *ImportReport) *requestfile.File {
 	var req *brRequest
 	if len(it.Request) > 0 && string(it.Request) != "null" {
 		if err := json.Unmarshal(it.Request, &req); err != nil {
-			return nil, append(warnings, fmt.Sprintf("%s: request block unreadable (%v); skipped", it.Name, err))
+			rep.Add(it.Name, CategoryOther, SeverityDropped, "%s: request block unreadable (%v); skipped", it.Name, err)
+			return nil
 		}
 	}
 	if req == nil {
-		return nil, append(warnings, fmt.Sprintf("%s: no request block; skipped", it.Name))
+		rep.Add(it.Name, CategoryOther, SeverityDropped, "%s: no request block; skipped", it.Name)
+		return nil
 	}
 	name := it.Name
 
@@ -252,7 +253,7 @@ func brunoItemToFile(it *brItem, res *BrunoResult) (*requestfile.File, []string)
 		{"tests", "tests"}, {"docs", "docs"},
 	} {
 		if len(nonEmptyMember(req, kind.key)) > 0 {
-			warnings = append(warnings, fmt.Sprintf("%s: %s not imported", name, kind.label))
+			rep.Add(name, CategoryScript, SeverityDropped, "%s: %s not imported", name, kind.label)
 		}
 	}
 
@@ -282,7 +283,7 @@ func brunoItemToFile(it *brItem, res *BrunoResult) (*requestfile.File, []string)
 	}
 
 	body, ct, bodyWarns := convertBrunoBody(req.Body, headerSet)
-	warnings = append(warnings, bodyWarns...)
+	rep.AddAll(name, CategoryBody, SeverityWarned, bodyWarns)
 	if ct != "" && !headerSet["content-type"] {
 		appendHeader("Content-Type", ct)
 	}
@@ -291,7 +292,7 @@ func brunoItemToFile(it *brItem, res *BrunoResult) (*requestfile.File, []string)
 	if req.Auth != nil && req.Auth.Mode != "" && req.Auth.Mode != "none" {
 		converted, warn := convertBrunoAuth(req.Auth)
 		if warn != "" {
-			warnings = append(warnings, fmt.Sprintf("%s: %s", name, warn))
+			rep.Add(name, CategoryAuth, SeverityWarned, "%s: %s", name, warn)
 			auth = request.Auth{}
 		} else {
 			auth = converted
@@ -304,7 +305,8 @@ func brunoItemToFile(it *brItem, res *BrunoResult) (*requestfile.File, []string)
 	}
 	reqURL := req.URL
 	if strings.TrimSpace(reqURL) == "" {
-		return nil, append(warnings, fmt.Sprintf("%s: request has no URL; skipped", name))
+		rep.Add(name, CategoryOther, SeverityDropped, "%s: request has no URL; skipped", name)
+		return nil
 	}
 	display := name
 	if display == "" {
@@ -322,7 +324,7 @@ func brunoItemToFile(it *brItem, res *BrunoResult) (*requestfile.File, []string)
 			Auth:    auth,
 		},
 	}
-	return file, warnings
+	return file
 }
 
 // nonEmptyMember reports whether a request member carries content worth
