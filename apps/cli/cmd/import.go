@@ -271,8 +271,55 @@ Directory imports are not supported — export the collection as a single JSON f
 	},
 }
 
+var importWSDLCmd = &cobra.Command{
+	Use:   "wsdl <file> [--output <dir>]",
+	Short: "Import a WSDL 1.1 document into a SOAP workspace",
+	Long: `Parse a WSDL 1.1 document and write it as a Git-native workspace with one
+POST request per operation: a complete SOAP envelope skeleton (1.1 or 1.2
+matched to the binding) sent to the port address with the binding's
+SOAPAction header, and body children from the operation's inline XSD.
+
+  reqly import wsdl service.wsdl
+  reqly import wsdl service.wsdl --output ./soap-ws
+
+External schemas (xsd:import/xsd:include) and rpc/encoded styles are handled
+best-effort and reported as warnings.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		info, err := os.Stat(args[0])
+		if err == nil && info.IsDir() {
+			return fmt.Errorf("%s is a directory; provide a single .wsdl or .xml file", args[0])
+		}
+		data, err := os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("read WSDL document: %w", err)
+		}
+		result, warnings, err := importer.ParseWSDL(data)
+		if err != nil {
+			return err
+		}
+		for _, w := range warnings {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
+		}
+		out := importOutput
+		if out == "" {
+			out = importer.SanitizeDirName(result.Title)
+		}
+		if err := result.Write(out); err != nil {
+			return err
+		}
+		count := 0
+		for _, coll := range result.Collections {
+			count += len(coll.Request)
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "imported %s into %s (%d operations across %d services)\n",
+			filepath.Base(args[0]), out, count, len(result.Collections))
+		return nil
+	},
+}
+
 func init() {
-	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd, importPostmanCmd, importInsomniaCmd, importBrunoCmd)
+	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd, importPostmanCmd, importInsomniaCmd, importBrunoCmd, importWSDLCmd)
 	importCurlCmd.Flags().StringVar(&importOutput, "output", "", "write a request file to this path")
 	importOpenAPICmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importHarCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
@@ -280,4 +327,5 @@ func init() {
 	importPostmanCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importInsomniaCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importBrunoCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
+	importWSDLCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 }

@@ -341,3 +341,46 @@ func TestCollectionTestReports(t *testing.T) {
 	}
 	_ = exitErr // run outcome is asserted by runner tests; reports must not change it
 }
+
+func TestImportWSDL(t *testing.T) {
+	src := filepath.Join("..", "..", "..", "internal", "importer", "testdata", "import-suite", "wsdl", "fixtures", "wsdl.xml")
+	outDir := filepath.Join(t.TempDir(), "ws")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "wsdl", src, "--output", outDir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{
+		"reqly.yaml",
+		filepath.Join("collections", "UserService", "reqly.yaml"),
+		filepath.Join("collections", "UserService", "GetUser.yaml"),
+		filepath.Join("collections", "UserService", "CreateUser.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(outDir, rel)); err != nil {
+			t.Fatalf("expected %s: %v\noutput:\n%s", rel, err, out.String())
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(outDir, "collections", "UserService", "GetUser.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"SOAPAction", "soapenv:Envelope", "<userId></userId>"} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("generated envelope missing %q:\n%s", want, body)
+		}
+	}
+}
+
+func TestImportWSDLRejectsDirectory(t *testing.T) {
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "wsdl", t.TempDir()})
+	if err := rootCmd.Execute(); err == nil || !strings.Contains(err.Error(), "directory") {
+		t.Fatalf("expected directory error, got %v", err)
+	}
+}
