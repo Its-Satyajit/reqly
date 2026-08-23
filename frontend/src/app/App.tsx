@@ -17,7 +17,8 @@ import { EnvironmentsView } from "../features/environments-view/EnvironmentsView
 import { HistoryView } from "../features/history-view/HistoryView";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
-import { useThemeStore, useWorkspaceStore } from "../stores";
+import { useThemeStore, useWorkspaceBootstrapStore, useWorkspaceStore } from "../stores";
+import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
 import { NEW_REQUEST_TAB_ID } from "../stores/useRequestStore";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import { armDebugCrashTrigger, installCrashReporter } from "../lib/crashReporter";
@@ -42,10 +43,18 @@ export function App() {
 	const openTabs = useWorkspaceStore((s) => s.openTabs);
 	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
 
+	const bootChecked = useWorkspaceBootstrapStore((s) => s.checked);
+	const bootFound = useWorkspaceBootstrapStore((s) => s.status?.found ?? false);
+	const initBootstrap = useWorkspaceBootstrapStore((s) => s.init);
+
 	useEffect(() => {
 		installCrashReporter();
 		return armDebugCrashTrigger();
 	}, []);
+
+	useEffect(() => {
+		void initBootstrap();
+	}, [initBootstrap]);
 
 	useEffect(() => {
 		void refreshEnvironments();
@@ -78,6 +87,17 @@ export function App() {
 		(e) => e.id === activeEnvironmentId,
 	);
 	const activeTab = openTabs.find((t) => t.id === activeTabId);
+
+	if (!bootChecked) {
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-background">
+				<img src={theme === "dark" ? logoDark : logoLight} alt="Reqly" className="h-8 w-auto opacity-70" />
+			</div>
+		);
+	}
+	if (bootChecked && !bootFound) {
+		return <WorkspaceEmptyState />;
+	}
 
 	const onSelectEnvironment = async (name: string) => {
 		addBreadcrumb("env-switch", name || "none");

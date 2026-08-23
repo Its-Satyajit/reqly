@@ -5,6 +5,7 @@ import type {
 	HistoryAdapter,
 	ImportAdapter,
 	ImportOutcome,
+	WorkspaceBootstrapAdapter,
 	RequestInput,
 	RequestSender,
 	ResponseData,
@@ -19,6 +20,7 @@ import {
 	useHistoryStore,
 	useImportStore,
 	useRequestStore,
+	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
 } from "@reqly/frontend";
 import { Events } from "@wailsio/runtime";
@@ -479,6 +481,21 @@ async function runImport(
 	return toImportOutcome(res);
 }
 
+export const wailsWorkspaceBootstrapAdapter: WorkspaceBootstrapAdapter = {
+	status: async () => (await AppService.WorkspaceStatus()) ?? { found: false },
+	restoreLast: async () => (await AppService.WorkspaceRestoreLast()) ?? { found: false },
+	pickFolder: async () => {
+		const dir = await AppService.WorkspacePickFolder();
+		return dir ?? "";
+	},
+	open: async (dir) => {
+		await AppService.WorkspaceOpen(dir);
+	},
+	create: async (dir, name) => {
+		await AppService.WorkspaceCreate(dir, name ?? "");
+	},
+};
+
 export const wailsImportAdapter: ImportAdapter = {
 	detect: async (content) => {
 		const [format, ok] = await AppService.Detect(content);
@@ -504,4 +521,5 @@ export function initRequestBridge(): void {
 	useWorkspaceStore.getState().setWorkspaceAdapter(wailsCollectionsAdapter);
 	useHistoryStore.getState().setAdapter(wailsHistoryAdapter);
 	useImportStore.getState().setAdapter(wailsImportAdapter);
+	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 }

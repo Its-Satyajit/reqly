@@ -10,6 +10,7 @@ export * from "./lib/collections";
 export * from "./lib/crash";
 export * from "./lib/env";
 export * from "./lib/history";
+export * from "./lib/workspace";
 export * from "./lib/import";
 export * from "./lib/jsonpath";
 export * from "./lib/request";
