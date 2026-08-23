@@ -279,6 +279,11 @@ func collectV5Items(items []inV5Item, dst *PostmanFolder, rep *ImportReport) {
 
 // ---- shared request/auth/body/environment conversion ----
 
+// Insomnia v4/v5 exports carry no per-request scripts (scripting lives in
+// workspace plugins outside the export), so there is nothing to translate
+// here; the insomnia dialect of TranslateScript covers any future format that
+// embeds scripts.
+
 // insomniaRequestToFile converts one Insomnia request into a request file,
 // recording degradations on rep.
 func insomniaRequestToFile(core *inRequestCore, fallbackName string, rep *ImportReport) *requestfile.File {

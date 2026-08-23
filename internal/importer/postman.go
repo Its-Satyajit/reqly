@@ -45,7 +45,14 @@ type PostmanFolder struct {
 type PostmanResult struct {
 	Title      string
 	Collection string
-	Variables  map[string]string
+	// Variables holds the collection-level variable members exactly as
+	// parsed; kept for inspection and tests.
+	Variables map[string]string
+	// EnvVariables is what lands in environments/<collection>.yaml at write
+	// time: collection variables overlaid by folder-level overrides (deeper
+	// scopes win), so requests resolve them through the environment layer
+	// instead of the collection descriptor.
+	EnvVariables map[string]string
 	// Auth is the collection-level auth applied to every request without its
 	// own auth block (zero value when the source had none).
 	Auth request.Auth
@@ -280,6 +287,10 @@ func parsePostmanCollection(data []byte) (*PostmanResult, *ImportReport, error) 
 			res.Variables[v.Key] = v.Value
 		}
 	}
+	envVars := make(map[string]string, len(res.Variables))
+	for k, v := range res.Variables {
+		envVars[k] = v
+	}
 	rep := NewReport("postman")
 	if col.Info.Schema != "" && !strings.Contains(col.Info.Schema, "v2.1") {
 		rep.Add("", CategorySchema, SeverityWarned, "unsupported schema %q (want a v2.1 collection)", col.Info.Schema)
@@ -291,14 +302,28 @@ func parsePostmanCollection(data []byte) (*PostmanResult, *ImportReport, error) 
 			rep.Add("", CategoryAuth, SeverityWarned, "%s", warn)
 		}
 	}
-	walkItems(col.Item, res.Root, res, rep)
+	walkItems(col.Item, res.Root, res, envVars, rep)
+	if len(envVars) > 0 {
+		res.EnvVariables = envVars
+		rep.Add(sanitizeName(collectionName(res)), CategoryEnvironment, SeverityTranslated,
+			"%d collection variable(s) exported to environments/%s.yaml", len(envVars), sanitizeName(collectionName(res)))
+	}
 	return res, rep, nil
+}
+
+// collectionName returns the directory name the result will be written under.
+func collectionName(r *PostmanResult) string {
+	if strings.TrimSpace(r.Collection) == "" || r.Collection == "-" {
+		return "postman-import"
+	}
+	return r.Collection
 }
 
 // walkItems converts an item list into dst, recursing into nested folders.
 // An item may carry a request, sub-items, or both (Postman allows a request
-// with children); both facets are preserved when present.
-func walkItems(items []json.RawMessage, dst *PostmanFolder, res *PostmanResult, rep *ImportReport) {
+// with children); both facets are preserved when present. Folder-level
+// variables overlay envVars as recursion descends — deeper scopes win.
+func walkItems(items []json.RawMessage, dst *PostmanFolder, res *PostmanResult, envVars map[string]string, rep *ImportReport) {
 	for _, raw := range items {
 		var it pmItem
 		if err := json.Unmarshal(raw, &it); err != nil {
@@ -306,6 +331,13 @@ func walkItems(items []json.RawMessage, dst *PostmanFolder, res *PostmanResult, 
 			continue
 		}
 		hasRequest := len(it.Request) > 0 && string(it.Request) != "null"
+		if len(it.Item) > 0 {
+			for _, v := range it.Variable {
+				if !v.Disabled && v.Key != "" {
+					envVars[v.Key] = v.Value
+				}
+			}
+		}
 		switch {
 		case hasRequest && len(it.Item) == 0:
 			file := postmanItemToFile(&it, res, rep)
@@ -320,7 +352,7 @@ func walkItems(items []json.RawMessage, dst *PostmanFolder, res *PostmanResult, 
 					folder.Requests = append(folder.Requests, file)
 				}
 			}
-			walkItems(it.Item, folder, res, rep)
+			walkItems(it.Item, folder, res, envVars, rep)
 			dst.Folders = append(dst.Folders, folder)
 		default:
 			rep.Add(it.Name, CategoryOther, SeverityDropped, "item %q has neither requests nor sub-folders; skipped", it.Name)
@@ -335,18 +367,40 @@ func mustQuote(s string) json.RawMessage {
 }
 
 // postmanItemToFile converts one Postman request item into a request file,
-// recording degradations on rep.
+// recording degradations on rep. Event scripts are translated onto the reqly
+// sandbox API (ADR 0026) and land in the file's preRequest/postRequest fields.
 func postmanItemToFile(it *pmItem, res *PostmanResult, rep *ImportReport) *requestfile.File {
+	var preScript, postScript string
 	for _, e := range it.Event {
 		var ev struct {
 			Listen string `json:"listen"`
+			Script struct {
+				Exec []string `json:"exec"`
+			} `json:"script"`
 		}
 		_ = json.Unmarshal(e, &ev)
 		listen := ev.Listen
 		if listen == "" {
 			listen = "script"
 		}
-		rep.Add(it.Name, CategoryScript, SeverityDropped, "%s: %s script not imported", it.Name, listen)
+		source := strings.Join(ev.Script.Exec, "\n")
+		if strings.TrimSpace(source) == "" {
+			rep.Add(it.Name, CategoryScript, SeverityDropped, "%s: %s script not imported", it.Name, listen)
+			continue
+		}
+		translated, warns := TranslateScript(source, DialectPostman)
+		switch listen {
+		case "prerequest":
+			preScript = translated
+		case "test":
+			postScript = translated
+		default:
+			rep.Add(it.Name, CategoryScript, SeverityDropped, "%s: %s script has no request-file target; skipped", it.Name, listen)
+			continue
+		}
+		rep.Entries = append(rep.Entries, warns...)
+		rep.Add(it.Name, CategoryScript, SeverityTranslated, "%s: %s script imported (%d line(s) preserved as TODO(reqly-import))",
+			it.Name, listen, strings.Count(translated, todoMarker))
 	}
 
 	var pr pmRequest
@@ -407,8 +461,10 @@ func postmanItemToFile(it *pmItem, res *PostmanResult, rep *ImportReport) *reque
 		name = method + " " + reqURL
 	}
 	file := &requestfile.File{
-		Name:      name,
-		Variables: vars,
+		Name:        name,
+		Variables:   vars,
+		PreRequest:  preScript,
+		PostRequest: postScript,
 		Request: request.Request{
 			Name:    name,
 			Method:  request.Method(method),
@@ -615,14 +671,23 @@ func (r *PostmanResult) Write(dir string) error {
 		return fmt.Errorf("create collection dir: %w", err)
 	}
 	cfg := map[string]any{"name": collection}
-	if len(r.Variables) > 0 {
-		cfg["variables"] = r.Variables
-	}
 	if r.Auth.Type != "" {
 		cfg["auth"] = r.Auth
 	}
 	if err := writeYAMLFile(filepath.Join(collDir, "reqly.yaml"), cfg); err != nil {
 		return err
+	}
+	if len(r.EnvVariables) > 0 {
+		envDir := filepath.Join(dir, "environments")
+		if err := os.MkdirAll(envDir, 0o755); err != nil {
+			return fmt.Errorf("create environments dir: %w", err)
+		}
+		payload := struct {
+			Variables map[string]string `yaml:"variables,omitempty"`
+		}{Variables: r.EnvVariables}
+		if err := writeYAMLFile(filepath.Join(envDir, sanitizeName(collection)+".yaml"), payload); err != nil {
+			return err
+		}
 	}
 	return writePostmanFolder(r.Root, collDir)
 }

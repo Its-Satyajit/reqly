@@ -84,7 +84,7 @@ const brunoInline = `{
       "request": {
         "url": "{{host}}/s",
         "method": "GET",
-        "script": { "request": "console.log(1);" },
+        "script": { "request": "const tok = bru.getEnvVar(\"token\");", "response": "expect(res.status).toBe(200);" },
         "assertions": [ { "name": "res.status", "value": "200" } ],
         "docs": "some docs"
       }
@@ -146,9 +146,20 @@ func TestParseBruno(t *testing.T) {
 	}
 
 	joined := strings.Join(report.Messages(), "\n")
-	for _, want := range []string{"script not imported", "assertions not imported", "docs not imported"} {
+	for _, want := range []string{"pre-request script imported", "post-response script imported", "assertions not imported", "docs not imported"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("warnings missing %q:\n%s", want, joined)
+		}
+	}
+	for _, f := range res.Root.Requests {
+		if f.Name != "Scripted" {
+			continue
+		}
+		if !strings.Contains(f.PreRequest, `reqly.getVariable("token")`) {
+			t.Errorf("preRequest missing translated getVariable: %q", f.PreRequest)
+		}
+		if !strings.Contains(f.PostRequest, todoMarker+"expect(res.status)") {
+			t.Errorf("postResponse expect line must be a TODO comment: %q", f.PostRequest)
 		}
 	}
 
@@ -273,5 +284,48 @@ func TestParseBrunoFixtures(t *testing.T) {
 		if !seen[name] {
 			t.Errorf("expected fixture %s not found", name)
 		}
+	}
+}
+
+func TestBrunoScriptKeyLayouts(t *testing.T) {
+	tests := []struct {
+		name     string
+		script   string
+		wantPre  string
+		wantPost string
+	}{
+		{"before/after", `{"before": "bru.getVar(\"a\");", "after": ""}`, "reqly.getVariable(", ""},
+		{"prerequest/postresponse", `{"prerequest": "bru.getVar(\"a\");", "postresponse": "console.log(1);"}`, "reqly.getVariable(", "console.log(1);"},
+		{"line arrays", `{"request": ["const a = bru.getVar(\"a\");"], "response": ["test(\"t\", () => {});"]}`, "reqly.getVariable(", "reqly.test("},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := `{
+  "name": "layouts",
+  "items": [
+    { "type": "http", "name": "r",
+      "request": {
+        "method": "GET",
+        "url": "https://a.test/",
+        "script": ` + tt.script + `
+      }
+    }
+  ]
+}`
+			res, _, err := ParseBruno([]byte(data))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(res.Root.Requests) != 1 {
+				t.Fatalf("requests = %d", len(res.Root.Requests))
+			}
+			f := res.Root.Requests[0]
+			if tt.wantPre != "" && !strings.Contains(f.PreRequest, tt.wantPre) {
+				t.Errorf("preRequest = %q, want containing %q", f.PreRequest, tt.wantPre)
+			}
+			if tt.wantPost != "" && !strings.Contains(f.PostRequest, tt.wantPost) {
+				t.Errorf("postRequest = %q, want containing %q", f.PostRequest, tt.wantPost)
+			}
+		})
 	}
 }
