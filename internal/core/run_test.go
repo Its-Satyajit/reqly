@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -30,6 +29,7 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/testsupport"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
@@ -37,20 +37,10 @@ import (
 // environment plus a "dev" environment carrying one secret and one variable.
 func newRunWS(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
-	desc := "name: ws\nenvironment: dev\n"
-	if err := os.WriteFile(filepath.Join(dir, "reqly.yaml"), []byte(desc), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	envDir := filepath.Join(dir, "environments")
-	if err := os.MkdirAll(envDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	env := "name: dev\nvariables:\n  base: example\ndescription: \"\"\nsecrets:\n  api_key: supersecret\n"
-	if err := os.WriteFile(filepath.Join(envDir, "dev.yaml"), []byte(env), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	return dir
+	return testsupport.Workspace(t, map[string]string{
+		"reqly.yaml":            "name: ws\nenvironment: dev\n",
+		"environments/dev.yaml": "name: dev\nvariables:\n  base: example\ndescription: \"\"\nsecrets:\n  api_key: supersecret\n",
+	})
 }
 
 func echoServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {

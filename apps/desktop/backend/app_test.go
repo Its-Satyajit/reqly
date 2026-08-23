@@ -30,6 +30,7 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/testsupport"
 )
 
 func TestWorkspaceLoadBridgeReturnsTree(t *testing.T) {
@@ -127,20 +128,10 @@ func TestWorkspaceOpenRequestBridgeMissingErrors(t *testing.T) {
 
 func writeWorkspace(t *testing.T, root string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(root, "environments"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "environments", "dev.yaml"), []byte(`
-variables:
-  REGION: us-west-2
-secrets:
-  API_KEY: dev-secret
-`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "reqly.yaml"), []byte("environment: dev\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.Files(t, root, map[string]string{
+		"reqly.yaml":            "name: demo\nenvironment: dev\n",
+		"environments/dev.yaml": "variables:\n  REGION: us-west-2\nsecrets:\n  API_KEY: dev-secret\n",
+	})
 }
 
 // The bridge-local environment resolver was replaced by the shared execution
