@@ -3,6 +3,7 @@ import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
 import { CompactSelect } from '../../components/CompactSelect'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
+import { ChevronRight } from 'lucide-react'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
 import { useRequestStore, useWorkspaceStore } from '../../stores'
@@ -10,7 +11,7 @@ import { tabIsDirty } from '../../stores/useRequestStore'
 import { effectiveUrlFor } from '../../stores/useWorkspaceStore'
 import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
-import type { KeyValueRow, RequestAuth } from '../../lib/request'
+import type { KeyValueRow, RequestAuth, RequestRetry } from '../../lib/request'
 import type { ResolvedVariable } from '../../lib/collections'
 import { TagPicker } from '../../components/TagPicker'
 import { tagWarnings } from '../../lib/tags'
@@ -291,6 +292,10 @@ export function RequestEditor() {
         <TagPicker onInsert={(tag) => patch({ url: draft.url + tag })} />
       </div>
 
+      <div className="px-2 pb-1">
+        <RetrySection retry={draft.retry} onChange={(retry) => patch({ retry })} />
+      </div>
+
       <div className="flex items-center gap-1 px-2">
         {tabs
           .filter((t) => showVariables || t.id !== 'variables')
@@ -434,6 +439,120 @@ export function RequestEditor() {
   )
 }
 
+const retryStrategies = [
+  { value: 'exponential', label: 'Exponential' },
+  { value: 'fixed', label: 'Fixed' },
+] as const
+
+function retrySummary(retry: RequestRetry | undefined): string {
+  if (!retry || !retry.count) return 'Off'
+  const strategy = retry.strategy === 'fixed' ? 'fixed' : 'exponential'
+  return `${retry.count} retries · ${strategy} · ${retry.delayMs ?? 1000}ms base`
+}
+
+/** RetrySection is the progressive-disclosure control for the request's
+ * retry policy. Collapsed it costs one quiet row ("Retry — Off"); expanded
+ * it exposes exactly the four policy fields the file format supports.
+ * An empty count means no retries, so clearing the field disables the
+ * policy entirely and nothing is written to the file. */
+function RetrySection({
+  retry,
+  onChange,
+}: {
+  retry: RequestRetry | undefined
+  onChange: (retry: RequestRetry | undefined) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const enabled = Boolean(retry?.count)
+  const field =
+    'w-20 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground'
+
+  const patch = (p: Partial<RequestRetry>) => {
+    const next = { ...retry, ...p }
+    if (!next.count) {
+      onChange(undefined)
+      return
+    }
+    onChange(next)
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 rounded-md py-0.5 text-left hover:bg-muted/50"
+      >
+        <ChevronRight
+          className={`size-3 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
+          aria-hidden
+        />
+        <span className="text-xs font-medium text-foreground">Retry</span>
+        <span className={`text-[11px] ${enabled ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
+          {retrySummary(retry)}
+        </span>
+      </button>
+      {open && (
+        <div className="mt-1 flex flex-wrap items-center gap-3 rounded-md border border-border p-2">
+          <label className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Retries
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={retry?.count ?? ''}
+              onChange={(e) => patch({ count: Math.max(0, Math.floor(Number(e.target.value))) || 0 })}
+              placeholder="0"
+              aria-label="Retry count (0 disables retries)"
+              className={field}
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Base delay (ms)
+            <input
+              type="number"
+              min={0}
+              value={retry?.delayMs ?? ''}
+              onChange={(e) => patch({ delayMs: Math.max(0, Number(e.target.value) || 0) })}
+              placeholder="1000"
+              aria-label="Base delay between retries in milliseconds"
+              className={field}
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Strategy
+            <CompactSelect
+              value={retry?.strategy === 'fixed' ? 'fixed' : 'exponential'}
+              onChange={(strategy) => {
+                if (strategy === 'fixed' || strategy === 'exponential') patch({ strategy })
+              }}
+              ariaLabel="Backoff strategy"
+              options={retryStrategies.map((s) => ({ ...s }))}
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Max delay (ms)
+            <input
+              type="number"
+              min={0}
+              value={retry?.maxDelayMs ?? ''}
+              onChange={(e) => patch({ maxDelayMs: Math.max(0, Number(e.target.value) || 0) })}
+              placeholder="30000"
+              aria-label="Maximum backoff delay in milliseconds"
+              className={field}
+            />
+          </label>
+          <p className="w-full text-[11px] leading-relaxed text-muted-foreground">
+            Retries fire on network errors and 429/502/503/504 unless a custom status set is declared
+            in the request file. The server's Retry-After header wins when present.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function VariablesView({
   variables,
   env,
@@ -442,8 +561,7 @@ function VariablesView({
   variables: ResolvedVariable[]
   env: string | null
   headerEnv: string | null
-}) {
-  return (
+}) {  return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">
         Effective variables, from highest to lowest precedence. Values are

@@ -13,6 +13,18 @@ export interface RequestHeader {
 	value: string;
 }
 
+/** RequestRetry is the declarative retry policy on a request: automatic
+ * re-sends after transient failures (network errors and 429/502/503/504 by
+ * default) with computed backoff. Mirrors request.Retry in the Go core. */
+export interface RequestRetry {
+	/** Retries after the initial attempt; 0/undefined disables retrying. */
+	count?: number;
+	delayMs?: number;
+	strategy?: 'fixed' | 'exponential';
+	maxDelayMs?: number;
+	retryOn?: number[];
+}
+
 /** RequestAuth is the resolved auth attached to an opened request. It is
  * applied silently at send — there is no auth editing UI. */
 export interface RequestAuth {
@@ -47,6 +59,8 @@ export interface RequestInput {
 	graphqlQuery?: string;
 	graphqlVariables?: string;
 	timeout?: number;
+	/** Automatic retry policy; absent = no retries. */
+	retry?: RequestRetry;
 	/** Environment pill (a request file's environment: field) used at send;
 	 * empty falls back to the app's active environment. */
 	env?: string;
@@ -90,6 +104,8 @@ export interface ResponseData {
 	durationMs: number;
 	size: number;
 	ok: boolean;
+	/** Sends this response took, including retries (1 or undefined = none). */
+	attempts?: number;
 }
 
 export type RequestSender = (req: RequestInput) => Promise<ResponseData>;

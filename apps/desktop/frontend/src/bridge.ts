@@ -46,6 +46,7 @@ export const wailsSender: RequestSender = async (
 			query: (req.params ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
 			body,
 			auth: req.auth,
+			retry: req.retry ?? null,
 		} as never,
 		{
 			env: req.env ?? "",
@@ -324,6 +325,7 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 				query: (draft.query ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
 				body: draft.body,
 				auth: draft.auth,
+				retry: draft.retry ?? null,
 			} as never,
 			expectedVersion,
 		);

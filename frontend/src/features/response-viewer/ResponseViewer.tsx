@@ -159,6 +159,14 @@ export function ResponseViewer() {
 						</span>
 						<span aria-hidden>·</span>
 						<span>{response.durationMs}ms</span>
+						{(response.attempts ?? 1) > 1 ? (
+							<>
+								<span aria-hidden>·</span>
+								<span title="Sends including automatic retries">
+									{response.attempts} attempts
+								</span>
+							</>
+						) : null}
 						<span aria-hidden>·</span>
 						<span>{formatBytes(response.size)}</span>
 						{ct ? (

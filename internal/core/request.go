@@ -63,6 +63,9 @@ type SendResponse struct {
 	DurationMS int64               `json:"durationMs"`
 	Size       int64               `json:"size"`
 	OK         bool                `json:"ok"`
+	// Attempts reports how many sends the response took, including retries
+	// (1 = no retry).
+	Attempts int `json:"attempts"`
 }
 
 // Send executes the request and returns a SendResponse, or an error when the
@@ -90,5 +93,6 @@ func (s *RequestService) Send(r request.Request, vars ...*variables.Set) (*SendR
 		DurationMS: resp.Duration.Milliseconds(),
 		Size:       resp.Size,
 		OK:         resp.OK(),
+		Attempts:   resp.Attempts,
 	}, nil
 }

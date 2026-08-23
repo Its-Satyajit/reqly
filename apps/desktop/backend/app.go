@@ -198,6 +198,7 @@ func (s *AppService) recordHistory(requestPath string, req request.Request, resp
 		ReqBody:     []byte(req.Body),
 		RespHeaders: respHdrs,
 		RespBody:    []byte(resp.Body),
+		Attempts:    resp.Attempts,
 	}
 	_ = s.history.Record(context.Background(), e)
 }
