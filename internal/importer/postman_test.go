@@ -158,10 +158,13 @@ func TestParsePostmanV21(t *testing.T) {
 	}
 
 	joined := strings.Join(report.Messages(), "\n")
-	for _, want := range []string{"script not imported", "file field", "local path", "file mode"} {
+	for _, want := range []string{"test script imported", "file field", "local path", "file mode"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("warnings missing %q:\n%s", want, joined)
 		}
+	}
+	if got := res.Root.Folders[0].Requests[1].PostRequest; !strings.Contains(got, `reqly.test("x"`) {
+		t.Errorf("postRequest not translated: %q", got)
 	}
 }
 
@@ -538,5 +541,101 @@ func TestPostmanNoVariablesWritesNoEnvironmentDir(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "environments")); !os.IsNotExist(err) {
 		t.Fatalf("environments dir should not exist without variables: %v", err)
+	}
+}
+
+func TestPostmanScriptsPreservedAndTranslated(t *testing.T) {
+	data := `{
+  "info": { "name": "scripts", "schema": "` + postmanV21 + `" },
+  "item": [
+    { "name": "login",
+      "event": [
+        { "listen": "prerequest", "script": { "exec": [
+            "const user = pm.environment.get(\"user\");",
+            "pm.globals.set(\"ts\", Date.now());"
+        ] } },
+        { "listen": "test", "script": { "exec": [
+            "const body = pm.response.json();",
+            "pm.test(\"has token\", () => {",
+            "  pm.expect(body.token).to.be.a('string');",
+            "});"
+        ] } }
+      ],
+      "request": { "method": "POST", "url": "https://a.test/login" }
+    }
+  ]
+}`
+	res, report, err := ParsePostman([]byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := res.Root.Requests[0]
+	if !strings.Contains(file.PreRequest, `reqly.getVariable("user")`) {
+		t.Errorf("preRequest missing translated getVariable: %q", file.PreRequest)
+	}
+	if !strings.Contains(file.PreRequest, `reqly.setVariable("ts"`) {
+		t.Errorf("preRequest missing translated setVariable: %q", file.PreRequest)
+	}
+	if !strings.Contains(file.PostRequest, `reqly.test("has token"`) {
+		t.Errorf("postRequest missing translated test: %q", file.PostRequest)
+	}
+	if !strings.Contains(file.PostRequest, todoMarker) || !strings.Contains(file.PostRequest, "pm.expect") {
+		t.Errorf("expect line must survive as TODO comment: %q", file.PostRequest)
+	}
+	translated := 0
+	warned := 0
+	for _, e := range report.Entries {
+		if e.Category != CategoryScript {
+			continue
+		}
+		switch e.Severity {
+		case SeverityTranslated:
+			translated++
+		case SeverityWarned:
+			warned++
+		}
+	}
+	if translated != 2 || warned < 1 {
+		t.Errorf("script entries = %d translated / %d warned, want 2/1+: %v", translated, warned, report.Entries)
+	}
+
+	dir := t.TempDir()
+	if err := res.Write(dir); err != nil {
+		t.Fatal(err)
+	}
+	onDisk, err := os.ReadFile(filepath.Join(dir, "collections", "postman-import", "login.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"preRequest:", "postRequest:", "reqly.getVariable"} {
+		if !strings.Contains(string(onDisk), want) {
+			t.Errorf("written file missing %q:\n%s", want, onDisk)
+		}
+	}
+}
+
+func TestPostmanEmptyScriptStillWarns(t *testing.T) {
+	data := `{
+  "info": { "name": "empty", "schema": "` + postmanV21 + `" },
+  "item": [
+    { "name": "r", "request": { "method": "GET", "url": "https://a.test/" },
+      "event": [ { "listen": "prerequest", "script": { "exec": [] } } ] }
+  ]
+}`
+	res, report, err := ParsePostman([]byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Root.Requests[0].PreRequest != "" {
+		t.Errorf("empty exec must not set preRequest: %q", res.Root.Requests[0].PreRequest)
+	}
+	found := false
+	for _, m := range report.Messages() {
+		if strings.Contains(m, "script not imported") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("missing empty-script warning: %v", report.Messages())
 	}
 }

@@ -367,18 +367,40 @@ func mustQuote(s string) json.RawMessage {
 }
 
 // postmanItemToFile converts one Postman request item into a request file,
-// recording degradations on rep.
+// recording degradations on rep. Event scripts are translated onto the reqly
+// sandbox API (ADR 0026) and land in the file's preRequest/postRequest fields.
 func postmanItemToFile(it *pmItem, res *PostmanResult, rep *ImportReport) *requestfile.File {
+	var preScript, postScript string
 	for _, e := range it.Event {
 		var ev struct {
 			Listen string `json:"listen"`
+			Script struct {
+				Exec []string `json:"exec"`
+			} `json:"script"`
 		}
 		_ = json.Unmarshal(e, &ev)
 		listen := ev.Listen
 		if listen == "" {
 			listen = "script"
 		}
-		rep.Add(it.Name, CategoryScript, SeverityDropped, "%s: %s script not imported", it.Name, listen)
+		source := strings.Join(ev.Script.Exec, "\n")
+		if strings.TrimSpace(source) == "" {
+			rep.Add(it.Name, CategoryScript, SeverityDropped, "%s: %s script not imported", it.Name, listen)
+			continue
+		}
+		translated, warns := TranslateScript(source, DialectPostman)
+		switch listen {
+		case "prerequest":
+			preScript = translated
+		case "test":
+			postScript = translated
+		default:
+			rep.Add(it.Name, CategoryScript, SeverityDropped, "%s: %s script has no request-file target; skipped", it.Name, listen)
+			continue
+		}
+		rep.Entries = append(rep.Entries, warns...)
+		rep.Add(it.Name, CategoryScript, SeverityTranslated, "%s: %s script imported (%d line(s) preserved as TODO(reqly-import))",
+			it.Name, listen, strings.Count(translated, todoMarker))
 	}
 
 	var pr pmRequest
@@ -439,8 +461,10 @@ func postmanItemToFile(it *pmItem, res *PostmanResult, rep *ImportReport) *reque
 		name = method + " " + reqURL
 	}
 	file := &requestfile.File{
-		Name:      name,
-		Variables: vars,
+		Name:        name,
+		Variables:   vars,
+		PreRequest:  preScript,
+		PostRequest: postScript,
 		Request: request.Request{
 			Name:    name,
 			Method:  request.Method(method),
