@@ -240,8 +240,15 @@ func TestPostmanWriteRoundTrip(t *testing.T) {
 		t.Fatalf("collections = %d", len(ws.Collections))
 	}
 	coll := ws.Collections[0]
-	if coll.Config.Variables["baseUrl"] != "https://api.example.com" {
-		t.Fatalf("collection vars = %v", coll.Config.Variables)
+	if _, ok := coll.Config.Variables["baseUrl"]; ok {
+		t.Fatalf("collection vars must live in the environment file, not the descriptor: %v", coll.Config.Variables)
+	}
+	envData, err := os.ReadFile(filepath.Join(dir, "environments", "postman-import.yaml"))
+	if err != nil {
+		t.Fatalf("environment file: %v", err)
+	}
+	if !strings.Contains(string(envData), "https://api.example.com") {
+		t.Fatalf("env file missing collection variable: %s", envData)
 	}
 	if len(coll.Folders) != 1 || len(coll.Folders[0].Requests) != 2 {
 		t.Fatalf("tree = %d folders, %d root requests", len(coll.Folders), len(coll.Requests))
@@ -459,5 +466,77 @@ func TestParsePostmanNormalizesMethods(t *testing.T) {
 		case "", "   ", "null":
 			t.Fatalf("method %q leaked through normalization", m)
 		}
+	}
+}
+
+func TestPostmanCollectionVariablesBecomeEnvironmentFile(t *testing.T) {
+	data := `{
+  "info": { "name": "vars", "schema": "` + postmanV21 + `" },
+  "variable": [
+    { "key": "baseUrl", "value": "https://coll.example.com" },
+    { "key": "shared", "value": "from-collection" }
+  ],
+  "item": [
+    { "name": "Orders", "variable": [{ "key": "shared", "value": "from-folder" }],
+      "item": [
+        { "name": "inner", "request": { "method": "GET", "url": "{{baseUrl}}/x" } }
+      ]}
+  ]
+}`
+	res, report, err := ParsePostman([]byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.EnvVariables["baseUrl"] != "https://coll.example.com" || res.EnvVariables["shared"] != "from-folder" {
+		t.Fatalf("folder override must win: %v", res.EnvVariables)
+	}
+	dir := t.TempDir()
+	if err := res.Write(dir); err != nil {
+		t.Fatal(err)
+	}
+	envData, err := os.ReadFile(filepath.Join(dir, "environments", "postman-import.yaml"))
+	if err != nil {
+		t.Fatalf("environment file: %v", err)
+	}
+	joined := string(envData)
+	for _, want := range []string{"variables:", "https://coll.example.com", "from-folder"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("env file missing %q:\n%s", want, joined)
+		}
+	}
+	foundEnvEntry := false
+	for _, e := range report.Entries {
+		if e.Category == CategoryEnvironment && e.Severity == SeverityTranslated {
+			foundEnvEntry = true
+		}
+	}
+	if !foundEnvEntry {
+		t.Errorf("report missing environment translation entry: %v", report.Entries)
+	}
+
+	ws, err := collections.LoadWorkspace(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ws.Collections) != 1 || len(ws.Collections[0].Config.Variables) != 0 {
+		t.Fatalf("descriptor must not inline variables: %v", ws.Collections[0].Config.Variables)
+	}
+}
+
+func TestPostmanNoVariablesWritesNoEnvironmentDir(t *testing.T) {
+	data := `{
+  "info": { "name": "novars", "schema": "` + postmanV21 + `" },
+  "item": [ { "name": "r", "request": { "method": "GET", "url": "https://a.test/" } } ]
+}`
+	res, _, err := ParsePostman([]byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := res.Write(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "environments")); !os.IsNotExist(err) {
+		t.Fatalf("environments dir should not exist without variables: %v", err)
 	}
 }
