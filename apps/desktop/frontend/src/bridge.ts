@@ -38,21 +38,34 @@ export const wailsSender: RequestSender = async (
 		headers.push({ key: "Content-Type", value: contentType });
 
 	// SAFETY: Wails binding DTO shapes verified via Go core SendRequest; ResponseData mapping is boundary-parsed
-	const res = await AppService.SendRequest(
-		{
-			method: req.method,
-			url: req.url,
-			headers,
-			query: (req.params ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
-			body,
-			auth: req.auth,
-			retry: req.retry ?? null,
-		} as never,
-		{
-			env: req.env ?? "",
-			requestPath: req.requestPath ?? "",
-		} as never,
-	);
+	let res;
+	try {
+		// SAFETY: Wails binding DTO shapes verified via Go core SendRequest; ResponseData mapping is boundary-parsed
+		res = await AppService.SendRequest(
+			{
+				method: req.method,
+				url: req.url,
+				headers,
+				query: (req.params ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
+				body,
+				auth: req.auth,
+				retry: req.retry ?? null,
+			} as never,
+			{
+				env: req.env ?? "",
+				requestPath: req.requestPath ?? "",
+				sendId: req.sendId ?? "",
+			} as never,
+		);
+	} catch (err) {
+		// A cancelled send surfaces as a Go "context canceled" rejection; map it
+		// to the neutral message the UI renders for Stop.
+		const message = err instanceof Error ? err.message : String(err);
+		if (message.includes("context canceled")) {
+			throw new Error("Request cancelled");
+		}
+		throw err;
+	}
 	if (!res) {
 		throw new Error("core returned an empty response");
 	}
@@ -446,6 +459,9 @@ export const wailsHistoryAdapter: HistoryAdapter = {
  */
 export function initRequestBridge(): void {
 	useRequestStore.getState().setSender(wailsSender);
+	useRequestStore.getState().setCancelSender(async (sendId) => {
+		await AppService.CancelSend(sendId);
+	});
 	useAuthStore.getState().setAdapter(wailsAuthAdapter);
 	useWorkspaceStore.getState().setEnvAdapter(wailsEnvAdapter);
 	useWorkspaceStore.getState().setWorkspaceAdapter(wailsCollectionsAdapter);

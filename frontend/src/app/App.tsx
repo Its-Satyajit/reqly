@@ -144,7 +144,7 @@ export function App() {
 				</header>
 				<div className="min-h-0 flex-1">
 					<ResizablePanelGroup
-						direction="horizontal"
+						orientation="horizontal"
 						defaultLayout={sidebarLayout.defaultLayout}
 						onLayoutChanged={sidebarLayout.onLayoutChanged}
 					>
@@ -188,7 +188,7 @@ export function App() {
 									) : (
 										<div className="min-h-0 min-w-0 flex-1">
 											<ResizablePanelGroup
-												direction="horizontal"
+												orientation="horizontal"
 												defaultLayout={splitLayout.defaultLayout}
 												onLayoutChanged={splitLayout.onLayoutChanged}
 											>

@@ -78,9 +78,10 @@ type SendResponse struct {
 }
 
 // Send executes the request and returns a SendResponse, or an error when the
-// request could not be sent. An optional variable set is used for
-// interpolation; when omitted, an empty set is used.
-func (s *RequestService) Send(r request.Request, vars ...*variables.Set) (*SendResponse, error) {
+// request could not be sent. The context governs cancellation of the in-flight
+// send. An optional variable set is used for interpolation; when omitted, an
+// empty set is used.
+func (s *RequestService) Send(ctx context.Context, r request.Request, vars ...*variables.Set) (*SendResponse, error) {
 	if s == nil || s.client == nil {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to send requests")
 	}
@@ -88,7 +89,7 @@ func (s *RequestService) Send(r request.Request, vars ...*variables.Set) (*SendR
 	if len(vars) > 0 && vars[0] != nil {
 		set = vars[0]
 	}
-	resp, err := s.client.Execute(context.Background(), &r, set)
+	resp, err := s.client.Execute(ctx, &r, set)
 	if err != nil {
 		return nil, err
 	}

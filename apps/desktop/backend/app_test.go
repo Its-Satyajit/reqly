@@ -18,6 +18,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -1007,5 +1009,115 @@ func TestWorkspaceRunCancelUnknownIDErrors(t *testing.T) {
 	svc := NewAppService()
 	if err := svc.WorkspaceRunCancel("nope"); err == nil || !strings.Contains(err.Error(), "no active collection run") {
 		t.Fatalf("err = %v, want unknown-id error", err)
+	}
+}
+
+func TestCancelSendAbortsInFlightRequest(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+
+	release := make(chan struct{})
+	received := make(chan struct{})
+	var once sync.Once
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		once.Do(func() { close(received) })
+		<-release
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	defer close(release)
+
+	t.Chdir(dir)
+	t.Setenv("REQLY_ENV", "")
+
+	svc := NewAppService()
+	type result struct {
+		res *core.SendResponse
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		res, err := svc.SendRequest(request.Request{Method: "GET", URL: srv.URL}, SendOptions{SendID: "send-1"})
+		done <- result{res, err}
+	}()
+
+	select {
+	case <-received:
+	case <-time.After(5 * time.Second):
+		t.Fatal("request never reached the server")
+	}
+
+	if err := svc.CancelSend("send-1"); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case got := <-done:
+		if got.err == nil {
+			t.Fatalf("expected cancellation error after CancelSend, got response %+v", got.res)
+		}
+		if !errors.Is(got.err, context.Canceled) {
+			t.Fatalf("err = %v, want context.Canceled", got.err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("SendRequest did not return within 10s of cancel")
+	}
+}
+
+func TestCancelledSendRecordsNoHistory(t *testing.T) {
+	dir := t.TempDir()
+	writeWorkspace(t, dir)
+
+	release := make(chan struct{})
+	received := make(chan struct{})
+	var once sync.Once
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		once.Do(func() { close(received) })
+		<-release
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	defer close(release)
+
+	t.Chdir(dir)
+	t.Setenv("REQLY_ENV", "")
+
+	svc := NewAppService()
+	done := make(chan error, 1)
+	go func() {
+		_, err := svc.SendRequest(request.Request{Method: "GET", URL: srv.URL}, SendOptions{SendID: "send-hist"})
+		done <- err
+	}()
+
+	select {
+	case <-received:
+	case <-time.After(5 * time.Second):
+		t.Fatal("request never reached the server")
+	}
+
+	if err := svc.CancelSend("send-hist"); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err == nil {
+		t.Fatal("expected cancellation error")
+	}
+
+	hist := svc.hist()
+	if hist == nil {
+		t.Fatal("expected history service for workspace-bound app service")
+	}
+	entries, err := hist.List(context.Background(), 100, 0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("cancelled send recorded %d history entries, want 0", len(entries))
+	}
+}
+
+func TestCancelSendUnknownIDIsNoOp(t *testing.T) {
+	svc := NewAppService()
+	if err := svc.CancelSend("nope"); err != nil {
+		t.Fatalf("CancelSend unknown id err = %v, want nil", err)
 	}
 }

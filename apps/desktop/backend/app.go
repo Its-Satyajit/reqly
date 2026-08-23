@@ -49,6 +49,9 @@ type AppService struct {
 
 	runMu      sync.Mutex
 	runCancels map[string]context.CancelFunc
+
+	sendMu      sync.Mutex
+	sendCancels map[string]context.CancelFunc
 }
 
 // NewAppService creates a new AppService. It resolves the workspace rooted at
@@ -70,6 +73,7 @@ func NewAppService() *AppService {
 		workspace:    core.NewWorkspaceService(root),
 		runs:         core.NewCollectionRunService(root),
 		runCancels:   make(map[string]context.CancelFunc),
+		sendCancels:  make(map[string]context.CancelFunc),
 	}
 	if opened.Store != nil {
 		svc.auth = core.NewAuthService(opened.Store, root)
@@ -90,6 +94,10 @@ type SendOptions struct {
 	// RequestPath is the workspace-relative Request Path of the request file
 	// this send belongs to (e.g. "users/auth/login").
 	RequestPath string `json:"requestPath"`
+	// SendID identifies an in-flight send so the UI can cancel it. When
+	// non-empty, the send's context is cancellable via CancelSend; empty
+	// means the send cannot be cancelled.
+	SendID string `json:"sendId,omitempty"`
 }
 
 // SendRequest executes an HTTP request through the core and returns the
@@ -129,7 +137,21 @@ func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.Sen
 		req = resolved.Request
 		fileVars = resolved.Vars
 	}
-	res, err := s.requests.Run(context.Background(), req, core.RunRequestOptions{
+	ctx := context.Background()
+	if opts.SendID != "" {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
+		s.sendMu.Lock()
+		s.sendCancels[opts.SendID] = cancel
+		s.sendMu.Unlock()
+		defer func() {
+			s.sendMu.Lock()
+			delete(s.sendCancels, opts.SendID)
+			s.sendMu.Unlock()
+			cancel()
+		}()
+	}
+	res, err := s.requests.Run(ctx, req, core.RunRequestOptions{
 		FileEnv:     opts.Env,
 		FileVars:    fileVars,
 		RequestPath: opts.RequestPath,
@@ -138,6 +160,22 @@ func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.Sen
 		return nil, err
 	}
 	return core.SendResponseFrom(res), nil
+}
+
+// CancelSend aborts the in-flight send registered under sendID. An unknown or
+// already-finished id is a silent no-op: the UI may press Stop after the
+// response arrived.
+func (s *AppService) CancelSend(sendID string) error {
+	if s == nil || sendID == "" {
+		return nil
+	}
+	s.sendMu.Lock()
+	cancel, ok := s.sendCancels[sendID]
+	s.sendMu.Unlock()
+	if ok {
+		cancel()
+	}
+	return nil
 }
 
 func (s *AppService) AuthLogin(config map[string]string, flow string) (*auth.Token, error) {

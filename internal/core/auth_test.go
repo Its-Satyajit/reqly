@@ -206,7 +206,7 @@ func TestAuthServiceLoginThenRequestReusesToken(t *testing.T) {
 		},
 	}
 	for i := 0; i < 2; i++ {
-		if _, err := svc2.Send(req); err != nil {
+		if _, err := svc2.Send(context.Background(), req); err != nil {
 			t.Fatalf("Send %d: %v", i, err)
 		}
 	}

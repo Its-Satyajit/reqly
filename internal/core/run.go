@@ -284,12 +284,19 @@ func maskAcquired(masker *environments.Masker, token string) {
 }
 
 func maskErr(masker *environments.Masker, err error) error {
-	return &maskedError{msg: masker.Mask(err.Error())}
+	return &maskedError{msg: masker.Mask(err.Error()), err: err}
 }
 
-type maskedError struct{ msg string }
+type maskedError struct {
+	msg string
+	err error
+}
 
 func (e *maskedError) Error() string { return e.msg }
+
+// Unwrap preserves the original error chain so callers can classify failures
+// (e.g. errors.Is(err, context.Canceled)) even after secret masking.
+func (e *maskedError) Unwrap() error { return e.err }
 
 func errNoWorkspace() error {
 	return &noWorkspaceError{}

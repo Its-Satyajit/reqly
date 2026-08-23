@@ -25,7 +25,10 @@
     "go:race": "go test -race ./...",
     "go:bench": "go test -bench=. ./...",
     "cli:build": "go build -o reqly ./apps/cli",
-    "desktop:bindings": "cd apps/desktop/backend && wails3 generate bindings -d ../frontend/bindings -i -ts"
+    "desktop:bindings": "cd apps/desktop/backend && wails3 generate bindings -d ../frontend/bindings -i -ts",
+    "react:doctor": "nubx react-doctor@latest",
+    "wails:doctor": "wails3 doctor"
+
   },
   "devDependencies": {
     "@oxlint/plugins": "1.79.0",

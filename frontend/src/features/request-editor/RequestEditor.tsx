@@ -112,6 +112,7 @@ export function RequestEditor() {
   const loading = useRequestStore((s) => (activeTabId ? s.responses[activeTabId]?.loading : false))
   const updateDraft = useRequestStore((s) => s.updateDraft)
   const send = useRequestStore((s) => s.send)
+  const cancel = useRequestStore((s) => s.cancel)
   const saveRequest = useWorkspaceStore((s) => s.saveRequest)
   const overwriteRequest = useWorkspaceStore((s) => s.overwriteRequest)
   const reloadRequest = useWorkspaceStore((s) => s.reloadRequest)
@@ -232,9 +233,15 @@ export function RequestEditor() {
             {dirty ? 'Save' : 'Saved'}
           </Button>
         )}
-        <Button size="sm" onClick={handleSend} disabled={loading}>
-          {loading ? 'Sending…' : 'Send'}
-        </Button>
+        {loading ? (
+          <Button size="sm" variant="destructive" onClick={() => void cancel(activeTabId)}>
+            Stop
+          </Button>
+        ) : (
+          <Button size="sm" onClick={handleSend}>
+            Send
+          </Button>
+        )}
         <CompactSelect
           value={codeLang}
           onChange={(v) => {

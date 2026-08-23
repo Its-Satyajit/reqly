@@ -149,6 +149,11 @@ body {
   }
 }
 
+button:not([disabled]),
+  [role="button"]:not([disabled]) {
+    cursor: pointer;
+  }
+
 /* Data surfaces — URLs, editors, viewers, tables, durations — speak mono. */
 .font-data,
 code,

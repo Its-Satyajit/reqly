@@ -58,6 +58,9 @@ export interface TabResponse {
   response: ResponseData | null
   loading: boolean
   error: string | null
+  /** True when the last send was cancelled by the user (Stop); rendered
+   * neutrally, distinct from an error. */
+  cancelled?: boolean
 }
 
 export const emptyTabDraft = (): TabDraft => ({
@@ -126,14 +129,22 @@ interface RequestState {
   /** Per-tab monotonically increasing send token; responses resolving under a
    * stale token are dropped so the newest Send always wins. */
   sendTokens: Record<string, number>
+  /** Send id of the tab's in-flight send, when one is running. */
+  activeSendIds: Record<string, string>
+  /** Bridge-provided cancel seam (Go CancelSend); browser dev mode leaves it
+   * unset — cancel still drops the token so late responses are discarded. */
+  cancelSender: ((sendId: string) => Promise<void>) | null
 
   setSender: (sender: RequestSender) => void
+  setCancelSender: (cancel: (sendId: string) => Promise<void>) => void
   /** Create a tab's draft if it does not exist yet, seeding from `seed`. */
   ensureDraft: (id: string, seed?: Partial<TabDraft>) => void
   updateDraft: (id: string, patch: Partial<TabDraft>) => void
   /** Set a tab's collection metadata (variables chain, environment pill). */
   setMeta: (id: string, meta: TabMeta) => void
   send: (id: string, req: RequestInput) => Promise<void>
+  /** Abort the tab's in-flight send; unknown/finished sends are no-ops. */
+  cancel: (id: string) => Promise<void>
   removeTab: (id: string) => void
 }
 
@@ -149,8 +160,12 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   meta: {},
   sender: fetchSender,
   sendTokens: {},
+  activeSendIds: {},
+  cancelSender: null,
 
   setSender: (sender) => set({ sender }),
+
+  setCancelSender: (cancelSender) => set({ cancelSender }),
 
   ensureDraft: (id, seed) =>
     set((state) => {
@@ -170,23 +185,34 @@ export const useRequestStore = create<RequestState>((set, get) => ({
 
   send: async (id, req) => {
     const token = (get().sendTokens[id] ?? 0) + 1
+    const sendId = crypto.randomUUID()
     set((state) => ({
       sendTokens: { ...state.sendTokens, [id]: token },
+      activeSendIds: { ...state.activeSendIds, [id]: sendId },
       responses: {
         ...state.responses,
-        [id]: { ...state.responses[id], loading: true, error: null },
+        [id]: { ...state.responses[id], loading: true, error: null, cancelled: false },
       },
     }))
+    const clearActive = () =>
+      set((state) => {
+        if (state.activeSendIds[id] !== sendId) return {}
+        const activeSendIds = { ...state.activeSendIds }
+        delete activeSendIds[id]
+        return { activeSendIds }
+      })
     try {
-      const response = await get().sender(req)
+      const response = await get().sender({ ...req, sendId })
+      clearActive()
       if (get().sendTokens[id] !== token) return
       set((state) => ({
         responses: {
           ...state.responses,
-          [id]: { response, loading: false, error: null },
+          [id]: { response, loading: false, error: null, cancelled: false },
         },
       }))
     } catch (err) {
+      clearActive()
       if (get().sendTokens[id] !== token) return
       set((state) => ({
         responses: {
@@ -201,6 +227,24 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     }
   },
 
+  cancel: async (id) => {
+    const sendId = get().activeSendIds[id]
+    if (!sendId) return
+    // Drop the pending token first so the aborted send's rejection cannot
+    // overwrite the cancelled state, then tell the Go side to abort.
+    set((state) => ({
+      responses: {
+        ...state.responses,
+        [id]: { ...state.responses[id], loading: false, error: null, cancelled: true },
+      },
+    }))
+    try {
+      await get().cancelSender?.(sendId)
+    } catch {
+      // Cancel is best-effort; the send may have finished already.
+    }
+  },
+
   removeTab: (id) =>
     set((state) => {
       if (!state.drafts[id] && !state.responses[id] && !state.meta[id]) return {}
@@ -208,10 +252,12 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       const responses = { ...state.responses }
       const meta = { ...state.meta }
       const sendTokens = { ...state.sendTokens }
+      const activeSendIds = { ...state.activeSendIds }
       delete drafts[id]
       delete responses[id]
       delete meta[id]
       delete sendTokens[id]
-      return { drafts, responses, meta, sendTokens }
+      delete activeSendIds[id]
+      return { drafts, responses, meta, sendTokens, activeSendIds }
     }),
 }))
