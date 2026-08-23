@@ -27,6 +27,14 @@ export interface ImportedOperation {
   summary?: string;
 }
 
+export interface ImportedRequest {
+  method?: string;
+  url?: string;
+  headers?: { key: string; value: string }[] | null;
+  query?: { key: string; value: string }[] | null;
+  body?: string;
+}
+
 export interface ImportOutcome {
   kind: string;
   format: string;
@@ -36,6 +44,7 @@ export interface ImportOutcome {
   targetDir?: string;
   report?: ImportReport | null;
   operations?: ImportedOperation[] | null;
+  request?: ImportedRequest | null;
 }
 
 export interface ImportAdapter {

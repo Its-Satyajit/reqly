@@ -23,6 +23,8 @@ import {
   type ImportedOperation,
 } from "#lib/import";
 import { useImportStore } from "#stores/useImportStore";
+import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { NEW_REQUEST_TAB_ID } from "#stores/useRequestStore";
 import { ImportReportView } from "./ImportReportView";
 
 const OPERATION_CAP = 50;
@@ -270,17 +272,45 @@ export function ImportDialog({ onImported }: { onImported?: () => void }) {
                 <ArrowLeft data-icon="inline-start" />
                 Back
               </Button>
-              {isWorkspaceKind && (
+              {(isWorkspaceKind || (outcome != null && outcome.kind === "request")) && (
                 <Button
                   onClick={() =>
                     void commit().then((res) => {
-                      if (res) onImported?.();
+                      if (!res) return;
+                      if (res.kind === "request") {
+                        const parsed = res.request;
+                        const seed = parsed
+                          ? {
+                              method: parsed.method ?? "GET",
+                              url: parsed.url ?? "",
+                              headers: (parsed.headers ?? []).map((h) => ({
+                                ...h,
+                                enabled: true,
+                              })),
+                              params: (parsed.query ?? []).map((q) => ({
+                                ...q,
+                                enabled: true,
+                              })),
+                              bodyType: "raw" as const,
+                              body: parsed.body ?? "",
+                            }
+                          : undefined;
+                        let id = `${NEW_REQUEST_TAB_ID}-curl-${Date.now()}`;
+                        useWorkspaceStore.getState().openTab(
+                          { id, title: "cURL Import" },
+                          seed,
+                        );
+                        useWorkspaceStore.getState().setActiveView("requests");
+                        setOpen(false);
+                        return;
+                      }
+                      onImported?.();
                     })
                   }
                   disabled={busy}
                 >
                   {busy && <Spinner data-icon="inline-start" />}
-                  Import into workspace
+                  {outcome.kind === "request" ? "Open as new request" : "Import into workspace"}
                 </Button>
               )}
             </DialogFooter>
@@ -290,17 +320,11 @@ export function ImportDialog({ onImported }: { onImported?: () => void }) {
         {stage === "results" && outcome && (
           <div className="flex min-h-0 flex-col gap-3">
             <div className="rounded-md border border-border px-3 py-2 text-xs">
-              {outcome.kind === "request" ? (
-                <>Parsed as a cURL command — it will open as an unsaved request tab.</>
-              ) : (
-                <>
-                  Imported{" "}
-                  <span className="font-medium">
-                    {outcome.requestCount} request{outcome.requestCount === 1 ? "" : "s"}
-                  </span>{" "}
-                  into <span className="font-mono">{targetDir || outcome.targetDir}</span>.
-                </>
-              )}
+              Imported{" "}
+              <span className="font-medium">
+                {outcome.requestCount} request{outcome.requestCount === 1 ? "" : "s"}
+              </span>{" "}
+              into <span className="font-mono">{targetDir || outcome.targetDir}</span>.
             </div>
 
             <div className="min-h-0">
