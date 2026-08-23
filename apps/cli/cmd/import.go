@@ -154,10 +154,48 @@ drops pageref/timings/cache with warnings. Bodies >1MB spill to .reqly/blobs.`,
 	},
 }
 
+var importPostmanCmd = &cobra.Command{
+	Use:   "postman <file> [--output <dir>]",
+	Short: "Import a Postman collection (v2.1) into a workspace",
+	Long: `Parse a Postman v2.1 collection JSON and write it as a Git-native workspace:
+reqly.yaml plus collections/<name>/ with nested folders preserved.
+
+  reqly import postman my-api.postman_collection.json
+  reqly import postman my-api.json --output ./ws
+
+Imports requests, nested folders, variables, bodies (raw/urlencoded/form-data/graphql),
+and basic/bearer/apikey auth. Scripts and unsupported features are reported as warnings.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		data, err := os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("read Postman collection: %w", err)
+		}
+		result, warnings, err := importer.ParsePostman(data)
+		if err != nil {
+			return err
+		}
+		for _, w := range warnings {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
+		}
+		out := importOutput
+		if out == "" {
+			out = importer.SanitizeDirName(result.Title)
+		}
+		if err := result.Write(out); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "imported %s into %s (%d requests)\n",
+			filepath.Base(args[0]), out, result.RequestCount())
+		return nil
+	},
+}
+
 func init() {
-	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd)
+	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd, importPostmanCmd)
 	importCurlCmd.Flags().StringVar(&importOutput, "output", "", "write a request file to this path")
 	importOpenAPICmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importHarCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importHarCmd.Flags().StringVar(&importHarCollection, "collection", "har-import", "collection name for HAR entries")
+	importPostmanCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 }
