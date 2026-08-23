@@ -229,12 +229,55 @@ reported as warnings.`,
 	},
 }
 
+var importBrunoCmd = &cobra.Command{
+	Use:   "bruno <file> [--output <dir>]",
+	Short: "Import a Bruno collection export (JSON) into a workspace",
+	Long: `Parse a Bruno collection export JSON and write it as a Git-native workspace.
+
+  reqly import bruno collection.json
+  reqly import bruno collection.json --output ./ws
+
+Imports requests, nested folders, collection-level auth/headers, environments
+(with secret variables routed to the secrets map), and basic/bearer/apikey/digest
+auth. Scripts, assertions, and unsupported features are reported as warnings.
+Directory imports are not supported — export the collection as a single JSON file.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		info, err := os.Stat(args[0])
+		if err == nil && info.IsDir() {
+			return fmt.Errorf("%s is a directory; export the Bruno collection as a single JSON file first", args[0])
+		}
+		data, err := os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("read Bruno collection: %w", err)
+		}
+		result, warnings, err := importer.ParseBruno(data)
+		if err != nil {
+			return err
+		}
+		for _, w := range warnings {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
+		}
+		out := importOutput
+		if out == "" {
+			out = importer.SanitizeDirName(result.Title)
+		}
+		if err := result.Write(out); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "imported %s into %s (%d requests, %d environments)\n",
+			filepath.Base(args[0]), out, result.RequestCount(), len(result.Environments))
+		return nil
+	},
+}
+
 func init() {
-	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd, importPostmanCmd, importInsomniaCmd)
+	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd, importPostmanCmd, importInsomniaCmd, importBrunoCmd)
 	importCurlCmd.Flags().StringVar(&importOutput, "output", "", "write a request file to this path")
 	importOpenAPICmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importHarCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importHarCmd.Flags().StringVar(&importHarCollection, "collection", "har-import", "collection name for HAR entries")
 	importPostmanCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importInsomniaCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
+	importBrunoCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 }

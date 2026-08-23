@@ -212,3 +212,46 @@ func TestImportPostmanEndToEnd(t *testing.T) {
 		}
 	}
 }
+
+func TestImportBruno(t *testing.T) {
+	src := filepath.Join("..", "..", "..", "internal", "importer", "testdata", "import-suite", "bruno", "fixtures", "bruno-testbench.json")
+	outDir := filepath.Join(t.TempDir(), "ws")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "bruno", src, "--output", outDir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{
+		"reqly.yaml",
+		filepath.Join("collections", "bruno-import", "reqly.yaml"),
+		filepath.Join("collections", "bruno-import", "ping.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(outDir, rel)); err != nil {
+			t.Fatalf("expected %s: %v", rel, err)
+		}
+	}
+	envFiles, err := filepath.Glob(filepath.Join(outDir, "environments", "*.yaml"))
+	if err != nil || len(envFiles) != 2 {
+		t.Fatalf("environment files = %v (%v)", envFiles, err)
+	}
+	localEnv, _ := os.ReadFile(filepath.Join(outDir, "environments", "Local.yaml"))
+	if !strings.Contains(string(localEnv), "secrets:") {
+		t.Fatalf("Local env missing secrets block:\n%s", localEnv)
+	}
+}
+
+func TestImportBrunoRejectsDirectory(t *testing.T) {
+	dir := t.TempDir()
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "bruno", dir})
+	err := rootCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "directory") {
+		t.Fatalf("err = %v, want directory guidance", err)
+	}
+}
