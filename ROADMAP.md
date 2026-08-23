@@ -162,7 +162,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Import OpenAPI 3.x — `reqly import openapi` (servers, paths, operations, params, JSON bodies; writes a Git-native workspace)
 - [x] Export Postman collection v2.1 — `reqly export postman` (flat list, inherited base URL/headers applied)
 - [~] Import: Postman v2.1 ([M34](docs/spec/m34-postman-import.md) — requests, nested folders, variables, bodies raw/urlencoded/form-data/graphql, basic/bearer/apikey auth; scripts + file bodies warned), Insomnia v4/v5 ([M35](docs/spec/m35-insomnia-import.md) — both formats auto-detected, nested folders, environments as native `environments/*.yaml`, basic/bearer/apikey/digest auth; cookie jars + unsupported auth warned), Bruno ([M36](docs/spec/m36-bruno-import.md) — items tree, body modes, collection-level auth/headers defaults, secret-split environments), Swagger 2.x (via hand-rolled parser); HAR done ([M28](docs/spec/m28-har-import-export.md))
-- [ ] Export: requests, OpenAPI, responses, test results, docs
+- [x] Export: requests ([`export workspace`](docs/adr/0017-workspace-save-export.md) + `export code`), OpenAPI 3.0 spec generation (`export openapi`, [M37](docs/spec/m37-export-reports-openapi.md)), responses (`export har` from history, M28 + desktop download), test results (`collection test --report-junit/--report-json`, M37); docs done (§1.11 `reqly docs`)
 - [ ] Import preservation (env/auth/scripts) + unsupported-feature reporting
 
 ### 1.10 OpenAPI & JSON Schema
