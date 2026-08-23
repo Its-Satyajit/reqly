@@ -94,7 +94,7 @@ The minimum set to make Reqly a serious API client.
 ### 1.3 Authentication
 
 - [x] Basic, Bearer, API key — `internal/auth` scheme registry, `request.Auth` dispatch, secret masking ([ADR 0005](docs/adr/0005-git-native-auth-schemes.md))
-- [~] JWT — HS256/384/512 per-request signing shipped; decode/claims-viewer CLI (`reqly jwt`) deferred (per ADR 0005)
+- [~] JWT — HS256/384/512 per-request signing + `reqly jwt decode` claims viewer shipped ([ADR 0021](docs/adr/0021-jwt-tooling-decode.md)); `verify`/`sign` deferred to M29b
 - [~] Digest — challenge/response shipped (SHA-256 fallback, request-body aware); NTLM deferred
 - [x] OAuth 2.0 Client Credentials — RFC 6749 §4.4 with store-backed token caching (`TokenSource` + `secrets.Store`, ADR 0006), expiry-skewed proactive refresh, reactive 401 refresh+retry-once, `reqly auth status`/`auth logout`
 - [x] OAuth 2.0 Authorization Code + PKCE — RFC 6749 §4.1 + RFC 7636 (`AuthorizationCodeSource`, one-shot loopback callback, state/verifier, [ADR 0007](docs/adr/0007-oauth2-authorization-code-pkce.md)), `reqly auth login`, first-request auto-login, refresh-token reuse (RFC 6749 §6, proactive + 401, rotation) — spec [#52](https://github.com/Its-Satyajit/reqly/issues/52), tickets [#53–#57](https://github.com/Its-Satyajit/reqly/issues/53)
@@ -127,7 +127,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Regenerated Wails bindings → `appservice.ts` `SendRequest` + `models.ts` (`Request`, `SendResponse`)
 - [x] Shared `useRequestStore` + pluggable `RequestSender` (Wails bridge in host; `fetchSender` fallback in browser dev)
 - [x] `RequestEditor` Send → core; `ResponseViewer` renders status/headers/pretty body
-- [ ] Per-tab request/response state (multiple tabs), cancel in-flight request
+- [x] Per-tab request/response state (multiple tabs) + cancel in-flight request — per-tab state ([T2 #132](https://github.com/Its-Satyajit/reqly/issues/132)); Stop-button send cancellation via `SendOptions.sendId` + `CancelSend` binding, no history artifacts for cancelled sends ([M33](docs/spec/m33-cancel-in-flight-request.md))
 
 ### 1.6 Request builder & response viewer (UI)
 
@@ -156,22 +156,22 @@ The minimum set to make Reqly a serious API client.
 - [x] **SSE** — live event stream, inspection, event history (`internal/sse` + `reqly sse`)
 - [~] **GraphQL** — query editor + variables via `BodyType: graphql` shipped (ADR 0013); introspection/autocomplete/schema browser deferred to P1
 - [ ] **gRPC** — proto files, reflection, service/method discovery, unary + streaming
-- [ ] **SOAP** — WSDL import, operation discovery, XML builder
+- [~] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; external schemas/rpc-encoded best-effort with warnings; the "XML builder" surface is these generated envelopes, no runtime builder)
 
 ### 1.9 Import / export
 
 - [x] Import cURL — `reqly import curl` (method, headers, JSON/raw/data bodies, basic auth, user-agent, cookies, GET-style query data; unsupported features reported)
 - [x] Import OpenAPI 3.x — `reqly import openapi` (servers, paths, operations, params, JSON bodies; writes a Git-native workspace)
 - [x] Export Postman collection v2.1 — `reqly export postman` (flat list, inherited base URL/headers applied)
-- [ ] Import: Postman, Insomnia, Swagger, HAR
-- [ ] Export: requests, OpenAPI, responses, test results, docs
+- [~] Import: Postman v2.1 ([M34](docs/spec/m34-postman-import.md) — requests, nested folders, variables, bodies raw/urlencoded/form-data/graphql, basic/bearer/apikey auth; scripts + file bodies warned), Insomnia v4/v5 ([M35](docs/spec/m35-insomnia-import.md) — both formats auto-detected, nested folders, environments as native `environments/*.yaml`, basic/bearer/apikey/digest auth; cookie jars + unsupported auth warned), Bruno ([M36](docs/spec/m36-bruno-import.md) — items tree, body modes, collection-level auth/headers defaults, secret-split environments), Swagger 2.x (via hand-rolled parser); HAR done ([M28](docs/spec/m28-har-import-export.md))
+- [x] Export: requests ([`export workspace`](docs/adr/0017-workspace-save-export.md) + `export code`), OpenAPI 3.0 spec generation (`export openapi`, [M37](docs/spec/m37-export-reports-openapi.md)), responses (`export har` from history, M28 + desktop download), test results (`collection test --report-junit/--report-json`, M37); docs done (§1.11 `reqly docs`)
 - [ ] Import preservation (env/auth/scripts) + unsupported-feature reporting
 
 ### 1.10 OpenAPI & JSON Schema
 
 - [~] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); OpenAPI 2.x import via hand-rolled parser; 3.1 partial
-- [ ] Endpoint explorer + generate requests from spec
-- [ ] JSON Schema: edit, validate, inspect, generate
+- [~] Endpoint explorer + generate requests from spec — `reqly openapi explore <spec> [--tag]... [--json]` (operation table / machine-readable list) and `reqly openapi generate <spec> [--operation]... | [--method --path] | [--tag]... | --all [--output dir]` ([M39](docs/spec/m39-openapi-explorer.md) — native request files, inline example/default bodies+params, bearer/basic/apikey-header → native auth blocks, unmappable features warned; desktop explorer panel deferred to M39b)
+- [~] JSON Schema: validate, inspect, generate — `reqly schema validate <schema> [instance|-]` (draft detection + override, instance-path violations, stdin/--json), `reqly schema inspect <schema>` (tree summary, resolved $refs), `reqly schema generate <schema> [--seed] [--optional]` (deterministic synthesis honoring examples/defaults/constraints) ([M40](docs/spec/m40-json-schema.md); in-app *edit* deferred to M40b, test-assertion hook to §35)
 - [ ] XML/XSD schema validation where applicable
 - [~] Generate mocks from OpenAPI (see P1) — `reqly mock` serves schema/example-driven responses
 
