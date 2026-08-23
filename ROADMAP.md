@@ -169,7 +169,7 @@ The minimum set to make Reqly a serious API client.
 
 - [~] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); OpenAPI 2.x import via hand-rolled parser; 3.1 partial
 - [~] Endpoint explorer + generate requests from spec — `reqly openapi explore <spec> [--tag]... [--json]` (operation table / machine-readable list) and `reqly openapi generate <spec> [--operation]... | [--method --path] | [--tag]... | --all [--output dir]` ([M39](docs/spec/m39-openapi-explorer.md) — native request files, inline example/default bodies+params, bearer/basic/apikey-header → native auth blocks, unmappable features warned; desktop explorer panel deferred to M39b)
-- [ ] JSON Schema: edit, validate, inspect, generate
+- [~] JSON Schema: validate, inspect, generate — `reqly schema validate <schema> [instance|-]` (draft detection + override, instance-path violations, stdin/--json), `reqly schema inspect <schema>` (tree summary, resolved $refs), `reqly schema generate <schema> [--seed] [--optional]` (deterministic synthesis honoring examples/defaults/constraints) ([M40](docs/spec/m40-json-schema.md); in-app *edit* deferred to M40b, test-assertion hook to §35)
 - [ ] XML/XSD schema validation where applicable
 - [~] Generate mocks from OpenAPI (see P1) — `reqly mock` serves schema/example-driven responses
 
