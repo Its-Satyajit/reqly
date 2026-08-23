@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -259,4 +260,86 @@ func init() {
 	exportHarCmd.Flags().StringVar(&exportHarOut, "out", "", "write HAR to this file (default stdout)")
 	exportHarCmd.Flags().StringVar(&exportHarEnv, "env", "", "filter history by environment")
 	exportHarCmd.Flags().IntVar(&exportHarLimit, "limit", 500, "maximum history entries to export")
+}
+
+var exportOpenAPIOut string
+var exportOpenAPIWorkspace string
+
+var exportOpenAPICmd = &cobra.Command{
+	Use:   "openapi [src] [--out <file>]",
+	Short: "Generate an OpenAPI 3.0 spec from a collection or workspace",
+	Long: `Generate an OpenAPI 3.0 YAML document from every request in a collection
+(or the whole workspace). Paths, parameters, request bodies, and auth schemes
+are derived from the requests; response schemas are not invented.
+
+  reqly export openapi users
+  reqly export openapi --workspace . --out openapi.yaml`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		root := exportOpenAPIWorkspace
+		if root == "" {
+			root = "."
+		}
+		ws, err := collections.LoadWorkspace(root)
+		if err != nil {
+			return err
+		}
+		var coll *collections.Collection
+		var title string
+		var requests []request.Request
+		if len(args) == 1 {
+			coll = findCollection(ws, args[0])
+			if coll == nil {
+				return fmt.Errorf("collection %q not found in workspace %s", args[0], root)
+			}
+			title = coll.Config.Name
+		}
+		for _, c := range ws.Collections {
+			if coll != nil && c != coll {
+				continue
+			}
+			if title == "" && c.Config.Name != "" {
+				title = c.Config.Name
+			}
+			for _, entry := range c.Requests {
+				resolved, err := ws.ResolveRequest(c, nil, entry)
+				if err != nil {
+					continue
+				}
+				req := resolved.Request
+				if strings.TrimSpace(req.Name) == "" && entry.File != nil {
+					req.Name = entry.File.Name
+				}
+				if strings.TrimSpace(req.Name) == "" {
+					req.Name = entry.Name
+				}
+				requests = append(requests, req)
+			}
+		}
+		baseURL := ""
+		if coll != nil && coll.Config.BaseURL != "" {
+			baseURL = coll.Config.BaseURL
+		} else if len(ws.Collections) > 0 {
+			baseURL = ws.Collections[0].Config.BaseURL
+		}
+		data, err := exporter.ExportOpenAPI(title, baseURL, requests)
+		if err != nil {
+			return err
+		}
+		if exportOpenAPIOut == "" {
+			fmt.Fprintln(cmd.OutOrStdout(), string(data))
+			return nil
+		}
+		if err := os.WriteFile(exportOpenAPIOut, append(data, '\n'), 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "wrote %s (%d requests)\n", exportOpenAPIOut, len(requests))
+		return nil
+	},
+}
+
+func init() {
+	exportCmd.AddCommand(exportPostmanCmd, exportCodeCmd, exportWorkspaceCmd, exportHarCmd, exportOpenAPICmd)
+	exportOpenAPICmd.Flags().StringVar(&exportOpenAPIOut, "out", "", "write the spec to this file (default stdout)")
+	exportOpenAPICmd.Flags().StringVar(&exportOpenAPIWorkspace, "workspace", "", "workspace directory")
 }

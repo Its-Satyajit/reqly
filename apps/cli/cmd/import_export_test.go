@@ -19,6 +19,8 @@ package cmd
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -254,4 +256,88 @@ func TestImportBrunoRejectsDirectory(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "directory") {
 		t.Fatalf("err = %v, want directory guidance", err)
 	}
+}
+
+func TestExportOpenAPI(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for path, contents := range map[string]string{
+		"reqly.yaml":                   "name: demo\n",
+		"collections/users/reqly.yaml": "name: users\nbaseURL: https://api.example.com\n",
+		"collections/users/list.yaml":  "name: list-users\nrequest: {method: GET, url: '{{baseUrl}}/users'}\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, path), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	outPath := filepath.Join(t.TempDir(), "openapi.yaml")
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"export", "openapi", "users", "--workspace", dir, "--out", outPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := string(data)
+	for _, want := range []string{"openapi: 3.0.3", "/users:", "summary: list-users"} {
+		if !strings.Contains(spec, want) {
+			t.Errorf("spec missing %q:\n%s", want, spec)
+		}
+	}
+}
+
+func TestCollectionTestReports(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for path, contents := range map[string]string{
+		"reqly.yaml":                   "name: demo\n",
+		"collections/users/reqly.yaml": "name: users\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, path), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	for path, contents := range map[string]string{
+		"collections/users/reqly.yaml": "name: users\n",
+		"collections/users/ping.yaml": "name: ping\nrequest:\n  method: GET\n  url: " + srv.URL + "\n" +
+			"postRequest: |\n  reqly.test('status is 200', () => reqly.expect(res.status).toBe(200));\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, path), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	junitPath := filepath.Join(t.TempDir(), "junit.xml")
+	jsonPath := filepath.Join(t.TempDir(), "report.json")
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"collection", "test", "--workspace", dir,
+		"--report-junit", junitPath, "--report-json", jsonPath, "users"})
+	exitErr := rootCmd.Execute()
+
+	for _, p := range []string{junitPath, jsonPath} {
+		if _, err := os.Stat(p); err != nil {
+			t.Fatalf("expected report %s: %v", p, err)
+		}
+	}
+	junitData, _ := os.ReadFile(junitPath)
+	if !strings.Contains(string(junitData), `<testsuite name="reqly.users"`) {
+		t.Fatalf("junit =\n%s", junitData)
+	}
+	_ = exitErr // run outcome is asserted by runner tests; reports must not change it
 }
