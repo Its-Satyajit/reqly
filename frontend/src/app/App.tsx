@@ -90,13 +90,19 @@ export function App() {
 
 	if (!bootChecked) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background">
-				<img src={theme === "dark" ? logoDark : logoLight} alt="Reqly" className="h-8 w-auto opacity-70" />
-			</div>
+			<ErrorBoundary variant="root">
+				<div className="flex min-h-screen items-center justify-center bg-background">
+					<img src={theme === "dark" ? logoDark : logoLight} alt="Reqly" className="h-8 w-auto opacity-70" />
+				</div>
+			</ErrorBoundary>
 		);
 	}
-	if (bootChecked && !bootFound) {
-		return <WorkspaceEmptyState />;
+	if (!bootFound) {
+		return (
+			<ErrorBoundary variant="root">
+				<WorkspaceEmptyState />
+			</ErrorBoundary>
+		);
 	}
 
 	const onSelectEnvironment = async (name: string) => {

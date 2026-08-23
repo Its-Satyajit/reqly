@@ -28,14 +28,14 @@ interface WorkspaceBootstrapState {
 }
 
 function resetTabsForWorkspaceSwitch() {
-  const workspace = useWorkspaceStore.getState();
-  for (const tab of workspace.openTabs) {
-    if (tab.id !== NEW_REQUEST_TAB_ID) workspace.closeTab(tab.id);
+  const workspace = () => useWorkspaceStore.getState();
+  for (const tab of workspace().openTabs) {
+    if (tab.id !== NEW_REQUEST_TAB_ID) workspace().closeTab(tab.id);
   }
-  if (!workspace.openTabs.some((t) => t.id === NEW_REQUEST_TAB_ID)) {
-    workspace.openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" });
+  if (!workspace().openTabs.some((t) => t.id === NEW_REQUEST_TAB_ID)) {
+    workspace().openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" });
   }
-  useWorkspaceStore.getState().setActiveView("requests");
+  workspace().setActiveView("requests");
 }
 
 export const useWorkspaceBootstrapStore = create<WorkspaceBootstrapState>(

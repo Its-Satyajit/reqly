@@ -12,7 +12,6 @@ import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
-import { Label } from "#components/ui/field";
 import { Spinner } from "#components/ui/spinner";
 import { Textarea } from "#components/ui/textarea";
 import { CompactSelect } from "#components/CompactSelect";
@@ -192,9 +191,9 @@ export function ImportDialog({ onImported }: { onImported?: () => void }) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="import-content" className="text-xs font-medium">
+              <label htmlFor="import-content" className="text-xs font-medium">
                 Or paste content
-              </Label>
+              </label>
               <Textarea
                 id="import-content"
                 value={content}
@@ -249,9 +248,9 @@ export function ImportDialog({ onImported }: { onImported?: () => void }) {
 
             {isWorkspaceKind && (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="import-target-dir" className="text-xs font-medium">
+                <label htmlFor="import-target-dir" className="text-xs font-medium">
                   Folder name in workspace
-                </Label>
+                </label>
                 <Input
                   id="import-target-dir"
                   value={targetDir}

@@ -4,7 +4,6 @@ import logoDark from "../../assets/logo-dark.svg";
 import logoLight from "../../assets/logo-light.svg";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
-import { Label } from "#components/ui/field";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { useThemeStore } from "#stores/useThemeStore";
 import {
@@ -46,11 +45,14 @@ export function WorkspaceEmptyState() {
       )}
 
       {pendingCreate ? (
-        <div className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-border p-4">
+        <div
+          key={pendingCreate.dir}
+          className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-border p-4"
+        >
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="workspace-name" className="text-xs font-medium">
+            <label htmlFor="workspace-name" className="text-xs font-medium">
               Workspace name
-            </Label>
+            </label>
             <Input
               id="workspace-name"
               value={name}
