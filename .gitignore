@@ -49,16 +49,3 @@ coverage.txt
 *.log
 npm-debug.log*
 pnpm-debug.log*
-
-# --- AI/agent-facing docs: quarantined on local/ai-docs branch (never merge) ---
-AGENTS.md
-GEMINI.md
-.cursorrules
-CONTEXT.md
-NOTES.md
-DESIGN.md
-CHANGELOG.md
-.github/copilot-instructions.md
-docs/
-.scratch/
-workflows/
