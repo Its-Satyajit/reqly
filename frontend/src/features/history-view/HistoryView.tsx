@@ -15,6 +15,8 @@ import { MethodLabel, StatusPill } from "../../components/status";
 import { CompactSelect } from "../../components/CompactSelect";
 import { CodeMirrorEditor } from "../../editors";
 import { HISTORY_PAGE_SIZE, useHistoryStore } from "../../stores/useHistoryStore";
+import { useFuseSearch } from "#hooks/useFuseSearch";
+import { HISTORY_FUSE_OPTIONS } from "#lib/historySearch";
 import type { HistoryEntry } from "../../lib/history";
 
 const PAGE_SIZE = HISTORY_PAGE_SIZE;
@@ -34,6 +36,8 @@ export function HistoryView() {
 	const entries = useHistoryStore((s) => s.entries);
 	const loading = useHistoryStore((s) => s.loading);
 	const error = useHistoryStore((s) => s.error);
+	const pool = useHistoryStore((s) => s.pool);
+	const loadPool = useHistoryStore((s) => s.loadPool);
 	const replayed = useHistoryStore((s) => s.replayed);
 	const load = useHistoryStore((s) => s.load);
 	const clear = useHistoryStore((s) => s.clear);
@@ -47,7 +51,14 @@ export function HistoryView() {
 
 	useEffect(() => {
 		void load({ offset: 0, status: "", query: "" });
+		if (pool.length === 0) void loadPool();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [load]);
+
+	// Fuse.js fuzzy search over the recent pool — punctuation-safe and
+	// typo-tolerant; the plain list renders when the query is blank.
+	const searched = useFuseSearch(pool, query, HISTORY_FUSE_OPTIONS);
+	const displayEntries = query.trim() === "" ? entries : searched.slice(0, PAGE_SIZE);
 
 	const search = () => {
 		setPage(0);
@@ -173,9 +184,11 @@ export function HistoryView() {
 			) : null}
 
 			<div className="min-h-0 flex-1 overflow-auto rounded-md border border-border bg-background">
-				{entries.length === 0 && !loading ? (
+				{displayEntries.length === 0 ? (
 					<p className="p-6 text-center text-xs text-muted-foreground">
-						No history yet — send a request and it will be recorded here.
+						{query.trim() === ""
+							? "No history yet — send a request and it will be recorded here."
+							: "Nothing matches this search."}
 					</p>
 				) : (
 					<table className="w-full border-separate border-spacing-0 text-left text-xs">
@@ -191,7 +204,7 @@ export function HistoryView() {
 							</tr>
 						</thead>
 						<tbody>
-							{entries.map((entry) => (
+							{displayEntries.map((entry) => (
 								<tr key={entry.id} className="hover:bg-muted/40">
 									<td className="border-b border-border/50 px-2 py-1.5 font-data tabular-nums text-muted-foreground">
 										{formatTime(entry.createdAt)}

@@ -5,18 +5,20 @@ import {
   type HistoryEntry,
   type ReplayedResponse,
 } from "../lib/history"
-import { searchHistory } from "../lib/historySearch"
 
 export const HISTORY_PAGE_SIZE = 50
 
 /** How many recent entries the fuzzy search pools over. History is bounded
  * by retention, so this covers the practical search space without IPC per
  * keystroke. */
-const HISTORY_SEARCH_POOL = 500
+export const HISTORY_SEARCH_POOL = 500
 
 interface HistoryState {
   adapter: HistoryAdapter
   entries: HistoryEntry[]
+  /** Raw recent-entry pool the fuzzy search filters client-side. */
+  pool: HistoryEntry[]
+  poolLoaded: boolean
   loading: boolean
   error: string | null
   /** The status-class filter of the currently loaded page ("" = all). */
@@ -27,6 +29,7 @@ interface HistoryState {
   setAdapter(adapter: HistoryAdapter): void
   /** Load one page. offset is derived from the caller's page number. */
   load(opts?: { limit?: number; offset?: number; status?: string; query?: string }): Promise<void>
+  loadPool(): Promise<void>
   refresh(): Promise<void>
   clear(env: string | null): Promise<void>
   replay(id: string): Promise<void>
@@ -36,6 +39,8 @@ interface HistoryState {
 export const useHistoryStore = create<HistoryState>((set, get) => ({
   adapter: fallbackHistoryAdapter,
   entries: [],
+  pool: [],
+  poolLoaded: false,
   loading: false,
   error: null,
   statusFilter: "",
@@ -53,14 +58,8 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     const query = opts.query ?? get().query
     set({ loading: true, statusFilter: status, query })
     try {
-      let entries: HistoryEntry[]
-      if (query.trim() !== "") {
-        // Fuse.js over the recent pool — punctuation-safe, typo-tolerant.
-        const pool = await get().adapter.list(HISTORY_SEARCH_POOL, 0, "", "")
-        entries = searchHistory(pool, query).slice(0, limit)
-      } else {
-        entries = await get().adapter.list(limit, offset, status, "")
-      }
+      if (!get().poolLoaded) await get().loadPool()
+      const entries = await get().adapter.list(limit, offset, status, "")
       set({ entries, error: null })
     } catch (err) {
       set({ error: err instanceof Error ? err.message : String(err) })
@@ -71,6 +70,15 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
   async refresh() {
     await get().load({ offset: 0 })
+  },
+
+  async loadPool() {
+    try {
+      const pool = await get().adapter.list(HISTORY_SEARCH_POOL, 0, "", "")
+      set({ pool, poolLoaded: true })
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : String(err) })
+    }
   },
 
   async clear(env) {
