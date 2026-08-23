@@ -95,7 +95,11 @@ var historyShowCmd = &cobra.Command{
 			enc.SetIndent("", "  ")
 			return enc.Encode(e)
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "ID: %s\nURL: %s\nMethod: %s\nStatus: %d\nEnv: %s\nReqBody: %s\nRespBody: %s\n", e.ID, e.URL, e.Method, e.Status, e.Env, string(e.ReqBody), string(e.RespBody))
+		statusLine := fmt.Sprintf("ID: %s\nURL: %s\nMethod: %s\nStatus: %d\nEnv: %s\nReqBody: %s\nRespBody: %s\n", e.ID, e.URL, e.Method, e.Status, e.Env, string(e.ReqBody), string(e.RespBody))
+		if e.Attempts > 1 {
+			statusLine += fmt.Sprintf("Attempts: %d\n", e.Attempts)
+		}
+		fmt.Fprint(cmd.OutOrStdout(), statusLine)
 		return nil
 	},
 }

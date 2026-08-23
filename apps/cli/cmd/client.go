@@ -42,18 +42,19 @@ func maskAcquiredToken(masker *environments.Masker, token string) {
 // token caching. The store (file by default, keychain when selected and
 // available) lives under <workspace root>/.reqly and scopes cache keys to
 // that workspace. When no workspace descriptor can be found, a plain client
-// without caching is returned.
-func newRequestClient(startDir string) *request.Client {
+// without caching is returned. Extra options are appended for callers that
+// need engine callbacks (e.g. retry observers).
+func newRequestClient(startDir string, opts ...request.Option) *request.Client {
 	root := findWorkspaceRoot(startDir)
 	if root == "" {
-		return request.NewClient()
+		return request.NewClient(opts...)
 	}
 	store, _, err := openTokenStore(root)
 	if err != nil {
 		warnf("warning: %v; requests will not use cached tokens\n", err)
-		return request.NewClient()
+		return request.NewClient(opts...)
 	}
-	return request.NewClient(request.WithTokenCache(store, root))
+	return request.NewClient(append([]request.Option{request.WithTokenCache(store, root)}, opts...)...)
 }
 
 // newKeychainStore opens the OS-keychain store for a workspace root. It is a

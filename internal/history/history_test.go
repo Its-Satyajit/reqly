@@ -177,3 +177,82 @@ func TestCookieJarCRUD(t *testing.T) {
 }
 
 func strPtr(s string) *string { return &s }
+
+func TestStoreAttemptsPersisted(t *testing.T) {
+	s := newTempStore(t)
+	ctx := context.Background()
+	e := &Entry{
+		RequestPath: "flaky",
+		Method:      "GET",
+		URL:         "https://api.example.com/flaky",
+		Status:      200,
+		DurationMS:  10,
+		Size:        2,
+		Attempts:    3,
+		CreatedAt:   time.Now().UTC(),
+	}
+	if err := s.Insert(ctx, e); err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+	got, err := s.Show(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("Show: %v", err)
+	}
+	if got.Attempts != 3 {
+		t.Fatalf("expected Attempts=3 after reload, got %d", got.Attempts)
+	}
+	list, err := s.List(ctx, 10, 0, nil)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(list) != 1 || list[0].Attempts != 3 {
+		t.Fatalf("expected List to carry Attempts=3, got %+v", list)
+	}
+}
+
+func TestMigrateAddsAttemptsToLegacyDB(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "history.db")
+	s, err := NewStore(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a legacy database by dropping the column's table back to the
+	// pre-M32 schema.
+	if _, err := s.db.Exec(`DROP TABLE history`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.ExecContext(context.Background(), `CREATE TABLE history (
+			id TEXT PRIMARY KEY,
+			request_path TEXT,
+			method TEXT,
+			url TEXT,
+			env TEXT,
+			status INTEGER,
+			duration_ms INTEGER,
+			size INTEGER,
+			req_headers_json TEXT,
+			req_body BLOB,
+			req_body_path TEXT,
+			resp_headers_json TEXT,
+			resp_body BLOB,
+			resp_body_path TEXT,
+			created_at DATETIME
+		)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.migrate(context.Background()); err != nil {
+		t.Fatalf("migrate over legacy schema: %v", err)
+	}
+	e := &Entry{URL: "https://x", Status: 200, Attempts: 2, CreatedAt: time.Now().UTC()}
+	if err := s.Insert(context.Background(), e); err != nil {
+		t.Fatalf("Insert on migrated legacy DB: %v", err)
+	}
+	got, err := s.Show(context.Background(), e.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Attempts != 2 {
+		t.Fatalf("expected Attempts=2, got %d", got.Attempts)
+	}
+}

@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,10 +34,12 @@ import (
 )
 
 var (
-	runMethod  string
-	runHeaders []string
-	runBody    string
-	runTimeout time.Duration
+	runMethod     string
+	runHeaders    []string
+	runBody       string
+	runTimeout    time.Duration
+	runRetries    int
+	runRetryDelay time.Duration
 )
 
 var runCmd = &cobra.Command{
@@ -103,6 +106,7 @@ and --data to build requests directly on the CLI:
 				Headers: headers,
 				Body:    runBody,
 				Timeout: runTimeout.Milliseconds(),
+				Retry:   retryFromFlags(cmd),
 			}
 			vars = variables.NewSet()
 		}
@@ -114,7 +118,22 @@ and --data to build requests directly on the CLI:
 		mergeEnvScope(vars, envSet)
 		masker.Add(auth.MaskValues(req.Auth.Type, req.Auth.Config, vars)...)
 
-		client := newRequestClient(baseDir)
+		clientOpts := []request.Option{}
+		if req.Retry != nil && req.Retry.Count > 0 {
+			total := req.Retry.Count + 1
+			out := cmd.OutOrStdout()
+			clientOpts = append(clientOpts, request.WithOnRetry(func(e request.RetryEvent) {
+				reason := ""
+				if e.Err != nil {
+					reason = masker.Mask(e.Err.Error())
+				} else {
+					reason = strconv.Itoa(e.StatusCode)
+				}
+				fmt.Fprintf(out, "retrying in %s (%s, attempt %d/%d)\n",
+					e.Delay.Round(time.Millisecond), reason, e.Attempt, total)
+			}))
+		}
+		client := newRequestClient(baseDir, clientOpts...)
 		resp, err := client.Execute(context.Background(), req, vars)
 		if err != nil {
 			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
@@ -130,8 +149,13 @@ and --data to build requests directly on the CLI:
 		} else {
 			color = "\x1b[32m" // green
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%s%d %s\x1b[0m (%s)\n",
-			color, status, resp.StatusText, resp.Duration.Round(time.Millisecond))
+		if resp.Attempts > 1 {
+			fmt.Fprintf(cmd.OutOrStdout(), "%s%d %s\x1b[0m (%s, %d attempts)\n",
+				color, status, resp.StatusText, resp.Duration.Round(time.Millisecond), resp.Attempts)
+		} else {
+			fmt.Fprintf(cmd.OutOrStdout(), "%s%d %s\x1b[0m (%s)\n",
+				color, status, resp.StatusText, resp.Duration.Round(time.Millisecond))
+		}
 		fmt.Fprintf(cmd.OutOrStdout(), "%s %d %s\n", resp.Proto, status, resp.StatusText)
 
 		for key, values := range resp.Headers {
@@ -153,6 +177,8 @@ func init() {
 	runCmd.Flags().StringArrayVarP(&runHeaders, "header", "H", nil, "request header in 'Key: Value' form (repeatable)")
 	runCmd.Flags().StringVarP(&runBody, "data", "d", "", "request body")
 	runCmd.Flags().DurationVarP(&runTimeout, "timeout", "t", 30*time.Second, "request timeout")
+	runCmd.Flags().IntVar(&runRetries, "retries", 0, "automatic retries after transient failures (network errors, 429/502/503/504)")
+	runCmd.Flags().DurationVar(&runRetryDelay, "retry-delay", time.Second, "base delay between retries (exponential backoff by default)")
 	runCmd.Flags().StringVar(&envFlag, "env", "", "environment to use (falls back to the file's environment field; REQLY_ENV wins)")
 }
 
@@ -176,7 +202,36 @@ func applyRunOverrides(cmd *cobra.Command, req *request.Request) error {
 	if flags.Changed("timeout") {
 		req.Timeout = runTimeout.Milliseconds()
 	}
+	if flags.Changed("retries") || flags.Changed("retry-delay") {
+		policy := req.Retry
+		if policy == nil {
+			policy = &request.Retry{}
+		} else {
+			copied := *policy
+			policy = &copied
+		}
+		if flags.Changed("retries") {
+			policy.Count = runRetries
+		}
+		if flags.Changed("retry-delay") {
+			policy.DelayMs = runRetryDelay.Milliseconds()
+		}
+		req.Retry = policy
+	}
 	return nil
+}
+
+// retryFromFlags builds a Retry policy purely from CLI flags for URL-mode
+// requests, returning nil when neither flag was set.
+func retryFromFlags(cmd *cobra.Command) *request.Retry {
+	flags := cmd.Flags()
+	if !flags.Changed("retries") && !flags.Changed("retry-delay") {
+		return nil
+	}
+	return &request.Retry{
+		Count:   runRetries,
+		DelayMs: runRetryDelay.Milliseconds(),
+	}
 }
 
 // parseHeaders converts CLI "Key: Value" strings into request.Header values.

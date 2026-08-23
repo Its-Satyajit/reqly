@@ -377,3 +377,73 @@ func TestFingerprint(t *testing.T) {
 		t.Fatalf("fingerprint length: got %d, want 64", len(a))
 	}
 }
+
+func TestParseRetryBlock(t *testing.T) {
+	src := `request:
+  method: GET
+  url: https://api.example.com/flaky
+  retry:
+    count: 3
+    delayMs: 500
+    strategy: fixed
+    maxDelayMs: 5000
+    retryOn: [429, 500]
+`
+	f, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := f.Request.Retry
+	if r == nil {
+		t.Fatal("expected retry block to parse")
+	}
+	if r.Count != 3 || r.DelayMs != 500 || r.Strategy != "fixed" || r.MaxDelayMs != 5000 {
+		t.Fatalf("unexpected retry %+v", r)
+	}
+	if len(r.RetryOn) != 2 || r.RetryOn[0] != 429 || r.RetryOn[1] != 500 {
+		t.Fatalf("unexpected retryOn %v", r.RetryOn)
+	}
+}
+
+func TestParseRetryBlockJSON(t *testing.T) {
+	src := `{"request":{"url":"https://api.example.com","retry":{"count":2,"delayMs":10}}}`
+	f, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Request.Retry == nil || f.Request.Retry.Count != 2 || f.Request.Retry.DelayMs != 10 {
+		t.Fatalf("unexpected JSON retry %+v", f.Request.Retry)
+	}
+}
+
+func TestSaveRoundTripsRetryBlock(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "flaky.yaml")
+	src := `name: flaky
+request:
+  method: GET
+  url: https://api.example.com/flaky
+  retry:
+    count: 3
+    delayMs: 250
+    strategy: exponential
+    maxDelayMs: 4000
+`
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	orig, err := LoadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Save(path, orig); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := LoadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(orig.Request.Retry, reloaded.Request.Retry) {
+		t.Fatalf("retry block did not survive round trip:\n%+v\n%+v", orig.Request.Retry, reloaded.Request.Retry)
+	}
+}

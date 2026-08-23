@@ -35,6 +35,7 @@ type Entry struct {
 	ReqBody     []byte
 	RespHeaders map[string][]string
 	RespBody    []byte
+	Attempts    int
 	CreatedAt   time.Time
 }
 
@@ -98,6 +99,7 @@ func (s *Store) migrate(ctx context.Context) error {
 			resp_headers_json TEXT,
 			resp_body BLOB,
 			resp_body_path TEXT,
+			attempts INTEGER DEFAULT 1,
 			created_at DATETIME
 		)`,
 		`CREATE VIRTUAL TABLE IF NOT EXISTS history_fts USING fts5(url, request_path, id UNINDEXED)`,
@@ -122,6 +124,33 @@ func (s *Store) migrate(ctx context.Context) error {
 		if _, err := s.db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("history migrate: %w", err)
 		}
+	}
+	return s.addColumn(ctx, "history", "attempts", "INTEGER DEFAULT 1")
+}
+
+// addColumn alters a table with a new column when it is missing, bridging
+// databases created by earlier schema versions.
+func (s *Store) addColumn(ctx context.Context, table, column, decl string) error {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, table, column)
+	if err != nil {
+		return fmt.Errorf("history migrate: %w", err)
+	}
+	defer rows.Close()
+	var n int
+	if !rows.Next() {
+		return fmt.Errorf("history migrate: pragma_table_info(%s) returned no rows", table)
+	}
+	if err := rows.Scan(&n); err != nil {
+		return fmt.Errorf("history migrate: %w", err)
+	}
+	rows.Close()
+	if n > 0 {
+		return nil
+	}
+	if _, err := s.db.ExecContext(ctx,
+		fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, decl)); err != nil {
+		return fmt.Errorf("history migrate: %w", err)
 	}
 	return nil
 }
@@ -162,8 +191,8 @@ func (s *Store) Insert(ctx context.Context, e *Entry) error {
 	}
 	reqH, _ := json.Marshal(e.ReqHeaders)
 	respH, _ := json.Marshal(e.RespHeaders)
-	_, err := s.db.ExecContext(ctx, `INSERT INTO history (id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		e.ID, e.RequestPath, e.Method, e.URL, e.Env, e.Status, e.DurationMS, e.Size, string(reqH), reqBodyBlob, reqBodyPath, string(respH), respBodyBlob, respBodyPath, e.CreatedAt.UTC().Format(time.RFC3339Nano))
+	_, err := s.db.ExecContext(ctx, `INSERT INTO history (id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		e.ID, e.RequestPath, e.Method, e.URL, e.Env, e.Status, e.DurationMS, e.Size, string(reqH), reqBodyBlob, reqBodyPath, string(respH), respBodyBlob, respBodyPath, maxAttempts(e.Attempts), e.CreatedAt.UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		return err
 	}
@@ -202,10 +231,10 @@ func (s *Store) List(ctx context.Context, limit, offset int, statusFilter *int) 
 	var rows *sql.Rows
 	var err error
 	if statusFilter != nil {
-		rows, err = s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, created_at FROM history ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?`, limit, offset)
+		rows, err = s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at FROM history ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?`, limit, offset)
 		// filter in Go to avoid complex WHERE with status ranges (tests use nil)
 	} else {
-		rows, err = s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, created_at FROM history ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?`, limit, offset)
+		rows, err = s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at FROM history ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?`, limit, offset)
 	}
 	if err != nil {
 		return nil, err
@@ -218,7 +247,7 @@ func (s *Store) List(ctx context.Context, limit, offset int, statusFilter *int) 
 func (s *Store) Show(ctx context.Context, id string) (Entry, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	rows, err := s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, created_at FROM history WHERE id=?`, id)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at FROM history WHERE id=?`, id)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -267,7 +296,7 @@ func (s *Store) Search(ctx context.Context, q string, limit int) ([]Entry, error
 }
 
 func (s *Store) showLocked(ctx context.Context, id string) (Entry, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, created_at FROM history WHERE id=?`, id)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at FROM history WHERE id=?`, id)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -492,7 +521,7 @@ func scanEntries(rows *sql.Rows) ([]Entry, error) {
 		var reqBody, respBody []byte
 		var reqPath, respPath sql.NullString
 		var createdStr string
-		if err := rows.Scan(&e.ID, &e.RequestPath, &e.Method, &e.URL, &e.Env, &e.Status, &e.DurationMS, &e.Size, &reqH, &reqBody, &reqPath, &respH, &respBody, &respPath, &createdStr); err != nil {
+		if err := rows.Scan(&e.ID, &e.RequestPath, &e.Method, &e.URL, &e.Env, &e.Status, &e.DurationMS, &e.Size, &reqH, &reqBody, &reqPath, &respH, &respBody, &respPath, &e.Attempts, &createdStr); err != nil {
 			return nil, err
 		}
 		_ = json.Unmarshal([]byte(reqH), &e.ReqHeaders)
@@ -521,4 +550,13 @@ func scanEntries(rows *sql.Rows) ([]Entry, error) {
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+// maxAttempts floors persisted attempt counts at 1 so legacy rows and
+// zero-valued entries read back as a single send.
+func maxAttempts(n int) int {
+	if n < 1 {
+		return 1
+	}
+	return n
 }
