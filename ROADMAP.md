@@ -2,7 +2,7 @@
 
 > **Status:** P0 complete, P1 in progress
 > **Overall completion:** ~35%. All 27 milestones through M27 (cross-platform desktop) are shipped, plus the first few P1 items.
-> **Source of truth:** [`docs/features.md`](docs/features.md) (features), [`docs/technology-stack.md`](docs/technology-stack.md) (stack), [`docs/testing-strategy.md`](docs/testing-strategy.md) (quality)
+> **Source of truth:** [`docs/features.md`](docs/features.md) (features), [`docs/technology-stack.md`](docs/technology-stack.md) (stack), [`docs/testing-strategy.md`](docs/testing-strategy.md) (quality), [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) (desktop GUI milestones)
 >
 > Checkboxes track real, working code, not scaffolding. A box gets ticked only when the feature ships end to end: core logic, UI/CLI wiring, and tests, per the Definition of Done in the Testing Strategy doc.
 
@@ -131,6 +131,8 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.6 Request builder & response viewer (UI)
 
+> **GUI parity gaps:** Import/Export, WebSocket/SSE, Test runner, Mock server, and 10+ other features have core logic shipped but no desktop GUI. See [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) for the full GUI milestone tracker.
+
 - [x] Method select, URL bar, Send → real response data flow
 - [x] Params/headers/body tabs in the builder
 - [x] Body editors: JSON/XML/raw/binary/GraphQL via CodeMirror, form-data/urlencoded via key-value rows (file-aware `form-data` + `binary` file picker + `graphql` query+variables), auto Content-Type (manual wins) — [Milestone 14 T2](https://github.com/Its-Satyajit/reqly/issues/73) + [Milestone 21](https://github.com/Its-Satyajit/reqly/issues/189) ([ADR 0013](docs/adr/0013-binary-graphql-body.md))
@@ -199,6 +201,9 @@ The minimum set to make Reqly a serious API client.
 ## Phase 2 — Differentiating Features (P1)
 
 Features that make Reqly more capable than a basic API client.
+
+> **GUI milestones:** Most Phase 2 features have core/CLI shipped but no desktop GUI.
+> See [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) for GUI-specific tracking (GUI-5 through GUI-16).
 
 - [ ] OpenAPI editor (spec authoring in-app)
 - [ ] Schema validation + contract testing

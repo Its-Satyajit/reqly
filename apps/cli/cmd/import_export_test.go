@@ -19,6 +19,8 @@ package cmd
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -161,5 +163,224 @@ func resetImportExportFlags() {
 		if flag := cmd.Flags().Lookup("output"); flag != nil {
 			flag.Changed = false
 		}
+	}
+}
+
+func TestImportInsomnia(t *testing.T) {
+	src := filepath.Join("..", "..", "..", "internal", "importer", "testdata", "import-suite", "insomnia", "fixtures", "insomnia-v5.yaml")
+	outDir := filepath.Join(t.TempDir(), "ws")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "insomnia", src, "--output", outDir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{
+		"reqly.yaml",
+		filepath.Join("collections", "insomnia-import", "reqly.yaml"),
+		filepath.Join("collections", "insomnia-import", "API-Tests", "Authentication", "Login-User.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(outDir, rel)); err != nil {
+			t.Fatalf("expected %s: %v", rel, err)
+		}
+	}
+	envFiles, err := filepath.Glob(filepath.Join(outDir, "environments", "*.yaml"))
+	if err != nil || len(envFiles) != 1 {
+		t.Fatalf("environment files = %v (%v)", envFiles, err)
+	}
+}
+
+func TestImportPostmanEndToEnd(t *testing.T) {
+	src := filepath.Join("..", "..", "..", "internal", "importer", "testdata", "import-suite", "postman", "fixtures", "postman-v21-wrapped.json")
+	outDir := filepath.Join(t.TempDir(), "ws")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "postman", src, "--output", outDir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{
+		"reqly.yaml",
+		filepath.Join("collections", "postman-import", "Get-Users.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(outDir, rel)); err != nil {
+			t.Fatalf("expected %s: %v", rel, err)
+		}
+	}
+}
+
+func TestImportBruno(t *testing.T) {
+	src := filepath.Join("..", "..", "..", "internal", "importer", "testdata", "import-suite", "bruno", "fixtures", "bruno-testbench.json")
+	outDir := filepath.Join(t.TempDir(), "ws")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "bruno", src, "--output", outDir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{
+		"reqly.yaml",
+		filepath.Join("collections", "bruno-import", "reqly.yaml"),
+		filepath.Join("collections", "bruno-import", "ping.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(outDir, rel)); err != nil {
+			t.Fatalf("expected %s: %v", rel, err)
+		}
+	}
+	envFiles, err := filepath.Glob(filepath.Join(outDir, "environments", "*.yaml"))
+	if err != nil || len(envFiles) != 2 {
+		t.Fatalf("environment files = %v (%v)", envFiles, err)
+	}
+	localEnv, _ := os.ReadFile(filepath.Join(outDir, "environments", "Local.yaml"))
+	if !strings.Contains(string(localEnv), "secrets:") {
+		t.Fatalf("Local env missing secrets block:\n%s", localEnv)
+	}
+}
+
+func TestImportBrunoRejectsDirectory(t *testing.T) {
+	dir := t.TempDir()
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "bruno", dir})
+	err := rootCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "directory") {
+		t.Fatalf("err = %v, want directory guidance", err)
+	}
+}
+
+func TestExportOpenAPI(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for path, contents := range map[string]string{
+		"reqly.yaml":                   "name: demo\n",
+		"collections/users/reqly.yaml": "name: users\nbaseURL: https://api.example.com\n",
+		"collections/users/list.yaml":  "name: list-users\nrequest: {method: GET, url: '{{baseUrl}}/users'}\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, path), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	outPath := filepath.Join(t.TempDir(), "openapi.yaml")
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"export", "openapi", "users", "--workspace", dir, "--out", outPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := string(data)
+	for _, want := range []string{"openapi: 3.0.3", "/users:", "summary: list-users"} {
+		if !strings.Contains(spec, want) {
+			t.Errorf("spec missing %q:\n%s", want, spec)
+		}
+	}
+}
+
+func TestCollectionTestReports(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for path, contents := range map[string]string{
+		"reqly.yaml":                   "name: demo\n",
+		"collections/users/reqly.yaml": "name: users\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, path), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	for path, contents := range map[string]string{
+		"collections/users/reqly.yaml": "name: users\n",
+		"collections/users/ping.yaml": "name: ping\nrequest:\n  method: GET\n  url: " + srv.URL + "\n" +
+			"postRequest: |\n  reqly.test('status is 200', () => reqly.expect(res.status).toBe(200));\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, path), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	junitPath := filepath.Join(t.TempDir(), "junit.xml")
+	jsonPath := filepath.Join(t.TempDir(), "report.json")
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"collection", "test", "--workspace", dir,
+		"--report-junit", junitPath, "--report-json", jsonPath, "users"})
+	exitErr := rootCmd.Execute()
+
+	for _, p := range []string{junitPath, jsonPath} {
+		if _, err := os.Stat(p); err != nil {
+			t.Fatalf("expected report %s: %v", p, err)
+		}
+	}
+	junitData, _ := os.ReadFile(junitPath)
+	if !strings.Contains(string(junitData), `<testsuite name="reqly.users"`) {
+		t.Fatalf("junit =\n%s", junitData)
+	}
+	_ = exitErr // run outcome is asserted by runner tests; reports must not change it
+}
+
+func TestImportWSDL(t *testing.T) {
+	src := filepath.Join("..", "..", "..", "internal", "importer", "testdata", "import-suite", "wsdl", "fixtures", "wsdl.xml")
+	outDir := filepath.Join(t.TempDir(), "ws")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "wsdl", src, "--output", outDir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{
+		"reqly.yaml",
+		filepath.Join("collections", "UserService", "reqly.yaml"),
+		filepath.Join("collections", "UserService", "GetUser.yaml"),
+		filepath.Join("collections", "UserService", "CreateUser.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(outDir, rel)); err != nil {
+			t.Fatalf("expected %s: %v\noutput:\n%s", rel, err, out.String())
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(outDir, "collections", "UserService", "GetUser.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"SOAPAction", "soapenv:Envelope", "<userId></userId>"} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("generated envelope missing %q:\n%s", want, body)
+		}
+	}
+}
+
+func TestImportWSDLRejectsDirectory(t *testing.T) {
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "wsdl", t.TempDir()})
+	if err := rootCmd.Execute(); err == nil || !strings.Contains(err.Error(), "directory") {
+		t.Fatalf("expected directory error, got %v", err)
 	}
 }

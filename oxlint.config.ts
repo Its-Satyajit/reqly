@@ -30,6 +30,8 @@ export default defineConfig({
 		"**/node_modules/**",
 		"**/dist/**",
 		"**/bindings/**",
+		// Vendored third-party import-test fixtures and spec sources.
+		"internal/importer/testdata/**",
 	],
 	jsPlugins: [
 		{ name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" },

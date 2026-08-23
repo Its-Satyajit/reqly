@@ -20,6 +20,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -34,6 +35,8 @@ import (
 
 var collectionWorkspace string
 var collectionFailFast bool
+var collectionReportJUnit string
+var collectionReportJSON string
 
 var collectionCmd = &cobra.Command{
 	Use:   "collection",
@@ -255,6 +258,28 @@ Use --workspace to point at a workspace directory other than the current one.`,
 			masker.Add(step.AuthValues()...)
 		}
 
+		// Machine-readable reports are best-effort: a report write failure
+		// warns but never changes the run's exit code.
+		if collectionReportJSON != "" {
+			if data, err := runner.JSONReport(report, masker.Mask); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: JSON report failed: %v\n", err)
+			} else if err := os.WriteFile(collectionReportJSON, append(data, '\n'), 0o644); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: write JSON report: %v\n", err)
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "JSON report written to %s\n", collectionReportJSON)
+			}
+		}
+		if collectionReportJUnit != "" {
+			suiteName := "reqly." + args[0]
+			if data, err := runner.JUnitReport(report, suiteName, masker.Mask); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: JUnit report failed: %v\n", err)
+			} else if err := os.WriteFile(collectionReportJUnit, append(data, '\n'), 0o644); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: write JUnit report: %v\n", err)
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "JUnit report written to %s\n", collectionReportJUnit)
+			}
+		}
+
 		for _, step := range report.Steps {
 			status := "\x1b[32mPASS\x1b[0m"
 			if !step.Passed {
@@ -303,4 +328,6 @@ func init() {
 	collectionTestCmd.Flags().StringVar(&collectionWorkspace, "workspace", pwd, "workspace directory")
 	collectionTestCmd.Flags().BoolVar(&collectionFailFast, "fail-fast", false, "stop after the first failing step")
 	collectionTestCmd.Flags().StringVar(&envFlag, "env", "", "environment to use for the whole collection run (REQLY_ENV wins)")
+	collectionTestCmd.Flags().StringVar(&collectionReportJUnit, "report-junit", "", "write a JUnit XML report to this path")
+	collectionTestCmd.Flags().StringVar(&collectionReportJSON, "report-json", "", "write a JSON report to this path")
 }
