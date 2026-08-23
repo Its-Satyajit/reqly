@@ -74,12 +74,12 @@ func firstReq(res *WSDLResult) *requestfile.File { return res.Collections[0].Req
 
 func mustParseWSDL(t *testing.T, data string) *WSDLResult {
 	t.Helper()
-	res, warnings, err := ParseWSDL([]byte(data))
+	res, report, err := ParseWSDL([]byte(data))
 	if err != nil {
 		t.Fatalf("ParseWSDL() error = %v", err)
 	}
 	t.Cleanup(func() {})
-	_ = warnings
+	_ = report
 	return res
 }
 
@@ -159,13 +159,13 @@ func TestWSDLExternalImportWarns(t *testing.T) {
 	withImport := strings.Replace(simpleWSDL,
 		`<xsd:schema targetNamespace="http://example.com/test" xmlns:xsd="http://www.w3.org/2001/XMLSchema">`,
 		`<xsd:schema targetNamespace="http://example.com/test" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><xsd:import namespace="http://other" schemaLocation="other.xsd"/>`, 1)
-	res, warnings, err := ParseWSDL([]byte(withImport))
+	res, report, err := ParseWSDL([]byte(withImport))
 	if err != nil {
 		t.Fatalf("ParseWSDL() error = %v", err)
 	}
-	joined := strings.Join(warnings, "\n")
+	joined := strings.Join(report.Messages(), "\n")
 	if !strings.Contains(joined, "import") {
-		t.Errorf("warnings missing import notice: %v", warnings)
+		t.Errorf("warnings missing import notice: %v", report.Messages())
 	}
 	body := firstReq(res).Request.Body
 	if !strings.Contains(body, "<SayHelloRequest") {
@@ -199,13 +199,13 @@ func TestWSDLRPCStyleWarns(t *testing.T) {
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>`
-	res, warnings, err := ParseWSDL([]byte(rpc))
+	res, report, err := ParseWSDL([]byte(rpc))
 	if err != nil {
 		t.Fatalf("ParseWSDL() error = %v", err)
 	}
-	joined := strings.Join(warnings, "\n")
+	joined := strings.Join(report.Messages(), "\n")
 	if !strings.Contains(joined, "encoded") {
-		t.Errorf("warnings should mention encoded style: %v", warnings)
+		t.Errorf("warnings should mention encoded style: %v", report.Messages())
 	}
 	body := firstReq(res).Request.Body
 	if !strings.Contains(body, "<Add>") || !strings.Contains(body, "<a>0</a>") {
@@ -217,15 +217,15 @@ func TestWSDLExtraPortsWarn(t *testing.T) {
 	extra := strings.Replace(simpleWSDL,
 		`</wsdl:service>`,
 		`<wsdl:port name="BackupPort" binding="tns:TestBinding"><soap:address location="http://backup.example.com/soap"/></wsdl:port></wsdl:service>`, 1)
-	res, warnings, err := ParseWSDL([]byte(extra))
+	res, report, err := ParseWSDL([]byte(extra))
 	if err != nil {
 		t.Fatalf("ParseWSDL() error = %v", err)
 	}
 	if len(res.Collections[0].Request) != 1 {
 		t.Fatalf("expected still 1 request, got %d", len(res.Collections[0].Request))
 	}
-	if !strings.Contains(strings.Join(warnings, "\n"), "BackupPort") {
-		t.Errorf("warnings should list extra port: %v", warnings)
+	if !strings.Contains(strings.Join(report.Messages(), "\n"), "BackupPort") {
+		t.Errorf("warnings should list extra port: %v", report.Messages())
 	}
 	if firstReq(res).Request.URL != "http://example.com/soap" {
 		t.Error("first port's address should win")

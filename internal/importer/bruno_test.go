@@ -103,7 +103,7 @@ const brunoInline = `{
 }`
 
 func TestParseBruno(t *testing.T) {
-	res, warnings, err := ParseBruno([]byte(brunoInline))
+	res, report, err := ParseBruno([]byte(brunoInline))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestParseBruno(t *testing.T) {
 		}
 	}
 
-	joined := strings.Join(warnings, "\n")
+	joined := strings.Join(report.Messages(), "\n")
 	for _, want := range []string{"script not imported", "assertions not imported", "docs not imported"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("warnings missing %q:\n%s", want, joined)
@@ -168,7 +168,7 @@ func TestParseBruno(t *testing.T) {
 }
 
 func TestParseBrunoCollectionDefaults(t *testing.T) {
-	res, warnings, err := ParseBruno([]byte(brunoInline))
+	res, report, err := ParseBruno([]byte(brunoInline))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestParseBrunoCollectionDefaults(t *testing.T) {
 	if len(res.Headers) != 1 || res.Headers[0].Key != "X-Default" {
 		t.Fatalf("collection headers = %v", res.Headers)
 	}
-	_ = warnings
+	_ = report
 }
 
 func TestParseBrunoWriteRoundTrip(t *testing.T) {
