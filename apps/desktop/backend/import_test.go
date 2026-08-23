@@ -28,7 +28,7 @@ import (
 // fixture reads an importer test fixture so bridge tests exercise the same
 // bytes the parsers are validated against. Anchored to this source file so
 // t.Chdir cannot break resolution.
-func fixture(t *testing.T, parts ...string) []byte {
+func fixture(t *testing.T, parts ...string) string {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -42,7 +42,7 @@ func fixture(t *testing.T, parts ...string) []byte {
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
-	return data
+	return string(data)
 }
 
 // newServiceInWorkspace creates a minimal reqly workspace in a fresh temp
@@ -151,10 +151,10 @@ func TestImportCommitConflictFailsFast(t *testing.T) {
 func TestImportHARPreviewAndCommit(t *testing.T) {
 	svc, wsDir := newServiceInWorkspace(t)
 
-	har := []byte(`{"log":{"version":"1.2","creator":{"name":"t"},"entries":[` +
+	har := `{"log":{"version":"1.2","creator":{"name":"t"},"entries":[` +
 		`{"startedDateTime":"2026-01-01T00:00:00Z","time":0,` +
 		`"request":{"method":"GET","url":"https://example.com/a"},` +
-		`"response":{"status":200}}]}}`)
+		`		"response":{"status":200}}]}}`
 	res, err := svc.Import(ImportRequest{Content: har, DryRun: true})
 	if err != nil {
 		t.Fatalf("HAR dry-run: %v", err)
@@ -177,7 +177,7 @@ func TestImportHintOverridesDetection(t *testing.T) {
 	// must route to the Postman parser (which then rejects it), proving the
 	// hint wins over sniffing.
 	_, err := svc.Import(ImportRequest{
-		Content:    []byte(`{"name":"c","version":"1","items":[]}`),
+		Content:    `{"name":"c","version":"1","items":[]}`,
 		FormatHint: "postman",
 	})
 	if err == nil {
@@ -192,7 +192,7 @@ func TestImportInvalidHintErrors(t *testing.T) {
 	svc, _ := newServiceInWorkspace(t)
 
 	_, err := svc.Import(ImportRequest{
-		Content:    []byte("curl https://example.com"),
+		Content:    "curl https://example.com",
 		FormatHint: "yaml-thing",
 	})
 	if err == nil || !strings.Contains(err.Error(), "unknown format") {
@@ -200,13 +200,27 @@ func TestImportInvalidHintErrors(t *testing.T) {
 	}
 }
 
+func TestDetectBridge(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	svc := NewAppService()
+
+	format, ok, err := svc.Detect("curl https://example.com")
+	if err != nil || !ok || format != "curl" {
+		t.Errorf("Detect(curl) = (%q, %v, %v), want (curl, true, nil)", format, ok, err)
+	}
+	if _, ok, _ := svc.Detect(""); ok {
+		t.Error("Detect(empty) reported a match, want none")
+	}
+}
+
 func TestImportUndetectableContentErrors(t *testing.T) {
 	svc, _ := newServiceInWorkspace(t)
 
-	for name, content := range map[string][]byte{
-		"empty":        nil,
-		"garbage json": []byte(`{"foo":1}`),
-		"plain text":   []byte("hello world"),
+	for name, content := range map[string]string{
+		"empty":        "",
+		"garbage json": `{"foo":1}`,
+		"plain text":   "hello world",
 	} {
 		_, err := svc.Import(ImportRequest{Content: content})
 		if err == nil {
@@ -252,7 +266,7 @@ func TestImportCurlOpensAsRequest(t *testing.T) {
 	before := dirEntries(t, wsDir)
 
 	res, err := svc.Import(ImportRequest{
-		Content: []byte("curl -X POST -H 'x-a: b' -d '{\"k\":1}' https://example.com/api"),
+		Content: "curl -X POST -H 'x-a: b' -d '{\"k\":1}' https://example.com/api",
 	})
 	if err != nil {
 		t.Fatalf("cURL import: %v", err)
@@ -275,4 +289,3 @@ func TestImportCurlOpensAsRequest(t *testing.T) {
 		t.Errorf("cURL import wrote %d entries, want none", len(after)-len(before))
 	}
 }
-

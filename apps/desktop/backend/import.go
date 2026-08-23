@@ -18,10 +18,10 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Its-Satyajit/reqly/internal/importer"
 	reqlyopenapi "github.com/Its-Satyajit/reqly/internal/openapi"
@@ -42,7 +42,7 @@ const ImportKindRequest = "request"
 // filesystem; TargetDir names the workspace folder created on commit
 // (empty → sanitized collection title).
 type ImportRequest struct {
-	Content    []byte `json:"content"`
+	Content    string `json:"content"`
 	Filename   string `json:"filename,omitempty"`
 	FormatHint string `json:"formatHint,omitempty"`
 	DryRun     bool   `json:"dryRun"`
@@ -81,14 +81,22 @@ func (s *AppService) Import(req ImportRequest) (*ImportResult, error) {
 	if s == nil {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to import")
 	}
-	if len(bytes.TrimSpace(req.Content)) == 0 {
+	if strings.TrimSpace(req.Content) == "" {
 		return nil, fmt.Errorf("nothing to import: drop a file or paste a command first")
 	}
-	format, err := resolveFormat(req.FormatHint, req.Content)
+	format, err := resolveFormat(req.FormatHint, []byte(req.Content))
 	if err != nil {
 		return nil, err
 	}
 	return s.importFormat(format, req)
+}
+
+// Detect sniffs content and reports which import format it represents, so
+// the dialog can badge the detected format as the user types or drops a
+// file. Advisory only — Import's FormatHint overrides it.
+func (s *AppService) Detect(content string) (string, bool, error) {
+	format, ok := importer.Detect([]byte(content))
+	return string(format), ok, nil
 }
 
 // resolveFormat applies the hint override or falls back to content sniffing.
@@ -116,7 +124,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 
 	switch format {
 	case importer.FormatPostman:
-		parsed, report, err := importer.ParsePostman(req.Content)
+		parsed, report, err := importer.ParsePostman([]byte(req.Content))
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +136,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 		res.write = func(dir string) error { return parsed.Write(dir) }
 
 	case importer.FormatInsomnia:
-		parsed, report, err := importer.ParseInsomnia(req.Content)
+		parsed, report, err := importer.ParseInsomnia([]byte(req.Content))
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +149,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 		res.write = func(dir string) error { return parsed.Write(dir) }
 
 	case importer.FormatBruno:
-		parsed, report, err := importer.ParseBruno(req.Content)
+		parsed, report, err := importer.ParseBruno([]byte(req.Content))
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +162,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 		res.write = func(dir string) error { return parsed.Write(dir) }
 
 	case importer.FormatHAR:
-		parsed, report, err := importer.ParseHAR(req.Content)
+		parsed, report, err := importer.ParseHAR([]byte(req.Content))
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +174,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 		res.write = func(dir string) error { return parsed.Write(dir, "") }
 
 	case importer.FormatOpenAPI:
-		parsed, err := importer.ParseOpenAPI(req.Content)
+		parsed, err := importer.ParseOpenAPI([]byte(req.Content))
 		if err != nil {
 			return nil, err
 		}
@@ -183,14 +191,14 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 			// Preview fidelity comes from the explorer's kin-openapi parse;
 			// a spec the strict loader rejects still imports via the
 			// tolerant importer, just without operation metadata.
-			if doc, err := reqlyopenapi.Load(req.Content); err == nil {
+			if doc, err := reqlyopenapi.Load([]byte(req.Content)); err == nil {
 				res.Operations = reqlyopenapi.Explore(doc)
 			}
 		}
 		res.write = func(dir string) error { return result.Write(dir) }
 
 	case importer.FormatCurl:
-		parsed, err := importer.ParseCurl(string(req.Content))
+		parsed, err := importer.ParseCurl(req.Content)
 		if err != nil {
 			return nil, err
 		}
