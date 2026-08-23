@@ -32,15 +32,28 @@ func NewHistoryService(store *history.Store, client *request.Client) *HistorySer
 
 // Record persists an entry and ingests Set-Cookie into the jar.
 func (s *HistoryService) Record(ctx context.Context, e *history.Entry) error {
-	if s == nil || s.store == nil {
-		return fmt.Errorf("no workspace found: open a reqly workspace to record history")
-	}
-	if err := s.store.Insert(ctx, e); err != nil {
+	if err := s.insert(ctx, e); err != nil {
 		return err
+	}
+	s.IngestSetCookies(ctx, e.RespHeaders, e.Env)
+	return nil
+}
+
+// insert persists an entry without touching the jar.
+func (s *HistoryService) insert(ctx context.Context, e *history.Entry) error {
+	return s.store.Insert(ctx, e)
+}
+
+// IngestSetCookies parses Set-Cookie response headers into the workspace jar.
+// The jar works independently of history recording — a send that opts out of
+// recording still participates in the jar.
+func (s *HistoryService) IngestSetCookies(ctx context.Context, respHeaders map[string][]string, env string) {
+	if s == nil || s.store == nil || len(respHeaders) == 0 {
+		return
 	}
 	// Use net/http to parse Set-Cookie (handles Expires/Max-Age, Domain, Path, Secure)
 	h := http.Header{}
-	for k, vals := range e.RespHeaders {
+	for k, vals := range respHeaders {
 		for _, v := range vals {
 			h.Add(k, v)
 		}
@@ -68,10 +81,9 @@ func (s *HistoryService) Record(ctx context.Context, e *history.Entry) error {
 			Secure:    c.Secure,
 			HttpOnly:  c.HttpOnly,
 			SameSite:  sameSite,
-			Env:       e.Env,
+			Env:       env,
 		})
 	}
-	return nil
 }
 
 // List returns masked entries.
@@ -100,6 +112,16 @@ func (s *HistoryService) Show(ctx context.Context, id string) (history.Entry, er
 	}
 	maskEntry(&e)
 	return e, nil
+}
+
+// ShowRaw returns one entry without masking headers. Replay uses it so a
+// stored request is re-sent exactly as captured (Authorization included);
+// display surfaces must keep using Show.
+func (s *HistoryService) ShowRaw(ctx context.Context, id string) (history.Entry, error) {
+	if s == nil || s.store == nil {
+		return history.Entry{}, fmt.Errorf("no workspace found: open a reqly workspace to view history")
+	}
+	return s.store.Show(ctx, id)
 }
 
 // Search returns masked entries matching FTS.

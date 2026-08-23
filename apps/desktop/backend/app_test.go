@@ -143,56 +143,9 @@ secrets:
 	}
 }
 
-func TestResolveAppEnvironmentFromWorkspaceDescriptor(t *testing.T) {
-	dir := t.TempDir()
-	writeWorkspace(t, dir)
-	t.Chdir(dir)
-	t.Setenv("REQLY_ENV", "")
-
-	set, err := resolveAppEnvironment("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, ok := set.Resolve("REGION"); !ok || got != "us-west-2" {
-		t.Fatalf("expected environment variable REGION=us-west-2, got %q (ok=%v)", got, ok)
-	}
-	if got, ok := set.Resolve("API_KEY"); !ok || got != "dev-secret" {
-		t.Fatalf("expected environment secret API_KEY, got %q (ok=%v)", got, ok)
-	}
-}
-
-func TestResolveAppEnvironmentFromREQLYEnv(t *testing.T) {
-	dir := t.TempDir()
-	writeWorkspace(t, dir)
-	// Second environment not selected by the descriptor.
-	if err := os.WriteFile(filepath.Join(dir, "environments", "prod.yaml"), []byte("variables:\n  REGION: eu-central-1\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	t.Chdir(dir)
-	t.Setenv("REQLY_ENV", "prod")
-
-	set, err := resolveAppEnvironment("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, ok := set.Resolve("REGION"); !ok || got != "eu-central-1" {
-		t.Fatalf("expected REQLY_ENV to win, got %q (ok=%v)", got, ok)
-	}
-}
-
-func TestResolveAppEnvironmentWithoutWorkspaceIsNotAnError(t *testing.T) {
-	dir := t.TempDir()
-	t.Chdir(dir)
-	t.Setenv("REQLY_ENV", "")
-
-	set, err := resolveAppEnvironment("")
-	if err != nil {
-		t.Fatalf("expected no error without workspace, got %v", err)
-	}
-	if set == nil {
-		t.Fatal("expected a variable set (with process-env scope)")
-	}
-}
+// The bridge-local environment resolver was replaced by the shared execution
+// pipeline (ADR 0025); descriptor selection and REQLY_ENV precedence are now
+// covered by core.Run tests plus the Send tests below.
 
 func TestSendRequestEnvironmentPillOverrides(t *testing.T) {
 	dir := t.TempDir()

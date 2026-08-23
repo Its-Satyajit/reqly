@@ -186,8 +186,14 @@ func TestRun_RecordHistoryOptOut(t *testing.T) {
 	}, RunRequestOptions{RecordHistory: &disabled}); err != nil {
 		t.Fatal(err)
 	}
-	if svc.historySvc != nil {
-		t.Fatal("history store should not be needed when recording is off")
+	if h := svc.History(); h != nil {
+		entries, err := h.List(context.Background(), 10, 0, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 0 {
+			t.Fatalf("recording off must write no entries, got %d", len(entries))
+		}
 	}
 }
 

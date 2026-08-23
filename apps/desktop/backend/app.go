@@ -20,9 +20,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -31,7 +29,6 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/core"
-	"github.com/Its-Satyajit/reqly/internal/environments"
 	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
@@ -47,7 +44,6 @@ type AppService struct {
 	environments *core.EnvironmentService
 	workspace    *core.WorkspaceService
 	runs         *core.CollectionRunService
-	history      *core.HistoryService
 	// authBackend is the active token-store backend name ("file"/"keychain").
 	authBackend string
 
@@ -63,24 +59,20 @@ type AppService struct {
 // complete via deep links (feed them with DeliverCustomSchemeCallback).
 func NewAppService() *AppService {
 	root := collections.FindWorkspaceRoot(".")
-	store, backend := openAppTokenStore(root)
+	// One shared seam for token-store policy (ADR 0025): keychain by default,
+	// REQLY_TOKEN_STORE override, file fallback with warning.
+	opened := secrets.OpenForWorkspace(root, "keychain")
 
 	svc := &AppService{
-		requests:     core.NewCachedRequestService(store, root),
-		authBackend:  backend,
+		requests:     core.NewRunServiceWithTokenStore(root, opened.Store),
+		authBackend:  opened.Backend,
 		environments: core.NewEnvironmentService(root),
 		workspace:    core.NewWorkspaceService(root),
 		runs:         core.NewCollectionRunService(root),
 		runCancels:   make(map[string]context.CancelFunc),
 	}
-	if store != nil {
-		svc.auth = core.NewAuthService(store, root)
-	}
-	// history is per-workspace SQLite (best-effort; no workspace → no history)
-	if root != "" {
-		if hStore, err := history.NewStore(filepath.Join(root, ".reqly", "history.db")); err == nil {
-			svc.history = core.NewHistoryService(hStore, request.NewClient())
-		}
+	if opened.Store != nil {
+		svc.auth = core.NewAuthService(opened.Store, root)
 	}
 	auth.RegisterCustomSchemeReceiver("reqly")
 	return svc
@@ -107,123 +99,47 @@ type SendOptions struct {
 // (RequestPath set) the request is re-resolved against the live draft so
 // inherited fields always reflect the current container chain, with the
 // request-file variable scopes layered above the environment; scratchpad
-// sends interpolate with the environment scope alone.
+// hist returns the shared history service (lazily opened from the run
+// pipeline), or nil without a workspace.
+func (s *AppService) hist() *core.HistoryService {
+	if s == nil || s.requests == nil {
+		return nil
+	}
+	return s.requests.History()
+}
+
+// SendRequest executes an HTTP request through the shared execution pipeline
+// (ADR 0025): environment precedence, variable layering, token caching,
+// Cookie Jar attachment, retry handling, history recording, and masking all
+// live behind core.RequestService.Run — identical fidelity to the CLI. For
+// file-backed sends (RequestPath set) the request is re-resolved against the
+// live draft so inherited fields reflect the current container chain;
+// otherwise it is sent as-is (scratchpad).
 func (s *AppService) SendRequest(r request.Request, opts SendOptions) (*core.SendResponse, error) {
 	if s == nil || s.requests == nil {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to send requests")
 	}
-	vars, err := resolveAppEnvironment(opts.Env)
-	if err != nil {
-		return nil, err
-	}
-	attachHistoryCookies := func(req *request.Request) {
-		if s.history == nil {
-			return
-		}
-		cookies, err := s.history.Cookies(context.Background(), opts.Env)
-		if err != nil || len(cookies) == 0 {
-			return
-		}
-		isHTTPS := len(req.URL) >= 8 && req.URL[:8] == "https://"
-		matched := history.FilterCookies(cookies, req.URL, isHTTPS)
-		if len(matched) == 0 {
-			return
-		}
-		var parts []string
-		for _, c := range matched {
-			parts = append(parts, c.Name+"="+c.Value)
-		}
-		cookieVal := ""
-		for i, p := range parts {
-			if i == 0 {
-				cookieVal = p
-			} else {
-				cookieVal += "; " + p
-			}
-		}
-		for i, h := range req.Headers {
-			if h.Key == "Cookie" || h.Key == "cookie" {
-				req.Headers[i].Value = h.Value + "; " + cookieVal
-				return
-			}
-		}
-		req.Headers = append(req.Headers, request.Header{Key: "Cookie", Value: cookieVal})
-	}
-	var resp *core.SendResponse
+	req := r
+	var fileVars *variables.Set
 	if opts.RequestPath != "" {
 		resolved, err := s.workspace.ResolveSend(opts.RequestPath, r)
 		if err != nil {
 			return nil, err
 		}
-		layerVars(vars, resolved.Vars)
-		attachHistoryCookies(&resolved.Request)
-		resp, err = s.requests.Send(resolved.Request, vars)
-		if err != nil {
-			return nil, err
-		}
-		s.recordHistory(opts.RequestPath, resolved.Request, resp, opts.Env)
-		return resp, nil
+		req = resolved.Request
+		fileVars = resolved.Vars
 	}
-	attachHistoryCookies(&r)
-	resp, err = s.requests.Send(r, vars)
+	res, err := s.requests.Run(context.Background(), req, core.RunRequestOptions{
+		FileEnv:     opts.Env,
+		FileVars:    fileVars,
+		RequestPath: opts.RequestPath,
+	})
 	if err != nil {
 		return nil, err
 	}
-	s.recordHistory("", r, resp, opts.Env)
-	return resp, nil
+	return core.SendResponseFrom(res), nil
 }
 
-func (s *AppService) recordHistory(requestPath string, req request.Request, resp *core.SendResponse, env string) {
-	if s.history == nil || resp == nil {
-		return
-	}
-	// headers as maps
-	reqHdrs := map[string][]string{}
-	for _, h := range req.Headers {
-		reqHdrs[h.Key] = append(reqHdrs[h.Key], h.Value)
-	}
-	respHdrs := map[string][]string{}
-	for k, vals := range resp.Headers {
-		respHdrs[k] = vals
-	}
-	e := &history.Entry{
-		RequestPath: requestPath,
-		Method:      string(req.Method),
-		URL:         req.URL,
-		Env:         env,
-		Status:      resp.StatusCode,
-		DurationMS:  resp.DurationMS,
-		Size:        resp.Size,
-		ReqHeaders:  reqHdrs,
-		ReqBody:     []byte(req.Body),
-		RespHeaders: respHdrs,
-		RespBody:    []byte(resp.Body),
-		Attempts:    resp.Attempts,
-	}
-	_ = s.history.Record(context.Background(), e)
-}
-
-// layerVars overlays every scope of overlay onto base, preserving the
-// low → high scope precedence (global < collection < folder < request).
-func layerVars(base, overlay *variables.Set) {
-	for _, scope := range []variables.Scope{
-		variables.ScopeGlobal,
-		variables.ScopeCollection,
-		variables.ScopeFolder,
-		variables.ScopeRequest,
-	} {
-		overlay.Range(scope, func(key, value string) {
-			base.Set(scope, key, value)
-		})
-	}
-}
-
-// AuthLogin runs an interactive OAuth 2.0 login (authorization_code or
-// device_code) and caches the token. For authorization_code flows the
-// system browser is opened at the provider's authorization page; for
-// device_code flows the caller surfaces the verification URI from the
-// returned token acquisition steps (the core reports it via the token
-// endpoint poll, so this bridge method returns once approved).
 func (s *AppService) AuthLogin(config map[string]string, flow string) (*auth.Token, error) {
 	if s.auth == nil {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to log in")
@@ -354,8 +270,12 @@ func (s *AppService) WorkspaceRunCollection(path, env string, failFast bool) (st
 	}
 	id := newRunID()
 	ctx, cancel := context.WithCancel(context.Background())
+	// Single-flight policy is owned by core.CollectionRunService (ADR 0025);
+	// this registry check just rejects immediately during the window before
+	// the goroutine reaches the core's acquire(). The map only tracks cancel
+	// handles.
 	s.runMu.Lock()
-	if len(s.runCancels) > 0 {
+	if s.runs.Active() || len(s.runCancels) > 0 {
 		s.runMu.Unlock()
 		cancel()
 		return "", fmt.Errorf("a collection run is already in progress")
@@ -430,14 +350,15 @@ func (s *AppService) WorkspaceSaveRequest(path string, draft request.Request, ex
 
 // HistoryList returns masked history entries.
 func (s *AppService) HistoryList(limit int, offset int, status string, env string) ([]history.Entry, error) {
-	if s.history == nil {
+	h := s.hist()
+	if h == nil {
 		return nil, nil
 	}
 	var filter *int
 	if status != "" {
 		filter = statusToFilterHistory(status)
 	}
-	entries, err := s.history.List(context.Background(), limit, offset, filter)
+	entries, err := h.List(context.Background(), limit, offset, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -455,10 +376,11 @@ func (s *AppService) HistoryList(limit int, offset int, status string, env strin
 
 // HistoryShow returns one masked entry.
 func (s *AppService) HistoryShow(id string) (*history.Entry, error) {
-	if s.history == nil {
-		return nil, fmt.Errorf("no workspace")
+	h := s.hist()
+	if h == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to view history")
 	}
-	e, err := s.history.Show(context.Background(), id)
+	e, err := h.Show(context.Background(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -467,18 +389,20 @@ func (s *AppService) HistoryShow(id string) (*history.Entry, error) {
 
 // HistorySearch searches via FTS.
 func (s *AppService) HistorySearch(query string, limit int) ([]history.Entry, error) {
-	if s.history == nil {
+	h := s.hist()
+	if h == nil {
 		return nil, nil
 	}
-	return s.history.Search(context.Background(), query, limit)
+	return h.Search(context.Background(), query, limit)
 }
 
 // HistoryClear clears history.
 func (s *AppService) HistoryClear(env *string) error {
-	if s.history == nil {
+	h := s.hist()
+	if h == nil {
 		return nil
 	}
-	return s.history.Clear(context.Background(), env)
+	return h.Clear(context.Background(), env)
 }
 
 // HistoryReplay replays a stored entry verbatim.
@@ -486,41 +410,52 @@ func (s *AppService) HistoryReplay(id string) (*core.SendResponse, error) {
 	if s == nil || s.requests == nil {
 		return nil, fmt.Errorf("no workspace found: open a reqly workspace to replay history")
 	}
-	if s.history == nil {
-		return nil, fmt.Errorf("no workspace")
+	h := s.hist()
+	if h == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to view history")
 	}
-	// load raw entry for faithful replay (store shows masked but bodies exact)
-	e, err := s.history.Show(context.Background(), id)
+	// Faithful replay (ADR 0025 Send Fidelity): raw entry so Authorization and
+	// the captured Cookie header re-sent exactly as recorded. Recorded values
+	// are already interpolated, no variables are layered; jar attachment is
+	// skipped so today's cookies cannot mutate a verbatim replay.
+	e, err := h.ShowRaw(context.Background(), id)
 	if err != nil {
 		return nil, err
 	}
-	// need raw headers/bodies; use store directly via HistoryService raw? For now use masked entry (bodies exact)
 	req := request.Request{Method: request.Method(e.Method), URL: e.URL, Headers: headersFromMapHistory(e.ReqHeaders), Body: string(e.ReqBody)}
-	return s.requests.Send(req, nil)
+	noAttach := false
+	res, err := s.requests.Run(context.Background(), req, core.RunRequestOptions{AttachCookies: &noAttach})
+	if err != nil {
+		return nil, err
+	}
+	return core.SendResponseFrom(res), nil
 }
 
 // CookieList lists cookies for env.
 func (s *AppService) CookieList(env string) ([]history.Cookie, error) {
-	if s.history == nil {
+	h := s.hist()
+	if h == nil {
 		return nil, nil
 	}
-	return s.history.Cookies(context.Background(), env)
+	return h.Cookies(context.Background(), env)
 }
 
 // CookieDelete deletes one cookie.
 func (s *AppService) CookieDelete(name, domain, path, env string) error {
-	if s.history == nil {
+	h := s.hist()
+	if h == nil {
 		return nil
 	}
-	return s.history.DeleteCookie(context.Background(), name, domain, path, env)
+	return h.DeleteCookie(context.Background(), name, domain, path, env)
 }
 
 // CookieClear clears cookies.
 func (s *AppService) CookieClear(env *string) error {
-	if s.history == nil {
+	h := s.hist()
+	if h == nil {
 		return nil
 	}
-	return s.history.ClearCookies(context.Background(), env)
+	return h.ClearCookies(context.Background(), env)
 }
 
 func statusToFilterHistory(s string) *int {
@@ -551,66 +486,6 @@ func headersFromMapHistory(m map[string][]string) []request.Header {
 		}
 	}
 	return out
-}
-
-// resolveAppEnvironment loads the process-env scope plus the environment
-// selected for execution. env is a per-send override (a request file's
-// environment pill); when empty, REQLY_ENV or the workspace descriptor's
-// environment: field applies. When no workspace or environment is present,
-// the returned set still carries the process-env scope so OS variables always
-// interpolate.
-func resolveAppEnvironment(env string) (*variables.Set, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("resolve working directory: %w", err)
-	}
-	envFlag := os.Getenv("REQLY_ENV")
-	if env != "" {
-		envFlag = env
-	}
-	sel := environments.Selection{
-		EnvFlag:   envFlag,
-		ConfigEnv: collections.WorkspaceEnvironment(dir),
-	}
-	set, _, err := environments.ResolveSet(dir, sel)
-	if err != nil {
-		return nil, err
-	}
-	return set, nil
-}
-
-// openAppTokenStore opens the token store for a workspace root. The desktop
-// defaults to the OS keychain (REQLY_TOKEN_STORE overrides), falling back to
-// the file store with a warning when no keychain is available. Without a
-// workspace, a nil store is returned.
-func openAppTokenStore(root string) (secrets.Store, string) {
-	if root == "" {
-		return nil, ""
-	}
-	backend := os.Getenv("REQLY_TOKEN_STORE")
-	if backend == "" {
-		backend = "keychain"
-	}
-	switch backend {
-	case "keychain":
-		store, err := secrets.NewKeychainStore("reqly", filepath.Join(root, ".reqly", "keychain.index"))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: %v; falling back to the file store\n", err)
-			backend = "file"
-			break
-		}
-		return store, "keychain"
-	case "file":
-	default:
-		fmt.Fprintf(os.Stderr, "warning: unknown token store %q; using the file store\n", backend)
-		backend = "file"
-	}
-	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: %v; token caching disabled\n", err)
-		return nil, ""
-	}
-	return store, backend
 }
 
 // launchAppBrowser opens url in the system default browser. It is a package
