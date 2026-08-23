@@ -245,6 +245,7 @@ func brunoItemToFile(it *brItem, res *BrunoResult, rep *ImportReport) *requestfi
 	}
 	name := it.Name
 
+	preSource, postSource := brunoScriptSources(req.Script)
 	for _, kind := range []struct {
 		key   string
 		label string
@@ -252,6 +253,9 @@ func brunoItemToFile(it *brItem, res *BrunoResult, rep *ImportReport) *requestfi
 		{"script", "script"}, {"assertions", "assertions"},
 		{"tests", "tests"}, {"docs", "docs"},
 	} {
+		if kind.key == "script" && (preSource != "" || postSource != "") {
+			continue
+		}
 		if len(nonEmptyMember(req, kind.key)) > 0 {
 			rep.Add(name, CategoryScript, SeverityDropped, "%s: %s not imported", name, kind.label)
 		}
@@ -312,8 +316,25 @@ func brunoItemToFile(it *brItem, res *BrunoResult, rep *ImportReport) *requestfi
 	if display == "" {
 		display = method + " " + reqURL
 	}
+	var preScript, postScript string
+	if preSource != "" {
+		var warns []ReportEntry
+		preScript, warns = TranslateScript(preSource, DialectBruno)
+		rep.Entries = append(rep.Entries, warns...)
+		rep.Add(name, CategoryScript, SeverityTranslated, "%s: pre-request script imported (%d line(s) preserved as TODO(reqly-import))",
+			name, strings.Count(preScript, todoMarker))
+	}
+	if postSource != "" {
+		var warns []ReportEntry
+		postScript, warns = TranslateScript(postSource, DialectBruno)
+		rep.Entries = append(rep.Entries, warns...)
+		rep.Add(name, CategoryScript, SeverityTranslated, "%s: post-response script imported (%d line(s) preserved as TODO(reqly-import))",
+			name, strings.Count(postScript, todoMarker))
+	}
 	file := &requestfile.File{
-		Name: display,
+		Name:        display,
+		PreRequest:  preScript,
+		PostRequest: postScript,
 		Request: request.Request{
 			Name:    display,
 			Method:  request.Method(method),
@@ -325,6 +346,43 @@ func brunoItemToFile(it *brItem, res *BrunoResult, rep *ImportReport) *requestfi
 		},
 	}
 	return file
+}
+
+// brunoScriptSources extracts pre-request and post-response script sources
+// from a Bruno request's "script" member. Bruno has used several key layouts
+// across versions ("before"/"after", "prerequest"/"postresponse",
+// "request"/"response"); values may be a single string or an array of lines.
+func brunoScriptSources(raw json.RawMessage) (pre, post string) {
+	if len(raw) == 0 {
+		return "", ""
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return "", ""
+	}
+	source := func(keys ...string) string {
+		for _, k := range keys {
+			v, ok := m[k]
+			if !ok {
+				continue
+			}
+			var s string
+			if err := json.Unmarshal(v, &s); err == nil {
+				if strings.TrimSpace(s) != "" {
+					return s
+				}
+				continue
+			}
+			var lines []string
+			if err := json.Unmarshal(v, &lines); err == nil && len(lines) > 0 {
+				return strings.Join(lines, "\n")
+			}
+		}
+		return ""
+	}
+	pre = source("before", "prerequest", "pre-request", "request")
+	post = source("after", "postresponse", "post-response", "response", "test", "tests")
+	return pre, post
 }
 
 // nonEmptyMember reports whether a request member carries content worth
