@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { RequestInput, RequestSender, ResponseData, KeyValueRow, RequestAuth, RequestHeader } from '../lib/request'
+import type { RequestInput, RequestSender, ResponseData, KeyValueRow, RequestAuth, RequestHeader, RequestRetry } from '../lib/request'
 import { fetchSender, sentRows } from '../lib/request'
 import { serializeBody } from '../lib/body'
 import type { BodyType } from '../lib/body'
@@ -23,6 +23,8 @@ export interface TabDraft {
   /** The request's own auth (Inherit when unset — no own auth, the request
    * inherits from its containers). */
   auth?: RequestAuth
+  /** The request's own retry policy (unset = no retries). */
+  retry?: RequestRetry
 }
 
 /** Per-tab metadata for requests opened from a collection: the source request
@@ -78,6 +80,7 @@ export interface FileDraftInput {
   query: { key: string; value: string }[]
   body: string
   auth?: RequestAuth
+  retry?: RequestRetry
 }
 
 /** fileInputFromDraft serializes a tab's editable fields into the
@@ -104,6 +107,7 @@ export function fileInputFromDraft(draft: TabDraft): FileDraftInput {
     query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
     body: body ?? '',
     auth: draft.auth,
+    retry: draft.retry,
   }
 }
 

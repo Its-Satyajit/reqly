@@ -27,8 +27,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Its-Satyajit/reqly/internal/auth"
 	"github.com/Its-Satyajit/reqly/internal/collections"
+	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/runner"
 )
 
@@ -71,19 +71,19 @@ Use --workspace to point at a workspace directory other than the current one.`,
 			return err
 		}
 
-		masker, envSet, err := activeEnvironment(ws.Root, entry.File.Environment)
+		svc := core.NewRunService(ws.Root)
+		defer svc.Close()
+		noRecord := false
+		res, err := svc.Run(context.Background(), resolved.Request, core.RunRequestOptions{
+			FileEnv:       entry.File.Environment,
+			FileVars:      resolved.Vars,
+			RequestPath:   entry.Path,
+			RecordHistory: &noRecord,
+		})
 		if err != nil {
-			return err
+			return fmt.Errorf("request failed: %s", err)
 		}
-		mergeEnvScope(resolved.Vars, envSet)
-		masker.Add(auth.MaskValues(resolved.Request.Auth.Type, resolved.Request.Auth.Config, resolved.Vars)...)
-
-		client := newRequestClient(ws.Root)
-		resp, err := client.Execute(context.Background(), &resolved.Request, resolved.Vars)
-		if err != nil {
-			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
-		}
-		maskAcquiredToken(masker, resp.AuthToken)
+		resp := res.Response
 
 		status := resp.StatusCode
 		color := ""
@@ -98,13 +98,13 @@ Use --workspace to point at a workspace directory other than the current one.`,
 
 		for key, values := range resp.Headers {
 			for _, value := range values {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, masker.Mask(value))
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, value)
 			}
 		}
 
 		fmt.Fprintln(cmd.OutOrStdout())
 		if len(resp.Body) > 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), masker.Mask(string(resp.Body)))
+			fmt.Fprintln(cmd.OutOrStdout(), string(resp.Body))
 		}
 		return nil
 	},

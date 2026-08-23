@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -136,9 +137,9 @@ request:
 }
 
 func TestBulkRun_ContinueOnError(t *testing.T) {
-	count := 0
+	var count atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		count++
+		count.Add(1)
 		if r.URL.Path == "/users/2" {
 			w.WriteHeader(500)
 			fmt.Fprint(w, `err`)
@@ -170,7 +171,7 @@ request:
 	}
 
 	// with continue, should see step 3
-	count = 0
+	count.Store(0)
 	var out2, errBuf2 bytes.Buffer
 	rootCmd.SetOut(&out2)
 	rootCmd.SetErr(&errBuf2)

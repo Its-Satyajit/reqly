@@ -558,11 +558,10 @@ func TestAuthStatusKeychainFallback(t *testing.T) {
 	chdirWorkspace(t, root)
 	t.Setenv("REQLY_TOKEN_STORE", "keychain")
 
-	oldStore := newKeychainStore
-	newKeychainStore = func(_, _ string) (*secrets.KeychainStore, error) {
+	restore := secrets.SetKeychainOpenerForTest(func(_, _ string) (secrets.Store, error) {
 		return nil, errors.New("keychain unavailable (test)")
-	}
-	t.Cleanup(func() { newKeychainStore = oldStore })
+	})
+	t.Cleanup(restore)
 
 	var warnBuf bytes.Buffer
 	oldWarn := warnf
@@ -597,8 +596,9 @@ func TestAuthStatusUnknownStore(t *testing.T) {
 	rootCmd.SetErr(&out)
 	rootCmd.SetArgs([]string{"auth", "status"})
 	err := rootCmd.Execute()
-	if err == nil || !strings.Contains(err.Error(), "unknown token store") {
-		t.Fatalf("err = %v, want unknown token store error", err)
+	// ADR 0025: an unknown backend is a warning + file fallback, not an error.
+	if err != nil {
+		t.Fatalf("err = %v, want file fallback with warning", err)
 	}
 }
 
@@ -628,11 +628,10 @@ func TestAuthLoginDeviceFlowKeychainFallback(t *testing.T) {
 	chdirWorkspace(t, root)
 	t.Setenv("REQLY_TOKEN_STORE", "keychain")
 
-	oldStore := newKeychainStore
-	newKeychainStore = func(_, _ string) (*secrets.KeychainStore, error) {
+	restore := secrets.SetKeychainOpenerForTest(func(_, _ string) (secrets.Store, error) {
 		return nil, errors.New("keychain unavailable (test)")
-	}
-	t.Cleanup(func() { newKeychainStore = oldStore })
+	})
+	t.Cleanup(restore)
 
 	deviceSrv, tokenSrv := fakeDeviceProvider(t)
 	cfgPath := writeAuthConfig(t, root, map[string]string{

@@ -21,10 +21,10 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/pagination"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
@@ -66,55 +66,33 @@ Strategies: page, offset, cursor (needs nextPath: $.nextCursor), link-header.
 			return fmt.Errorf("pagination: request %q has no pagination block", path)
 		}
 		baseDir := filepath.Dir(path)
-		// env + vars like run
-		vars := f.VariablesSet()
-		masker, envSet, err := activeEnvironment(baseDir, f.Environment)
-		if err != nil {
-			return err
-		}
-		mergeEnvScope(vars, envSet)
-
-		client := newRequestClient(baseDir)
+		svc := core.NewRunService(findWorkspaceRoot(baseDir))
+		defer svc.Close()
+		noRecord := false
+		fileVars := f.VariablesSet()
 		sendFn := func(ctx context.Context, r request.Request) (*response.Response, error) {
-			// vars are shared but pagination mutates Query copy, not vars
-			return client.Execute(ctx, &r, vars)
+			// Runner-style steps don't record history: a 100-page walk must
+			// not evict the user's real history (retention is 500).
+			res, err := svc.Run(ctx, r, core.RunRequestOptions{
+				EnvFlag:       envFlag,
+				FileEnv:       f.Environment,
+				FileVars:      fileVars,
+				RecordHistory: &noRecord,
+			})
+			if err != nil {
+				return nil, err
+			}
+			return res.Response, nil
 		}
-		// masker not needed for pagination output? But we keep.
 
 		opts := pagination.Options{}
 		if paginationMaxPages > 0 {
 			opts.MaxPages = paginationMaxPages
 		}
 
-		// OnStep prints progress
+		// OnStep prints progress via the shared runner step printer.
 		onStep := func(s pagination.Step) {
-			if s.Err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "step %d: error: %v\n", s.Index, masker.Mask(s.Err.Error()))
-				return
-			}
-			if s.Response != nil {
-				url := s.Request.URL
-				// include query for visibility
-				if len(s.Request.Query) > 0 {
-					// reconstruct URL with query for display
-					// keep simple: show request URL + query string
-					q := ""
-					for i, p := range s.Request.Query {
-						if i > 0 {
-							q += "&"
-						}
-						q += p.Key + "=" + p.Value
-					}
-					if q != "" {
-						sep := "?"
-						if len(url) > 0 && (url[len(url)-1] == '?' || contains(url, "?")) {
-							sep = "&"
-						}
-						url = url + sep + q
-					}
-				}
-				fmt.Fprintf(cmd.OutOrStdout(), "step %d: %d %s (%s) %s\n", s.Index, s.Response.StatusCode, s.Response.StatusText, s.Response.Duration.Round(time.Millisecond), masker.Mask(url))
-			}
+			printStep(cmd.OutOrStdout(), cmd.ErrOrStderr(), s.Index, s.Request, s.Response, s.Err)
 		}
 
 		ctx := context.Background()
@@ -123,19 +101,6 @@ Strategies: page, offset, cursor (needs nextPath: $.nextCursor), link-header.
 		}
 		return nil
 	},
-}
-
-func contains(s, sub string) bool {
-	return len(s) >= len(sub) && (sub == "" || indexOf(s, sub) >= 0)
-}
-
-func indexOf(s, sub string) int {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return i
-		}
-	}
-	return -1
 }
 
 func init() {

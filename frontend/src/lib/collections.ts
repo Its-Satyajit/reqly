@@ -5,7 +5,7 @@
 // The host injects a CollectionsAdapter backed by the Go core's
 // WorkspaceService; browser dev mode uses a read-only fallback.
 
-import type { RequestAuth, ResponseData } from './request'
+import type { RequestAuth, RequestRetry, ResponseData } from './request'
 
 /** WorkspaceRequest is a request file within a collection or folder, located
  * by its workspace-relative Request Path (e.g. "users/auth/login"). */
@@ -139,6 +139,8 @@ export interface FileRequestInput {
   /** The file's own auth (""/unset when the request declares none and inherits
    * from its containers). */
   auth?: RequestAuth
+  /** The file's own retry policy (unset when the request retries nothing). */
+  retry?: RequestRetry
 }
 
 /** OpenedRequest is a request file combined with its inherited configuration

@@ -25,20 +25,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/Its-Satyajit/reqly/internal/bulk"
+	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
 	"github.com/Its-Satyajit/reqly/internal/response"
 )
 
 var (
-	bulkDataPath       string
-	bulkParallel       bool
-	bulkConcurrency    int
+	bulkDataPath        string
+	bulkParallel        bool
+	bulkConcurrency     int
 	bulkContinueOnError bool
 )
 
@@ -70,12 +70,6 @@ JSON: array of objects (values stringified)
 			return err
 		}
 		baseDir := filepath.Dir(path)
-		vars := f.VariablesSet()
-		masker, envSet, err := activeEnvironment(baseDir, f.Environment)
-		if err != nil {
-			return err
-		}
-		mergeEnvScope(vars, envSet)
 
 		rows, err := parseBulkData(bulkDataPath)
 		if err != nil {
@@ -86,9 +80,22 @@ JSON: array of objects (values stringified)
 			return nil
 		}
 
-		client := newRequestClient(baseDir)
+		svc := core.NewRunService(findWorkspaceRoot(baseDir))
+		defer svc.Close()
+		noRecord := false
+		fileVars := f.VariablesSet()
 		sendFn := func(ctx context.Context, r request.Request) (*response.Response, error) {
-			return client.Execute(ctx, &r, vars)
+			// Runner-style steps don't record history (retention is 500).
+			res, err := svc.Run(ctx, r, core.RunRequestOptions{
+				EnvFlag:       envFlag,
+				FileEnv:       f.Environment,
+				FileVars:      fileVars,
+				RecordHistory: &noRecord,
+			})
+			if err != nil {
+				return nil, err
+			}
+			return res.Response, nil
 		}
 
 		opts := bulk.Options{
@@ -101,30 +108,7 @@ JSON: array of objects (values stringified)
 		}
 
 		onStep := func(s bulk.Step) {
-			if s.Err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "step %d: error: %v\n", s.Index, masker.Mask(s.Err.Error()))
-				return
-			}
-			if s.Response != nil {
-				url := s.Request.URL
-				if len(s.Request.Query) > 0 {
-					q := ""
-					for i, p := range s.Request.Query {
-						if i > 0 {
-							q += "&"
-						}
-						q += p.Key + "=" + p.Value
-					}
-					if q != "" {
-						sep := "?"
-						if strings.Contains(url, "?") {
-							sep = "&"
-						}
-						url = url + sep + q
-					}
-				}
-				fmt.Fprintf(cmd.OutOrStdout(), "step %d: %d %s (%s) %s\n", s.Index, s.Response.StatusCode, s.Response.StatusText, s.Response.Duration.Round(time.Millisecond), masker.Mask(url))
-			}
+			printStep(cmd.OutOrStdout(), cmd.ErrOrStderr(), s.Index, s.Request, s.Response, s.Err)
 		}
 
 		if err := bulk.Run(context.Background(), f.Request, rows, opts, sendFn, onStep); err != nil {

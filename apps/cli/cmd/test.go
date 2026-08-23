@@ -24,7 +24,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Its-Satyajit/reqly/internal/auth"
+	"github.com/Its-Satyajit/reqly/internal/core"
+	"github.com/Its-Satyajit/reqly/internal/environments"
 	"github.com/Its-Satyajit/reqly/internal/testing"
 )
 
@@ -62,20 +63,18 @@ response_time. The command exits non-zero when any assertion fails.`,
 			return err
 		}
 
-		vars := tf.VariablesSet()
-		masker, envSet, err := activeEnvironment(filepath.Dir(args[0]), tf.Environment)
+		svc := core.NewRunService(findWorkspaceRoot(filepath.Dir(args[0])))
+		defer svc.Close()
+		res, err := svc.Run(context.Background(), tf.Request, core.RunRequestOptions{
+			EnvFlag:  envFlag,
+			FileEnv:  tf.Environment,
+			FileVars: tf.VariablesSet(),
+		})
 		if err != nil {
-			return err
+			return fmt.Errorf("request failed: %s", err)
 		}
-		mergeEnvScope(vars, envSet)
-		masker.Add(auth.MaskValues(tf.Request.Auth.Type, tf.Request.Auth.Config, vars)...)
-
-		client := newRequestClient(filepath.Dir(args[0]))
-		resp, err := client.Execute(context.Background(), &tf.Request, vars)
-		if err != nil {
-			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
-		}
-		maskAcquiredToken(masker, resp.AuthToken)
+		resp := res.Response
+		masker := environments.NewMasker()
 
 		results := tf.Suite().Run(resp)
 

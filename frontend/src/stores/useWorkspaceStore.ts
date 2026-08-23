@@ -141,6 +141,7 @@ export const draftFromFileRequest = (file: FileRequestInput): Partial<TabDraft> 
     bodyType: bodyTypeFor(file),
     body: file.body,
     auth: file.auth,
+    retry: file.retry,
   }
 }
 

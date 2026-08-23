@@ -21,22 +21,25 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/Its-Satyajit/reqly/internal/auth"
+	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
 var (
-	runMethod  string
-	runHeaders []string
-	runBody    string
-	runTimeout time.Duration
+	runMethod     string
+	runHeaders    []string
+	runBody       string
+	runTimeout    time.Duration
+	runRetries    int
+	runRetryDelay time.Duration
 )
 
 var runCmd = &cobra.Command{
@@ -76,7 +79,8 @@ and --data to build requests directly on the CLI:
 		target := args[0]
 
 		var req *request.Request
-		var vars *variables.Set
+		var vars *variables.Set // still built for file mode; Run re-resolves scopes internally
+		_ = vars
 		baseDir := "."
 		var fileEnv string
 
@@ -103,25 +107,46 @@ and --data to build requests directly on the CLI:
 				Headers: headers,
 				Body:    runBody,
 				Timeout: runTimeout.Milliseconds(),
+				Retry:   retryFromFlags(cmd),
 			}
 			vars = variables.NewSet()
 		}
 
-		masker, envSet, err := activeEnvironment(baseDir, fileEnv)
-		if err != nil {
-			return err
-		}
-		mergeEnvScope(vars, envSet)
-		masker.Add(auth.MaskValues(req.Auth.Type, req.Auth.Config, vars)...)
+		// One deep pipeline call: env precedence, variable layering, token
+		// caching, masking, retries, and history recording live in core (ADR 0025).
+		root := findWorkspaceRoot(baseDir)
+		svc := core.NewRunService(root)
+		defer svc.Close()
 
-		client := newRequestClient(baseDir)
-		resp, err := client.Execute(context.Background(), req, vars)
-		if err != nil {
-			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
+		var onRetry func(request.RetryEvent)
+		if req.Retry != nil && req.Retry.Count > 0 {
+			total := req.Retry.Count + 1
+			out := cmd.OutOrStdout()
+			onRetry = func(e request.RetryEvent) {
+				reason := strconv.Itoa(e.StatusCode)
+				if e.Err != nil {
+					reason = e.Err.Error()
+				}
+				fmt.Fprintf(out, "retrying in %s (%s, attempt %d/%d)\n",
+					e.Delay.Round(time.Millisecond), reason, e.Attempt, total)
+			}
 		}
-		// Mask the acquired OAuth token (and any other runtime credential)
-		// so headers/body echoing it never leak it.
-		maskAcquiredToken(masker, resp.AuthToken)
+
+		requestPath := ""
+		if requestfile.LooksLikeFile(target) {
+			requestPath = target
+		}
+		res, err := svc.Run(context.Background(), *req, core.RunRequestOptions{
+			EnvFlag:     envFlag,
+			FileEnv:     fileEnv,
+			FileVars:    vars,
+			RequestPath: requestPath,
+			OnRetry:     onRetry,
+		})
+		if err != nil {
+			return fmt.Errorf("request failed: %s", err)
+		}
+		resp := res.Response
 
 		status := resp.StatusCode
 		color := ""
@@ -130,19 +155,24 @@ and --data to build requests directly on the CLI:
 		} else {
 			color = "\x1b[32m" // green
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%s%d %s\x1b[0m (%s)\n",
-			color, status, resp.StatusText, resp.Duration.Round(time.Millisecond))
+		if resp.Attempts > 1 {
+			fmt.Fprintf(cmd.OutOrStdout(), "%s%d %s\x1b[0m (%s, %d attempts)\n",
+				color, status, resp.StatusText, resp.Duration.Round(time.Millisecond), resp.Attempts)
+		} else {
+			fmt.Fprintf(cmd.OutOrStdout(), "%s%d %s\x1b[0m (%s)\n",
+				color, status, resp.StatusText, resp.Duration.Round(time.Millisecond))
+		}
 		fmt.Fprintf(cmd.OutOrStdout(), "%s %d %s\n", resp.Proto, status, resp.StatusText)
 
 		for key, values := range resp.Headers {
 			for _, value := range values {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, masker.Mask(value))
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, value)
 			}
 		}
 
 		fmt.Fprintln(cmd.OutOrStdout())
 		if len(resp.Body) > 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), masker.Mask(string(resp.Body)))
+			fmt.Fprintln(cmd.OutOrStdout(), string(resp.Body))
 		}
 		return nil
 	},
@@ -153,6 +183,8 @@ func init() {
 	runCmd.Flags().StringArrayVarP(&runHeaders, "header", "H", nil, "request header in 'Key: Value' form (repeatable)")
 	runCmd.Flags().StringVarP(&runBody, "data", "d", "", "request body")
 	runCmd.Flags().DurationVarP(&runTimeout, "timeout", "t", 30*time.Second, "request timeout")
+	runCmd.Flags().IntVar(&runRetries, "retries", 0, "automatic retries after transient failures (network errors, 429/502/503/504)")
+	runCmd.Flags().DurationVar(&runRetryDelay, "retry-delay", time.Second, "base delay between retries (exponential backoff by default)")
 	runCmd.Flags().StringVar(&envFlag, "env", "", "environment to use (falls back to the file's environment field; REQLY_ENV wins)")
 }
 
@@ -176,7 +208,36 @@ func applyRunOverrides(cmd *cobra.Command, req *request.Request) error {
 	if flags.Changed("timeout") {
 		req.Timeout = runTimeout.Milliseconds()
 	}
+	if flags.Changed("retries") || flags.Changed("retry-delay") {
+		policy := req.Retry
+		if policy == nil {
+			policy = &request.Retry{}
+		} else {
+			copied := *policy
+			policy = &copied
+		}
+		if flags.Changed("retries") {
+			policy.Count = runRetries
+		}
+		if flags.Changed("retry-delay") {
+			policy.DelayMs = runRetryDelay.Milliseconds()
+		}
+		req.Retry = policy
+	}
 	return nil
+}
+
+// retryFromFlags builds a Retry policy purely from CLI flags for URL-mode
+// requests, returning nil when neither flag was set.
+func retryFromFlags(cmd *cobra.Command) *request.Retry {
+	flags := cmd.Flags()
+	if !flags.Changed("retries") && !flags.Changed("retry-delay") {
+		return nil
+	}
+	return &request.Retry{
+		Count:   runRetries,
+		DelayMs: runRetryDelay.Milliseconds(),
+	}
 }
 
 // parseHeaders converts CLI "Key: Value" strings into request.Header values.

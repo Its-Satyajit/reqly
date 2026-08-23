@@ -27,6 +27,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/Its-Satyajit/reqly/internal/testsupport"
 )
 
 // writeRunWorkspace builds a temp workspace with a base URL, one collection
@@ -34,25 +36,14 @@ import (
 // request. Returns the workspace root.
 func writeRunWorkspace(t *testing.T, baseURL string) string {
 	t.Helper()
-	dir := t.TempDir()
-	files := map[string]string{
+	return testsupport.Workspace(t, map[string]string{
 		"reqly.yaml":                        fmt.Sprintf("name: demo\nbaseURL: %s\n", baseURL),
 		"collections/users/reqly.yaml":      "name: users\n",
 		"collections/users/a.yaml":          "request: {method: GET, url: /a}",
 		"collections/users/b.yaml":          "request: {method: GET, url: /b}",
 		"collections/users/auth/reqly.yaml": "name: auth\n",
 		"collections/users/auth/login.yaml": "request: {method: POST, url: /login}",
-	}
-	for name, contents := range files {
-		path := filepath.Join(dir, name)
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return dir
+	})
 }
 
 func okServer(t *testing.T) *httptest.Server {

@@ -387,8 +387,10 @@ func resetRunFlags() {
 	runHeaders = nil
 	runBody = ""
 	runTimeout = 30 * time.Second
+	runRetries = 0
+	runRetryDelay = 0
 	envFlag = ""
-	for _, name := range []string{"method", "header", "data", "timeout", "env"} {
+	for _, name := range []string{"method", "header", "data", "timeout", "env", "retries", "retry-delay"} {
 		if flag := runCmd.Flags().Lookup(name); flag != nil {
 			flag.Changed = false
 		}
