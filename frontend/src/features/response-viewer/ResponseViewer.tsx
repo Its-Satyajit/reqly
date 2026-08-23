@@ -55,6 +55,7 @@ export function ResponseViewer() {
 	const response = tabState?.response ?? null;
 	const loading = tabState?.loading ?? false;
 	const error = tabState?.error ?? null;
+	const cancelled = tabState?.cancelled ?? false;
 	const [view, setView] = useState<View>("pretty");
 	const [query, setQuery] = useState("");
 	const [jsonPath, setJsonPath] = useState("");
@@ -119,11 +120,13 @@ export function ResponseViewer() {
 
 	const body = loading
 		? "// Sending request…"
-		: error
-			? `// Error: ${error}`
-			: response
-				? bodyView
-				: "// Send a request to see the response";
+		: cancelled
+			? "// Request cancelled"
+			: error
+				? `// Error: ${error}`
+				: response
+					? bodyView
+					: "// Send a request to see the response";
 
 	const searchResult = useMemo(() => searchBody(bodyView, query), [bodyView, query]);
 	const filteredHeaders =
@@ -150,7 +153,9 @@ export function ResponseViewer() {
 				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
 					Response
 				</p>
-				{response ? (
+				{cancelled ? (
+					<p className="font-data text-xs text-muted-foreground">Request cancelled</p>
+				) : response ? (
 					<p className="flex min-w-0 items-center gap-2 font-data text-xs tabular-nums text-muted-foreground">
 						<StatusPill status={response.statusCode} />
 						<span className="truncate">

@@ -75,6 +75,9 @@ export interface RequestInput {
 	requestPath?: string;
 	/** Inherited auth resolved when the request was opened; applied silently. */
 	auth?: RequestAuth;
+	/** Identifies this in-flight send so Stop can cancel it via the bridge's
+	 * CancelSend seam; minted per send by the store. */
+	sendId?: string;
 }
 
 /** sentParams returns the enabled, non-blank rows of a param/header list. */
