@@ -11,6 +11,7 @@
 import { Field } from "@base-ui/react/field"
 import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/field"
+import { CompactSelect } from "../../components/CompactSelect"
 import {
   AUTH_SCHEMES,
   OAUTH2_GRANTS,
@@ -26,9 +27,6 @@ import {
   type AuthSchemeId,
 } from "../../lib/authSchemes"
 import type { RequestAuth } from "../../lib/request"
-
-const selectClass =
-  "rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground"
 
 export interface AuthEditorProps {
   auth: RequestAuth | undefined
@@ -59,7 +57,7 @@ export function AuthEditor({ auth, onChange, inherited }: AuthEditorProps) {
   return (
     <div className="flex flex-col gap-4">
       {warnings.length > 0 ? (
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+        <div className="rounded-md border border-status-warn/30 bg-status-warn/10 px-3 py-2 text-xs text-status-warn">
           <p className="font-medium">Auth needs attention before send</p>
           <ul className="mt-1 list-disc pl-4">
             {warnings.map((w) => (
@@ -69,21 +67,17 @@ export function AuthEditor({ auth, onChange, inherited }: AuthEditorProps) {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-1">
+      <Field.Root className="flex flex-col gap-1">
         <Label>Auth type</Label>
-        <select
+        <CompactSelect
           value={scheme}
-          // SAFETY: select options are ORDERED_AUTH_SCHEMES; value is constrained AuthSchemeId
-          onChange={(e) => setScheme(e.target.value as AuthSchemeId)}
-          className={`${selectClass} w-full sm:w-48`}
-        >
-          {ORDERED_AUTH_SCHEMES.map((id) => (
-            <option key={id} value={id}>
-              {AUTH_SCHEME_LABELS[id]}
-            </option>
-          ))}
-        </select>
-      </div>
+          // SAFETY: options are built from ORDERED_AUTH_SCHEMES, so the value is an AuthSchemeId
+          onChange={(v) => setScheme(v as AuthSchemeId)}
+          ariaLabel="Auth type"
+          className="w-full sm:w-48"
+          options={ORDERED_AUTH_SCHEMES.map((id) => ({ value: id, label: AUTH_SCHEME_LABELS[id] }))}
+        />
+      </Field.Root>
 
       {scheme === "inherit" ? (
         <InheritedAuth inherited={inherited} />
@@ -132,17 +126,13 @@ function AuthFieldRow({
         {isSensitiveKey(scheme, field.key) && <SecretBadge />}
       </Label>
       {field.options ? (
-        <select
+        <CompactSelect
           value={value || field.options[0]}
-          onChange={(e) => onValueChange(e.target.value)}
-          className={`${selectClass} w-full sm:w-48`}
-        >
-          {field.options.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
+          onChange={onValueChange}
+          ariaLabel={field.label}
+          className="w-full sm:w-48"
+          options={field.options.map((opt) => ({ value: opt, label: opt }))}
+        />
       ) : (
         <Input
           value={value}
@@ -163,7 +153,7 @@ function AuthFieldRow({
 /** SecretBadge is the visual flag on sensitive auth fields. */
 function SecretBadge() {
   return (
-    <span className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-1 text-[9px] font-medium uppercase tracking-wide text-amber-600">
+    <span className="rounded-sm border border-status-warn/30 bg-status-warn/10 px-1 text-[9px] font-medium uppercase tracking-wide text-status-warn">
       secret
     </span>
   )
@@ -190,17 +180,13 @@ function OAuth2Fields({
     <div className="flex flex-col gap-3">
       <Field.Root className="flex flex-col gap-1">
         <Label>Grant type</Label>
-        <select
+        <CompactSelect
           value={grant}
-          onChange={(e) => setField("grant_type", e.target.value)}
-          className={`${selectClass} w-full sm:w-56`}
-        >
-          {OAUTH2_GRANTS.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.label}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setField("grant_type", v)}
+          ariaLabel="Grant type"
+          className="w-full sm:w-56"
+          options={OAUTH2_GRANTS.map((g) => ({ value: g.id, label: g.label }))}
+        />
       </Field.Root>
 
       {fields.map((field) => (

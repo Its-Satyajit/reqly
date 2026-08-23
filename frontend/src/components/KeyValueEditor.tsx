@@ -1,4 +1,6 @@
+import { Paperclip, Type, X } from 'lucide-react'
 import type { KeyValueRow } from '../lib/request'
+import { cn } from '../lib/utils'
 import { Button } from './ui/button'
 
 interface KeyValueEditorProps {
@@ -37,7 +39,7 @@ export function KeyValueEditor({
             onChange={(e) => update(i, { key: e.target.value })}
             placeholder={keyPlaceholder}
             spellCheck={false}
-            className={`${inputClass} min-w-0 flex-1 font-mono ${row.enabled ? '' : 'opacity-50'}`}
+            className={cn(inputClass, 'min-w-0 flex-1 font-mono', !row.enabled && 'opacity-50')}
           />
           {row.file !== undefined ? (
             <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -46,16 +48,16 @@ export function KeyValueEditor({
                 onChange={(e) => update(i, { file: e.target.value })}
                 placeholder="file path"
                 spellCheck={false}
-                className={`${inputClass} min-w-0 flex-1 font-mono ${row.enabled ? '' : 'opacity-50'}`}
+                className={cn(inputClass, 'min-w-0 flex-1 font-mono', !row.enabled && 'opacity-50')}
               />
               <input
                 value={row.filename ?? ''}
                 onChange={(e) => update(i, { filename: e.target.value || undefined })}
                 placeholder="filename"
                 spellCheck={false}
-                className={`${inputClass} w-24 font-mono ${row.enabled ? '' : 'opacity-50'}`}
+                className={cn(inputClass, 'w-24 font-mono', !row.enabled && 'opacity-50')}
               />
-              <Button type="button" variant="ghost" size="icon-xs" title="Use text value" onClick={() => update(i, { file: undefined, filename: undefined })}>T</Button>
+              <Button type="button" variant="ghost" size="icon-xs" title="Use text value" aria-label="Use text value" onClick={() => update(i, { file: undefined, filename: undefined })}><Type className="size-3" aria-hidden /></Button>
             </div>
           ) : (
             <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -64,9 +66,18 @@ export function KeyValueEditor({
                 onChange={(e) => update(i, { value: e.target.value })}
                 placeholder={valuePlaceholder}
                 spellCheck={false}
-                className={`${inputClass} min-w-0 flex-1 font-mono ${row.enabled ? '' : 'opacity-50'}`}
+                className={cn(inputClass, 'min-w-0 flex-1 font-mono', !row.enabled && 'opacity-50')}
               />
-              <Button type="button" variant="ghost" size="icon-xs" title="Use file" onClick={() => update(i, { file: '', filename: undefined })}>F</Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                title="Use file"
+                aria-label="Use file"
+                onClick={() => update(i, { file: '', filename: undefined })}
+              >
+                <Paperclip className="size-3" aria-hidden />
+              </Button>
             </div>
           )}
           <Button
@@ -74,9 +85,10 @@ export function KeyValueEditor({
             variant="ghost"
             size="icon-xs"
             title="Remove row"
+            aria-label={`Remove ${keyPlaceholder ?? 'key'} row`}
             onClick={() => onChange(rows.filter((_, j) => j !== i))}
           >
-            ×
+            <X className="size-3" aria-hidden />
           </Button>
         </div>
       ))}

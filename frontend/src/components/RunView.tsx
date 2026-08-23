@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RunStep } from "#lib/collections";
+import { ChevronRight, X } from "lucide-react";
 import { cn } from "#lib/utils";
 import { useCollectionRunStore, useWorkspaceStore } from "#stores";
 
@@ -29,15 +30,10 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 					className="shrink-0 text-muted-foreground/50 hover:text-foreground"
 					title="Toggle details"
 				>
-					<svg
+					<ChevronRight
 						className={cn("size-3 transition-transform", expanded && "rotate-90")}
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="2"
-					>
-						<path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-					</svg>
+						aria-hidden
+					/>
 				</button>
 				<button
 					type="button"
@@ -48,7 +44,7 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 					<span
 						className={cn(
 							"size-2 shrink-0 rounded-full",
-							step.passed ? "bg-green-500" : "bg-destructive",
+							step.passed ? "bg-status-ok" : "bg-status-error",
 						)}
 					/>
 					<span className="truncate font-medium">{step.name}</span>
@@ -74,7 +70,7 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 									<span
 										className={cn(
 											"size-1.5 rounded-full",
-											t.passed ? "bg-green-500" : "bg-destructive",
+											t.passed ? "bg-status-ok" : "bg-status-error",
 										)}
 									/>
 									<span className={cn(t.passed || "text-destructive")}>{t.name}</span>
@@ -143,7 +139,7 @@ export function RunView() {
 			: error
 				? "Failed"
 				: "Idle";
-	const statusDot = running ? "bg-primary" : status === "Passed" ? "bg-green-500" : "bg-destructive";
+	const statusDot = running ? "bg-primary" : status === "Passed" ? "bg-status-ok" : "bg-status-error";
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
@@ -198,8 +194,9 @@ export function RunView() {
 							onClick={() => setDismissed(true)}
 							className="shrink-0 text-muted-foreground/60 hover:text-foreground"
 							title="Dismiss"
+							aria-label="Dismiss report summary"
 						>
-							✕
+							<X className="size-3.5" aria-hidden />
 						</button>
 					</div>
 				)}

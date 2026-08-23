@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ChevronRight } from 'lucide-react'
+import { cn } from '../lib/utils'
 import { jsonText } from '../lib/response'
 import { isRecord, isString, type JsonObject, type JsonValue } from '../lib/typeGuards'
 
@@ -46,10 +48,17 @@ function JsonNode({ data, name, depth = 0, filter }: JsonTreeProps) {
     <div>
       <button
         type="button"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1 rounded px-1 py-0.5 text-xs hover:bg-muted"
       >
-        <span className="w-3 text-muted-foreground">{open ? '▾' : '▸'}</span>
+        <ChevronRight
+          className={cn(
+            'w-3 text-muted-foreground transition-transform',
+            open && 'rotate-90',
+          )}
+          aria-hidden
+        />
         {name ? (
           <span className="font-medium text-foreground">{name}:</span>
         ) : null}

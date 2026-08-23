@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components";
+import { CompactSelect } from "#components/CompactSelect";
 import { useAuthStore } from "../../stores";
 import { isRecord, isString, type JsonObject, type JsonValue } from "../../lib/typeGuards";
 
@@ -112,24 +113,21 @@ export function AuthPanel() {
 					void onLogin();
 				}}
 			>
-				<label className="flex flex-col gap-1">
+				<div className="flex flex-col gap-1">
 					<span className="text-xs text-muted-foreground">Flow</span>
-					<select
+					<CompactSelect
 						value={flow}
-						onChange={(e) =>
-							// SAFETY: select options are constrained to authorization_code | device_code
-							setFlow(e.target.value as "authorization_code" | "device_code")
+						onChange={(v) =>
+							// SAFETY: options are constrained to authorization_code | device_code
+							setFlow(v as "authorization_code" | "device_code")
 						}
-						className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground"
-					>
-						<option value="authorization_code">
-							Browser (authorization code + PKCE)
-						</option>
-						<option value="device_code">
-							Device code (approve on any device)
-						</option>
-					</select>
-				</label>
+						ariaLabel="OAuth flow"
+						options={[
+							{ value: "authorization_code", label: "Browser (auth code + PKCE)" },
+							{ value: "device_code", label: "Device code" },
+						]}
+					/>
+				</div>
 
 				<label className="flex flex-col gap-1">
 					<span className="text-xs text-muted-foreground">

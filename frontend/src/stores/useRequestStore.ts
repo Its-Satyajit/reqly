@@ -119,6 +119,9 @@ interface RequestState {
   responses: Record<string, TabResponse>
   meta: Record<string, TabMeta>
   sender: RequestSender
+  /** Per-tab monotonically increasing send token; responses resolving under a
+   * stale token are dropped so the newest Send always wins. */
+  sendTokens: Record<string, number>
 
   setSender: (sender: RequestSender) => void
   /** Create a tab's draft if it does not exist yet, seeding from `seed`. */
@@ -141,6 +144,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   responses: {},
   meta: {},
   sender: fetchSender,
+  sendTokens: {},
 
   setSender: (sender) => set({ sender }),
 
@@ -161,7 +165,9 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     set((state) => ({ meta: { ...state.meta, [id]: meta } })),
 
   send: async (id, req) => {
+    const token = (get().sendTokens[id] ?? 0) + 1
     set((state) => ({
+      sendTokens: { ...state.sendTokens, [id]: token },
       responses: {
         ...state.responses,
         [id]: { ...state.responses[id], loading: true, error: null },
@@ -169,6 +175,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     }))
     try {
       const response = await get().sender(req)
+      if (get().sendTokens[id] !== token) return
       set((state) => ({
         responses: {
           ...state.responses,
@@ -176,6 +183,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         },
       }))
     } catch (err) {
+      if (get().sendTokens[id] !== token) return
       set((state) => ({
         responses: {
           ...state.responses,
@@ -195,9 +203,11 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       const drafts = { ...state.drafts }
       const responses = { ...state.responses }
       const meta = { ...state.meta }
+      const sendTokens = { ...state.sendTokens }
       delete drafts[id]
       delete responses[id]
       delete meta[id]
-      return { drafts, responses, meta }
+      delete sendTokens[id]
+      return { drafts, responses, meta, sendTokens }
     }),
 }))

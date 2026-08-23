@@ -183,7 +183,7 @@ export function EnvironmentEditor({
 					</Button>
 				</div>
 				{secretLikeWarnings.length > 0 && (
-					<p className="text-xs text-amber-600 dark:text-amber-400">
+					<p className="text-xs text-status-warn">
 						{secretLikeWarnings.join(", ")} look
 						{secretLikeWarnings.length === 1 ? "s" : ""} like a secret —
 						consider moving it to the Secrets section.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
+import { CompactSelect } from '../../components/CompactSelect'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
@@ -15,6 +16,7 @@ import { TagPicker } from '../../components/TagPicker'
 import { tagWarnings } from '../../lib/tags'
 import { generateCode } from '../../lib/codegen'
 import { copyText } from '../../lib/response'
+import { notifyError } from '../../lib/notify'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
 
@@ -170,8 +172,8 @@ export function RequestEditor() {
   return (
     <div className="flex h-full flex-col">
       {meta?.changedOnDisk && (
-        <div className="flex items-center justify-between gap-2 border-b border-amber-500/40 bg-amber-500/10 px-3 py-1.5">
-          <p className="text-xs text-amber-600">
+        <div className="flex items-center justify-between gap-2 border-b border-status-warn/40 bg-status-warn/10 px-3 py-1.5">
+          <p className="text-xs text-status-warn">
             This request changed on disk since you opened it. Overwrite the
             file, or reload to keep the on-disk version.
           </p>
@@ -194,31 +196,28 @@ export function RequestEditor() {
         </div>
       )}
       {requestPath && dirty && warnings.length > 0 && (
-        <div className="flex flex-col gap-0.5 border-b border-yellow-500/40 bg-yellow-500/10 px-3 py-1.5">
+        <div className="flex flex-col gap-0.5 border-b border-status-warn/40 bg-status-warn/10 px-3 py-1.5">
           {warnings.map((w) => (
-            <p key={w} className="text-xs text-yellow-600">
+            <p key={w} className="text-xs text-status-warn">
               {w}
             </p>
           ))}
         </div>
       )}
-      <div className="flex items-center gap-2 p-2">
-        <select
+      <div className="flex min-w-0 items-center gap-2 p-2">
+        <CompactSelect
           value={draft.method}
-          onChange={(e) => patch({ method: e.target.value })}
-          className="w-28 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground"
-        >
-          {methods.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
+          onChange={(method) => patch({ method })}
+          ariaLabel="HTTP method"
+          className="w-24 shrink-0 font-mono font-semibold"
+          options={methods.map((m) => ({ value: m, label: m }))}
+        />
         <input
           value={draft.url}
           onChange={(e) => patch({ url: e.target.value })}
           placeholder="https://reqly-test-api.vercel.app/api/users?page=1 — mock API for testing"
-          className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
+          spellCheck={false}
+          className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
         />
         <span
           title={meta?.env ? 'Environment pinned by the request file' : 'Environment from the app header'}
@@ -235,15 +234,20 @@ export function RequestEditor() {
         <Button size="sm" onClick={handleSend} disabled={loading}>
           {loading ? 'Sending…' : 'Send'}
         </Button>
-        <select value={codeLang} onChange={(e) => {
-          const v = e.target.value
-          if (v === "curl" || v === "js" || v === "python" || v === "go") setCodeLang(v)
-        }} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
-          <option value="curl">cURL</option>
-          <option value="js">JS</option>
-          <option value="python">Python</option>
-          <option value="go">Go</option>
-        </select>
+        <CompactSelect
+          value={codeLang}
+          onChange={(v) => {
+            if (v === "curl" || v === "js" || v === "python" || v === "go") setCodeLang(v)
+          }}
+          ariaLabel="Snippet language"
+          className="shrink-0"
+          options={[
+            { value: "curl", label: "cURL" },
+            { value: "js", label: "JS" },
+            { value: "python", label: "Python" },
+            { value: "go", label: "Go" },
+          ]}
+        />
         <Button
           size="sm"
           variant="outline"
@@ -259,9 +263,14 @@ export function RequestEditor() {
               },
               codeLang,
             )
-            void copyText(code)
-            setCopiedCode(true)
-            setTimeout(() => setCopiedCode(false), 1500)
+            void copyText(code).then((ok) => {
+              if (ok) {
+                setCopiedCode(true)
+                setTimeout(() => setCopiedCode(false), 1500)
+              } else {
+                notifyError('Copy failed', 'Clipboard access was denied — copy the snippet manually.')
+              }
+            })
           }}
         >
           {copiedCode ? 'Copied' : 'Copy as'}
@@ -373,27 +382,21 @@ export function RequestEditor() {
               </div>
             ) : draft.bodyType === 'binary' ? (
               <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-md border border-border p-2">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    File path — relative to the request file
+                  </span>
                   <input
                     value={draft.body}
                     onChange={(e) => patch({ body: e.target.value })}
-                    placeholder="file path (relative to request file)"
+                    placeholder="./fixtures/payload.bin"
                     spellCheck={false}
-                    className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground"
+                    className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground"
                   />
-                  <label className="shrink-0 cursor-pointer rounded-md border border-input bg-muted px-2 py-1 text-xs hover:bg-muted/80">
-                    Browse
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) patch({ body: file.name })
-                      }}
-                    />
-                  </label>
                 </div>
-                {draft.body && <p className="text-[11px] text-muted-foreground">File path is Git-native, relative to the request file’s collection. Read at send.</p>}
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Enter a Git-native path relative to the request file (a browser file picker cannot produce one). The core reads the bytes from disk at send time.
+                </p>
               </div>
             ) : draft.bodyType === 'graphql' ? (
               <div className="flex min-h-0 flex-1 flex-col gap-2">
