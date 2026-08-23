@@ -191,11 +191,50 @@ and basic/bearer/apikey auth. Scripts and unsupported features are reported as w
 	},
 }
 
+var importInsomniaCmd = &cobra.Command{
+	Use:   "insomnia <file> [--output <dir>]",
+	Short: "Import an Insomnia export (v4/v5) into a workspace",
+	Long: `Parse an Insomnia export — v4 JSON (__export_format: 4) or v5 YAML
+(collection.insomnia.rest/5.0) — and write it as a Git-native workspace.
+
+  reqly import insomnia insomnia_export.json
+  reqly import insomnia collection.yaml --output ./ws
+
+Imports requests, nested folders, environments (as native environments/*.yaml),
+and basic/bearer/apikey/digest auth. Cookie jars and unsupported features are
+reported as warnings.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		data, err := os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("read Insomnia export: %w", err)
+		}
+		result, warnings, err := importer.ParseInsomnia(data)
+		if err != nil {
+			return err
+		}
+		for _, w := range warnings {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", w)
+		}
+		out := importOutput
+		if out == "" {
+			out = importer.SanitizeDirName(result.Title)
+		}
+		if err := result.Write(out); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "imported %s into %s (%d requests, %d environments)\n",
+			filepath.Base(args[0]), out, result.RequestCount(), len(result.Environments))
+		return nil
+	},
+}
+
 func init() {
-	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd, importPostmanCmd)
+	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd, importPostmanCmd, importInsomniaCmd)
 	importCurlCmd.Flags().StringVar(&importOutput, "output", "", "write a request file to this path")
 	importOpenAPICmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importHarCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importHarCmd.Flags().StringVar(&importHarCollection, "collection", "har-import", "collection name for HAR entries")
 	importPostmanCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
+	importInsomniaCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 }

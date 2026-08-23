@@ -163,3 +163,52 @@ func resetImportExportFlags() {
 		}
 	}
 }
+
+func TestImportInsomnia(t *testing.T) {
+	src := filepath.Join("..", "..", "..", "internal", "importer", "testdata", "import-suite", "insomnia", "fixtures", "insomnia-v5.yaml")
+	outDir := filepath.Join(t.TempDir(), "ws")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "insomnia", src, "--output", outDir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{
+		"reqly.yaml",
+		filepath.Join("collections", "insomnia-import", "reqly.yaml"),
+		filepath.Join("collections", "insomnia-import", "API-Tests", "Authentication", "Login-User.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(outDir, rel)); err != nil {
+			t.Fatalf("expected %s: %v", rel, err)
+		}
+	}
+	envFiles, err := filepath.Glob(filepath.Join(outDir, "environments", "*.yaml"))
+	if err != nil || len(envFiles) != 1 {
+		t.Fatalf("environment files = %v (%v)", envFiles, err)
+	}
+}
+
+func TestImportPostmanEndToEnd(t *testing.T) {
+	src := filepath.Join("..", "..", "..", "internal", "importer", "testdata", "import-suite", "postman", "fixtures", "postman-v21-wrapped.json")
+	outDir := filepath.Join(t.TempDir(), "ws")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"import", "postman", src, "--output", outDir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{
+		"reqly.yaml",
+		filepath.Join("collections", "postman-import", "Get-Users.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(outDir, rel)); err != nil {
+			t.Fatalf("expected %s: %v", rel, err)
+		}
+	}
+}
