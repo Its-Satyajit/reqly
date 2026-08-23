@@ -20,6 +20,26 @@ export interface CrashEntry {
 const MAX_BREADCRUMBS = 20;
 let breadcrumbs: Breadcrumb[] = [];
 
+export interface GoLogLine {
+  at: number;
+  level: string;
+  message: string;
+}
+
+const MAX_GO_LOGS = 30;
+let goLogs: GoLogLine[] = [];
+
+export function addGoLog(level: string, message: string): void {
+  goLogs.push({ at: Date.now(), level, message });
+  if (goLogs.length > MAX_GO_LOGS) {
+    goLogs = goLogs.slice(-MAX_GO_LOGS);
+  }
+}
+
+export function getGoLogs(): GoLogLine[] {
+  return [...goLogs];
+}
+
 export function addBreadcrumb(kind: string, detail?: string): void {
   breadcrumbs.push({ at: Date.now(), kind, detail });
   if (breadcrumbs.length > MAX_BREADCRUMBS) {
@@ -104,6 +124,14 @@ export function formatReport(entry: CrashEntry): string {
     for (const crumb of crumbs) {
       const time = new Date(crumb.at).toLocaleTimeString();
       lines.push(`  ${time}  ${crumb.kind}${crumb.detail ? ` — ${crumb.detail}` : ""}`);
+    }
+  }
+  const logs = getGoLogs();
+  if (logs.length > 0) {
+    lines.push("", `[Backend log] (last ${logs.length})`);
+    for (const entry of logs) {
+      const time = new Date(entry.at).toLocaleTimeString();
+      lines.push(`  ${time}  ${entry.level}  ${entry.message}`);
     }
   }
   return lines.join("\n");

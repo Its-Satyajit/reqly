@@ -22,8 +22,10 @@ import {
 	useRequestStore,
 	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
+	addGoLog,
 } from "@reqly/frontend";
 import { Events } from "@wailsio/runtime";
+
 import { AppService } from "../bindings/github.com/Its-Satyajit/reqly/apps/desktop/backend/index";
 
 /**
@@ -522,4 +524,9 @@ export function initRequestBridge(): void {
 	useHistoryStore.getState().setAdapter(wailsHistoryAdapter);
 	useImportStore.getState().setAdapter(wailsImportAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
+
+	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {
+		const payload = e.data ?? {};
+		addGoLog(String(payload.level ?? "LOG"), String(payload.message ?? ""));
+	});
 }
