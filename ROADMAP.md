@@ -38,6 +38,7 @@ Project skeleton, build system, and the first core primitives.
 - [x] Go ↔ TypeScript bindings generated (`wails3 generate bindings`)
 - [x] Host app (`apps/desktop/backend/frontend`) — Vite + React + Tailwind, wails vite plugin, port 9245
 - [x] `wails3 build` produces `bin/reqly`
+- [x] Backend warning/error log mirror — slog handler emits `reqly.golog` events so desktop crash reports include Go-side diagnostics
 
 ### 0.3 Shared UI shell (`frontend/`)
 
