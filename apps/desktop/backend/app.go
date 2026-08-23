@@ -46,6 +46,8 @@ type AppService struct {
 	runs         *core.CollectionRunService
 	// authBackend is the active token-store backend name ("file"/"keychain").
 	authBackend string
+	// root is the resolved workspace root directory ("" when no workspace).
+	root string
 
 	runMu      sync.Mutex
 	runCancels map[string]context.CancelFunc
@@ -72,6 +74,7 @@ func NewAppService() *AppService {
 		environments: core.NewEnvironmentService(root),
 		workspace:    core.NewWorkspaceService(root),
 		runs:         core.NewCollectionRunService(root),
+		root:         root,
 		runCancels:   make(map[string]context.CancelFunc),
 		sendCancels:  make(map[string]context.CancelFunc),
 	}
