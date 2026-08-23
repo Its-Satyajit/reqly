@@ -20,6 +20,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
@@ -31,6 +32,14 @@ import (
 // should not depend on the transport directly.
 type RequestService struct {
 	client *request.Client
+	// root is the workspace root this service is bound to ("" = unbound:
+	// no token caching, no history recording). Run uses it for environment
+	// resolution and history storage.
+	root    string
+	warning string
+
+	histOnce   sync.Once
+	historySvc *HistoryService
 }
 
 // NewRequestService returns a RequestService backed by a fresh request client

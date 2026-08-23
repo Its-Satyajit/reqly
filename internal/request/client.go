@@ -109,6 +109,14 @@ func NewClient(opts ...Option) *Client {
 	return c
 }
 
+// ExecuteWithOnRetry behaves like Execute but additionally notifies the given
+// observer of automatic retries. The observer travels with the call, so
+// concurrent Executes sharing one Client never race over it; a client-level
+// observer set via WithOnRetry fires too.
+func (c *Client) ExecuteWithOnRetry(ctx context.Context, r *Request, vars auth.Interpolator, onRetry func(RetryEvent)) (*response.Response, error) {
+	return c.execute(ctx, r, vars, onRetry)
+}
+
 // Execute runs a Request and returns the response. Variables are interpolated
 // into the URL, headers, query parameters, and body before sending.
 //
@@ -119,6 +127,10 @@ func NewClient(opts ...Option) *Client {
 // those never consume retry budget. The returned response reports how many
 // attempts it took in Attempts.
 func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator) (*response.Response, error) {
+	return c.execute(ctx, r, vars, nil)
+}
+
+func (c *Client) execute(ctx context.Context, r *Request, vars auth.Interpolator, onRetry func(RetryEvent)) (*response.Response, error) {
 	if r.Timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(r.Timeout)*time.Millisecond)
@@ -150,7 +162,11 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 		}
 
 		delay := policy.delayFor(resp, attempt, time.Now())
-		if c.onRetry != nil {
+		notify := onRetry
+		if notify == nil {
+			notify = c.onRetry
+		}
+		if notify != nil {
 			event := RetryEvent{
 				Attempt:       attempt,
 				TotalAttempts: totalAttempts,
@@ -161,7 +177,7 @@ func (c *Client) Execute(ctx context.Context, r *Request, vars auth.Interpolator
 			} else {
 				event.StatusCode = resp.StatusCode
 			}
-			c.onRetry(event)
+			notify(event)
 		}
 
 		timer := time.NewTimer(delay)
