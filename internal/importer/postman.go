@@ -18,11 +18,14 @@
 package importer
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/Its-Satyajit/reqly/internal/request"
@@ -51,7 +54,7 @@ type PostmanResult struct {
 
 // pmCollection mirrors the Postman v2.1 collection JSON.
 type pmCollection struct {
-	Info struct {
+	Info *struct {
 		Name   string `json:"name"`
 		Schema string `json:"schema"`
 	} `json:"info"`
@@ -189,34 +192,81 @@ type pmAuth struct {
 }
 
 // pmAuthParams accepts both auth parameter forms: a plain object or an array
-// of {key, value} rows.
+// of {key, value} rows. Values may be any JSON scalar; non-strings are
+// converted to their literal text.
 type pmAuthParams map[string]string
 
 func (p *pmAuthParams) UnmarshalJSON(data []byte) error {
+	scalar := func(v any) string {
+		switch t := v.(type) {
+		case string:
+			return t
+		case float64:
+			if t == math.Trunc(t) && math.Abs(t) < 1<<53 {
+				return strconv.FormatInt(int64(t), 10)
+			}
+			return strconv.FormatFloat(t, 'f', -1, 64)
+		case bool:
+			return strconv.FormatBool(t)
+		default:
+			return ""
+		}
+	}
 	if len(data) > 0 && data[0] == '[' {
 		var rows []struct {
 			Key   string `json:"key"`
-			Value string `json:"value"`
+			Value any    `json:"value"`
 		}
 		if err := json.Unmarshal(data, &rows); err != nil {
 			return err
 		}
 		*p = map[string]string{}
 		for _, r := range rows {
-			(*p)[r.Key] = r.Value
+			(*p)[r.Key] = scalar(r.Value)
 		}
 		return nil
 	}
-	return json.Unmarshal(data, (*map[string]string)(p))
+	var obj map[string]any
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return err
+	}
+	*p = map[string]string{}
+	for k, v := range obj {
+		(*p)[k] = scalar(v)
+	}
+	return nil
 }
 
 // ParsePostman parses a Postman collection (v2.x JSON) into a PostmanResult.
-// Unsupported features (scripts, file bodies, unmappable auth) are reported
-// as warnings rather than errors.
+// Both export shapes are accepted: the bare collection object and the
+// wrapped envelope {"collection": {...}}. Unsupported features (scripts,
+// file bodies, unmappable auth) are reported as warnings rather than errors.
 func ParsePostman(data []byte) (*PostmanResult, []string, error) {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || data[0] != '{' {
+		return nil, nil, fmt.Errorf("parse Postman collection: not a JSON object")
+	}
+	// Unwrap the {"collection": {...}} export envelope when present.
+	var probe struct {
+		Collection *json.RawMessage `json:"collection"`
+		Info       *json.RawMessage `json:"info"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return nil, nil, fmt.Errorf("parse Postman collection: %w", err)
+	}
+	if probe.Collection != nil && probe.Info == nil {
+		return parsePostmanCollection(*probe.Collection)
+	}
+	return parsePostmanCollection(data)
+}
+
+func parsePostmanCollection(data []byte) (*PostmanResult, []string, error) {
 	var col pmCollection
 	if err := json.Unmarshal(data, &col); err != nil {
 		return nil, nil, fmt.Errorf("parse Postman collection: %w", err)
+	}
+	if col.Info == nil {
+		return nil, nil, fmt.Errorf("not a valid Postman collection: missing info block")
 	}
 	res := &PostmanResult{
 		Title:      strings.TrimSpace(col.Info.Name),
@@ -517,6 +567,31 @@ func convertAuth(raw json.RawMessage) (request.Auth, string) {
 	default:
 		return request.Auth{}, fmt.Sprintf("auth type %q not supported for import; skipped", a.Type)
 	}
+}
+
+// RequestCount reports the total number of imported requests across all
+// folder levels.
+func (r *PostmanResult) RequestCount() int { return countRequests(r.Root) }
+
+func countRequests(f *PostmanFolder) int {
+	if f == nil {
+		return 0
+	}
+	n := len(f.Requests)
+	for _, sub := range f.Folders {
+		n += countRequests(sub)
+	}
+	return n
+}
+
+// SanitizeDirName makes a collection title safe for use as an output
+// directory name.
+func SanitizeDirName(name string) string {
+	out := sanitizeName(name)
+	if strings.TrimSpace(out) == "" || out == "-" {
+		return "postman-import"
+	}
+	return out
 }
 
 // Write writes the result as a Git-native workspace: reqly.yaml +

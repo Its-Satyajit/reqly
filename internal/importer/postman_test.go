@@ -312,17 +312,134 @@ func TestParsePostmanOfficialExamples(t *testing.T) {
 			if len(ws.Collections) != 1 {
 				t.Fatalf("collections = %d, want 1", len(ws.Collections))
 			}
-			if countRequests(res.Root) == 0 {
+			if res.RequestCount() == 0 {
 				t.Fatal("expected at least one imported request")
 			}
 		})
 	}
 }
 
-func countRequests(f *PostmanFolder) int {
-	n := len(f.Requests)
-	for _, sub := range f.Folders {
-		n += countRequests(sub)
+// TestParsePostmanImportSuite runs the vendored community import-test fixtures
+// (see testdata/import-suite/README.txt) covering wrapped exports, v2.0 schemas,
+// malformed input, missing info blocks, and mixed auth/body edge cases.
+func TestParsePostmanImportSuite(t *testing.T) {
+	type expectation int
+	const (
+		mustParse expectation = iota
+		mustError
+	)
+	cases := map[string]expectation{
+		"postman-v21.json":                                      mustParse,
+		"postman-v21-wrapped.json":                              mustParse,
+		"postman-v20.json":                                      mustParse,
+		"postman-collection-vars-mixed-disabled.json":           mustParse,
+		"postman-with-import-issues.json":                       mustParse,
+		"postman-with-many-import-issues.json":                  mustParse,
+		"postman-with-scripts.json":                             mustParse,
+		"postman-with-settings.json":                            mustParse,
+		"postman-with-examples.json":                            mustParse,
+		"postman-with-max-redirects.json":                       mustParse,
+		"postman-edgegrid-collection.json":                      mustParse,
+		"postman-import-apikey-header-collection.json":          mustParse,
+		"postman-import-apikey-query-collection.json":           mustParse,
+		"postman-import-binary-body-mode.json":                  mustParse,
+		"postman-import-oauth2-implicit-grant-type.json":        mustParse,
+		"postman-import-oauth2-token-placement-collection.json": mustParse,
+		"postman-invalid-schema.json":                           mustParse,
+		"postman-malformed.json":                                mustError,
+		"postman-invalid-missing-info.json":                     mustError,
 	}
-	return n
+	names, err := filepath.Glob(filepath.Join("testdata", "import-suite/postman/fixtures", "*.json"))
+	if err != nil || len(names) == 0 {
+		t.Fatalf("import-suite fixtures missing: %v %v", names, err)
+	}
+	seen := map[string]bool{}
+	for _, path := range names {
+		base := filepath.Base(path)
+		want, ok := cases[base]
+		if !ok {
+			t.Errorf("fixture %s has no expectation entry", base)
+			continue
+		}
+		seen[base] = true
+		t.Run(base, func(t *testing.T) {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			res, _, err := ParsePostman(data)
+			if want == mustError {
+				if err == nil {
+					t.Fatalf("expected error, got result %+v", res)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			dir := t.TempDir()
+			if err := res.Write(dir); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := collections.LoadWorkspace(dir); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	for name := range cases {
+		if !seen[name] {
+			t.Errorf("expected fixture %s not found in testdata", name)
+		}
+	}
+}
+
+func TestParsePostmanWrappedEnvelope(t *testing.T) {
+	inner := postmanCollection(postmanV21)
+	wrapped := `{"collection": ` + inner + `}`
+	res, warnings, err := ParsePostman([]byte(wrapped))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Title != "Demo API" || len(res.Root.Folders) != 1 {
+		t.Fatalf("unwrapped = %q, %d folders", res.Title, len(res.Root.Folders))
+	}
+	bare, _, err := ParsePostman([]byte(inner))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bare.Title != res.Title || bare.RequestCount() != res.RequestCount() {
+		t.Fatal("wrapped and bare parses diverge")
+	}
+	_ = warnings
+}
+
+func TestParsePostmanNormalizesMethods(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "import-suite", "postman", "fixtures", "postman-with-many-import-issues.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, _, err := ParsePostman(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var methods []string
+	var walk func(f *PostmanFolder)
+	walk = func(f *PostmanFolder) {
+		for _, r := range f.Requests {
+			methods = append(methods, string(r.Request.Method))
+		}
+		for _, sub := range f.Folders {
+			walk(sub)
+		}
+	}
+	walk(res.Root)
+	if res.RequestCount() < 30 {
+		t.Fatalf("requests = %d, want >= 30", res.RequestCount())
+	}
+	for _, m := range methods {
+		switch m {
+		case "", "   ", "null":
+			t.Fatalf("method %q leaked through normalization", m)
+		}
+	}
 }
