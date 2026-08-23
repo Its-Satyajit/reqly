@@ -281,15 +281,26 @@ func TestPostmanWriteDedupesFilenames(t *testing.T) {
 }
 
 // TestParsePostmanOfficialExamples imports the example collections published
-// in postmanlabs/postman-collection (Apache-2.0), vendored under
-// testdata/postman, and asserts each yields a loadable workspace.
+// in postmanlabs/postman-collection (Apache-2.0), vendored alongside the
+// community suite fixtures, and asserts each yields a loadable workspace.
 func TestParsePostmanOfficialExamples(t *testing.T) {
-	matches, err := filepath.Glob(filepath.Join("testdata", "postman", "*.json"))
+	matches, err := filepath.Glob(filepath.Join("testdata", "import-suite", "postman", "fixtures", "*.json"))
 	if err != nil || len(matches) == 0 {
 		t.Fatalf("fixtures missing: %v %v", matches, err)
 	}
+	// Invalid/malformed fixtures are expectation-tested in
+	// TestParsePostmanImportSuite; skip them here.
+	skip := map[string]bool{
+		"postman-invalid-missing-info.json": true,
+		"postman-invalid-schema.json":       true,
+		"postman-malformed.json":            true,
+	}
 	for _, path := range matches {
-		t.Run(filepath.Base(path), func(t *testing.T) {
+		base := filepath.Base(path)
+		if skip[base] {
+			continue
+		}
+		t.Run(base, func(t *testing.T) {
 			data, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
@@ -348,6 +359,13 @@ func TestParsePostmanImportSuite(t *testing.T) {
 		"postman-invalid-schema.json":                           mustParse,
 		"postman-malformed.json":                                mustError,
 		"postman-invalid-missing-info.json":                     mustError,
+		// postmanlabs official examples, merged into the same fixtures dir.
+		"collection-v2.json":                     mustParse,
+		"digest.json":                            mustParse,
+		"hawk.json":                              mustParse,
+		"nested-v2-collection.json":              mustParse,
+		"nested-v2-collection-without-name.json": mustParse,
+		"oauth1.json":                            mustParse,
 	}
 	names, err := filepath.Glob(filepath.Join("testdata", "import-suite/postman/fixtures", "*.json"))
 	if err != nil || len(names) == 0 {
