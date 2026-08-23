@@ -161,7 +161,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Import cURL — `reqly import curl` (method, headers, JSON/raw/data bodies, basic auth, user-agent, cookies, GET-style query data; unsupported features reported)
 - [x] Import OpenAPI 3.x — `reqly import openapi` (servers, paths, operations, params, JSON bodies; writes a Git-native workspace)
 - [x] Export Postman collection v2.1 — `reqly export postman` (flat list, inherited base URL/headers applied)
-- [ ] Import: Postman, Insomnia, Swagger, HAR
+- [~] Import: Postman v2.1 ([M34](docs/spec/m34-postman-import.md) — requests, nested folders, variables, bodies raw/urlencoded/form-data/graphql, basic/bearer/apikey auth; scripts + file bodies warned), Insomnia, Swagger 2.x (via hand-rolled parser); HAR done ([M28](docs/spec/m28-har-import-export.md))
 - [ ] Export: requests, OpenAPI, responses, test results, docs
 - [ ] Import preservation (env/auth/scripts) + unsupported-feature reporting
 
