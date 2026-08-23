@@ -36,9 +36,9 @@ import (
 )
 
 var (
-	bulkDataPath       string
-	bulkParallel       bool
-	bulkConcurrency    int
+	bulkDataPath        string
+	bulkParallel        bool
+	bulkConcurrency     int
 	bulkContinueOnError bool
 )
 
