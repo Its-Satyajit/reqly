@@ -31,11 +31,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// InsomniaEnvironment is one imported Insomnia environment, destined for
-// environments/<name>.yaml in the output workspace.
+// InsomniaEnvironment is one imported environment, destined for
+// environments/<name>.yaml in the output workspace (shared by the Postman,
+// Insomnia, and Bruno importers).
 type InsomniaEnvironment struct {
 	Name      string
 	Variables map[string]string
+	Secrets   map[string]string
 	Warnings  []string
 }
 
@@ -529,10 +531,11 @@ func (r *InsomniaResult) Write(dir string) error {
 			if strings.TrimSpace(name) == "" {
 				name = "environment"
 			}
-			fileName := dedupeName(sanitizeName(name), seen)
 			payload := struct {
 				Variables map[string]string `yaml:"variables,omitempty"`
-			}{Variables: env.Variables}
+				Secrets   map[string]string `yaml:"secrets,omitempty"`
+			}{Variables: env.Variables, Secrets: env.Secrets}
+			fileName := dedupeName(sanitizeName(name), seen)
 			if err := writeYAMLFile(filepath.Join(envDir, fileName+".yaml"), payload); err != nil {
 				return err
 			}
