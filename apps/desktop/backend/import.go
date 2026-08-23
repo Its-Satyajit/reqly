@@ -94,9 +94,9 @@ func (s *AppService) Import(req ImportRequest) (*ImportResult, error) {
 // Detect sniffs content and reports which import format it represents, so
 // the dialog can badge the detected format as the user types or drops a
 // file. Advisory only — Import's FormatHint overrides it.
-func (s *AppService) Detect(content string) (string, bool, error) {
+func (s *AppService) Detect(content string) (string, bool) {
 	format, ok := importer.Detect([]byte(content))
-	return string(format), ok, nil
+	return string(format), ok
 }
 
 // resolveFormat applies the hint override or falls back to content sniffing.
@@ -126,7 +126,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 	case importer.FormatPostman:
 		parsed, report, err := importer.ParsePostman([]byte(req.Content))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse postman: %w", err)
 		}
 		res = &ImportResult{
 			Title:        parsed.Title,
@@ -138,7 +138,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 	case importer.FormatInsomnia:
 		parsed, report, err := importer.ParseInsomnia([]byte(req.Content))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse insomnia: %w", err)
 		}
 		res = &ImportResult{
 			Title:            parsed.Title,
@@ -151,7 +151,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 	case importer.FormatBruno:
 		parsed, report, err := importer.ParseBruno([]byte(req.Content))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse bruno: %w", err)
 		}
 		res = &ImportResult{
 			Title:            parsed.Title,
@@ -164,7 +164,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 	case importer.FormatHAR:
 		parsed, report, err := importer.ParseHAR([]byte(req.Content))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse har: %w", err)
 		}
 		res = &ImportResult{
 			Title:        parsed.Title,
@@ -176,7 +176,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 	case importer.FormatOpenAPI:
 		parsed, err := importer.ParseOpenAPI([]byte(req.Content))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse openapi: %w", err)
 		}
 		result := parsed.ToOpenAPIResult()
 		requestCount := 0
@@ -193,6 +193,10 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 			// tolerant importer, just without operation metadata.
 			if doc, err := reqlyopenapi.Load([]byte(req.Content)); err == nil {
 				res.Operations = reqlyopenapi.Explore(doc)
+			} else {
+				res.Report = importer.NewReport("openapi")
+				res.Report.Add("", importer.CategorySchema, importer.SeverityWarned,
+					"operation preview unavailable (%v)", err)
 			}
 		}
 		res.write = func(dir string) error { return result.Write(dir) }
@@ -200,7 +204,7 @@ func (s *AppService) importFormat(format importer.Format, req ImportRequest) (*I
 	case importer.FormatCurl:
 		parsed, err := importer.ParseCurl(req.Content)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse curl: %w", err)
 		}
 		return &ImportResult{
 			Kind:    ImportKindRequest,

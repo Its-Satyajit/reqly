@@ -471,30 +471,23 @@ function toImportOutcome(res: WailsImportResult): ImportOutcome {
 	};
 }
 
+async function runImport(
+	req: Parameters<typeof AppService.Import>[0],
+): Promise<ImportOutcome> {
+	const res = await AppService.Import(req);
+	if (!res) throw new Error("import failed");
+	return toImportOutcome(res);
+}
+
 export const wailsImportAdapter: ImportAdapter = {
 	detect: async (content) => {
 		const [format, ok] = await AppService.Detect(content);
 		return { format, ok };
 	},
-	preview: async ({ content, formatHint }) => {
-		const res = await AppService.Import({
-			content,
-			formatHint,
-			dryRun: true,
-		});
-		if (!res) throw new Error("import failed");
-		return toImportOutcome(res);
-	},
-	commit: async ({ content, formatHint, targetDir }) => {
-		const res = await AppService.Import({
-			content,
-			formatHint,
-			targetDir,
-			dryRun: false,
-		});
-		if (!res) throw new Error("import failed");
-		return toImportOutcome(res);
-	},
+	preview: ({ content, formatHint }) =>
+		runImport({ content, formatHint, dryRun: true }),
+	commit: ({ content, formatHint, targetDir }) =>
+		runImport({ content, formatHint, targetDir, dryRun: false }),
 };
 
 /**

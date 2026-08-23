@@ -205,11 +205,11 @@ func TestDetectBridge(t *testing.T) {
 	t.Chdir(dir)
 	svc := NewAppService()
 
-	format, ok, err := svc.Detect("curl https://example.com")
-	if err != nil || !ok || format != "curl" {
-		t.Errorf("Detect(curl) = (%q, %v, %v), want (curl, true, nil)", format, ok, err)
+	format, ok := svc.Detect("curl https://example.com")
+	if !ok || format != "curl" {
+		t.Errorf("Detect(curl) = (%q, %v), want (curl, true)", format, ok)
 	}
-	if _, ok, _ := svc.Detect(""); ok {
+	if _, ok := svc.Detect(""); ok {
 		t.Error("Detect(empty) reported a match, want none")
 	}
 }
