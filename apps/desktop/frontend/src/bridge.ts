@@ -3,6 +3,8 @@ import type {
 	CollectionsAdapter,
 	EnvAdapter,
 	HistoryAdapter,
+	ImportAdapter,
+	ImportOutcome,
 	RequestInput,
 	RequestSender,
 	ResponseData,
@@ -15,6 +17,7 @@ import {
 	serializeBody,
 	useAuthStore,
 	useHistoryStore,
+	useImportStore,
 	useRequestStore,
 	useWorkspaceStore,
 } from "@reqly/frontend";
@@ -453,6 +456,47 @@ export const wailsHistoryAdapter: HistoryAdapter = {
 	},
 };
 
+type WailsImportResult = NonNullable<Awaited<ReturnType<typeof AppService.Import>>>;
+
+function toImportOutcome(res: WailsImportResult): ImportOutcome {
+	return {
+		kind: res.kind,
+		format: res.format,
+		title: res.title,
+		requestCount: res.requestCount,
+		environmentCount: res.environmentCount,
+		targetDir: res.targetDir,
+		report: res.report ?? undefined,
+		operations: res.operations ?? undefined,
+	};
+}
+
+export const wailsImportAdapter: ImportAdapter = {
+	detect: async (content) => {
+		const [format, ok] = await AppService.Detect(content);
+		return { format, ok };
+	},
+	preview: async ({ content, formatHint }) => {
+		const res = await AppService.Import({
+			content,
+			formatHint,
+			dryRun: true,
+		});
+		if (!res) throw new Error("import failed");
+		return toImportOutcome(res);
+	},
+	commit: async ({ content, formatHint, targetDir }) => {
+		const res = await AppService.Import({
+			content,
+			formatHint,
+			targetDir,
+			dryRun: false,
+		});
+		if (!res) throw new Error("import failed");
+		return toImportOutcome(res);
+	},
+};
+
 /**
  * Wires the Go core behind the shared request, auth, and environment stores.
  * Called once from the host entry point, before the React tree mounts.
@@ -466,4 +510,5 @@ export function initRequestBridge(): void {
 	useWorkspaceStore.getState().setEnvAdapter(wailsEnvAdapter);
 	useWorkspaceStore.getState().setWorkspaceAdapter(wailsCollectionsAdapter);
 	useHistoryStore.getState().setAdapter(wailsHistoryAdapter);
+	useImportStore.getState().setAdapter(wailsImportAdapter);
 }
