@@ -5,8 +5,14 @@ import {
   type HistoryEntry,
   type ReplayedResponse,
 } from "../lib/history"
+import { searchHistory } from "../lib/historySearch"
 
 export const HISTORY_PAGE_SIZE = 50
+
+/** How many recent entries the fuzzy search pools over. History is bounded
+ * by retention, so this covers the practical search space without IPC per
+ * keystroke. */
+const HISTORY_SEARCH_POOL = 500
 
 interface HistoryState {
   adapter: HistoryAdapter
@@ -47,10 +53,14 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     const query = opts.query ?? get().query
     set({ loading: true, statusFilter: status, query })
     try {
-      const entries =
-        query.trim() !== ""
-          ? await get().adapter.search(query.trim(), limit)
-          : await get().adapter.list(limit, offset, status, "")
+      let entries: HistoryEntry[]
+      if (query.trim() !== "") {
+        // Fuse.js over the recent pool — punctuation-safe, typo-tolerant.
+        const pool = await get().adapter.list(HISTORY_SEARCH_POOL, 0, "", "")
+        entries = searchHistory(pool, query).slice(0, limit)
+      } else {
+        entries = await get().adapter.list(limit, offset, status, "")
+      }
       set({ entries, error: null })
     } catch (err) {
       set({ error: err instanceof Error ? err.message : String(err) })

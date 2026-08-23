@@ -17,6 +17,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+
+	sqlcdb "github.com/Its-Satyajit/reqly/internal/history/db"
 
 	_ "modernc.org/sqlite"
 )
@@ -52,10 +55,13 @@ type Cookie struct {
 	Env       string
 }
 
-// Store is the SQLite store for history and cookies.
+// Store is the SQLite store for history and cookies. SQL lives in db/*.sql
+// and is compiled to typed Go by sqlc (db package); this struct owns the
+// handle, locking, spill files, and row mapping only.
 type Store struct {
 	dbPath string
 	db     *sql.DB
+	q      *sqlcdb.Queries
 	mu     sync.Mutex
 }
 
@@ -71,7 +77,7 @@ func NewStore(dbPath string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Store{dbPath: dbPath, db: db}
+	s := &Store{dbPath: dbPath, db: db, q: sqlcdb.New(db)}
 	if err := s.migrate(context.Background()); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -191,13 +197,34 @@ func (s *Store) Insert(ctx context.Context, e *Entry) error {
 	}
 	reqH, _ := json.Marshal(e.ReqHeaders)
 	respH, _ := json.Marshal(e.RespHeaders)
-	_, err := s.db.ExecContext(ctx, `INSERT INTO history (id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		e.ID, e.RequestPath, e.Method, e.URL, e.Env, e.Status, e.DurationMS, e.Size, string(reqH), reqBodyBlob, reqBodyPath, string(respH), respBodyBlob, respBodyPath, maxAttempts(e.Attempts), e.CreatedAt.UTC().Format(time.RFC3339Nano))
-	if err != nil {
+	if err := s.q.InsertHistory(ctx, sqlcdb.InsertHistoryParams{
+		ID:              e.ID,
+		RequestPath:     sql.NullString{String: e.RequestPath, Valid: true},
+		Method:          sql.NullString{String: e.Method, Valid: true},
+		Url:             sql.NullString{String: e.URL, Valid: true},
+		Env:             sql.NullString{String: e.Env, Valid: true},
+		Status:          sql.NullInt64{Int64: int64(e.Status), Valid: true},
+		DurationMs:      sql.NullInt64{Int64: int64(e.DurationMS), Valid: true},
+		Size:            sql.NullInt64{Int64: int64(e.Size), Valid: true},
+		ReqHeadersJson:  sql.NullString{String: string(reqH), Valid: true},
+		ReqBody:         reqBodyBlob,
+		ReqBodyPath:     sql.NullString{String: reqBodyPath, Valid: true},
+		RespHeadersJson: sql.NullString{String: string(respH), Valid: true},
+		RespBody:        respBodyBlob,
+		RespBodyPath:    sql.NullString{String: respBodyPath, Valid: true},
+		Attempts:        sql.NullInt64{Int64: int64(maxAttempts(e.Attempts)), Valid: true},
+		CreatedAt:       e.CreatedAt.UTC().Format(time.RFC3339Nano),
+	}); err != nil {
 		return err
 	}
 	// FTS
-	_, _ = s.db.ExecContext(ctx, `INSERT INTO history_fts (url, request_path, id) VALUES (?,?,?)`, e.URL, e.RequestPath, e.ID)
+	if err := s.q.InsertHistoryFts(ctx, sqlcdb.InsertHistoryFtsParams{
+		Url:         e.URL,
+		RequestPath: e.RequestPath,
+		ID:          e.ID,
+	}); err != nil {
+		return err
+	}
 	// retention is not auto here; caller may call EnforceRetention, but Insert auto-prunes to 500
 	_ = s.enforceRetentionLocked(ctx, 500)
 	return nil
@@ -215,7 +242,50 @@ func (s *Store) spill(id, suffix string, data []byte) (string, error) {
 	return p, nil
 }
 
-func (s *Store) loadBody(blob []byte, path string) []byte {
+// List returns entries ordered by created_at DESC.
+func (s *Store) List(ctx context.Context, limit, offset int, statusFilter *int) ([]Entry, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	rows, err := s.q.ListHistory(ctx, sqlcdb.ListHistoryParams{Limit: int64(limit), Offset: int64(offset)})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Entry, 0, len(rows))
+	for _, row := range rows {
+		entry, err := rowToEntry(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, entry)
+	}
+	return out, nil
+}
+
+// rowToEntry maps a generated history row onto the public Entry, hydrating
+// spilled bodies from disk when the blob column is empty.
+func rowToEntry(row sqlcdb.History) (Entry, error) {
+	var e Entry
+	e.ID = row.ID
+	e.RequestPath = row.RequestPath.String
+	e.Method = row.Method.String
+	e.URL = row.Url.String
+	e.Env = row.Env.String
+	e.Status = int(row.Status.Int64)
+	e.DurationMS = row.DurationMs.Int64
+	e.Size = row.Size.Int64
+	e.Attempts = int(row.Attempts.Int64)
+	if t, err := time.Parse(time.RFC3339Nano, row.CreatedAt); err == nil {
+		e.CreatedAt = t
+	}
+	_ = json.Unmarshal([]byte(row.ReqHeadersJson.String), &e.ReqHeaders)
+	_ = json.Unmarshal([]byte(row.RespHeadersJson.String), &e.RespHeaders)
+	e.ReqBody = loadSpillable(row.ReqBody, row.ReqBodyPath.String)
+	e.RespBody = loadSpillable(row.RespBody, row.RespBodyPath.String)
+	return e, nil
+}
+
+// loadSpillable prefers the on-disk spill file over the inline blob.
+func loadSpillable(blob []byte, path string) []byte {
 	if path != "" {
 		if b, err := os.ReadFile(path); err == nil {
 			return b
@@ -224,61 +294,45 @@ func (s *Store) loadBody(blob []byte, path string) []byte {
 	return blob
 }
 
-// List returns entries ordered by created_at DESC.
-func (s *Store) List(ctx context.Context, limit, offset int, statusFilter *int) ([]Entry, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	var rows *sql.Rows
-	var err error
-	if statusFilter != nil {
-		rows, err = s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at FROM history ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?`, limit, offset)
-		// filter in Go to avoid complex WHERE with status ranges (tests use nil)
-	} else {
-		rows, err = s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at FROM history ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?`, limit, offset)
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return scanEntries(rows)
-}
-
 // Show returns one entry by id, loading spilled bodies.
 func (s *Store) Show(ctx context.Context, id string) (Entry, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	rows, err := s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at FROM history WHERE id=?`, id)
-	if err != nil {
-		return Entry{}, err
+	return s.showLocked(ctx, id)
+}
+
+// ftsQuery converts free-text user input into a safe FTS5 MATCH expression.
+// Every whitespace-separated token carrying at least one letter or digit
+// becomes a double-quoted phrase (embedded quotes doubled) with prefix
+// matching, so FTS5 operators, punctuation, and column-filter syntax typed by
+// the user are treated as literal search text instead of query syntax.
+func ftsQuery(q string) string {
+	phrases := make([]string, 0, strings.Count(q, " ")+1)
+	for _, tok := range strings.Fields(q) {
+		if !strings.ContainsFunc(tok, unicode.IsLetter) && !strings.ContainsFunc(tok, unicode.IsDigit) {
+			continue
+		}
+		phrases = append(phrases, `"`+strings.ReplaceAll(tok, `"`, `""`)+`"*`)
 	}
-	defer rows.Close()
-	entries, err := scanEntries(rows)
-	if err != nil {
-		return Entry{}, err
-	}
-	if len(entries) == 0 {
-		return Entry{}, fmt.Errorf("history: not found: %s", id)
-	}
-	return entries[0], nil
+	return strings.Join(phrases, " ")
 }
 
 // Search does FTS MATCH on url/request_path.
 func (s *Store) Search(ctx context.Context, q string, limit int) ([]Entry, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	match := ftsQuery(q)
+	if match == "" {
+		return nil, nil
+	}
 	// FTS ids
-	rows, err := s.db.QueryContext(ctx, `SELECT id FROM history_fts WHERE history_fts MATCH ? LIMIT ?`, q, limit)
+	ids, err := s.q.SearchHistoryIds(ctx, sqlcdb.SearchHistoryIdsParams{
+		Url:         match,
+		RequestPath: match,
+		Limit:       int64(limit),
+	})
 	if err != nil {
 		return nil, err
-	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
 	}
 	if len(ids) == 0 {
 		return nil, nil
@@ -296,19 +350,11 @@ func (s *Store) Search(ctx context.Context, q string, limit int) ([]Entry, error
 }
 
 func (s *Store) showLocked(ctx context.Context, id string) (Entry, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, request_path, method, url, env, status, duration_ms, size, req_headers_json, req_body, req_body_path, resp_headers_json, resp_body, resp_body_path, attempts, created_at FROM history WHERE id=?`, id)
+	row, err := s.q.GetHistory(ctx, id)
 	if err != nil {
-		return Entry{}, err
-	}
-	defer rows.Close()
-	entries, err := scanEntries(rows)
-	if err != nil {
-		return Entry{}, err
-	}
-	if len(entries) == 0 {
 		return Entry{}, fmt.Errorf("history: not found: %s", id)
 	}
-	return entries[0], nil
+	return rowToEntry(row)
 }
 
 // EnforceRetention keeps last keep entries, deletes oldest.
@@ -322,24 +368,17 @@ func (s *Store) enforceRetentionLocked(ctx context.Context, keep int) error {
 	if keep <= 0 {
 		return nil
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT id FROM history ORDER BY datetime(created_at) ASC`)
+	ids, err := s.q.ListHistoryIdsAsc(ctx)
 	if err != nil {
 		return err
-	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		_ = rows.Scan(&id)
-		ids = append(ids, id)
 	}
 	if len(ids) <= keep {
 		return nil
 	}
 	toDelete := ids[:len(ids)-keep]
 	for _, id := range toDelete {
-		_, _ = s.db.ExecContext(ctx, `DELETE FROM history WHERE id=?`, id)
-		_, _ = s.db.ExecContext(ctx, `DELETE FROM history_fts WHERE id=?`, id)
+		_ = s.q.DeleteHistoryById(ctx, id)
+		_ = s.q.DeleteHistoryFtsById(ctx, id)
 		// also delete blobs
 		_ = os.Remove(filepath.Join(filepath.Dir(s.dbPath), "history", "blobs", fmt.Sprintf("%s.req.bin", id)))
 		_ = os.Remove(filepath.Join(filepath.Dir(s.dbPath), "history", "blobs", fmt.Sprintf("%s.resp.bin", id)))
@@ -352,31 +391,23 @@ func (s *Store) Clear(ctx context.Context, env *string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if env == nil {
-		if _, err := s.db.ExecContext(ctx, `DELETE FROM history`); err != nil {
+		if err := s.q.DeleteAllHistory(ctx); err != nil {
 			return err
 		}
-		if _, err := s.db.ExecContext(ctx, `DELETE FROM history_fts`); err != nil {
+		if err := s.q.DeleteAllHistoryFts(ctx); err != nil {
 			return err
 		}
 		_ = os.RemoveAll(filepath.Join(filepath.Dir(s.dbPath), "history", "blobs"))
 		return nil
 	}
-	// delete by env, need ids for FTS
-	rows, err := s.db.QueryContext(ctx, `SELECT id FROM history WHERE env=?`, *env)
+	// delete by env, need ids for FTS + blob cleanup
+	ids, err := s.q.ListHistoryIdsByEnv(ctx, sql.NullString{String: *env, Valid: true})
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		_ = rows.Scan(&id)
-		ids = append(ids, id)
-	}
-	rows.Close()
 	for _, id := range ids {
-		_, _ = s.db.ExecContext(ctx, `DELETE FROM history WHERE id=?`, id)
-		_, _ = s.db.ExecContext(ctx, `DELETE FROM history_fts WHERE id=?`, id)
+		_ = s.q.DeleteHistoryById(ctx, id)
+		_ = s.q.DeleteHistoryFtsById(ctx, id)
 		_ = os.Remove(filepath.Join(filepath.Dir(s.dbPath), "history", "blobs", fmt.Sprintf("%s.req.bin", id)))
 		_ = os.Remove(filepath.Join(filepath.Dir(s.dbPath), "history", "blobs", fmt.Sprintf("%s.resp.bin", id)))
 	}
@@ -391,30 +422,40 @@ func (s *Store) InsertCookie(ctx context.Context, c Cookie) error {
 	if c.Path == "" {
 		c.Path = "/"
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT OR REPLACE INTO cookies (name, value, domain, path, expires_at, secure, http_only, same_site, env, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-		c.Name, c.Value, c.Domain, c.Path, c.ExpiresAt.UTC().Format(time.RFC3339Nano), boolToInt(c.Secure), boolToInt(c.HttpOnly), c.SameSite, c.Env, time.Now().UTC().Format(time.RFC3339Nano))
-	return err
+	return s.q.UpsertCookie(ctx, sqlcdb.UpsertCookieParams{
+		Name:      nullStr(c.Name),
+		Value:     nullStr(c.Value),
+		Domain:    nullStr(c.Domain),
+		Path:      nullStr(c.Path),
+		ExpiresAt: c.ExpiresAt.UTC().Format(time.RFC3339Nano),
+		Secure:    sql.NullInt64{Int64: int64(boolToInt(c.Secure)), Valid: true},
+		HttpOnly:  sql.NullInt64{Int64: int64(boolToInt(c.HttpOnly)), Valid: true},
+		SameSite:  nullStr(c.SameSite),
+		Env:       nullStr(c.Env),
+		CreatedAt: time.Now().UTC().Format(time.RFC3339Nano),
+	})
 }
 
 func (s *Store) ListCookies(ctx context.Context, env string) ([]Cookie, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	rows, err := s.db.QueryContext(ctx, `SELECT name, value, domain, path, expires_at, secure, http_only, same_site, env FROM cookies WHERE env=?`, env)
+	rows, err := s.q.ListCookiesByEnv(ctx, sql.NullString{String: env, Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []Cookie
-	for rows.Next() {
-		var c Cookie
-		var expStr string
-		var sec, httpOnly int
-		if err := rows.Scan(&c.Name, &c.Value, &c.Domain, &c.Path, &expStr, &sec, &httpOnly, &c.SameSite, &c.Env); err != nil {
-			return nil, err
+	out := make([]Cookie, 0, len(rows))
+	for _, row := range rows {
+		c := Cookie{
+			Name:     row.Name.String,
+			Value:    row.Value.String,
+			Domain:   row.Domain.String,
+			Path:     row.Path.String,
+			Secure:   row.Secure.Int64 != 0,
+			HttpOnly: row.HttpOnly.Int64 != 0,
+			SameSite: row.SameSite.String,
+			Env:      row.Env.String,
 		}
-		c.Secure = sec != 0
-		c.HttpOnly = httpOnly != 0
-		if t, err := time.Parse(time.RFC3339Nano, expStr); err == nil {
+		if t, err := time.Parse(time.RFC3339Nano, row.ExpiresAt); err == nil {
 			c.ExpiresAt = t
 		}
 		out = append(out, c)
@@ -425,19 +466,26 @@ func (s *Store) ListCookies(ctx context.Context, env string) ([]Cookie, error) {
 func (s *Store) DeleteCookie(ctx context.Context, name, domain, path, env string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, err := s.db.ExecContext(ctx, `DELETE FROM cookies WHERE name=? AND domain=? AND path=? AND env=?`, name, domain, path, env)
-	return err
+	return s.q.DeleteCookie(ctx, sqlcdb.DeleteCookieParams{
+		Name:   nullStr(name),
+		Domain: nullStr(domain),
+		Path:   nullStr(path),
+		Env:    nullStr(env),
+	})
 }
 
 func (s *Store) ClearCookies(ctx context.Context, env *string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if env == nil {
-		_, err := s.db.ExecContext(ctx, `DELETE FROM cookies`)
-		return err
+		return s.q.DeleteAllCookies(ctx)
 	}
-	_, err := s.db.ExecContext(ctx, `DELETE FROM cookies WHERE env=?`, *env)
-	return err
+	return s.q.DeleteCookiesByEnv(ctx, sql.NullString{String: *env, Valid: true})
+}
+
+// nullStr wraps a required string column value for generated Null params.
+func nullStr(v string) sql.NullString {
+	return sql.NullString{String: v, Valid: true}
 }
 
 // FilterCookies returns cookies matching urlStr (domain/path/secure/expires).
