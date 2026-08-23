@@ -1,10 +1,10 @@
 # Reqly — Development Roadmap
 
-> **Status:** P0 Complete — P1 In Progress
-> **Overall completion:** ~35% (Foundation + P0 Core API Client 100% + P1 ~15% via code generation; 27 milestones shipped through M27 cross-platform desktop)
+> **Status:** P0 complete, P1 in progress
+> **Overall completion:** ~35%. All 27 milestones through M27 (cross-platform desktop) are shipped, plus the first few P1 items.
 > **Source of truth:** [`docs/features.md`](docs/features.md) (features), [`docs/technology-stack.md`](docs/technology-stack.md) (stack), [`docs/testing-strategy.md`](docs/testing-strategy.md) (quality)
 >
-> Checkboxes below track real, working code — not scaffolding. A box is only ticked when the feature ships end-to-end (core logic **and** UI/CLI wiring **and** tests) per the Definition of Done in the Testing Strategy doc.
+> Checkboxes track real, working code, not scaffolding. A box gets ticked only when the feature ships end to end: core logic, UI/CLI wiring, and tests, per the Definition of Done in the Testing Strategy doc.
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## Phase 0 — Foundation (100% complete)
 
-The project skeleton, build system, and the first core primitives — now fully shipped through P0.
+Project skeleton, build system, and the first core primitives.
 
 ### 0.1 Repository & build infra
 
