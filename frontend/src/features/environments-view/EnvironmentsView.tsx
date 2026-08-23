@@ -1,11 +1,28 @@
 import { useEffect, useState } from "react";
+import { useForm } from "@tanstack/react-form";
 import { Button } from "../../components";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 import { useWorkspaceStore } from "../../stores";
+import { notifySuccess } from "../../lib/notify";
 import { EnvironmentEditor } from "./EnvironmentEditor";
 import { SecretsEditor } from "./SecretsEditor";
 
 const inputClass =
 	"rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:border-ring";
+
+interface CreateEnvForm {
+	name: string;
+	description: string;
+}
 
 /**
  * EnvironmentsView manages the workspace's environments: list, create, set
@@ -19,12 +36,25 @@ export function EnvironmentsView() {
 	const envAdapter = useWorkspaceStore((s) => s.envAdapter);
 	const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments);
 
-	const [name, setName] = useState("");
-	const [description, setDescription] = useState("");
-	const [creating, setCreating] = useState(false);
 	const [createError, setCreateError] = useState<string | null>(null);
 	const [setActiveError, setSetActiveError] = useState<string | null>(null);
 	const [editingName, setEditingName] = useState<string | null>(null);
+	const [deletingName, setDeletingName] = useState<string | null>(null);
+
+	const createForm = useForm({
+		defaultValues: { name: "", description: "" } satisfies CreateEnvForm,
+		onSubmit: async ({ value }) => {
+			setCreateError(null);
+			try {
+				await envAdapter.create(value.name.trim(), value.description.trim(), {});
+				notifySuccess(`Environment "${value.name.trim()}" created`);
+				createForm.reset();
+				await refreshEnvironments();
+			} catch (err) {
+				setCreateError(err instanceof Error ? err.message : String(err));
+			}
+		},
+	});
 
 	useEffect(() => {
 		void refreshEnvironments();
@@ -40,26 +70,6 @@ export function EnvironmentsView() {
 		setEditingName(name);
 	};
 
-	const onCreate = async () => {
-		setCreateError(null);
-		const trimmed = name.trim();
-		if (!trimmed) {
-			setCreateError('Name the environment — e.g. "dev" or "staging".');
-			return;
-		}
-		setCreating(true);
-		try {
-			await envAdapter.create(trimmed, description.trim(), {});
-			setName("");
-			setDescription("");
-			await refreshEnvironments();
-		} catch (err) {
-			setCreateError(err instanceof Error ? err.message : String(err));
-		} finally {
-			setCreating(false);
-		}
-	};
-
 	const onSetActive = async (name: string) => {
 		setSetActiveError(null);
 		try {
@@ -71,13 +81,6 @@ export function EnvironmentsView() {
 	};
 
 	const onDelete = async (name: string) => {
-		if (
-			!window.confirm(
-				`Delete environment "${name}"? This removes its file and its secrets.`,
-			)
-		) {
-			return;
-		}
 		setSetActiveError(null);
 		try {
 			await envAdapter.delete(name);
@@ -85,6 +88,8 @@ export function EnvironmentsView() {
 			await refreshEnvironments();
 		} catch (err) {
 			setSetActiveError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setDeletingName(null);
 		}
 	};
 
@@ -98,35 +103,77 @@ export function EnvironmentsView() {
 				</p>
 			</div>
 
-			<div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					void createForm.handleSubmit();
+				}}
+				className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4"
+			>
 				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
 					New environment
 				</p>
 				<div className="flex flex-col gap-2 sm:flex-row">
-					<input
-						value={name}
-						onChange={(e) => setName(e.target.value)}
-						placeholder="name (e.g. dev)"
-						spellCheck={false}
-						className={`${inputClass} font-mono`}
-					/>
-					<input
-						value={description}
-						onChange={(e) => setDescription(e.target.value)}
-						placeholder="description (optional)"
-						className={`${inputClass} flex-1`}
-					/>
-					<Button
-						onClick={() => void onCreate()}
-						disabled={creating || !name.trim()}
+					<createForm.Field
+						name="name"
+						validators={{
+							onChange: ({ value }) =>
+								value.trim()
+									? undefined
+									: 'Name the environment — e.g. "dev" or "staging".',
+						}}
 					>
-						Create
-					</Button>
+						{(field) => (
+							<span className="flex flex-col gap-1">
+								<input
+									name={field.name}
+									value={field.state.value}
+									onBlur={field.handleBlur}
+									onChange={(e) => field.handleChange(e.target.value)}
+									placeholder="name (e.g. dev)"
+									spellCheck={false}
+									className={`${inputClass} font-mono`}
+								/>
+								{field.state.meta.errors.length > 0 ? (
+									<span className="text-xs text-destructive">
+										{field.state.meta.errors[0]}
+									</span>
+								) : null}
+							</span>
+						)}
+					</createForm.Field>
+					<createForm.Field name="description">
+						{(field) => (
+							<input
+								name={field.name}
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(e) => field.handleChange(e.target.value)}
+								placeholder="description (optional)"
+								className={`${inputClass} flex-1`}
+							/>
+						)}
+					</createForm.Field>
+					<createForm.Subscribe
+						selector={(state) => ({
+							canSubmit: state.canSubmit,
+							isSubmitting: state.isSubmitting,
+						})}
+					>
+						{(sub: { canSubmit: boolean; isSubmitting: boolean }) => (
+							<Button
+								type="submit"
+								disabled={!sub.canSubmit || sub.isSubmitting}
+							>
+								{sub.isSubmitting ? "Creating…" : "Create"}
+							</Button>
+						)}
+					</createForm.Subscribe>
 				</div>
 				{createError && (
 					<p className="text-xs text-destructive">{createError}</p>
 				)}
-			</div>
+			</form>
 
 			{setActiveError && (
 				<p className="text-xs text-destructive">{setActiveError}</p>
@@ -135,10 +182,12 @@ export function EnvironmentsView() {
 			{editing && (
 				<div className="flex flex-col gap-3">
 					<EnvironmentEditor
+						key={`env-${editing.name}`}
 						env={editing}
 						onCancel={() => setEditingName(null)}
 					/>
 					<SecretsEditor
+						key={`secrets-${editing.name}`}
 						envName={editing.name}
 						secretNames={editing.secrets}
 						variableNames={Object.keys(editing.variables)}
@@ -169,7 +218,7 @@ export function EnvironmentsView() {
 							active.secrets.length === 0
 						) {
 							return (
-								<p className="rounded-md border border-amber-600/40 bg-amber-600/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+								<p className="rounded-md border border-status-warn/40 bg-status-warn/10 p-3 text-xs text-status-warn">
 									The active environment has no variables or secrets — requests
 									resolve no values from it.
 								</p>
@@ -222,14 +271,14 @@ export function EnvironmentsView() {
 												Use
 											</Button>
 										)}
-										<Button
-											variant="ghost"
-											size="sm"
-											className="text-destructive hover:bg-destructive/10"
-											onClick={() => void onDelete(env.name)}
-										>
-											Delete
-										</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="text-destructive hover:bg-destructive/10"
+										onClick={() => setDeletingName(env.name)}
+									>
+										Delete
+									</Button>
 									</div>
 								</li>
 							);
@@ -237,6 +286,34 @@ export function EnvironmentsView() {
 					</ul>
 				</>
 			)}
+
+			<AlertDialog
+				open={deletingName != null}
+				onOpenChange={(open) => {
+					if (!open) setDeletingName(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							Delete environment "{deletingName}"?
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							This removes its file and its secrets from disk. Requests that
+							use these variables will stop resolving them.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={() => void onDelete(deletingName ?? "")}
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

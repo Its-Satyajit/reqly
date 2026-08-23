@@ -1,6 +1,18 @@
+import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { cn } from "#lib/utils";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "#components/ui/alert-dialog";
 import { AuthPanel } from "../features";
-import { useWorkspaceStore } from "../stores";
+import { useWorkspaceStore, type WorkspaceView } from "../stores";
 import { CollectionTree } from "./CollectionTree";
 
 export function WorkspaceSidebar() {
@@ -10,19 +22,22 @@ export function WorkspaceSidebar() {
 	const workspaceName = useWorkspaceStore((s) => s.workspaceTree?.name);
 	const workspaceTree = useWorkspaceStore((s) => s.workspaceTree);
 	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
+	const [pendingView, setPendingView] = useState<WorkspaceView | null>(null);
 
-	const navItem = (view: "requests" | "environments", label: string) => (
+	const requestView = (view: WorkspaceView) => {
+		if (activeView === view) return;
+		if (hasUnsavedEnvChanges) {
+			setPendingView(view);
+			return;
+		}
+		setActiveView(view);
+	};
+
+	const navItem = (view: WorkspaceView, label: string) => (
 		<button
-			onClick={() => {
-				if (activeView === view) return;
-				if (
-					hasUnsavedEnvChanges &&
-					!window.confirm("Discard unsaved environment changes?")
-				) {
-					return;
-				}
-				setActiveView(view);
-			}}
+			type="button"
+			aria-current={activeView === view ? "page" : undefined}
+			onClick={() => requestView(view)}
 			className={cn(
 				"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
 				activeView === view
@@ -35,41 +50,58 @@ export function WorkspaceSidebar() {
 	);
 
 	return (
-		<aside className="w-64 shrink-0 overflow-y-auto border-r border-border p-2">
-			<nav className="flex flex-col gap-0.5 pb-2">
+		<aside className="flex h-full w-full flex-col overflow-y-auto border-r border-border p-2">
+			<nav aria-label="Workspace views" className="flex flex-col gap-0.5 pb-2">
 				{navItem("requests", "Requests")}
 				{navItem("environments", "Environments")}
+				{navItem("history", "History")}
 			</nav>
 			<div className="border-t border-border pt-2">
 				<div className="flex items-center justify-between px-2 pb-2">
-					<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+					<p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
 						{workspaceName ? workspaceName : "Collections"}
 					</p>
 					{workspaceTree && (
 						<button
+							type="button"
 							onClick={() => void refreshWorkspace()}
 							title="Reload the workspace tree from disk"
+							aria-label="Reload workspace"
 							className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
 						>
-							<svg
-								className="size-3.5"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="2"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								aria-hidden
-							>
-								<path d="M21 12a9 9 0 1 1-2.64-6.36" />
-								<path d="M21 3v6h-6" />
-							</svg>
+							<RefreshCw className="size-3.5" aria-hidden />
 						</button>
 					)}
 				</div>
 				<CollectionTree />
 				<AuthPanel />
 			</div>
+			<AlertDialog
+				open={pendingView != null}
+				onOpenChange={(open) => {
+					if (!open) setPendingView(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Discard unsaved environment changes?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Switching views discards edits that were never saved.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Keep editing</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={() => {
+								if (pendingView) setActiveView(pendingView);
+								setPendingView(null);
+							}}
+						>
+							Discard changes
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</aside>
 	);
 }

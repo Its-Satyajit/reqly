@@ -20,6 +20,7 @@ import {
   type TabDraft,
   type TabMeta,
 } from './useRequestStore'
+import { useCollectionRunStore } from './useCollectionRunStore'
 import type { BodyType } from '../lib/body'
 
 export interface Workspace {
@@ -46,7 +47,7 @@ export interface RequestTab {
   kind?: 'request' | 'run'
 }
 
-export type WorkspaceView = 'requests' | 'environments'
+export type WorkspaceView = 'requests' | 'environments' | 'history'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null
@@ -72,7 +73,10 @@ interface WorkspaceState {
   setActiveView: (view: WorkspaceView) => void
   setEditorDirty: (key: string, dirty: boolean) => void
   openTab: (tab: RequestTab, seed?: Partial<import('./useRequestStore').TabDraft>) => void
-  closeTab: (id: string) => void
+  /** Close a tab. The caller decides the dirty-tab policy: pass force to
+   * close without checking; otherwise a dirty file-backed tab is left open
+   * and the UI is expected to confirm first. */
+  closeTab: (id: string, opts?: { force?: boolean }) => void
   setActiveTab: (id: string | null) => void
   /** Open a collection request by Request Path into a tab, seeding the draft
    * from its raw file request and recording its version, base URL, inherited
@@ -206,42 +210,43 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return { dirtyEditors, hasUnsavedEnvChanges: Object.values(dirtyEditors).some(Boolean) }
     }),
 
-  openTab: (tab, seed) =>
-    set((state) => {
-      const exists = state.openTabs.some((t) => t.id === tab.id)
-      const openTabs = exists ? state.openTabs : [...state.openTabs, tab]
-      if (!exists && tab.kind !== 'run') {
-        useRequestStore.getState().ensureDraft(tab.id, seed)
-      }
-      return {
-        openTabs,
-        activeTabId: tab.id,
-      }
-    }),
+  openTab: (tab, seed) => {
+    const exists = get().openTabs.some((t) => t.id === tab.id)
+    set((state) => ({
+      openTabs: exists ? state.openTabs : [...state.openTabs, tab],
+      activeTabId: tab.id,
+    }))
+    if (!exists && tab.kind !== 'run') {
+      useRequestStore.getState().ensureDraft(tab.id, seed)
+    }
+  },
 
-  closeTab: (id) =>
-    set((state) => {
-      const { drafts, meta } = useRequestStore.getState()
-      if (tabIsDirty(drafts[id], meta[id])) {
-        const keep = window.confirm(
-          'This request has unsaved changes. Close without saving?',
-        )
-        if (!keep) return {}
-      }
-      const index = state.openTabs.findIndex((t) => t.id === id)
-      let openTabs = state.openTabs.filter((t) => t.id !== id)
-      useRequestStore.getState().removeTab(id)
-      // Closing the last tab restores the default scratchpad.
-      if (openTabs.length === 0) {
-        openTabs = [{ id: NEW_REQUEST_TAB_ID, title: 'New Request' }]
-        useRequestStore.getState().ensureDraft(NEW_REQUEST_TAB_ID)
-      }
-      const activeTabId =
+  closeTab: (id, opts) => {
+    const { drafts, meta } = useRequestStore.getState()
+    if (!opts?.force && tabIsDirty(drafts[id], meta[id])) return
+    const closing = get().openTabs.find((t) => t.id === id)
+    const index = get().openTabs.findIndex((t) => t.id === id)
+    let openTabs = get().openTabs.filter((t) => t.id !== id)
+    const restoringScratchpad =
+      openTabs.length === 0
+        ? [{ id: NEW_REQUEST_TAB_ID, title: 'New Request' }]
+        : null
+    if (restoringScratchpad) openTabs = restoringScratchpad
+    set((state) => ({
+      openTabs,
+      activeTabId:
         state.activeTabId === id
           ? (openTabs[Math.max(0, index - 1)]?.id ?? null)
-          : state.activeTabId
-      return { openTabs, activeTabId }
-    }),
+          : state.activeTabId,
+    }))
+    useRequestStore.getState().removeTab(id)
+    if (restoringScratchpad) {
+      useRequestStore.getState().ensureDraft(NEW_REQUEST_TAB_ID)
+    }
+    if (closing?.kind === 'run') {
+      useCollectionRunStore.getState().reset()
+    }
+  },
 
   setActiveTab: (activeTabId) => {
     if (activeTabId) {

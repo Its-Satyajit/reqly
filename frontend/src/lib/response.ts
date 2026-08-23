@@ -3,7 +3,17 @@
 
 import { isRecord, type JsonObject, type JsonValue } from "./typeGuards"
 
-export type HeaderMap = Record<string, string[]>
+/** HeaderMap is the app-wide normalized header container: lowercase keys,
+ * one owned contract instead of scattered dictionary literals. */
+export interface HeaderMap {
+  [key: string]: string[]
+}
+
+/** RawHeaderMap is the pre-normalization shape crossing host boundaries:
+ * generated Go bindings deliver arbitrary-cased keys with nullable arrays. */
+export interface RawHeaderMap {
+  [key: string]: ReadonlyArray<string | null | undefined> | null | undefined
+}
 
 export function contentType(headers: HeaderMap | undefined): string {
   const newLocal = 'content-type';
@@ -140,14 +150,15 @@ export function cookieExpiry(cookie: ResponseCookie): string | null {
   return null
 }
 
-/** copyText writes text to the clipboard, falling back to a silent no-op when
- * the Clipboard API is unavailable. */
-export async function copyText(text: string): Promise<void> {
-  if (!text) return
+/** copyText writes text to the clipboard, reporting whether it succeeded so
+ * callers can surface failures instead of faking success. */
+export async function copyText(text: string): Promise<boolean> {
+  if (!text) return false
   try {
     await navigator.clipboard.writeText(text)
+    return true
   } catch {
-    // Clipboard API unavailable or denied — nothing else to try.
+    return false
   }
 }
 
@@ -291,6 +302,57 @@ export function binaryPreviewType(ct: string): 'image' | 'pdf' | 'hex' | 'none' 
   if (ct.includes('pdf')) return 'pdf'
   if (ct && !ct.includes('json') && !ct.includes('xml') && !ct.includes('text') && !ct.includes('csv')) return 'hex'
   return 'none'
+}
+
+/** normalizeHeaderKeys lowercases every header key and merges case-variant
+ * duplicates, giving the whole app one lookup convention. Go's http.Header
+ * canonicalizes ("Content-Type") while browser fetch lowercases — both
+ * ingestion points funnel through this so lib helpers can rely on lowercase.
+ * Null/undefined-valued entries from generated bindings are dropped. */
+export function normalizeHeaderKeys(headers: RawHeaderMap | undefined): HeaderMap {
+  const out: HeaderMap = {}
+  for (const [key, entries] of Object.entries(headers ?? {})) {
+    if (entries == null) continue
+    const values = entries.filter((v): v is string => typeof v === 'string')
+    if (values.length === 0) continue
+    const lower = key.toLowerCase()
+    out[lower] = [...(out[lower] ?? []), ...values]
+  }
+  return out
+}
+
+/** bytesToBase64 encodes a JS string's UTF-8 bytes (btoa throws on any
+ * non-Latin1 character, which is nearly every real binary body). */
+export function bytesToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text)
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
+
+const HEX_BYTES_PER_ROW = 16
+const HEX_DUMP_LIMIT = 'first 4KB'
+
+/** hexDump renders the first maxBytes of a binary payload as classic
+ * offset-hex-ASCII rows, per the Binary Preview glossary entry. */
+export function hexDump(body: string, maxBytes = 4096): string {
+  const bytes = new TextEncoder().encode(body).subarray(0, maxBytes)
+  const rows: string[] = []
+  for (let offset = 0; offset < bytes.length; offset += HEX_BYTES_PER_ROW) {
+    const slice = bytes.subarray(offset, offset + HEX_BYTES_PER_ROW)
+    const hex = Array.from(slice, (b) => b.toString(16).padStart(2, '0'))
+    const ascii = Array.from(
+      slice,
+      (b) => (b >= 0x20 && b <= 0x7e ? String.fromCharCode(b) : '.'),
+    ).join('')
+    rows.push(
+      `${offset.toString(16).padStart(8, '0')}  ${hex.join(' ').padEnd(HEX_BYTES_PER_ROW * 3 - 1)}  |${ascii}|`,
+    )
+  }
+  return `${rows.join('\n')}\n${HEX_DUMP_LIMIT}`
 }
 
 /** searchBody splits text into match/non-match segments for highlighting.

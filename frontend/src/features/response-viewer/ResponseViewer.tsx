@@ -1,15 +1,18 @@
 import { useMemo, useState } from "react";
 import { JsonTree } from "../../components/JsonTree";
+import { StatusPill } from "../../components/status";
 import { Button } from "../../components/ui/button";
 import { CodeMirrorEditor } from "../../editors";
 import { type JSONPathMatch, queryJSONPath } from "../../lib/jsonpath";
 import { isRecord, type JsonValue } from "../../lib/typeGuards";
 import {
 	binaryPreviewType,
+	bytesToBase64,
 	contentType,
 	cookieExpiry,
 	copyText,
 	headerRows,
+	hexDump,
 	isTabular,
 	parseSetCookies,
 	parseTable,
@@ -17,6 +20,7 @@ import {
 	searchBody,
 	suggestedFilename,
 } from "../../lib/response";
+import { notifyError } from "../../lib/notify";
 import { useRequestStore, useWorkspaceStore } from "../../stores";
 
 type View = "raw" | "pretty" | "headers" | "tree" | "cookies" | "table";
@@ -36,10 +40,6 @@ const tabClass = (active: boolean) =>
 			? "bg-muted text-foreground"
 			: "text-muted-foreground hover:text-foreground"
 	}`;
-
-function statusClass(code: number): string {
-	return code >= 400 ? "text-destructive" : "text-foreground";
-}
 
 function formatBytes(size: number): string {
 	if (size < 1024) return `${size} B`;
@@ -105,10 +105,17 @@ export function ResponseViewer() {
 		if (!parsed || !jsonPath.trim()) return null;
 		return queryJSONPath(parsed, jsonPath);
 	}, [parsed, jsonPath]);
-
-	const statusLine = response
-		? `${response.proto ? `${response.proto} ` : ""}${response.statusCode} ${response.statusText}`
-		: "";
+	const hexPreview = useMemo(
+		() => (response && binaryType === "hex" ? hexDump(raw) : ""),
+		[response, binaryType, raw],
+	);
+	const imageDataUrl = useMemo(
+		() =>
+			response && binaryType === "image" && raw
+				? `data:${ct.split(";")[0] || "application/octet-stream"};base64,${bytesToBase64(raw)}`
+				: "",
+		[response, binaryType, raw, ct],
+	);
 
 	const body = loading
 		? "// Sending request…"
@@ -118,7 +125,7 @@ export function ResponseViewer() {
 				? bodyView
 				: "// Send a request to see the response";
 
-	const searchResult = searchBody(bodyView, query);
+	const searchResult = useMemo(() => searchBody(bodyView, query), [bodyView, query]);
 	const filteredHeaders =
 		view === "headers" && query.trim()
 			? headers.filter(
@@ -138,47 +145,64 @@ export function ResponseViewer() {
 			: cookies;
 
 	return (
-		<div className="flex h-full flex-col">
-			<div className="flex items-center justify-between px-2 pb-1 pt-2">
+		<div className="flex h-full min-h-0 flex-col">
+			<div className="flex items-center justify-between gap-2 px-2 pb-1 pt-2">
 				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
 					Response
 				</p>
 				{response ? (
-					<p className="text-xs text-muted-foreground">
-						<span className={statusClass(response.statusCode)}>
-							{statusLine}
+					<p className="flex min-w-0 items-center gap-2 font-data text-xs tabular-nums text-muted-foreground">
+						<StatusPill status={response.statusCode} />
+						<span className="truncate">
+							{response.proto ? `${response.proto} · ` : ""}
+							{response.statusText}
 						</span>
-						{" · "}
-						{response.durationMs}ms · {formatBytes(response.size)}
-						{ct ? ` · ${ct.split(";")[0]}` : ""}
+						<span aria-hidden>·</span>
+						<span>{response.durationMs}ms</span>
+						<span aria-hidden>·</span>
+						<span>{formatBytes(response.size)}</span>
+						{ct ? (
+							<>
+								<span aria-hidden>·</span>
+								<span className="truncate">{ct.split(";")[0]}</span>
+							</>
+						) : null}
 					</p>
 				) : null}
 			</div>
 
-			{response && binaryType !== 'none' ? (
-				<div className="mx-2 mb-1 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs">
-					{binaryType === 'image' ? (
+			{response && binaryType !== "none" ? (
+				<div className="mx-2 mb-1 shrink-0 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs">
+					{binaryType === "image" ? (
 						<div className="flex flex-col gap-1">
 							<p className="text-muted-foreground">Image preview</p>
-							<img src={`data:${ct};base64,${btoa(raw)}`} alt="response" className="max-h-64 rounded" />
+							<img src={imageDataUrl} alt="response" className="max-h-64 rounded" />
 						</div>
-					) : binaryType === 'pdf' ? (
+					) : binaryType === "pdf" ? (
 						<p className="text-muted-foreground">PDF response — use Download.</p>
 					) : (
-						<p className="font-mono text-muted-foreground">Binary ({formatBytes(response.size)}) — hex preview (first 4KB) + Download.</p>
+						<div className="flex flex-col gap-1">
+							<p className="text-muted-foreground">
+								Binary ({formatBytes(response.size)}) — first 4KB + Download.
+							</p>
+							<pre className="max-h-40 overflow-auto whitespace-pre rounded bg-background p-2 font-mono text-[11px] leading-snug text-muted-foreground">
+								{hexPreview}
+							</pre>
+						</div>
 					)}
 				</div>
 			) : null}
+
 			{response ? (
-				<div className="flex items-center gap-1 px-2 pb-1">
+				<div className="flex shrink-0 items-center gap-1 px-2 pb-1">
 					{views.map((v) => (
 						<button
 							key={v.id}
 							type="button"
 							onClick={() => setView(v.id)}
-							disabled={v.id === 'table' && !tabular}
-							title={v.id === 'table' && !tabular ? 'Not tabular — need JSON array or CSV' : undefined}
-							className={`${tabClass(view === v.id)} ${v.id === 'table' && !tabular ? 'opacity-50' : ''}`}
+							disabled={v.id === "table" && !tabular}
+							title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
+							className={`${tabClass(view === v.id)} ${v.id === "table" && !tabular ? "opacity-50" : ""}`}
 						>
 							{v.label}
 						</button>
@@ -190,7 +214,7 @@ export function ResponseViewer() {
 						className="ml-auto w-44 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
 					/>
 					{searchResult && searchResult.count > 0 ? (
-						<span className="text-xs text-muted-foreground">
+						<span className="shrink-0 font-data text-xs tabular-nums text-muted-foreground">
 							{searchResult.count} matches
 						</span>
 					) : null}
@@ -198,7 +222,7 @@ export function ResponseViewer() {
 			) : null}
 
 			{response ? (
-				<div className="flex items-center gap-1 border-t border-border/50 px-2 py-1">
+				<div className="flex shrink-0 items-center gap-1 border-t border-border/50 px-2 py-1">
 					<Button
 						size="xs"
 						variant="ghost"
@@ -209,9 +233,14 @@ export function ResponseViewer() {
 									: view === "cookies"
 										? cookiesText
 										: bodyView;
-							void copyText(text);
-							setCopied(true);
-							setTimeout(() => setCopied(false), 1500);
+							void copyText(text).then((ok) => {
+								if (!ok) {
+									notifyError("Copy failed", "Clipboard access was denied.");
+									return;
+								}
+								setCopied(true);
+								setTimeout(() => setCopied(false), 1500);
+							});
 						}}
 					>
 						{copied ? "Copied" : "Copy"}
@@ -220,9 +249,12 @@ export function ResponseViewer() {
 						size="xs"
 						variant="ghost"
 						onClick={() => {
-							void copyText(headersText);
-							setCopied(true);
-							setTimeout(() => setCopied(false), 1500);
+							void copyText(headersText).then((ok) => {
+								if (ok) {
+									setCopied(true);
+									setTimeout(() => setCopied(false), 1500);
+								}
+							});
 						}}
 					>
 						Copy headers
@@ -262,12 +294,12 @@ export function ResponseViewer() {
 			) : null}
 
 			{parsed === null && response && jsonPath.trim() ? (
-				<p className="border-t border-border/50 px-2 py-1 text-xs text-muted-foreground">
+				<p className="shrink-0 border-t border-border/50 px-2 py-1 text-xs text-muted-foreground">
 					This response is not JSON — JSONPath queries need a JSON body.
 				</p>
 			) : null}
 
-			<div className="min-h-0 flex-1 p-2">
+			<div className="min-h-0 flex-1 p-2 pt-0">
 				{jsonPathResult &&
 				!jsonPathResult.error &&
 				jsonPathResult.matches.length > 0 ? (
@@ -305,8 +337,8 @@ export function ResponseViewer() {
 						<JsonTree data={parsed} filter={query} />
 					</div>
 				) : view === "tree" && treeFallback ? (
-					<div className="flex h-full flex-col rounded-md border border-border">
-						<p className="px-2 pt-2 text-xs text-muted-foreground">
+					<div className="flex h-full min-h-0 flex-col rounded-md border border-border">
+						<p className="shrink-0 px-2 pt-2 text-xs text-muted-foreground">
 							This response is not JSON — showing the raw body.
 						</p>
 						<CodeMirrorEditor
@@ -317,18 +349,21 @@ export function ResponseViewer() {
 						/>
 					</div>
 				) : view === "table" ? (
-					<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
+					<div className="flex h-full min-h-0 flex-col">
 						{!tabular ? (
 							<p className="text-xs text-muted-foreground">Not tabular — need JSON array or CSV.</p>
 						) : !tableData || tableData.columns.length === 0 ? (
 							<p className="text-xs text-muted-foreground">No tabular data.</p>
 						) : (
-							<div className="overflow-auto">
-								<table className="w-full text-left text-xs">
+							<div className="min-h-0 flex-1 overflow-auto rounded-md border border-border bg-background">
+								<table className="w-full border-separate border-spacing-0 text-left text-xs">
 									<thead>
 										<tr>
 											{tableData.columns.map((c) => (
-												<th key={c} className="sticky top-0 bg-background px-2 py-1 font-medium">
+												<th
+													key={c}
+													className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1 font-medium"
+												>
 													{c}
 												</th>
 											))}
@@ -336,9 +371,12 @@ export function ResponseViewer() {
 									</thead>
 									<tbody>
 										{tableData.rows.map((row, i) => (
-											<tr key={i} className="border-t border-border/50">
+											<tr key={i}>
 												{row.map((cell, j) => (
-													<td key={j} className="px-2 py-1 font-mono break-all">
+													<td
+														key={j}
+														className="break-all border-b border-border/50 px-2 py-1 font-mono"
+													>
 														{cell}
 													</td>
 												))}
@@ -346,7 +384,7 @@ export function ResponseViewer() {
 										))}
 									</tbody>
 								</table>
-								{tableData.rows.length >= 1000 ? <p className="pt-2 text-xs text-muted-foreground">Showing first 1000 rows.</p> : null}
+								{tableData.rows.length >= 1000 ? <p className="p-2 text-xs text-muted-foreground">Showing first 1000 rows.</p> : null}
 							</div>
 						)}
 					</div>
@@ -458,7 +496,7 @@ export function ResponseViewer() {
 			query &&
 			searchResult &&
 			searchResult.count === 0 ? (
-				<p className="px-2 pb-1 text-xs text-muted-foreground">
+				<p className="shrink-0 px-2 pb-1 text-xs text-muted-foreground">
 					No matches in the response body.
 				</p>
 			) : null}
