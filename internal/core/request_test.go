@@ -18,9 +18,12 @@
 package core
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/variables"
@@ -35,7 +38,7 @@ func TestSendReturnsBridgeFriendlyResponse(t *testing.T) {
 	defer srv.Close()
 
 	svc := NewRequestService()
-	resp, err := svc.Send(request.Request{
+	resp, err := svc.Send(context.Background(), request.Request{
 		Method: request.MethodGet,
 		URL:    srv.URL,
 	})
@@ -76,7 +79,7 @@ func TestSendReportsNonSuccess(t *testing.T) {
 	defer srv.Close()
 
 	svc := NewRequestService()
-	resp, err := svc.Send(request.Request{
+	resp, err := svc.Send(context.Background(), request.Request{
 		Method: request.MethodGet,
 		URL:    srv.URL,
 	})
@@ -94,12 +97,35 @@ func TestSendReportsNonSuccess(t *testing.T) {
 
 func TestSendReturnsErrorForInvalidURL(t *testing.T) {
 	svc := NewRequestService()
-	_, err := svc.Send(request.Request{
+	_, err := svc.Send(context.Background(), request.Request{
 		Method: request.MethodGet,
 		URL:    "://not-a-url",
 	})
 	if err == nil {
 		t.Fatal("expected error for invalid URL")
+	}
+}
+
+func TestSendHonoursContextCancellation(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	svc := NewRequestService()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	start := time.Now()
+	_, err := svc.Send(ctx, request.Request{
+		Method: request.MethodGet,
+		URL:    srv.URL,
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("cancelled send took %v, expected prompt return", elapsed)
 	}
 }
 
@@ -116,7 +142,7 @@ func TestSendUsesProvidedVariableSet(t *testing.T) {
 	vars.Set(variables.ScopeEnvironment, "TOKEN", "env-token")
 
 	svc := NewRequestService()
-	_, err := svc.Send(request.Request{
+	_, err := svc.Send(context.Background(), request.Request{
 		Method: request.MethodGet,
 		URL:    srv.URL,
 		Headers: []request.Header{
