@@ -27,7 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Its-Satyajit/reqly/internal/auth"
+	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
 	"github.com/Its-Satyajit/reqly/internal/variables"
@@ -79,7 +79,8 @@ and --data to build requests directly on the CLI:
 		target := args[0]
 
 		var req *request.Request
-		var vars *variables.Set
+		var vars *variables.Set // still built for file mode; Run re-resolves scopes internally
+		_ = vars
 		baseDir := "."
 		var fileEnv string
 
@@ -111,36 +112,41 @@ and --data to build requests directly on the CLI:
 			vars = variables.NewSet()
 		}
 
-		masker, envSet, err := activeEnvironment(baseDir, fileEnv)
-		if err != nil {
-			return err
-		}
-		mergeEnvScope(vars, envSet)
-		masker.Add(auth.MaskValues(req.Auth.Type, req.Auth.Config, vars)...)
+		// One deep pipeline call: env precedence, variable layering, token
+		// caching, masking, retries, and history recording live in core (ADR 0025).
+		root := findWorkspaceRoot(baseDir)
+		svc := core.NewRunService(root)
+		defer svc.Close()
 
-		clientOpts := []request.Option{}
+		var onRetry func(request.RetryEvent)
 		if req.Retry != nil && req.Retry.Count > 0 {
 			total := req.Retry.Count + 1
 			out := cmd.OutOrStdout()
-			clientOpts = append(clientOpts, request.WithOnRetry(func(e request.RetryEvent) {
-				reason := ""
+			onRetry = func(e request.RetryEvent) {
+				reason := strconv.Itoa(e.StatusCode)
 				if e.Err != nil {
-					reason = masker.Mask(e.Err.Error())
-				} else {
-					reason = strconv.Itoa(e.StatusCode)
+					reason = e.Err.Error()
 				}
 				fmt.Fprintf(out, "retrying in %s (%s, attempt %d/%d)\n",
 					e.Delay.Round(time.Millisecond), reason, e.Attempt, total)
-			}))
+			}
 		}
-		client := newRequestClient(baseDir, clientOpts...)
-		resp, err := client.Execute(context.Background(), req, vars)
+
+		requestPath := ""
+		if requestfile.LooksLikeFile(target) {
+			requestPath = target
+		}
+		res, err := svc.Run(context.Background(), *req, core.RunRequestOptions{
+			EnvFlag:     envFlag,
+			FileEnv:     fileEnv,
+			FileVars:    vars,
+			RequestPath: requestPath,
+			OnRetry:     onRetry,
+		})
 		if err != nil {
-			return fmt.Errorf("request failed: %s", masker.Mask(err.Error()))
+			return fmt.Errorf("request failed: %s", err)
 		}
-		// Mask the acquired OAuth token (and any other runtime credential)
-		// so headers/body echoing it never leak it.
-		maskAcquiredToken(masker, resp.AuthToken)
+		resp := res.Response
 
 		status := resp.StatusCode
 		color := ""
@@ -160,13 +166,13 @@ and --data to build requests directly on the CLI:
 
 		for key, values := range resp.Headers {
 			for _, value := range values {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, masker.Mask(value))
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", key, value)
 			}
 		}
 
 		fmt.Fprintln(cmd.OutOrStdout())
 		if len(resp.Body) > 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), masker.Mask(string(resp.Body)))
+			fmt.Fprintln(cmd.OutOrStdout(), string(resp.Body))
 		}
 		return nil
 	},

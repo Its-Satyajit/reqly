@@ -142,13 +142,17 @@ func (s *RequestService) Run(ctx context.Context, r request.Request, opts RunReq
 	return &RunResult{Response: resp, Warning: strings.TrimSpace(warning)}, nil
 }
 
+// layerScope copies every variable of src into dst, preserving scopes so
+// dst's precedence resolution orders them correctly.
 func layerScope(dst, src *variables.Set) {
 	if src == nil {
 		return
 	}
-	src.Range(variables.ScopeRuntime, func(key, value string) {
-		dst.Set(variables.ScopeRuntime, key, value)
-	})
+	for _, scope := range variables.Precedence() {
+		src.Range(scope, func(key, value string) {
+			dst.Set(scope, key, value)
+		})
+	}
 }
 
 func (s *RequestService) record(opts RunRequestOptions, r request.Request, resp *response.Response) string {

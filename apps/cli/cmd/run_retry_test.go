@@ -138,3 +138,47 @@ func TestRunReportsAttemptsWhenRetried(t *testing.T) {
 		t.Fatalf("expected attempt count in status line, got:\n%s", out.String())
 	}
 }
+
+func TestRunRecordsHistoryOnlyInsideWorkspace(t *testing.T) {
+	resetRunFlags()
+	srv, _ := flakyOnceServer(t, http.StatusServiceUnavailable)
+
+	// Inside a workspace: run records a history entry.
+	ws := t.TempDir()
+	if err := os.WriteFile(filepath.Join(ws, "reqly.yaml"), []byte("name: ws\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(ws, "flaky.yaml")
+	src := "request:\n  method: GET\n  url: " + srv.URL + "\n"
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"run", path})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	dbPath := filepath.Join(ws, ".reqly", "history.db")
+	if _, err := os.Stat(dbPath); err != nil {
+		t.Fatalf("expected history.db inside workspace: %v", err)
+	}
+
+	// Outside any workspace: no history is written.
+	resetRunFlags()
+	lone := filepath.Join(t.TempDir(), "plain.yaml")
+	if err := os.WriteFile(lone, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"run", lone})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(lone), ".reqly")); !os.IsNotExist(err) {
+		t.Fatal("expected no .reqly directory outside a workspace")
+	}
+}

@@ -45,7 +45,23 @@ func OpenForWorkspace(root, defaultBackend string) Opened {
 // unavailable credential store.
 type keychainOpener func(service, indexPath string) (Store, error)
 
+// keychainOpenerOverride is a test-only replacement for the OS keychain
+// opener; nil in production.
+var keychainOpenerOverride keychainOpener
+
+// SetKeychainOpenerForTest replaces the OS-keychain opener and returns a
+// restore function, mirroring variables.SetTagGeneratorForTest. Production
+// code must not call it.
+func SetKeychainOpenerForTest(opener keychainOpener) (restore func()) {
+	prev := keychainOpenerOverride
+	keychainOpenerOverride = opener
+	return func() { keychainOpenerOverride = prev }
+}
+
 func openOSKeychain(service, indexPath string) (Store, error) {
+	if keychainOpenerOverride != nil {
+		return keychainOpenerOverride(service, indexPath)
+	}
 	return NewKeychainStore(service, indexPath)
 }
 

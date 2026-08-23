@@ -20,7 +20,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/environments"
@@ -57,35 +56,16 @@ func newRequestClient(startDir string, opts ...request.Option) *request.Client {
 	return request.NewClient(append([]request.Option{request.WithTokenCache(store, root)}, opts...)...)
 }
 
-// newKeychainStore opens the OS-keychain store for a workspace root. It is a
-// variable so tests can force the unavailable path deterministically instead
-// of depending on whether the host has a Secret Service.
-var newKeychainStore = secrets.NewKeychainStore
-
-// openTokenStore opens the token store for a workspace root per
-// storeBackendFor, returning the store and the active backend name. A
-// keychain backend that cannot be opened falls back to the file store with a
-// warning.
+// openTokenStore opens the token store for a workspace root per the shared
+// backend policy (secrets.OpenForWorkspace), surfacing non-fatal fallbacks as
+// warnings. The CLI defaults to the file store; --store / REQLY_TOKEN_STORE
+// override.
 func openTokenStore(root string) (secrets.Store, string, error) {
-	backend := storeBackendFor()
-	switch backend {
-	case "keychain":
-		store, err := newKeychainStore("reqly", filepath.Join(root, ".reqly", "keychain.index"))
-		if err != nil {
-			warnf("warning: %v; falling back to the file store\n", err)
-			backend = "file"
-			break
-		}
-		return store, "keychain", nil
-	case "file":
-	default:
-		return nil, "", fmt.Errorf("unknown token store %q (want file or keychain)", backend)
+	opened := secrets.OpenForWorkspace(root, storeBackendFor())
+	if opened.Warning != "" {
+		warnf("warning: %s\n", opened.Warning)
 	}
-	store, err := secrets.NewFileStore(filepath.Join(root, ".reqly", "tokens.json"))
-	if err != nil {
-		return nil, "", err
-	}
-	return store, backend, nil
+	return opened.Store, opened.Backend, nil
 }
 
 // warnf prints a warning to stderr. It is a variable so tests can capture
