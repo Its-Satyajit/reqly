@@ -408,6 +408,24 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 	cancelRun: async (id) => {
 		await AppService.WorkspaceRunCancel(id);
 	},
+	exportReport: async (format, report) => {
+		const res = await AppService.RunExportReport(format, {
+			path: report.path ?? "",
+			started: report.started ?? "",
+			finished: report.finished ?? "",
+			durationMs: report.durationMs,
+			steps: (report.steps ?? []).map((st) => ({
+				name: st.name,
+				requestPath: st.requestPath ?? "",
+				passed: st.passed,
+				requestError: st.requestError ?? "",
+				durationMs: st.durationMs ?? 0,
+				tests: (st.tests ?? []).map((t) => ({ name: t.name, passed: t.passed })),
+			})),
+		});
+		if (!res) throw new Error("report export failed");
+		return { format: res.format, path: res.path, content: res.content };
+	},
 };
 
 const toHistoryEntry = (e: {

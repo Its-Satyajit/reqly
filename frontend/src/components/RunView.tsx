@@ -3,6 +3,9 @@ import type { RunStep } from "#lib/collections";
 import { ChevronRight, X } from "lucide-react";
 import { cn } from "#lib/utils";
 import { formatBytes } from "#lib/ui";
+import { CodeMirrorEditor } from "../editors/CodeMirrorEditor";
+import { Button } from "./ui/button";
+import { Download } from "lucide-react";
 import { useCollectionRunStore, useWorkspaceStore } from "#stores";
 
 /** previewBody truncates a response body for the inline summary panel. */
@@ -114,7 +117,34 @@ export function RunView() {
 	const toggleFailFast = useCollectionRunStore((s) => s.toggleFailFast);
 	const cancelRun = useCollectionRunStore((s) => s.cancelRun);
 	const openRequest = useWorkspaceStore((s) => s.openRequest);
+	const exportReport = useCollectionRunStore((s) => s.exportReport);
 	const [dismissed, setDismissed] = useState(false);
+	const [exporting, setExporting] = useState(false);
+	const [preview, setPreview] = useState<{ path: string; content: string; language: "json" | "xml" } | null>(null);
+	const [exportError, setExportError] = useState<string | null>(null);
+
+	// G-16.1: serialize the finished run as JUnit XML or JSON, save it under
+	// .reqly/exports/, and open the rendered text as an inline preview.
+	// Promise-chained (not async/await) — the compiler cannot optimize
+	// async closures declared in component scope.
+	const doExport = (format: "json" | "junit"): void => {
+		setExporting(true);
+		setExportError(null);
+		exportReport(format)
+			.then((res) => {
+				if (!res) {
+					setExportError("Report export is not available for this run.");
+					return;
+				}
+				setPreview({
+					path: res.path,
+					content: res.content,
+					language: format === "json" ? "json" : "xml",
+				});
+			})
+			.catch((failure: Error) => setExportError(failure.message))
+			.finally(() => setExporting(false));
+	};
 
 	if (!path) {
 		return (
@@ -167,6 +197,30 @@ export function RunView() {
 							/>
 							Fail fast
 						</label>
+						{report && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => void doExport("junit")}
+								disabled={exporting}
+								title="Save the report as JUnit XML and preview it"
+							>
+								<Download data-icon="inline-start" />
+								JUnit
+							</Button>
+						)}
+						{report && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => void doExport("json")}
+								disabled={exporting}
+								title="Save the report as JSON and preview it"
+							>
+								<Download data-icon="inline-start" />
+								JSON
+							</Button>
+						)}
 						<button
 							type="button"
 							onClick={() => void cancelRun()}
@@ -177,9 +231,11 @@ export function RunView() {
 						</button>
 					</div>
 				</div>
+				{exportError && (
+					<p className="mt-2 text-[11px] text-status-error">{exportError}</p>
+				)}
 				{!dismissed && (
-					<div className="mt-2 flex items-start justify-between gap-2 rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground">
-						<span>
+					<div className="mt-2 flex items-start justify-between gap-2 rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground">						<span>
 							Runs execute the saved request files from disk — unsaved changes in request tabs are
 							not included.
 						</span>
@@ -195,6 +251,24 @@ export function RunView() {
 					</div>
 				)}
 			</div>
+			{preview && (
+				<div className="flex min-h-0 flex-[2] flex-col border-b border-border">
+					<div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+						<span className="truncate font-mono" title={preview.path}>
+							{preview.path}
+						</span>
+						<Button variant="outline" size="sm" onClick={() => setPreview(null)}>
+							Close preview
+						</Button>
+					</div>
+					<CodeMirrorEditor
+						value={preview.content}
+						language={preview.language}
+						readOnly
+						className="min-h-0 flex-1 overflow-hidden"
+					/>
+				</div>
+			)}
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				{steps.length === 0 && !running && !report ? (
 					<div className="p-8 text-center text-xs text-muted-foreground">Waiting for the run to start…</div>

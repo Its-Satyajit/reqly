@@ -97,6 +97,25 @@ export interface CollectionsAdapter {
   ) => Promise<string>
   /** cancelRun aborts an in-flight collection run by id. */
   cancelRun: (id: string) => Promise<void>
+  /** exportReport serializes a finished run as "json" or "junit" (JUnit XML),
+   * writes it under .reqly/exports/, and returns the path + rendered text. */
+  exportReport?: (
+    format: "json" | "junit",
+    report: {
+      path?: string
+      started?: string
+      finished?: string
+      durationMs: number
+      steps: {
+        name: string
+        requestPath?: string
+        passed: boolean
+        requestError?: string
+        durationMs?: number
+        tests?: { name: string; passed: boolean }[]
+      }[]
+    },
+  ) => Promise<{ format: string; path: string; content: string }>
   /** save persists a file-backed tab's editable builder fields to disk,
    * preserving format and every non-editable field. expectedVersion must
    * match the file's fingerprint from OpenedRequest.version; a mismatch

@@ -37,6 +37,12 @@ interface CollectionRunState {
 
 	startRun: (path: string, env: string | null, failFast: boolean) => Promise<void>;
 	cancelRun: () => Promise<void>;
+	/** exportReport serializes the finished run as "json" or "junit"; returns
+	 * the export (path + rendered text) or null when there is nothing to
+	 * export / the adapter does not support it. */
+	exportReport: (
+		format: "json" | "junit",
+	) => Promise<{ format: string; path: string; content: string } | null>;
 	toggleFailFast: () => void;
 	reset: () => void;
 }
@@ -108,6 +114,27 @@ export const useCollectionRunStore = create<CollectionRunState>((set, get) => ({
 			if (get().generation !== generation) return;
 			set({ error: err instanceof Error ? err.message : String(err) });
 		}
+	},
+
+	exportReport: async (format) => {
+		const report = get().report;
+		if (!report || get().running) return null;
+		const adapter = collectionRunAdapter();
+		if (!adapter.exportReport) return null;
+		return adapter.exportReport(format, {
+			path: get().path ?? undefined,
+			started: report.started,
+			finished: report.finished,
+			durationMs: report.durationMs,
+			steps: report.steps.map((st) => ({
+				name: st.name,
+				requestPath: st.requestPath,
+				passed: st.passed,
+				requestError: st.requestError || undefined,
+				durationMs: st.response?.durationMs ?? undefined,
+				tests: st.tests.map((t) => ({ name: t.name, passed: t.passed })),
+			})),
+		});
 	},
 
 	toggleFailFast: () => set((state) => ({ failFast: !state.failFast })),
