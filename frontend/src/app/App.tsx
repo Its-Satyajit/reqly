@@ -42,7 +42,7 @@ const shellStorage: Pick<Storage, "getItem" | "setItem"> = {
 };
 
 export function App() {
-	const theme = useThemeStore((s) => s.theme);
+	const theme = useThemeStore((s) => s.appearance);
 	const activeView = useWorkspaceStore((s) => s.activeView);
 	const environments = useWorkspaceStore((s) => s.environments);
 	const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
