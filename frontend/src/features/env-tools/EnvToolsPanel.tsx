@@ -30,6 +30,7 @@ function EnvPicker({
     <select
       id={id}
       value={value}
+      aria-label={`Environment ${id}`}
       onChange={(e) => onChange(e.target.value)}
       className="rounded-md border border-border bg-transparent px-2 py-1 text-xs"
     >

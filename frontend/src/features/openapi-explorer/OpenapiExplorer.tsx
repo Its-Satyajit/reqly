@@ -8,31 +8,47 @@ import { Spinner } from "#components/ui/spinner";
 import { cn } from "#lib/utils";
 import {
   getOpenapiBridge,
+  type OpenapiAdapter,
   type OpenapiEndpointView,
 } from "#lib/openapi";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
 
-const METHOD_COLORS = {
-  GET: "text-status-ok",
-  POST: "text-status-info",
-  PUT: "text-warning",
-  PATCH: "text-warning",
-  DELETE: "text-status-error",
-} satisfies Record<string, string>;
+const METHOD_COLOR_MAP = new Map<string, string>([
+  ["GET", "text-status-ok"],
+  ["POST", "text-status-info"],
+  ["PUT", "text-warning"],
+  ["PATCH", "text-warning"],
+  ["DELETE", "text-status-error"],
+]);
+
 
 export function OpenapiExplorer() {
   const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
-  const [specPath, setSpecPath] = useState("");
-  const [result, setResult] = useState<Awaited<
-    ReturnType<import("#lib/openapi").OpenapiAdapter["explore"]>
-  > | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [dirName, setDirName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [generated, setGenerated] = useState<string[] | null>(null);
+  // One reducer-style state object keeps the explorer's related UI fields
+  // together (react-doctor/prefer-useReducer).
+  type ExplorerState = {
+    specPath: string;
+    result: Awaited<ReturnType<OpenapiAdapter["explore"]>> | null;
+    selected: string[];
+    dirName: string;
+    busy: boolean;
+    error: string | null;
+    generated: string[] | null;
+  };
+  const [ui, setUi] = useState<ExplorerState>({
+    specPath: "",
+    result: null,
+    selected: [],
+    dirName: "",
+    busy: false,
+    error: null,
+    generated: null,
+  });
+  const patch = (p: Partial<ExplorerState>) => setUi((prev) => ({ ...prev, ...p }));
+  const { specPath, result, selected, dirName, busy, error, generated } = ui;
 
   // Grouped per render; the React Compiler memoizes automatically.
+  const selectedSet = new Set(selected);
   const grouped: [string, OpenapiEndpointView[]][] = [];
   {
     const byTag = new Map<string, OpenapiEndpointView[]>();
@@ -47,34 +63,29 @@ export function OpenapiExplorer() {
 
   const explore = (): void => {
     if (specPath.trim() === "") return;
-    setBusy(true);
-    setError(null);
-    setResult(null);
-    setSelected([]);
-    setGenerated(null);
+    patch({ busy: true, error: null, result: null, selected: [], generated: null });
     getOpenapiBridge()
       .explore(specPath.trim())
       .then((res) => {
-        setResult(res);
-        setBusy(false);
+        patch({ result: res, busy: false });
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : String(e));
-        setBusy(false);
+        patch({ error: e instanceof Error ? e.message : String(e), busy: false });
       });
   };
 
   const toggle = (method: string, path: string): void => {
     const key = `${method}|${path}`;
-    setSelected((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    );
+    patch({
+      selected: selected.includes(key)
+        ? selected.filter((k) => k !== key)
+        : [...selected, key],
+    });
   };
 
   const generate = (): void => {
     if (specPath.trim() === "" || selected.length === 0 || dirName.trim() === "") return;
-    setBusy(true);
-    setError(null);
+    patch({ busy: true, error: null });
     const selections = selected.map((k) => {
       // SAFETY: keys are built above as `METHOD|path` pairs.
       const idx = k.indexOf("|");
@@ -83,13 +94,11 @@ export function OpenapiExplorer() {
     getOpenapiBridge()
       .generate({ specPath: specPath.trim(), selections, dirName: dirName.trim() })
       .then((res) => {
-        setGenerated(res.created);
-        setBusy(false);
+        patch({ generated: res.created, busy: false });
         void refreshWorkspace();
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : String(e));
-        setBusy(false);
+        patch({ error: e instanceof Error ? e.message : String(e), busy: false });
       });
   };
 
@@ -105,7 +114,7 @@ export function OpenapiExplorer() {
           <Input
             id="openapi-spec"
             value={specPath}
-            onChange={(e) => setSpecPath(e.target.value)}
+            onChange={(e) => patch({ specPath: e.target.value })}
             placeholder="specs/pets.yaml"
             spellCheck={false}
             className="font-mono text-xs"
@@ -140,7 +149,7 @@ export function OpenapiExplorer() {
               <ul className="flex flex-col divide-y divide-border/60">
                 {eps.map((ep) => {
                   const key = `${ep.method}|${ep.path}`;
-                  const checked = selected.includes(key);
+                  const checked = selectedSet.has(key);
                   const schemaKeys = Object.keys(ep.responseSchemas ?? {});
                   return (
                     <li key={key} className="flex flex-col gap-1 py-1">
@@ -155,7 +164,7 @@ export function OpenapiExplorer() {
                         <span
                           className={cn(
                             "w-14 shrink-0 font-sans text-[10px] font-semibold",
-                            METHOD_COLORS[ep.method as keyof typeof METHOD_COLORS] ?? "",
+                            METHOD_COLOR_MAP.get(ep.method) ?? "",
                           )}
                         >
                           {ep.method}
@@ -164,11 +173,7 @@ export function OpenapiExplorer() {
                           type="button"
                           className="min-w-0 flex-1 truncate text-left font-mono text-xs hover:text-foreground"
                           title={`${ep.operationId ?? ""} ${ep.summary ?? ""}`}
-                          onClick={() =>
-                            setSelected(
-                              checked ? selected.filter((k) => k !== key) : [...selected, key],
-                            )
-                          }
+                          onClick={() => toggle(ep.method, ep.path)}
                         >
                           {ep.path}
                         </button>
@@ -214,7 +219,7 @@ export function OpenapiExplorer() {
               <Input
                 id="openapi-dir"
                 value={dirName}
-                onChange={(e) => setDirName(e.target.value)}
+                onChange={(e) => patch({ dirName: e.target.value })}
                 placeholder="from-pets-api"
                 spellCheck={false}
                 className="w-56 font-mono text-xs"

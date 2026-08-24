@@ -1,4 +1,6 @@
 export interface RunnerStepView {
+  /** Monotonic id assigned by the store; stable React key. */
+  seq?: number;
   index: number;
   status?: number;
   error?: string;
@@ -37,7 +39,7 @@ export interface RunnerAdapter {
     concurrency?: number;
   }): Promise<void>;
   cancel(runId: string): Promise<void>;
-  subscribe(
+  listen(
     runId: string,
     handlers: {
       onStep: (step: RunnerStepView) => void;

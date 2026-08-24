@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Layers, Play, Square } from "lucide-react";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
@@ -32,6 +32,8 @@ function draftOf(activeTabId: string | null): TabDraft | null {
   return useRequestStore.getState().drafts[activeTabId] ?? null;
 }
 
+let frameSeq = 0;
+
 export function RunnersPanel() {
   const activeTabId = useWorkspaceStore((s) => s.activeTabId);
   const [mode, setMode] = useState<Mode>("pagination");
@@ -45,7 +47,31 @@ export function RunnersPanel() {
   const [summary, setSummary] = useState<RunnerSummary | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const runIdRef = useRef<string | null>(null);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeRunId == null) return;
+    return getRunnerBridge().listen(activeRunId, {
+      onStep: (step) => {
+        frameSeq += 1;
+        const next = { ...step, seq: frameSeq };
+        setSteps((prev) => [...prev.slice(-499), next]);
+      },
+      onDone: (summary) => {
+        setSummary(summary);
+        setRunning(false);
+      },
+    });
+  }, [activeRunId]);
+  // Detaches runner event listeners on unmount.
+  const unwatchRef = useRef<(() => void) | null>(null);
+
+  useEffect(
+    () => () => {
+      unwatchRef.current?.();
+    },
+    [],
+  );
 
   // Draft is captured at start; the panel shows live progress per step.
   const start = (): void => {
@@ -55,7 +81,6 @@ export function RunnersPanel() {
       return;
     }
     const runId = nextRunId(mode);
-    runIdRef.current = runId;
     setSteps([]);
     setSummary(null);
     setError(null);
@@ -67,22 +92,9 @@ export function RunnersPanel() {
       if (strategy === "cursor") pagination.nextPath = nextPath;
     }
 
-    let doneSeen = false;
-    const poll = setInterval(() => {
-      if (doneSeen) {
-        setRunning(false);
-        clearInterval(poll);
-      }
-    }, 250);
-
-    getRunnerBridge()
-      .subscribe(runId, {
-        onStep: (step) => setSteps((prev) => [...prev.slice(-499), step]),
-        onDone: (s) => {
-          setSummary(s);
-          doneSeen = true;
-        },
-      })
+    // The listener lives in an effect keyed on the run id so unmount and
+    // restarts always detach cleanly (react-doctor/effect-needs-cleanup).
+    setActiveRunId(runId);
     getRunnerBridge()
       .start({
         runId,
@@ -97,12 +109,11 @@ export function RunnersPanel() {
       .catch((e) => {
         setError(e instanceof Error ? e.message : String(e));
         setRunning(false);
-        clearInterval(poll);
       });
   };
 
   const stop = (): void => {
-    if (runIdRef.current) void getRunnerBridge().cancel(runIdRef.current);
+    if (activeRunId != null) void getRunnerBridge().cancel(activeRunId);
     setRunning(false);
   };
 
@@ -170,10 +181,7 @@ export function RunnersPanel() {
               type="number"
               min={1}
               value={maxPages}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                setMaxPages(Number.isFinite(n) && n > 0 ? n : 1);
-              }}
+              onChange={(e) => setMaxPages(inputInt(e.target.value, maxPages))}
               className="w-24 rounded-md border border-border bg-transparent px-2 py-1 text-xs font-mono"
             />
             <span className="text-[11px] text-muted-foreground">stop condition + empty-body guard</span>
@@ -241,21 +249,23 @@ export function RunnersPanel() {
 
       {summary != null && (
         <div className="rounded-md border border-border px-2 py-1.5 text-xs">
-          {Object.entries(summary)
-            .filter(([k]) => k !== "lastBody")
-            .map(([k, v]) => (
-              <span key={k} className="mr-2">
-                <span className="text-muted-foreground">{k}:</span>{" "}
-                <span className="font-mono">{String(v)}</span>
-              </span>
-            ))}
+          {Object.entries(summary).flatMap(([k, v]) =>
+            k === "lastBody"
+              ? []
+              : [
+                  <span key={k} className="mr-2">
+                    <span className="text-muted-foreground">{k}:</span>{" "}
+                    <span className="font-mono">{String(v)}</span>
+                  </span>,
+                ],
+          )}
         </div>
       )}
 
       {steps.length > 0 && (
         <ul className="flex flex-col gap-0.5">
           {steps.map((st) => (
-            <li key={`${runIdRef.current}-${st.index}`} className="font-mono text-[11px]">
+            <li key={st.seq} className="font-mono text-[11px]">
               <span className="mr-1.5 text-muted-foreground">#{st.index}</span>
               {st.error ? (
                 <span className="text-status-error">{st.error}</span>
