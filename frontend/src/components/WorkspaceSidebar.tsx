@@ -78,6 +78,7 @@ export function WorkspaceSidebar() {
 				{navItem("graphql", "GraphQL")}
 				{navItem("runners", "Runners")}
 				{navItem("explorer", "Explorer")}
+				{navItem("docs", "Docs")}
 			</nav>
 			<div className="border-t border-border pt-2">
 				<div className="flex items-center justify-between px-2 pb-2">

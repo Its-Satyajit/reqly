@@ -14,6 +14,8 @@ import type {
 	JwtTokenView,
 	MockAdapter,
 	MockStatus,
+	DocsAdapter,
+	DocsResultView,
 	RealtimeAdapter,
 	RealtimeFrameView,
 	ImportAdapter,
@@ -34,6 +36,7 @@ import {
 	useHistoryStore,
 	useImportStore,
 	useMockStore,
+	useDocsStore,
 	useRealtimeStore,
 	setDiffBridge,
 	setEnvToolsBridge,
@@ -806,6 +809,24 @@ export const wailsRealtimeAdapter: RealtimeAdapter = {
 	},
 };
 
+export const wailsDocsAdapter: DocsAdapter = {
+	generate: async (input: { collections?: string[]; outName?: string }) => {
+		const res = await AppService.DocsGenerate({
+			collections: input.collections ?? [],
+			outName: input.outName ?? "",
+		});
+		if (!res) throw new Error("docs generation failed");
+		return {
+			path: res.path,
+			requestCount: res.requestCount,
+			files: (res.files ?? []).map((f: { name: string; content: string }) => ({
+				name: f.name,
+				content: f.content,
+			})) satisfies DocsResultView["files"],
+		};
+	},
+};
+
 type WailsExportResult = NonNullable<Awaited<ReturnType<typeof AppService.Export>>>;
 
 export const wailsExportAdapter: ExportAdapter = {
@@ -848,6 +869,7 @@ export function initRequestBridge(): void {
 	useExportStore.getState().setAdapter(wailsExportAdapter);
 	useRealtimeStore.getState().setAdapter(wailsRealtimeAdapter);
 	useMockStore.getState().setAdapter(wailsMockAdapter);
+	useDocsStore.getState().setAdapter(wailsDocsAdapter);
 	setDiffBridge(wailsDiffAdapter);
 	setJwtBridge(wailsJwtAdapter);
 	setGqlBridge(wailsGqlAdapter);

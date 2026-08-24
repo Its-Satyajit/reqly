@@ -59,6 +59,7 @@ export type WorkspaceView =
 	| 'graphql'
 	| 'runners'
 	| 'explorer'
+	| 'docs'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null

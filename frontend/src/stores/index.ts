@@ -1,5 +1,6 @@
 export * from "./useAuthStore";
 export * from "./useCollectionRunStore";
+export * from "./useDocsStore";
 export * from "./useHistoryStore";
 export * from "./useExportStore";
 export * from "./useImportStore";
