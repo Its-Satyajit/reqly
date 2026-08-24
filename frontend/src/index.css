@@ -75,7 +75,9 @@
   --popover-foreground: #191c21;
   --muted: #f2f3f4;
   --muted-foreground: #5b6472;
-  --primary: #e14b31;
+  /* Darkened from brand #e14b31 (4.0:1 on white) to meet WCAG AA 4.5:1
+     with white foreground text in light mode. */
+  --primary: #c93517;
   --primary-foreground: #ffffff;
   --secondary: #f2f3f4;
   --secondary-foreground: #191c21;
@@ -146,6 +148,17 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Users who ask for more contrast get stronger borders and full-opacity
+   muted text instead of the soft greys used at rest. */
+@media (prefers-contrast: more) {
+  :root,
+  .dark {
+    --border: #8a9099;
+    --input: #6b7280;
+    --muted-foreground: var(--foreground);
   }
 }
 

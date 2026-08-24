@@ -14,11 +14,9 @@ import {
 } from "../../components/ui/alert-dialog";
 import { useWorkspaceStore } from "../../stores";
 import { notifySuccess } from "../../lib/notify";
+import { inputClass } from "../../lib/ui";
 import { EnvironmentEditor } from "./EnvironmentEditor";
 import { SecretsEditor } from "./SecretsEditor";
-
-const inputClass =
-	"rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:border-ring";
 
 interface CreateEnvForm {
 	name: string;
@@ -132,6 +130,7 @@ export function EnvironmentsView() {
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
 									placeholder="name (e.g. dev)"
+									aria-label="Environment name"
 									spellCheck={false}
 									className={`${inputClass} font-mono`}
 								/>
@@ -151,6 +150,7 @@ export function EnvironmentsView() {
 								onBlur={field.handleBlur}
 								onChange={(e) => field.handleChange(e.target.value)}
 								placeholder="description (optional)"
+								aria-label="Environment description"
 								className={`${inputClass} flex-1`}
 							/>
 						)}

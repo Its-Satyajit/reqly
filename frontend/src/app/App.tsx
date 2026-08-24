@@ -27,11 +27,11 @@ import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
 import { useThemeStore, useWorkspaceBootstrapStore, useWorkspaceStore } from "../stores";
 import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
-import { NEW_REQUEST_TAB_ID } from "../stores/useRequestStore";
+import { NEW_REQUEST_TAB_ID, tabIsDirty, useRequestStore } from "../stores/useRequestStore";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import { armDebugCrashTrigger, installCrashReporter } from "../lib/crashReporter";
 import { addBreadcrumb } from "../lib/crash";
-import { notifyError } from "../lib/notify";
+import { notifyError, notifyWarning } from "../lib/notify";
 import "../index.css";
 
 const shellStorage: Pick<Storage, "getItem" | "setItem"> = {
@@ -63,6 +63,25 @@ export function App() {
 	useEffect(() => {
 		void initBootstrap();
 	}, [initBootstrap]);
+
+	// ⌘/Ctrl+W closes the active tab (G-4.3.2). Dirty tabs are never silently
+	// discarded — the user closes those via the tab's explicit ✕ confirm flow.
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "w") return;
+			e.preventDefault();
+			const { activeTabId, closeTab } = useWorkspaceStore.getState();
+			if (!activeTabId) return;
+			const req = useRequestStore.getState();
+			if (tabIsDirty(req.drafts[activeTabId], req.meta[activeTabId])) {
+				notifyWarning("Tab has unsaved changes", "Close it with the tab's ✕ to discard them.");
+				return;
+			}
+			closeTab(activeTabId, { force: true });
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, []);
 
 	useEffect(() => {
 		void refreshEnvironments();

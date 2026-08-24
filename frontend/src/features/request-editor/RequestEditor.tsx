@@ -3,7 +3,7 @@ import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
 import { CompactSelect } from '../../components/CompactSelect'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Loader2 } from 'lucide-react'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
 import { useRequestStore, useWorkspaceStore } from '../../stores'
@@ -18,6 +18,7 @@ import { tagWarnings } from '../../lib/tags'
 import { generateCode } from '../../lib/codegen'
 import { copyText } from '../../lib/response'
 import { notifyError } from '../../lib/notify'
+import { handleTabArrowKeys, tabClass } from '../../lib/ui'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
 
@@ -30,13 +31,6 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'body', label: 'Body' },
   { id: 'variables', label: 'Variables' },
 ]
-
-const tabClass = (active: boolean) =>
-  `rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-    active
-      ? 'bg-muted text-foreground'
-      : 'text-muted-foreground hover:text-foreground'
-  }`
 
 const bodyLanguage = {
   none: 'text',
@@ -217,8 +211,15 @@ export function RequestEditor() {
         <input
           value={draft.url}
           onChange={(e) => patch({ url: e.target.value })}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              e.preventDefault()
+              if (!loading) handleSend()
+            }
+          }}
           placeholder="https://reqly-test-api.vercel.app/api/users?page=1 — mock API for testing"
           spellCheck={false}
+          aria-label="Request URL"
           className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
         />
         <span
@@ -235,6 +236,7 @@ export function RequestEditor() {
         )}
         {loading ? (
           <Button size="sm" variant="destructive" onClick={() => void cancel(activeTabId)}>
+            <Loader2 className="size-3.5 animate-spin" aria-hidden />
             Stop
           </Button>
         ) : (
@@ -303,13 +305,21 @@ export function RequestEditor() {
         <RetrySection retry={draft.retry} onChange={(retry) => patch({ retry })} />
       </div>
 
-      <div className="flex items-center gap-1 px-2">
+      <div
+        className="flex items-center gap-1 px-2"
+        role="tablist"
+        aria-label="Request sections"
+        onKeyDown={(e) => handleTabArrowKeys(e)}
+      >
         {tabs
           .filter((t) => showVariables || t.id !== 'variables')
           .map((t) => (
             <button
               key={t.id}
               type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              tabIndex={tab === t.id ? 0 : -1}
               onClick={() => setTab(t.id)}
               className={tabClass(tab === t.id)}
             >
@@ -402,6 +412,7 @@ export function RequestEditor() {
                     value={draft.body}
                     onChange={(e) => patch({ body: e.target.value })}
                     placeholder="./fixtures/payload.bin"
+                    aria-label="Binary file path"
                     spellCheck={false}
                     className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground"
                   />
