@@ -212,17 +212,17 @@ Features that make Reqly more capable than a basic API client.
 - [ ] Schema visualization (relationships between types, objects, endpoints, schemas)
 - [x] Code generation — `internal/exporter.Generate` (request → cURL/JS/Python/Go, header/body/auth, `[SECRET]` masked, `reqly export code` + desktop `Copy as`, golden files) — [ADR 0016](docs/adr/0016-code-generation.md)
 - [~] Mock server (from OpenAPI/examples, request matching, dynamic responses, delay/error simulation, stateful mocks) — CLI `reqly mock` with path/method matching, schema/example generation, `--delay`, `--fail-every`; stateful mocks pending
-- [ ] API diff + breaking-change detection (endpoints, params, schemas, auth, response types)
-- [ ] Request/response diff (JSON structural)
-- [ ] Environment diff
+- [x] API diff + breaking-change detection (endpoints, params, schemas, auth, response types) — `internal/diffing` (`OpenAPIFiles` structural diff + `breaking.go` severity classification), `reqly diff <file1> <file2>`, desktop Diff view
+- [x] Request/response diff (JSON structural) — `diffing.JSON` + `reqly diff`
+- [x] Environment diff — `reqly env diff` + desktop env tools panel
 - [ ] Request inheritance & templates (reusable request templates)
-- [ ] HAR import/export + replay
-- [ ] JWT tooling (decode, claims viewer, signing)
-- [ ] GraphQL introspection / gRPC reflection tooling
+- [~] HAR import/export + replay — import (`internal/importer/har.go`) + export (`internal/exporter/har.go`) shipped; HAR-specific replay pending (history replay via `HistoryReplay` shipped)
+- [~] JWT tooling (decode, claims viewer, signing) — decode/claims viewer + expiry detection (`reqly jwt decode`, ADR 0021) + per-request HS256/384/512 signing shipped; `verify`/`sign` CLI deferred to M29b
+- [~] GraphQL introspection / gRPC reflection tooling — GraphQL schema introspection + summary shipped (`internal/graphql/introspect.go`, desktop GraphQL browser); gRPC reflection not started
 - [ ] Advanced HTTP: HTTP/2, HTTP/3, streaming, chunked transfer, keep-alive
 - [ ] Proxy & TLS controls: system/HTTP/HTTPS/SOCKS5, per-env/per-request, cert inspection, mTLS, custom CAs
-- [ ] Pagination runner (page/offset/cursor/link-header, stop conditions, aggregation)
-- [ ] Bulk request execution (CSV/JSON inputs, sequential/parallel, concurrency)
+- [x] Pagination runner (page/offset/cursor/link-header, stop conditions, aggregation) — `internal/pagination` + `reqly pagination run` ([ADR 0022](docs/adr/0022-pagination-runner.md)) + desktop runners panel
+- [x] Bulk request execution (CSV/JSON inputs, sequential/parallel, concurrency) — `internal/bulk` + `reqly bulk run --data` ([ADR 0023](docs/adr/0023-bulk-runner.md)) + desktop runners panel
 - [ ] Data-driven testing (same test suite against multiple datasets)
 - [x] Retry & resilience — engine-level `request.retry` block (`count`/`delayMs`/`strategy: fixed|exponential`/`maxDelayMs`/`retryOn`) inside `Client.Execute`, network errors + 429/502/503/504 default set, `Retry-After` honored + clamped, auth refresh orthogonal within one attempt, `response.Attempts` + history carry, `reqly run --retries/--retry-delay`, desktop Retry section ([ADR 0024](docs/adr/0024-retry-resilience.md))
 - [ ] API documentation generation (REST + GraphQL + realtime)
