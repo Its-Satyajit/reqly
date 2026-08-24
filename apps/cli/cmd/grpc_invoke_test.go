@@ -124,3 +124,46 @@ func TestGrpcInvokeRequiresGrpcBlock(t *testing.T) {
 		t.Fatal("expected error for request file without grpc block")
 	}
 }
+
+func TestGrpcInvokeStreamWithMaxMessages(t *testing.T) {
+	srv := testsrv.Start(t)
+	path := writeGrpcRequestFile(t, t.TempDir(), `{
+		"request": {
+			"url": "`+srv.Addr+`",
+			"grpc": {"service": "reqly.test.v1.EchoService", "method": "StreamEcho"}
+		}
+	}`)
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	grpcMaxMessages = 2
+	defer func() { grpcMaxMessages = 0 }()
+	rootCmd.SetArgs([]string{"grpc", "invoke", path, "--max-messages", "2"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("grpc invoke --max-messages: %v\n%s", err, out.String())
+	}
+	lines := strings.Count(out.String(), "\n")
+	if lines < 2 {
+		t.Errorf("expected at least 2 streamed messages, got:\n%s", out.String())
+	}
+}
+
+func TestGrpcInvokeStreamingMethodEndToEnd(t *testing.T) {
+	srv := testsrv.Start(t)
+	path := writeGrpcRequestFile(t, t.TempDir(), `{
+		"request": {
+			"url": "`+srv.Addr+`",
+			"grpc": {"service": "reqly.test.v1.EchoService", "method": "StreamEcho"}
+		}
+	}`)
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"grpc", "invoke", path})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("grpc invoke stream: %v\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), `"sequence"`) {
+		t.Errorf("output missing streamed messages:\n%s", out.String())
+	}
+}

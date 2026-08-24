@@ -19,9 +19,12 @@ package core
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
+	"github.com/Its-Satyajit/reqly/internal/grpc"
 	"github.com/Its-Satyajit/reqly/internal/grpc/testsrv"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/testsupport"
@@ -150,5 +153,118 @@ func TestRunGRPCNonOKStatusMaskedAndRecorded(t *testing.T) {
 	}
 	if !found {
 		t.Error("no history row for failed call")
+	}
+}
+
+func TestRunGRPCStreamedInOrder(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	var seqs []int
+	res, err := svc.RunGRPCStreamed(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "StreamEcho",
+			Message: map[string]any{"text": "s"},
+		},
+	}, RunRequestOptions{}, func(ev grpc.StreamEvent) error {
+		var msg map[string]any
+		_ = json.Unmarshal(ev.MessageJSON, &msg)
+		seqs = append(seqs, int(msg["sequence"].(float64)))
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("RunGRPCStreamed: %v", err)
+	}
+	if !res.Result.OK || len(seqs) != 3 || seqs[0] != 1 || seqs[2] != 3 {
+		t.Fatalf("stream result = %+v seqs=%v", res.Result, seqs)
+	}
+}
+
+func TestRunGRPCStreamedStopConsumptionSentinel(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	count := 0
+	res, err := svc.RunGRPCStreamed(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "StreamEcho",
+			Message: map[string]any{"text": "s"},
+		},
+	}, RunRequestOptions{}, func(_ grpc.StreamEvent) error {
+		count++
+		if count >= 1 {
+			return ErrStopConsumption
+		}
+		return nil
+	})
+	if !errors.Is(err, ErrStopConsumption) {
+		t.Fatalf("expected ErrStopConsumption sentinel, got %v", err)
+	}
+	if count != 1 {
+		t.Errorf("consumed %d messages, want 1", count)
+	}
+	if res == nil || res.Result == nil {
+		t.Fatal("expected result alongside sentinel")
+	}
+}
+
+func TestRunGRPCStreamedFallsBackToUnary(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPCStreamed(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "unary via stream"},
+		},
+	}, RunRequestOptions{}, func(ev grpc.StreamEvent) error { return nil })
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(string(res.Result.MessageJSON), "unary via stream") {
+		t.Errorf("unary fallback did not run: %+v", res.Result)
+	}
+}
+
+func TestRunGRPCStreamedHistorySummaryRow(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	_, err := svc.RunGRPCStreamed(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "StreamEcho",
+			Message: map[string]any{"text": "s"},
+		},
+	}, RunRequestOptions{RequestPath: "rpc.reqly.json"}, func(_ grpc.StreamEvent) error { return nil })
+	if err != nil {
+		t.Fatalf("RunGRPCStreamed: %v", err)
+	}
+	entries, herr := svc.History().List(context.Background(), 10, 0, nil)
+	if herr != nil {
+		t.Fatalf("list history: %v", herr)
+	}
+	var found bool
+	for _, e := range entries {
+		if e.Method == "GRPC" && strings.Contains(e.URL, "StreamEcho") {
+			found = true
+			if !strings.Contains(string(e.RespBody), "3 messages") {
+				t.Errorf("summary body = %q", e.RespBody)
+			}
+		}
+	}
+	if !found {
+		t.Error("no summary row for streamed call")
 	}
 }

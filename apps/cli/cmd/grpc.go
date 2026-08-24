@@ -20,6 +20,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -84,6 +85,7 @@ func init() {
 	grpcServicesCmd.Flags().StringVar(&grpcCAFile, "ca-file", "", "PEM CA bundle to trust")
 	grpcInvokeCmd.Flags().StringVar(&grpcInvokeTimeout, "timeout", "", "override the call deadline (Go duration, e.g. 5s)")
 	grpcInvokeCmd.Flags().StringVar(&grpcEnv, "env", "", "environment to use (REQLY_ENV wins)")
+	grpcInvokeCmd.Flags().IntVar(&grpcMaxMessages, "max-messages", 0, "server-streaming: stop after n messages (0 = until the server closes)")
 	grpcCmd.AddCommand(grpcServicesCmd)
 	grpcCmd.AddCommand(grpcInvokeCmd)
 }
@@ -93,6 +95,7 @@ var (
 	grpcEnv           string
 	grpcTLSSkipVerify bool
 	grpcCAFile        string
+	grpcMaxMessages   int
 )
 
 var grpcInvokeCmd = &cobra.Command{
@@ -136,23 +139,40 @@ non-OK gRPC statuses.`,
 		svc := core.NewRunService(root)
 		defer svc.Close()
 
-		res, err := svc.RunGRPC(cmd.Context(), f.Request, core.RunRequestOptions{
+		out := cmd.OutOrStdout()
+		streamed := false
+		res, err := svc.RunGRPCStreamed(cmd.Context(), f.Request, core.RunRequestOptions{
 			EnvFlag:  envFlag,
 			FileEnv:  f.Environment,
 			FileVars: f.VariablesSet(),
+		}, func(ev grpcclient.StreamEvent) error {
+			streamed = true
+			fmt.Fprintln(out, string(ev.MessageJSON))
+			if grpcMaxMessages > 0 && ev.Seq >= grpcMaxMessages {
+				return core.ErrStopConsumption
+			}
+			return nil
 		})
-		if err != nil {
+		if err != nil && !errors.Is(err, core.ErrStopConsumption) {
 			return err
+		}
+		if errors.Is(err, core.ErrStopConsumption) {
+			// Client-side cap reached; the streamed messages above are the
+			// complete output by definition.
+			return nil
 		}
 		r := res.Result
 		if !r.OK {
 			return fmt.Errorf("gRPC status %s (%d): %s", r.CodeName, r.Code, r.StatusMessage)
 		}
+		if streamed {
+			return nil
+		}
 		var pretty bytes.Buffer
 		if err := json.Indent(&pretty, r.MessageJSON, "", "  "); err != nil {
 			return fmt.Errorf("format response: %w", err)
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), pretty.String())
+		fmt.Fprintln(out, pretty.String())
 		if res.Warning != "" {
 			fmt.Fprintln(cmd.ErrOrStderr(), "warning:", res.Warning)
 		}

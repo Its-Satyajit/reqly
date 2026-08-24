@@ -59,9 +59,11 @@ type InvokeOptions struct {
 // returned a non-OK status; then Code/CodeName/StatusMessage carry the
 // failure and MessageJSON is empty.
 type Result struct {
-	MessageJSON   []byte          `json:"messageJson,omitempty"`
-	OK            bool            `json:"ok"`
-	DurationMS    int64           `json:"durationMs,omitempty"`
+	MessageJSON []byte `json:"messageJson,omitempty"`
+	OK          bool   `json:"ok"`
+	DurationMS  int64  `json:"durationMs,omitempty"`
+	// seq counts streamed messages internally (never serialized).
+	seq           int
 	Code          uint32          `json:"code,omitempty"`
 	CodeName      string          `json:"codeName,omitempty"`
 	StatusMessage string          `json:"statusMessage,omitempty"`
