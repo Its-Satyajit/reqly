@@ -268,3 +268,90 @@ func TestRunGRPCStreamedHistorySummaryRow(t *testing.T) {
 		t.Error("no summary row for streamed call")
 	}
 }
+
+func TestRunGRPCScriptsAndAssertions(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPC(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "original"},
+		},
+	}, RunRequestOptions{
+		PreRequestScript:  `reqly.request.body = JSON.stringify({text: "patched by script"});`,
+		PostRequestScript: `reqly.test("echo applied", () => reqly.response.body.includes("patched by script")); reqly.setVariable("extracted", "value");`,
+	})
+	if err != nil {
+		t.Fatalf("RunGRPC with scripts: %v", err)
+	}
+	if !res.Result.OK {
+		t.Fatalf("expected OK: %+v", res.Result)
+	}
+	if !strings.Contains(string(res.Result.MessageJSON), "patched by script") {
+		t.Errorf("pre-script did not patch the message: %s", res.Result.MessageJSON)
+	}
+	if len(res.Tests) != 1 || !res.Tests[0].Passed {
+		t.Errorf("assertions = %+v, want one passing", res.Tests)
+	}
+	if !res.Passed() {
+		t.Error("Passed() should be true")
+	}
+}
+
+func TestRunGRPCFailedAssertionMarksFailure(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPC(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "x"},
+		},
+	}, RunRequestOptions{
+		PostRequestScript: `reqly.test("always fails", () => false);`,
+	})
+	if err != nil {
+		t.Fatalf("RunGRPC: %v", err)
+	}
+	if len(res.Tests) != 1 || res.Tests[0].Passed {
+		t.Fatalf("assertion should fail: %+v", res.Tests)
+	}
+	if res.Passed() {
+		t.Error("Passed() must be false when an assertion fails")
+	}
+	if res.Result.OK {
+		// Transport truth stays OK; the assertion layer marks the failure.
+		t.Log("result.OK remains transport-level true — failure carried by Tests")
+	}
+}
+
+func TestRunGRPCPostScriptErrorSurfaces(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPC(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "x"},
+		},
+	}, RunRequestOptions{PostRequestScript: `this is not javascript ;;;`})
+	if err != nil {
+		t.Fatalf("script errors are results, not errors: %v", err)
+	}
+	if len(res.Tests) != 1 || res.Tests[0].Passed {
+		t.Errorf("expected failing post-script marker test, got %+v", res.Tests)
+	}
+	if !strings.Contains(res.Warning, "post-request script error") {
+		t.Errorf("warning should carry script error: %q", res.Warning)
+	}
+}

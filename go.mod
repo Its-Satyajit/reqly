@@ -3,6 +3,7 @@ module github.com/Its-Satyajit/reqly
 go 1.25.0
 
 require (
+	github.com/bufbuild/protocompile v0.14.1
 	github.com/coder/websocket v1.8.15
 	github.com/dop251/goja v0.0.0-20260822123354-58e940e0d230
 	github.com/getkin/kin-openapi v0.147.0
@@ -20,7 +21,6 @@ require (
 
 require (
 	github.com/adrg/xdg v0.5.3 // indirect
-	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/dlclark/regexp2/v2 v2.5.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
