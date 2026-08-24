@@ -29,7 +29,7 @@ func TestMockStartStopRouteRoundTrip(t *testing.T) {
 	svc, _ := newServiceInWorkspace(t)
 
 	status, err := svc.MockStart(MockStartRequest{
-		Port: 0, // ephemeral; MockStart maps <=0 to 4010 — use free port below
+		Port: 0, // ephemeral kernel-assigned port
 		Routes: []MockRoute{
 			{Method: "GET", Path: "/ping", Status: 200, Body: "pong", Enabled: true},
 		},

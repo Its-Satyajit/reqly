@@ -16,6 +16,7 @@ import { RealtimeTab } from "../features/realtime-view/RealtimeTab";
 import { TestTab } from "../features/test-runner/TestTab";
 import { Toaster } from "../components/ui/toast";
 import { EnvironmentsView } from "../features/environments-view/EnvironmentsView";
+import { DiffView } from "../features/diff-view/DiffView";
 import { MocksView } from "../features/mock-view/MocksView";
 import { HistoryView } from "../features/history-view/HistoryView";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
@@ -209,6 +210,12 @@ export function App() {
 								<section className="h-full min-h-0 overflow-y-auto">
 									<ErrorBoundary label="Mock server">
 										<MocksView />
+									</ErrorBoundary>
+								</section>
+							) : activeView === "diff" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="API diff">
+										<DiffView />
 									</ErrorBoundary>
 								</section>
 							) : (

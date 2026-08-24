@@ -49,7 +49,12 @@ export interface RequestTab {
   filePath?: string
 }
 
-export type WorkspaceView = 'requests' | 'environments' | 'history' | 'mocks'
+export type WorkspaceView =
+	| 'requests'
+	| 'environments'
+	| 'history'
+	| 'mocks'
+	| 'diff'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null

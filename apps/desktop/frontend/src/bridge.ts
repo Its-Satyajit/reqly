@@ -5,6 +5,7 @@ import type {
 	HistoryAdapter,
 	ExportAdapter,
 	ExportFormat,
+	DiffAdapter,
 	MockAdapter,
 	MockStatus,
 	RealtimeAdapter,
@@ -28,6 +29,7 @@ import {
 	useImportStore,
 	useMockStore,
 	useRealtimeStore,
+	setDiffBridge,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
@@ -518,6 +520,45 @@ export const wailsImportAdapter: ImportAdapter = {
 		runImport({ content, formatHint, targetDir, dryRun: false }),
 };
 
+type WailsDiffResult = NonNullable<Awaited<ReturnType<typeof AppService.DiffSpecs>>>["result"];
+
+// toDiffResultView maps the generated Change shape onto the shared view type;
+// both carry identical JSON fields (type/path/from/to/severity).
+function toDiffResultView(r: WailsDiffResult): import("@reqly/frontend").DiffResultView {
+	const changes: import("@reqly/frontend").DiffChange[] = (r?.changes ?? []).flatMap((c) =>
+		c == null
+			? []
+			: [
+					{
+						// SAFETY: the backend only emits create/update/delete.
+						type: c.type as "create" | "update" | "delete",
+						path: [...(c.path ?? [])],
+						from: c.from,
+						to: c.to,
+						severity: c.severity,
+					},
+				],
+	);
+	return { hasChanges: r?.hasChanges ?? false, changes };
+}
+
+export const wailsDiffAdapter: DiffAdapter = {
+	specs: async (pathA, pathB) => {
+		const res = await AppService.DiffSpecs(pathA, pathB);
+		if (!res || !res.result) throw new Error("diff failed");
+		return { result: toDiffResultView(res.result), breaking: res.breaking, addition: res.addition };
+	},
+	responses: async (idA, idB) => {
+		const res = await AppService.DiffResponses(idA, idB);
+		if (!res) throw new Error("diff failed");
+		return {
+			metaA: res.metaA ?? null,
+			metaB: res.metaB ?? null,
+			result: toDiffResultView(res.result ?? { hasChanges: false }),
+		};
+	},
+};
+
 export const wailsMockAdapter: MockAdapter = {
 	start: async ({ specPath, port, delayMs, failEvery, routes }) => {
 		const res: MockStatus | null = await AppService.MockStart({
@@ -610,6 +651,7 @@ export function initRequestBridge(): void {
 	useExportStore.getState().setAdapter(wailsExportAdapter);
 	useRealtimeStore.getState().setAdapter(wailsRealtimeAdapter);
 	useMockStore.getState().setAdapter(wailsMockAdapter);
+	setDiffBridge(wailsDiffAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {

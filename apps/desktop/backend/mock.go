@@ -73,8 +73,10 @@ func (s *AppService) MockStart(req MockStartRequest) (*MockStatus, error) {
 	if err := s.MockStop(); err != nil {
 		return nil, err
 	}
+	// Port <= 0 lets the kernel pick a free ephemeral port; the panel always
+	// sends an explicit value, tests rely on the ephemeral path.
 	port := req.Port
-	if port <= 0 {
+	if port < 0 || port > 65535 {
 		port = 4010
 	}
 

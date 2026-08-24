@@ -73,6 +73,7 @@ export function WorkspaceSidebar() {
 				{navItem("environments", "Environments")}
 				{navItem("history", "History")}
 				{navItem("mocks", "Mocks")}
+				{navItem("diff", "Diff")}
 			</nav>
 			<div className="border-t border-border pt-2">
 				<div className="flex items-center justify-between px-2 pb-2">
