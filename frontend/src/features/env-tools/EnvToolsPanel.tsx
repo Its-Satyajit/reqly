@@ -85,6 +85,17 @@ function DiffTable({ diffs }: { diffs: EnvKeyDiff[] }) {
   );
 }
 
+/** seenBefore counts prior occurrences so repeated issues get unique keys. */
+function seenBefore(issues: EnvIssue[], index: number): number {
+  let count = 0;
+  for (let i = 0; i < index; i++) {
+    if (issues[i].severity === issues[index].severity && issues[i].message === issues[index].message) {
+      count++;
+    }
+  }
+  return count;
+}
+
 export function EnvToolsPanel() {
   const environments = useWorkspaceStore((s) => s.environments);
   const names = environments.map((e) => e.name);
@@ -227,7 +238,10 @@ export function EnvToolsPanel() {
             <li className="text-status-ok">No issues found.</li>
           ) : (
             issues.map((issue, i) => (
-              <li key={`${issue.severity}-${issue.message}-${i}`} className="flex items-baseline gap-1.5">
+              <li
+                key={`${issue.severity}-${issue.message}#${seenBefore(issues, i)}`}
+                className="flex items-baseline gap-1.5"
+              >
                 <Badge
                   variant="outline"
                   className={cn(

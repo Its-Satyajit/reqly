@@ -32,6 +32,8 @@ export default defineConfig({
 		"**/bindings/**",
 		// Vendored third-party import-test fixtures and spec sources.
 		"internal/importer/testdata/**",
+		// Design-experiment scratch area (plain JS demos, not shipped code).
+		"ui-demos/**",
 	],
 	jsPlugins: [
 		{ name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" },

@@ -261,8 +261,8 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
       {respResult && mode === "responses" && respResult.metaA && respResult.metaB && (
         <div className="flex min-h-0 flex-col gap-2">
           <div className="grid grid-cols-2 gap-2 text-[11px]">
-            {[respResult.metaA, respResult.metaB].map((m, i) => (
-              <div key={`${m.id}-${i}`} className="rounded-md border border-border px-2 py-1.5 font-mono">
+            {[respResult.metaA, respResult.metaB].map((m) => (
+              <div key={m.id} className="rounded-md border border-border px-2 py-1.5 font-mono">
                 <p className={m.status >= 400 ? "text-status-error" : "text-status-ok"}>
                   {m.method} {m.status}
                 </p>

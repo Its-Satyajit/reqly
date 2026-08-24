@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Layers, Play, Square } from "lucide-react";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
@@ -36,55 +36,67 @@ let frameSeq = 0;
 
 export function RunnersPanel() {
   const activeTabId = useWorkspaceStore((s) => s.activeTabId);
-  const [mode, setMode] = useState<Mode>("pagination");
-  const [strategy, setStrategy] = useState<PaginationConfigInput["strategy"]>("page");
-  const [maxPages, setMaxPages] = useState(20);
-  const [nextPath, setNextPath] = useState("$.nextCursor");
-  const [data, setData] = useState("id\n1\n2\n3");
-  const [parallel, setParallel] = useState(false);
-  const [concurrency, setConcurrency] = useState(4);
-  const [steps, setSteps] = useState<RunnerStepView[]>([]);
-  const [summary, setSummary] = useState<RunnerSummary | null>(null);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  // One state object keeps the panel's related fields together
+  // (react-doctor/prefer-useReducer). steps/summary/running/error update via
+  // setUi() from the runner event handlers.
+  // SAFETY: each `as` below only pins a string literal to its declared
+  // union member; the object shape is otherwise fully inferred.
+  const [ui, setUi] = useState({
+    mode: "pagination" as Mode,
+    strategy: "page" as PaginationConfigInput["strategy"],
+    maxPages: 20,
+    nextPath: "$.nextCursor",
+    data: "id\n1\n2\n3",
+    parallel: false,
+    concurrency: 4,
+    steps: [] as RunnerStepView[],
+    summary: null as RunnerSummary | null,
+    running: false,
+    error: null as string | null,
+    activeRunId: null as string | null,
+  });
+  const patch = (p: Partial<typeof ui>) => setUi((prev) => ({ ...prev, ...p }));
+  const {
+    mode,
+    strategy,
+    maxPages,
+    nextPath,
+    data,
+    parallel,
+    concurrency,
+    steps,
+    summary,
+    running,
+    error,
+    activeRunId,
+  } = ui;
 
   useEffect(() => {
     if (activeRunId == null) return;
-    return getRunnerBridge().listen(activeRunId, {
+    const unlisten = getRunnerBridge().listen(activeRunId, {
       onStep: (step) => {
         frameSeq += 1;
         const next = { ...step, seq: frameSeq };
-        setSteps((prev) => [...prev.slice(-499), next]);
+        setUi((prev) => ({ ...prev, steps: [...prev.steps.slice(-499), next] }));
       },
       onDone: (summary) => {
-        setSummary(summary);
-        setRunning(false);
+        setUi((prev) => ({ ...prev, summary, running: false }));
       },
     });
+    return () => {
+      unlisten();
+    };
   }, [activeRunId]);
-  // Detaches runner event listeners on unmount.
-  const unwatchRef = useRef<(() => void) | null>(null);
-
-  useEffect(
-    () => () => {
-      unwatchRef.current?.();
-    },
-    [],
-  );
 
   // Draft is captured at start; the panel shows live progress per step.
   const start = (): void => {
     const draft = draftOf(activeTabId);
     if (!draft) {
-      setError("Open a request tab first — runners execute the active request.");
+      patch({ error: "Open a request tab first — runners execute the active request." });
       return;
     }
     const runId = nextRunId(mode);
-    setSteps([]);
-    setSummary(null);
-    setError(null);
-    setRunning(true);
+    patch({ steps: [], summary: null, error: null, running: true });
 
     let pagination: PaginationConfigInput | undefined;
     if (mode === "pagination") {
@@ -94,7 +106,7 @@ export function RunnersPanel() {
 
     // The listener lives in an effect keyed on the run id so unmount and
     // restarts always detach cleanly (react-doctor/effect-needs-cleanup).
-    setActiveRunId(runId);
+    patch({ activeRunId: runId });
     getRunnerBridge()
       .start({
         runId,
@@ -107,14 +119,16 @@ export function RunnersPanel() {
         concurrency: mode === "bulk" && parallel ? concurrency : undefined,
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : String(e));
-        setRunning(false);
+        patch({
+          error: e instanceof Error ? e.message : String(e),
+          running: false,
+        });
       });
   };
 
   const stop = (): void => {
     if (activeRunId != null) void getRunnerBridge().cancel(activeRunId);
-    setRunning(false);
+    patch({ running: false });
   };
 
   return (
@@ -128,7 +142,7 @@ export function RunnersPanel() {
           value={mode}
           onChange={(v) => {
             // SAFETY: options are exactly the two runner kinds.
-            setMode(v as Mode);
+            patch({ mode: v as Mode });
           }}
           options={[
             { value: "pagination", label: "Pagination" },
@@ -152,7 +166,7 @@ export function RunnersPanel() {
               value={strategy}
               onChange={(v) => {
                 // SAFETY: options are the four core pagination strategies.
-                setStrategy(v as PaginationConfigInput["strategy"]);
+                patch({ strategy: v as PaginationConfigInput["strategy"] });
               }}
               options={STRATEGY_OPTIONS}
               ariaLabel="Pagination strategy"
@@ -166,7 +180,7 @@ export function RunnersPanel() {
               <Input
                 id="runner-nextpath"
                 value={nextPath}
-                onChange={(e) => setNextPath(e.target.value)}
+                onChange={(e) => patch({ nextPath: e.target.value })}
                 spellCheck={false}
                 className="font-mono text-xs"
               />
@@ -181,7 +195,7 @@ export function RunnersPanel() {
               type="number"
               min={1}
               value={maxPages}
-              onChange={(e) => setMaxPages(inputInt(e.target.value, maxPages))}
+              onChange={(e) => patch({ maxPages: inputInt(e.target.value, maxPages) })}
               className="w-24 rounded-md border border-border bg-transparent px-2 py-1 text-xs font-mono"
             />
             <span className="text-[11px] text-muted-foreground">stop condition + empty-body guard</span>
@@ -191,7 +205,7 @@ export function RunnersPanel() {
         <>
           <Textarea
             value={data}
-            onChange={(e) => setData(e.target.value)}
+            onChange={(e) => patch({ data: e.target.value })}
             rows={3}
             spellCheck={false}
             aria-label="Bulk data rows (CSV or JSON array)"
@@ -203,7 +217,7 @@ export function RunnersPanel() {
               <input
                 type="checkbox"
                 checked={parallel}
-                onChange={(e) => setParallel(e.target.checked)}
+                onChange={(e) => patch({ parallel: e.target.checked })}
               />
               Parallel
             </label>
