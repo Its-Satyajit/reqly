@@ -8,6 +8,7 @@ export * from "./useImportStore";
 export * from "./useRealtimeStore";
 export * from "./useMockStore";
 export * from "./useShellStore";
+export * from "./usePaletteStore";
 export * from "./useRequestStore";
 export * from "./useTestStore";
 export * from "./useThemeStore";

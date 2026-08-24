@@ -10,6 +10,10 @@ import {
 	ResizablePanelGroup,
 } from "../components/ui/resizable";
 import { AppShell } from "../components/shell/AppShell";
+import {
+	CommandPalette,
+	PaletteTriggerButton,
+} from "../components/palette/CommandPalette";
 import { StatusBar } from "../components/shell/StatusBar";
 import { shellStorage } from "../components/shell/storage";
 import { RequestTabs, RunView, WorkspaceSidebar } from "../components";
@@ -138,6 +142,7 @@ export function App() {
 		<ErrorBoundary variant="root">
 			<Toaster />
 			<CrashOverlay />
+			<CommandPalette onSelectEnvironment={(id) => void onSelectEnvironment(id)} />
 			<AppShell
 				brand={
 					<>
@@ -149,6 +154,7 @@ export function App() {
 						<h1 className="text-sm font-semibold tracking-tight">Reqly</h1>
 					</>
 				}
+				headerCenter={<PaletteTriggerButton />}
 				headerActions={
 					<CompactSelect
 						value={activeEnvironment?.id ?? ""}
