@@ -7,6 +7,7 @@ import { Input } from "#components/ui/input";
 import { Spinner } from "#components/ui/spinner";
 import type { KeyValueRow } from "#lib/request";
 import { cn } from "#lib/utils";
+import { bytesToBase64 } from "#lib/response";
 import { KeyValueEditor } from "#components/KeyValueEditor";
 import {
   formatFrameTime,
@@ -43,8 +44,10 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
   const update = useRealtimeStore((s) => s.update);
   const connect = useRealtimeStore((s) => s.connect);
   const send = useRealtimeStore((s) => s.send);
+  const sendBinary = useRealtimeStore((s) => s.sendBinary);
   const disconnect = useRealtimeStore((s) => s.disconnect);
   const [draft, setDraft] = useState("");
+  const [binaryMode, setBinaryMode] = useState(false);
   const [headersOpen, setHeadersOpen] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -163,7 +166,18 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
                     {f.id ? ` #${f.id}` : ""}
                   </span>
                 )}
-                <span className="break-all whitespace-pre-wrap">{f.data}</span>
+                {f.retryMs != null && f.retryMs > 0 && (
+                  <span
+                    className="mr-2 rounded bg-muted px-1 font-sans text-muted-foreground"
+                    title='Server "retry:" field — suggested reconnect delay'
+                  >
+                    retry {f.retryMs}ms
+                  </span>
+                )}
+                <span className="break-all whitespace-pre-wrap">
+                  {f.encoding === "base64" ? `(binary ${f.data?.length ?? 0} b64) ` : ""}
+                  {f.data}
+                </span>
               </li>
             ))}
           </ul>
@@ -176,14 +190,32 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
           onSubmit={(e) => {
             e.preventDefault();
             if (draft.trim() === "" || tab.status !== "connected") return;
-            void send(tabId, draft);
+            if (binaryMode) {
+              void sendBinary(tabId, bytesToBase64(draft));
+            } else {
+              void send(tabId, draft);
+            }
             setDraft("");
           }}
         >
+          <label className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={binaryMode}
+              onChange={(e) => setBinaryMode(e.target.checked)}
+              aria-label="Send as binary frame (UTF-8 bytes)"
+              className="size-3.5 accent-(--primary)"
+            />
+            bin
+          </label>
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder='Message to send, e.g. {"action":"ping"}'
+            placeholder={
+              binaryMode
+                ? 'Bytes to send as a binary frame, e.g. {"action":"ping"}'
+                : 'Message to send, e.g. {"action":"ping"}'
+            }
             spellCheck={false}
             className="flex-1 font-mono text-xs"
             aria-label="Message to send"

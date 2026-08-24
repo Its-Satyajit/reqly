@@ -61,8 +61,9 @@ type RealtimeFrame struct {
 	Direction string `json:"direction,omitempty"`
 	Data      string `json:"data,omitempty"`
 	Encoding  string `json:"encoding,omitempty"`
-	Name      string `json:"name,omitempty"` // SSE event name
-	ID        string `json:"id,omitempty"`   // SSE event id
+	Name      string `json:"name,omitempty"`  // SSE event name
+	ID        string `json:"id,omitempty"`    // SSE event id
+	RetryMs   int64  `json:"retryMs,omitempty"` // SSE retry hint (G-7.2.3)
 	Timestamp int64  `json:"timestamp"`
 }
 
@@ -152,6 +153,33 @@ func (s *AppService) RealtimeSend(sessionID string, data string) error {
 		Type:      "message",
 		Direction: "out",
 		Data:      data,
+	})
+	return nil
+}
+
+// RealtimeSendBinary writes one binary frame on an open WebSocket session.
+// The payload arrives base64-encoded from the webview and is echoed back into
+// the inspector the same way inbound binary frames are rendered.
+func (s *AppService) RealtimeSendBinary(sessionID string, data string) error {
+	raw, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return fmt.Errorf("payload is not valid base64: %w", err)
+	}
+	realtimeMu.Lock()
+	sess := realtimeSessions[sessionID]
+	realtimeMu.Unlock()
+	if sess == nil || sess.kind != "ws" {
+		return fmt.Errorf("no open websocket session %q", sessionID)
+	}
+	if err := sess.wsClient.SendBinary(context.Background(), raw); err != nil {
+		return fmt.Errorf("send failed: %w", err)
+	}
+	sess.emit(&RealtimeFrame{
+		SessionID: sessionID,
+		Type:      "message",
+		Direction: "out",
+		Data:      data,
+		Encoding:  "base64",
 	})
 	return nil
 }
@@ -274,6 +302,7 @@ func (s *AppService) sseReadLoop(ctx context.Context, sessionID string, sess *re
 			Name:      ev.Name,
 			ID:        ev.ID,
 			Data:      ev.Data,
+			RetryMs:   ev.Retry.Milliseconds(),
 		})
 	}
 }
