@@ -64,33 +64,35 @@ func (t *TypeRef) String() string {
 
 // Arg is one field argument.
 type Arg struct {
-	Name string
-	Type *TypeRef
-	Def  string // default value literal, "" when none
+	Name string   `json:"name"`
+	Type *TypeRef `json:"type"`
+	Def  string   `json:"def,omitempty"` // default value literal, "" when none
 }
 
 // Field is one object/interface field.
 type Field struct {
-	Name string
-	Type *TypeRef
-	Args []Arg
+	Name        string   `json:"name"`
+	Description string   `json:"description,omitempty"`
+	Type        *TypeRef `json:"type"`
+	Args        []Arg    `json:"args,omitempty"`
+	Deprecated  bool     `json:"deprecated,omitempty"`
 }
 
 // Type is a schema type (object, scalar, enum, interface, union, input).
 type Type struct {
-	Kind        string
-	Name        string
-	Description string
-	Fields      []Field // objects/interfaces only
-	EnumValues  []string
+	Kind        string   `json:"kind"`
+	Name        string   `json:"name"`
+	Description string   `json:"description,omitempty"`
+	Fields      []Field  `json:"fields,omitempty"` // objects/interfaces only
+	EnumValues  []string `json:"enumValues,omitempty"`
 }
 
 // Schema is an introspected GraphQL schema.
 type Schema struct {
-	Query        *Type
-	Mutation     *Type
-	Subscription *Type
-	Types        []*Type // non-builtin types, sorted by name
+	Query        *Type   `json:"query,omitempty"`
+	Mutation     *Type   `json:"mutation,omitempty"`
+	Subscription *Type   `json:"subscription,omitempty"`
+	Types        []*Type `json:"types,omitempty"` // non-builtin types, sorted by name
 }
 
 const introspectionQuery = `query IntrospectionQuery { __schema { queryType { name } mutationType { name } subscriptionType { name } types { kind name description fields(includeDeprecated: true) { name args { name defaultValue type { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } type { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } enumValues(includeDeprecated: true) { name } } } }`
@@ -120,8 +122,10 @@ type introspectionPayload struct {
 				Name        string `json:"name"`
 				Description string `json:"description"`
 				Fields      []struct {
-					Name string `json:"name"`
-					Args []struct {
+					Name         string `json:"name"`
+					Description  string `json:"description"`
+					IsDeprecated bool   `json:"isDeprecated"`
+					Args         []struct {
 						Name    string `json:"name"`
 						Default any    `json:"defaultValue"`
 						Type    rawRef `json:"type"`
@@ -216,7 +220,7 @@ func buildSchema(p *introspectionPayload) *Schema {
 		}
 		typ := &Type{Kind: t.Kind, Name: t.Name, Description: t.Description}
 		for _, f := range t.Fields {
-			field := Field{Name: f.Name, Type: f.Type.ref()}
+			field := Field{Name: f.Name, Description: f.Description, Deprecated: f.IsDeprecated, Type: f.Type.ref()}
 			for _, a := range f.Args {
 				arg := Arg{Name: a.Name, Type: a.Type.ref()}
 				if a.Default != nil {
