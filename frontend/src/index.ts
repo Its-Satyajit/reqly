@@ -13,6 +13,8 @@ export * from "./lib/history";
 export * from "./lib/workspace";
 export * from "./lib/import";
 export * from "./lib/export";
+export * from "./lib/test";
+export * from "./lib/realtime";
 export * from "./lib/jsonpath";
 export * from "./lib/request";
 export * from "./lib/response";

@@ -43,8 +43,10 @@ export interface RequestTab {
   /** Workspace-relative Request Path when opened from a collection. */
   requestPath?: string
   /** Tab kind: "request" (default) renders the request editor; "run" renders
-   * the collection Run View. */
-  kind?: 'request' | 'run'
+   * the collection Run View; "test" renders the test runner. */
+  kind?: 'request' | 'run' | 'test'
+  /** Workspace-relative file path for file-backed non-request tabs. */
+  filePath?: string
 }
 
 export type WorkspaceView = 'requests' | 'environments' | 'history'
