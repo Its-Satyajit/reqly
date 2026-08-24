@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/Its-Satyajit/reqly/compare/v1.4.0...v1.4.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* **desktop:** resolve G-4 design-review findings ([b876a2a](https://github.com/Its-Satyajit/reqly/commit/b876a2a895173e537824ac2b3ee984eff8ee3e9d))
+* **desktop:** resolve G-4 design-review findings ([6029b65](https://github.com/Its-Satyajit/reqly/commit/6029b65bb7440bb786e7d9c296de8d36c67f4dae))
+
 ## [1.4.0](https://github.com/Its-Satyajit/reqly/compare/v1.3.0...v1.4.0) (2026-08-24)
 
 
