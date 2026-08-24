@@ -6,6 +6,8 @@ import type {
 	ExportAdapter,
 	ExportFormat,
 	DiffAdapter,
+	JwtAdapter,
+	JwtTokenView,
 	MockAdapter,
 	MockStatus,
 	RealtimeAdapter,
@@ -30,6 +32,7 @@ import {
 	useMockStore,
 	useRealtimeStore,
 	setDiffBridge,
+	setJwtBridge,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
@@ -542,6 +545,29 @@ function toDiffResultView(r: WailsDiffResult): import("@reqly/frontend").DiffRes
 	return { hasChanges: r?.hasChanges ?? false, changes };
 }
 
+export const wailsJwtAdapter: JwtAdapter = {
+	decode: async (token) => {
+		const res = await AppService.JwtDecode(token);
+		if (!res) throw new Error("decode failed");
+		// SAFETY: the backend emits exactly these four expiry statuses.
+		const status = res.expiry?.status as JwtTokenView["expiry"]["status"];
+		const e = res.expiry;
+		return {
+			header: res.header ?? [],
+			payload: res.payload ?? [],
+			signature: res.signature,
+			alg: res.alg,
+			expiry: {
+				status,
+				remaining: e?.remaining ?? 0,
+				exp: e?.exp ?? undefined,
+				nbf: e?.nbf ?? undefined,
+				iat: e?.iat ?? undefined,
+			},
+		};
+	},
+};
+
 export const wailsDiffAdapter: DiffAdapter = {
 	specs: async (pathA, pathB) => {
 		const res = await AppService.DiffSpecs(pathA, pathB);
@@ -652,6 +678,7 @@ export function initRequestBridge(): void {
 	useRealtimeStore.getState().setAdapter(wailsRealtimeAdapter);
 	useMockStore.getState().setAdapter(wailsMockAdapter);
 	setDiffBridge(wailsDiffAdapter);
+	setJwtBridge(wailsJwtAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {

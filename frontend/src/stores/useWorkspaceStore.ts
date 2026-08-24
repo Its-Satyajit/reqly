@@ -55,6 +55,7 @@ export type WorkspaceView =
 	| 'history'
 	| 'mocks'
 	| 'diff'
+	| 'jwt'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null

@@ -49,8 +49,8 @@ function ChangesList({ result, severity }: { result: DiffResultView; severity: b
   changes.sort((a, b) => rank(a.severity) - rank(b.severity));
   return (
     <ul className="flex flex-col gap-1">
-      {changes.map((c, i) => (
-        <ChangeRow key={changeKey(c, i)} change={c} severity={severity} />
+      {changes.map((c) => (
+        <ChangeRow key={changeKey(c)} change={c} severity={severity} />
       ))}
     </ul>
   );
@@ -62,9 +62,9 @@ function rank(severity?: string): number {
   return severity === undefined ? 2 : 2;
 }
 
-/** changeKey builds a stable key from the change identity (no list index). */
-function changeKey(c: DiffChange, fallback: number): string {
-  return `${c.type}-${c.path.join("/")}-${fallback}`;
+/** changeKey builds a stable key from the full change identity. */
+function changeKey(c: DiffChange): string {
+  return `${c.type}-${c.path.join("/")}-${JSON.stringify(c.from)}-${JSON.stringify(c.to)}`;
 }
 
 function ChangeRow({ change, severity }: { change: DiffChange; severity: boolean }) {
@@ -106,43 +106,42 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
   const [mode, setMode] = useState<DiffMode>("specs");
   const [pathA, setPathA] = useState("");
   const [pathB, setPathB] = useState("");
-  const [entryA, setEntryA] = useState<HistoryEntry | null>(null);
-  const [entryB, setEntryB] = useState<HistoryEntry | null>(null);
-  const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [entryAId, setEntryAId] = useState("");
+  const [entryBId, setEntryBId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [specResult, setSpecResult] = useState<Awaited<ReturnType<DiffAdapter["specs"]>> | null>(null);
   const [respResult, setRespResult] = useState<ResponseDiffResult | null>(null);
 
-  const loadEntries = async () => {
-    try {
-      const list = await useHistoryStore.getState().adapter.list(100, 0, "", "");
-      setEntries(list);
-    } catch {
-      /* history unavailable; pickers stay empty */
-    }
-  };
-
+  // Pull from the shared history store so state updates live there, not in
+  // this component's effect.
   useEffect(() => {
-    if (mode === "responses") void loadEntries();
+    if (mode === "responses") {
+      void useHistoryStore.getState().loadPool();
+    }
   }, [mode]);
+  const entries = useHistoryStore((s) => s.pool);
 
-  const run = async () => {
+  // Promise-chain form keeps hook updates out of try/catch, which the React
+  // Compiler cannot model.
+  const run = (): void => {
+    if (mode === "specs" && (pathA.trim() === "" || pathB.trim() === "")) return;
+    if (mode === "responses" && (entryAId === "" || entryBId === "")) return;
     setBusy(true);
     setError(null);
-    try {
-      if (mode === "specs") {
-        if (pathA.trim() === "" || pathB.trim() === "") return;
-        setSpecResult(await effective.specs(pathA.trim(), pathB.trim()));
-      } else if (mode === "responses") {
-        if (!entryA || !entryB) return;
-        setRespResult(await effective.responses(entryA.id, entryB.id));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
+    const pending =
+      mode === "specs"
+        ? effective.specs(pathA.trim(), pathB.trim()).then(setSpecResult)
+        : effective
+            .responses(entryAId, entryBId)
+            .then(setRespResult);
+    pending
+      .catch((error) => {
+        setError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        setBusy(false);
+      });
   };
 
   const entryOption = (e: HistoryEntry | null) =>
@@ -188,7 +187,7 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
               className="font-mono text-xs"
             />
           </div>
-          <Button size="sm" disabled={busy || pathA.trim() === "" || pathB.trim() === ""} onClick={() => void run()}>
+          <Button size="sm" disabled={busy || pathA.trim() === "" || pathB.trim() === ""} onClick={() => run()}>
             {busy ? <Spinner data-icon="inline-start" /> : <GitCompareArrows data-icon="inline-start" />}
             Diff
           </Button>
@@ -201,8 +200,8 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
             <label htmlFor="diff-entry-a" className="text-xs font-medium">Entry A</label>
             <select
               id="diff-entry-a"
-              value={entryA?.id ?? ""}
-              onChange={(e) => setEntryA(entries.find((x) => x.id === e.target.value) ?? null)}
+              value={entryAId}
+              onChange={(e) => setEntryAId(e.target.value)}
               className="rounded-md border border-border bg-transparent px-2 py-1 text-xs"
             >
               <option value="">Pick entry…</option>
@@ -215,8 +214,8 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
             <label htmlFor="diff-entry-b" className="text-xs font-medium">Entry B</label>
             <select
               id="diff-entry-b"
-              value={entryB?.id ?? ""}
-              onChange={(e) => setEntryB(entries.find((x) => x.id === e.target.value) ?? null)}
+              value={entryBId}
+              onChange={(e) => setEntryBId(e.target.value)}
               className="rounded-md border border-border bg-transparent px-2 py-1 text-xs"
             >
               <option value="">Pick entry…</option>
@@ -225,7 +224,7 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
               ))}
             </select>
           </div>
-          <Button size="sm" disabled={busy || !entryA || !entryB || entryA.id === entryB?.id} onClick={() => void run()}>
+          <Button size="sm" disabled={busy || entryAId === "" || entryBId === "" || entryAId === entryBId} onClick={() => run()}>
             {busy ? <Spinner data-icon="inline-start" /> : <GitCompareArrows data-icon="inline-start" />}
             Diff
           </Button>

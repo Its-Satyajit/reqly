@@ -325,3 +325,83 @@ func TestPathParamsCaptured(t *testing.T) {
 	}
 	_ = fmt.Sprintf("%v", rec.Body.String())
 }
+
+func TestManualRoutesOverrideSpec(t *testing.T) {
+	doc, err := openapi.Load([]byte(petsSpec))
+	if err != nil {
+		t.Fatalf("openapi.Load() error = %v", err)
+	}
+	srv, err := NewServer(doc, WithRoutes([]Route{
+		{Method: "GET", Path: "/pets", Status: 200, Body: `{"manual":true}`, Enabled: true},
+	}))
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/pets", nil)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if got := rec.Body.String(); got != `{"manual":true}` {
+		t.Errorf("body = %q", got)
+	}
+}
+
+func TestDisabledRouteFallsThroughToSpec(t *testing.T) {
+	doc, err := openapi.Load([]byte(petsSpec))
+	if err != nil {
+		t.Fatalf("openapi.Load() error = %v", err)
+	}
+	srv, err := NewServer(doc, WithRoutes([]Route{
+		{Method: "GET", Path: "/pets", Status: 418, Body: "teapot", Enabled: false},
+	}))
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/pets", nil))
+	if rec.Code == 418 {
+		t.Error("disabled route was served")
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("spec fallback status = %d, want 200", rec.Code)
+	}
+}
+
+func TestSpeclessRouteServer(t *testing.T) {
+	srv, err := NewServer(nil, WithRoutes([]Route{
+		{Method: "", Path: "/anything", Status: 200, Body: "ok", Enabled: true},
+	}))
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, httptest.NewRequest(method, "/anything", nil))
+		if rec.Code != http.StatusOK || rec.Body.String() != "ok" {
+			t.Errorf("%s: status=%d body=%q", method, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+func TestNilDocWithoutRoutesErrors(t *testing.T) {
+	if _, err := NewServer(nil); err == nil {
+		t.Fatal("nil doc without routes succeeded, want error")
+	}
+}
+
+func TestCustomContentTypeHeader(t *testing.T) {
+	srv, err := NewServer(nil, WithRoutes([]Route{
+		{Path: "/x", Status: 200, Body: "<xml/>",
+			Headers: map[string]string{"Content-Type": "application/xml"}, Enabled: true},
+	}))
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
+	if ct := rec.Header().Get("Content-Type"); ct != "application/xml" {
+		t.Errorf("Content-Type = %q", ct)
+	}
+}

@@ -163,6 +163,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if s.serveRoute(w, r) {
+		s.maybeLog("→ manual route (%s)", time.Since(start))
+		return
+	}
+
 	route := s.match(r)
 	if route == nil {
 		writeJSON(w, http.StatusNotFound, "not_found", "no matching path in OpenAPI document")
@@ -210,6 +215,9 @@ var counter = &requestCounter{}
 // match locates the first document path whose pattern matches the request.
 // Path templates use {name} segments, e.g. /users/{id}.
 func (s *Server) match(r *http.Request) *matchResult {
+	if s.doc == nil {
+		return nil
+	}
 	reqPath := cleanPath(r.URL.Path)
 
 	var best *matchResult
