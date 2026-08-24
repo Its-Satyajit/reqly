@@ -71,6 +71,15 @@ const METHOD_CLASSES = {
   OPTIONS: "text-status-info",
 } as const;
 
+/** Semantic tint class for an HTTP method, per the GitHub REST-doc ramp. */
+export function methodTintClass(method: string): string {
+  return (
+    // SAFETY: unknown methods miss the lookup and fall back to muted text
+    METHOD_CLASSES[method.toUpperCase() as keyof typeof METHOD_CLASSES] ??
+    "text-muted-foreground"
+  );
+}
+
 export function MethodLabel({
   method,
   className,

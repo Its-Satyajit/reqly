@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
 import { CompactSelect } from '../../components/CompactSelect'
+import { methodTintClass } from '../../components/status'
+import { cn } from '#lib/utils'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
 import { ChevronRight, Loader2 } from 'lucide-react'
 import { AuthEditor } from '../auth-editor/AuthEditor'
@@ -205,7 +207,7 @@ export function RequestEditor() {
           value={draft.method}
           onChange={(method) => patch({ method })}
           ariaLabel="HTTP method"
-          className="w-24 shrink-0 font-mono font-semibold"
+          className={cn("w-24 shrink-0 font-mono font-semibold", methodTintClass(draft.method))}
           options={methods.map((m) => ({ value: m, label: m }))}
         />
         <input

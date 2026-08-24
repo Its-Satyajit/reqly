@@ -3,6 +3,7 @@ import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { CrashOverlay } from "../components/CrashOverlay";
+import { cn } from "#lib/utils";
 import { CompactSelect } from "../components/CompactSelect";
 import {
 	ResizableHandle,
@@ -10,6 +11,7 @@ import {
 	ResizablePanelGroup,
 } from "../components/ui/resizable";
 import { AppShell } from "../components/shell/AppShell";
+import { ResponseModeToggle } from "../components/shell/ResponseModeToggle";
 import {
 	CommandPalette,
 	PaletteTriggerButton,
@@ -32,7 +34,7 @@ import { MocksView } from "../features/mock-view/MocksView";
 import { HistoryView } from "../features/history-view/HistoryView";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
-import { useThemeStore, useWorkspaceBootstrapStore, useWorkspaceStore } from "../stores";
+import { useShellStore, useThemeStore, useWorkspaceBootstrapStore, useWorkspaceStore } from "../stores";
 import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
 import { NEW_REQUEST_TAB_ID, tabIsDirty, useRequestStore } from "../stores/useRequestStore";
 import { useDefaultLayout } from "react-resizable-panels";
@@ -103,6 +105,7 @@ export function App() {
 		(e) => e.id === activeEnvironmentId,
 	);
 	const activeTab = openTabs.find((t) => t.id === activeTabId);
+	const responseMode = useShellStore((s) => s.responseMode);
 
 	if (!bootChecked) {
 		return (
@@ -260,9 +263,12 @@ export function App() {
 											</ErrorBoundary>
 										</div>
 									) : (
-										<div className="min-h-0 min-w-0 flex-1">
+										<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+											<div className="flex shrink-0 items-center justify-end border-b border-border px-2 py-1">
+												<ResponseModeToggle />
+											</div>
 											<ResizablePanelGroup
-												orientation="horizontal"
+												orientation={responseMode === "inline" ? "vertical" : "horizontal"}
 												defaultLayout={splitLayout.defaultLayout}
 												onLayoutChanged={splitLayout.onLayoutChanged}
 											>
@@ -271,7 +277,7 @@ export function App() {
 													defaultSize="50%"
 													minSize="25%"
 												>
-													<div className="h-full min-h-0 min-w-0 border-r border-border">
+													<div className={cn("h-full min-h-0 min-w-0", responseMode === "split" && "border-r border-border")}>
 														<ErrorBoundary label="Request editor">
 															<RequestEditor />
 														</ErrorBoundary>
@@ -283,7 +289,7 @@ export function App() {
 													defaultSize="50%"
 													minSize="25%"
 												>
-													<div className="h-full min-h-0 min-w-0">
+													<div className="h-full min-h-0 min-w-0 border-t border-border">
 														<ErrorBoundary label="Response viewer">
 															<ResponseViewer />
 														</ErrorBoundary>

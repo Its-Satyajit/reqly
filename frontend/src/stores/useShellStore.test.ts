@@ -45,4 +45,22 @@ describe('shell store (inspector mount point)', () => {
     expect(fresh.inspectorOpen).toBe(true)
     expect(fresh.inspectorTab).toBe('commit-strip')
   })
+
+  describe('response mode preference', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    it('defaults to split layout', () => {
+      expect(useShellStore.getState().responseMode).toBe('split')
+    })
+
+    it('persists inline vs split', () => {
+      useShellStore.getState().setResponseMode('inline')
+      expect(useShellStore.getState().responseMode).toBe('inline')
+      expect(localStorage.getItem('reqly-shell-response-mode')).toBe('inline')
+      useShellStore.getState().setResponseMode('split')
+      expect(localStorage.getItem('reqly-shell-response-mode')).toBe('split')
+    })
+  })
 })

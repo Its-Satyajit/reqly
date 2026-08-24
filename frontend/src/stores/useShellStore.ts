@@ -2,10 +2,33 @@ import { create } from 'zustand'
 
 export type InspectorTabId = string
 
+export type ResponseMode = 'split' | 'inline'
+
+const RESPONSE_MODE_KEY = 'reqly-shell-response-mode'
+
+function readResponseMode(): ResponseMode {
+  try {
+    return localStorage.getItem(RESPONSE_MODE_KEY) === 'inline' ? 'inline' : 'split'
+  } catch {
+    return 'split'
+  }
+}
+
+function writeResponseMode(mode: ResponseMode) {
+  try {
+    localStorage.setItem(RESPONSE_MODE_KEY, mode)
+  } catch {
+    // storage unavailable — in-memory only
+  }
+}
+
 interface ShellState {
   /** Right-hand inspector mount point; views populate content per tab. */
   inspectorOpen: boolean
   inspectorTab: InspectorTabId | null
+  /** Request/response layout: side-by-side or stacked. */
+  responseMode: ResponseMode
+  setResponseMode: (mode: ResponseMode) => void
   openInspector: (tab?: InspectorTabId) => void
   closeInspector: () => void
   toggleInspector: () => void
@@ -58,6 +81,11 @@ function writeTab(tab: InspectorTabId | null) {
 
 export const useShellStore = create<ShellState>()((set, get) => ({
   ...initialShellState(),
+  responseMode: readResponseMode(),
+  setResponseMode: (mode) => {
+    set({ responseMode: mode })
+    writeResponseMode(mode)
+  },
   openInspector: (tab) => {
     const next = tab ?? get().inspectorTab ?? 'default'
     set({ inspectorOpen: true, inspectorTab: next })
