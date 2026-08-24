@@ -30,6 +30,7 @@ import { OpenapiExplorer } from "../features/openapi-explorer/OpenapiExplorer";
 import { DocsView } from "../features/docs-view/DocsView";
 import { GrpcTab } from "../features/grpc-view/GrpcTab";
 import { RunnersPanel } from "../features/runners-panel/RunnersPanel";
+import { SettingsView } from "../features/settings-view/SettingsView";
 import { MocksView } from "../features/mock-view/MocksView";
 import { HistoryView } from "../features/history-view/HistoryView";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
@@ -239,6 +240,12 @@ export function App() {
 								<section className="h-full min-h-0 overflow-y-auto">
 									<ErrorBoundary label="Docs generator">
 										<DocsView />
+									</ErrorBoundary>
+								</section>
+							) : activeView === "settings" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Settings">
+										<SettingsView />
 									</ErrorBoundary>
 								</section>
 							) : (

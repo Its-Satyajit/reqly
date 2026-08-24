@@ -61,6 +61,7 @@ export type WorkspaceView =
 	| 'explorer'
 	| 'docs'
 	| 'grpc'
+	| 'settings'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null

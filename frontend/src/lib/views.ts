@@ -12,6 +12,7 @@ export const WORKSPACE_VIEWS = [
 	{ id: "explorer", label: "OpenAPI explorer" },
 	{ id: "docs", label: "Docs generator" },
 	{ id: "grpc", label: "gRPC client" },
+	{ id: "settings", label: "Settings" },
 ] as const;
 
 export type WorkspaceViewId = (typeof WORKSPACE_VIEWS)[number]["id"];
