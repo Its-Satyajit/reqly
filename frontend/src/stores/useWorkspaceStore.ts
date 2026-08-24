@@ -56,6 +56,9 @@ export type WorkspaceView =
 	| 'mocks'
 	| 'diff'
 	| 'jwt'
+	| 'graphql'
+	| 'runners'
+	| 'explorer'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null
