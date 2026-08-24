@@ -27,8 +27,6 @@ import (
 	"fmt"
 	"strings"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -55,16 +53,10 @@ type Service struct {
 	Methods []Method `json:"methods"`
 }
 
-// dial opens a plaintext client connection (h2c); TLS options arrive with M43
-// ticket 04 as additional Options fields.
-func dial(ctx context.Context, target string) (*grpc.ClientConn, error) {
-	return grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-}
-
 // Discover lists the target's services and methods over server reflection.
 // A server without reflection fails with an error naming it.
-func Discover(ctx context.Context, target string) ([]Service, error) {
-	conn, err := dial(ctx, target)
+func Discover(ctx context.Context, target string, tr Transport) ([]Service, error) {
+	conn, err := dial(ctx, target, tr)
 	if err != nil {
 		return nil, fmt.Errorf("dial %s: %w", target, err)
 	}

@@ -50,7 +50,11 @@ var grpcServicesCmd = &cobra.Command{
 
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		services, err := grpcclient.Discover(cmd.Context(), args[0])
+		services, err := grpcclient.Discover(cmd.Context(), args[0], grpcclient.Transport{
+			TLS:           grpcTLSSkipVerify || grpcCAFile != "",
+			TLSSkipVerify: grpcTLSSkipVerify,
+			CAFile:        grpcCAFile,
+		})
 		if err != nil {
 			return err
 		}
@@ -76,6 +80,8 @@ var grpcServicesCmd = &cobra.Command{
 
 func init() {
 	grpcServicesCmd.Flags().BoolVar(&grpcServicesJSON, "json", false, "output machine-readable JSON")
+	grpcServicesCmd.Flags().BoolVar(&grpcTLSSkipVerify, "tls-skip-verify", false, "skip TLS certificate verification")
+	grpcServicesCmd.Flags().StringVar(&grpcCAFile, "ca-file", "", "PEM CA bundle to trust")
 	grpcInvokeCmd.Flags().StringVar(&grpcInvokeTimeout, "timeout", "", "override the call deadline (Go duration, e.g. 5s)")
 	grpcInvokeCmd.Flags().StringVar(&grpcEnv, "env", "", "environment to use (REQLY_ENV wins)")
 	grpcCmd.AddCommand(grpcServicesCmd)
@@ -85,6 +91,8 @@ func init() {
 var (
 	grpcInvokeTimeout string
 	grpcEnv           string
+	grpcTLSSkipVerify bool
+	grpcCAFile        string
 )
 
 var grpcInvokeCmd = &cobra.Command{

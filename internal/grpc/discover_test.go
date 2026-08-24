@@ -31,7 +31,7 @@ import (
 
 func TestDiscoverListsFixtureServices(t *testing.T) {
 	srv := testsrv.Start(t)
-	services, err := Discover(context.Background(), srv.Addr)
+	services, err := Discover(context.Background(), srv.Addr, Transport{})
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestDiscoverListsFixtureServices(t *testing.T) {
 
 func TestDiscoverServicesSorted(t *testing.T) {
 	srv := testsrv.Start(t)
-	services, err := Discover(context.Background(), srv.Addr)
+	services, err := Discover(context.Background(), srv.Addr, Transport{})
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestDiscoverServicesSorted(t *testing.T) {
 
 func TestDiscoverRejectsReflectionDisabledServer(t *testing.T) {
 	addr := startPlainServer(t)
-	_, err := Discover(context.Background(), addr)
+	_, err := Discover(context.Background(), addr, Transport{})
 	if err == nil {
 		t.Fatal("expected error against reflection-disabled server, got nil")
 	}
@@ -96,7 +96,7 @@ func TestDiscoverRejectsReflectionDisabledServer(t *testing.T) {
 }
 
 func TestDiscoverUnreachableTarget(t *testing.T) {
-	_, err := Discover(context.Background(), "127.0.0.1:1")
+	_, err := Discover(context.Background(), "127.0.0.1:1", Transport{})
 	if err == nil {
 		t.Fatal("expected error for unreachable target, got nil")
 	}

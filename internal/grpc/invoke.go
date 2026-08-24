@@ -48,10 +48,11 @@ type Call struct {
 }
 
 // InvokeOptions carry per-call settings: metadata (from the request file's
-// headers) and the deadline duration.
+// headers), the deadline duration, and the connection transport.
 type InvokeOptions struct {
-	Metadata map[string]string `json:"metadata,omitempty"`
-	Timeout  time.Duration     `json:"timeout,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	Timeout   time.Duration     `json:"timeout,omitempty"`
+	Transport Transport         `json:"-"`
 }
 
 // Result reports one completed unary call. OK is false when the server
@@ -81,7 +82,7 @@ func headerKey(k string) string { return strings.ToLower(strings.TrimSpace(k)) }
 // arrives as canonical-JSON bytes and is decoded into the method's input type
 // via dynamic descriptors resolved from reflection or protoFiles.
 func Invoke(ctx context.Context, call Call, messageJSON []byte, opts InvokeOptions) (*Result, error) {
-	conn, err := dial(ctx, call.Target)
+	conn, err := dial(ctx, call.Target, opts.Transport)
 	if err != nil {
 		return nil, fmt.Errorf("dial %s: %w", call.Target, err)
 	}
