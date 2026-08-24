@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/Its-Satyajit/reqly/compare/v1.7.0...v1.8.0) (2026-08-24)
+
+
+### Features
+
+* **desktop:** GUI gRPC client — M43 T7 dedicated tab kind ([530fdad](https://github.com/Its-Satyajit/reqly/commit/530fdadc63589d45cfb36b6b54cd36908027b05d))
+* **desktop:** GUI gRPC client — M43 T7 dedicated tab kind ([1146102](https://github.com/Its-Satyajit/reqly/commit/114610266562a3dbf925644254f5fe9c32f91b17))
+* **grpc:** M43 T5 — server-streaming invoke ([9bf3bbd](https://github.com/Its-Satyajit/reqly/commit/9bf3bbd1aa4556a0ec9514270d6287dfb973f33b))
+* **grpc:** M43 T5 — server-streaming invoke ([e652dfb](https://github.com/Its-Satyajit/reqly/commit/e652dfbd7a6cc7f098a64570342451f9e50b3f2a))
+* **grpc:** M43 T6 — scripting & assertions parity for gRPC sends ([78315d8](https://github.com/Its-Satyajit/reqly/commit/78315d87b94be1b5cb7a100733bdb52ec0ae8ca9))
+* **grpc:** M43 T6 — scripting & assertions parity for gRPC sends ([47f4e43](https://github.com/Its-Satyajit/reqly/commit/47f4e43716c08abb7932e90df8a75f0d51f9dfdc))
+
 ## [1.7.0](https://github.com/Its-Satyajit/reqly/compare/v1.6.0...v1.7.0) (2026-08-24)
 
 
