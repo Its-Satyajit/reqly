@@ -62,6 +62,7 @@ func init() {
 		exportCmd,
 		wsCmd,
 		sseCmd,
+		grpcCmd,
 		mockCmd,
 		validateCmd,
 		diffCmd,
