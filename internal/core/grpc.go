@@ -32,6 +32,10 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/grpc"
 	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/response"
+	"github.com/Its-Satyajit/reqly/internal/runner"
+	"github.com/Its-Satyajit/reqly/internal/scripting"
+	"github.com/Its-Satyajit/reqly/internal/variables"
 )
 
 // DefaultGRPCTimeout applies when a request file omits grpc.timeout.
@@ -45,6 +49,22 @@ var ErrStopConsumption = errors.New("consumption stopped")
 type RunGRPCResult struct {
 	Result  *grpc.Result
 	Warning string
+	// Tests are reqly.test() assertion outcomes from the post-request
+	// script (nil when the file declares none).
+	Tests []runner.TestResult
+}
+
+// Passed reports whether the call succeeded and every assertion passed.
+func (r *RunGRPCResult) Passed() bool {
+	if r.Result == nil || !r.Result.OK {
+		return false
+	}
+	for _, t := range r.Tests {
+		if !t.Passed {
+			return false
+		}
+	}
+	return true
 }
 
 // grpcCallPrep carries everything resolved by prepareGRPCCall.
@@ -54,6 +74,7 @@ type grpcCallPrep struct {
 	invokeOpts grpc.InvokeOptions
 	masker     *environments.Masker
 	env        string
+	vars       *variables.Set
 }
 
 // prepareGRPCCall runs the shared pipeline front-half for gRPC sends: env
@@ -137,6 +158,7 @@ func (s *RequestService) prepareGRPCCall(ctx context.Context, r request.Request,
 	}
 
 	return &grpcCallPrep{
+		vars:       set,
 		call:       grpc.Call{Target: target, Service: g.Service, Method: g.Method, ProtoFiles: protoFiles},
 		message:    message,
 		invokeOpts: grpc.InvokeOptions{Metadata: metadata, Timeout: timeout, Transport: grpc.Transport{TLS: g.TLS, TLSSkipVerify: g.TLSSkipVerify, CAFile: interp(g.CAFile)}},
@@ -165,15 +187,72 @@ func (s *RequestService) RunGRPC(ctx context.Context, r request.Request, opts Ru
 	if err != nil {
 		return nil, err
 	}
+	// Pre-request script mutates the outgoing message/metadata through the
+	// same request view HTTP uses (message is exposed as the request body).
+	if opts.PreRequestScript != "" {
+		tmp := r
+		tmp.Body = string(prep.message)
+		view := scripting.NewRequestView(&tmp)
+		sb := scripting.NewSandbox(scripting.SandboxOptions{
+			GetVariable: func(name string) (string, bool) { return prep.vars.Resolve(name) },
+			SetVariable: func(name, value string) { prep.vars.Set(variables.ScopeRuntime, name, value) },
+		})
+		sb.BindRequest(view)
+		if serr := sb.Run(opts.PreRequestScript); serr != nil {
+			return nil, fmt.Errorf("pre-request script: %w", serr)
+		}
+		view.ApplyTo(&tmp)
+		if tmp.Body != "" {
+			prep.message = []byte(tmp.Body)
+		}
+		fixed := make([]request.Header, 0, len(tmp.Headers))
+		for _, h := range tmp.Headers {
+			if strings.TrimSpace(h.Key) != "" {
+				fixed = append(fixed, request.Header{Key: strings.ToLower(h.Key), Value: h.Value})
+			}
+		}
+		prep.invokeOpts.Metadata = map[string]string{}
+		for _, h := range fixed {
+			prep.invokeOpts.Metadata[h.Key] = h.Value
+		}
+		r.Headers = fixed
+	}
+
 	res, ierr := grpc.Invoke(ctx, prep.call, prep.message, prep.invokeOpts)
 	if ierr != nil {
 		return nil, maskErr(prep.masker, ierr)
 	}
 	warning := s.recordGRPC(opts, r, res, prep.message, prep.env)
-	return &RunGRPCResult{
-		Result:  maskResult(prep.masker, res),
-		Warning: strings.TrimSpace(warning),
-	}, nil
+
+	out := &RunGRPCResult{Result: maskResult(prep.masker, res), Warning: strings.TrimSpace(warning)}
+
+	// Post-request script + assertions see the response message as JSON;
+	// non-OK statuses yield no body, matching HTTP failure semantics.
+	if opts.PostRequestScript != "" && res.OK {
+		synthetic := &response.Response{
+			StatusCode: 200,
+			StatusText: "OK",
+			Body:       res.MessageJSON,
+		}
+		sb := scripting.NewSandbox(scripting.SandboxOptions{
+			GetVariable: func(name string) (string, bool) { return prep.vars.Resolve(name) },
+			SetVariable: func(name, value string) { prep.vars.Set(variables.ScopeRuntime, name, value) },
+		})
+		sb.BindResponse(scripting.NewResponseView(synthetic))
+		if serr := sb.Run(opts.PostRequestScript); serr != nil {
+			out.Tests = append(out.Tests, runner.TestResult{Name: "post-request script", Passed: false})
+			out.Warning = strings.TrimSpace(out.Warning + " post-request script error: " + serr.Error())
+			return out, nil
+		}
+		logs := sb.Logs()
+		if len(logs) > 0 {
+			out.Warning = strings.TrimSpace(out.Warning + " " + strings.Join(logs, " "))
+		}
+		for _, t := range sb.Tests() {
+			out.Tests = append(out.Tests, runner.TestResult{Name: t.Name, Passed: t.Fn()})
+		}
+	}
+	return out, nil
 }
 
 // RunGRPCStreamed sends a server-streaming gRPC call through the pipeline.

@@ -46,6 +46,10 @@ type RunRequestOptions struct {
 	FileVars *variables.Set
 	// RuntimeVars are layered last (e.g. Bulk rows, Pagination state).
 	RuntimeVars *variables.Set
+	// PreRequestScript/PostRequestScript carry the request file's script
+	// fields for pipelines that evaluate them (gRPC sends; M43).
+	PreRequestScript  string
+	PostRequestScript string
 	// RequestPath identifies the request in history entries ("none for scratchpad").
 	RequestPath string
 	// RecordHistory opts out of history recording; nil means record when a

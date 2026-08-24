@@ -141,10 +141,13 @@ non-OK gRPC statuses.`,
 
 		out := cmd.OutOrStdout()
 		streamed := false
+		failed := false
 		res, err := svc.RunGRPCStreamed(cmd.Context(), f.Request, core.RunRequestOptions{
-			EnvFlag:  envFlag,
-			FileEnv:  f.Environment,
-			FileVars: f.VariablesSet(),
+			EnvFlag:           envFlag,
+			FileEnv:           f.Environment,
+			FileVars:          f.VariablesSet(),
+			PreRequestScript:  f.PreRequest,
+			PostRequestScript: f.PostRequest,
 		}, func(ev grpcclient.StreamEvent) error {
 			streamed = true
 			fmt.Fprintln(out, string(ev.MessageJSON))
@@ -164,6 +167,19 @@ non-OK gRPC statuses.`,
 		r := res.Result
 		if !r.OK {
 			return fmt.Errorf("gRPC status %s (%d): %s", r.CodeName, r.Code, r.StatusMessage)
+		}
+		for _, t := range res.Tests {
+			mark := "PASS"
+			if !t.Passed {
+				mark = "FAIL"
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "%s  %s\n", mark, t.Name)
+			if !t.Passed {
+				failed = true
+			}
+		}
+		if failed {
+			return fmt.Errorf("one or more assertions failed")
 		}
 		if streamed {
 			return nil
