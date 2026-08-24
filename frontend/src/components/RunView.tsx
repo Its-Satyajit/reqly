@@ -2,14 +2,8 @@ import { useState } from "react";
 import type { RunStep } from "#lib/collections";
 import { ChevronRight, X } from "lucide-react";
 import { cn } from "#lib/utils";
+import { formatBytes } from "#lib/ui";
 import { useCollectionRunStore, useWorkspaceStore } from "#stores";
-
-/** formatSize renders a byte count as a compact human string. */
-const formatSize = (bytes: number): string => {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
 
 /** previewBody truncates a response body for the inline summary panel. */
 const previewBody = (body: string): string =>
@@ -93,7 +87,7 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 								<span>·</span>
 								<span>{response.durationMs}ms</span>
 								<span>·</span>
-								<span>{formatSize(response.size)}</span>
+								<span>{formatBytes(response.size)}</span>
 							</div>
 							<pre className="mt-1 max-h-40 overflow-auto font-mono text-[11px] leading-relaxed">
 								{previewBody(response.body)}

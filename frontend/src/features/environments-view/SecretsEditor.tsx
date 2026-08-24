@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components";
 import { useWorkspaceStore } from "../../stores";
-
-const inputClass =
-	"rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:border-ring";
+import { inputClass } from "../../lib/ui";
 
 interface SecretRow {
 	name: string;
@@ -174,6 +172,7 @@ export function SecretsEditor({
 						value={newName}
 						onChange={(e) => setNewName(e.target.value)}
 						placeholder="new secret name"
+						aria-label="New secret name"
 						spellCheck={false}
 						className={`${inputClass} w-40 shrink-0 font-mono`}
 					/>

@@ -94,6 +94,7 @@ export function HistoryView() {
 							if (e.key === "Enter") search();
 						}}
 						placeholder="Search URL or path…"
+						aria-label="Search history"
 						className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
 					/>
 					<Button size="sm" variant="outline" onClick={search} disabled={loading}>

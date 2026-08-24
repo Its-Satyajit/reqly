@@ -1,6 +1,7 @@
 import { Paperclip, Type, X } from 'lucide-react'
 import type { KeyValueRow } from '../lib/request'
 import { cn } from '../lib/utils'
+import { inputClass } from '../lib/ui'
 import { Button } from './ui/button'
 
 interface KeyValueEditorProps {
@@ -9,9 +10,6 @@ interface KeyValueEditorProps {
   keyPlaceholder?: string
   valuePlaceholder?: string
 }
-
-const inputClass =
-  'rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:border-ring'
 
 export function KeyValueEditor({
   rows,
@@ -32,12 +30,14 @@ export function KeyValueEditor({
             checked={row.enabled}
             onChange={(e) => update(i, { enabled: e.target.checked })}
             title={row.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}
+            aria-label={`${keyPlaceholder} enabled`}
             className="size-3.5 shrink-0 accent-(--primary)"
           />
           <input
             value={row.key}
             onChange={(e) => update(i, { key: e.target.value })}
             placeholder={keyPlaceholder}
+            aria-label={`${keyPlaceholder} name`}
             spellCheck={false}
             className={cn(inputClass, 'min-w-0 flex-1 font-mono', !row.enabled && 'opacity-50')}
           />
@@ -47,6 +47,7 @@ export function KeyValueEditor({
                 value={row.file}
                 onChange={(e) => update(i, { file: e.target.value })}
                 placeholder="file path"
+                aria-label={`${keyPlaceholder} file path`}
                 spellCheck={false}
                 className={cn(inputClass, 'min-w-0 flex-1 font-mono', !row.enabled && 'opacity-50')}
               />
@@ -54,6 +55,7 @@ export function KeyValueEditor({
                 value={row.filename ?? ''}
                 onChange={(e) => update(i, { filename: e.target.value || undefined })}
                 placeholder="filename"
+                aria-label={`${keyPlaceholder} filename`}
                 spellCheck={false}
                 className={cn(inputClass, 'w-24 font-mono', !row.enabled && 'opacity-50')}
               />
@@ -65,6 +67,7 @@ export function KeyValueEditor({
                 value={row.value}
                 onChange={(e) => update(i, { value: e.target.value })}
                 placeholder={valuePlaceholder}
+                aria-label={`${keyPlaceholder} value`}
                 spellCheck={false}
                 className={cn(inputClass, 'min-w-0 flex-1 font-mono', !row.enabled && 'opacity-50')}
               />

@@ -7,6 +7,7 @@ import { NEW_REQUEST_TAB_ID, tabIsDirty } from "#stores/useRequestStore";
 import { useRequestStore } from "#stores/useRequestStore";
 import type { RequestTab } from "#stores/useWorkspaceStore";
 import { cn } from "#lib/utils";
+import { handleTabArrowKeys } from "#lib/ui";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -49,6 +50,9 @@ function TabItem({ tab }: { tab: RequestTab }) {
 		>
 			<button
 				type="button"
+				role="tab"
+				aria-selected={active}
+				tabIndex={active ? 0 : -1}
 				onClick={() => setActiveTab(tab.id)}
 				className="max-w-40 truncate"
 				title={tab.title}
@@ -110,6 +114,7 @@ export function RequestTabs() {
 		<div
 			role="tablist"
 			aria-label="Open requests"
+			onKeyDown={(e) => handleTabArrowKeys(e)}
 			className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-2 py-1"
 		>
 			{openTabs.map((t) => (

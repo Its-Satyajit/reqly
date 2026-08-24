@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components";
 import type { Environment } from "../../stores";
 import { useWorkspaceStore } from "../../stores";
-
-const inputClass =
-	"rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:border-ring";
+import { inputClass } from "../../lib/ui";
 
 interface VariableRow {
 	key: string;

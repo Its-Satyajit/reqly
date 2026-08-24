@@ -3,6 +3,7 @@ import { JsonTree } from "../../components/JsonTree";
 import { StatusPill } from "../../components/status";
 import { Button } from "../../components/ui/button";
 import { CodeMirrorEditor } from "../../editors";
+import { formatBytes, handleTabArrowKeys, tabClass } from "../../lib/ui";
 import { type JSONPathMatch, queryJSONPath } from "../../lib/jsonpath";
 import { isRecord, type JsonValue } from "../../lib/typeGuards";
 import {
@@ -33,19 +34,6 @@ const views: { id: View; label: string }[] = [
 	{ id: "cookies", label: "Cookies" },
 	{ id: "table", label: "Table" },
 ];
-
-const tabClass = (active: boolean) =>
-	`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-		active
-			? "bg-muted text-foreground"
-			: "text-muted-foreground hover:text-foreground"
-	}`;
-
-function formatBytes(size: number): string {
-	if (size < 1024) return `${size} B`;
-	if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 export function ResponseViewer() {
 	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
@@ -207,11 +195,19 @@ export function ResponseViewer() {
 			) : null}
 
 			{response ? (
-				<div className="flex shrink-0 items-center gap-1 px-2 pb-1">
+				<div
+					className="flex shrink-0 items-center gap-1 px-2 pb-1"
+					role="tablist"
+					aria-label="Response views"
+					onKeyDown={(e) => handleTabArrowKeys(e)}
+				>
 					{views.map((v) => (
 						<button
 							key={v.id}
 							type="button"
+							role="tab"
+							aria-selected={view === v.id}
+							tabIndex={view === v.id ? 0 : -1}
 							onClick={() => setView(v.id)}
 							disabled={v.id === "table" && !tabular}
 							title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
@@ -224,6 +220,7 @@ export function ResponseViewer() {
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
 						placeholder="Search response…"
+						aria-label="Search response"
 						className="ml-auto w-44 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
 					/>
 					{searchResult && searchResult.count > 0 ? (
@@ -298,6 +295,7 @@ export function ResponseViewer() {
 							value={jsonPath}
 							onChange={(e) => setJsonPath(e.target.value)}
 							placeholder="$.users[*].name"
+							aria-label="JSONPath query"
 							disabled={parsed === null}
 							spellCheck={false}
 							className="w-48 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs text-foreground placeholder:text-muted-foreground disabled:opacity-50"
@@ -332,12 +330,20 @@ export function ResponseViewer() {
 						</p>
 					</div>
 				) : loading ? (
-					<CodeMirrorEditor
-						value={body}
-						language="json"
-						readOnly
-						className="h-full overflow-hidden rounded-md border border-border"
-					/>
+					<div
+						className="flex h-full flex-col gap-2 rounded-md border border-border bg-background p-3"
+						role="status"
+						aria-label="Loading response"
+					>
+						<span className="sr-only">Sending request…</span>
+						{[100, 92, 96, 78, 88].map((w, i) => (
+							<div
+								key={i}
+								className="h-3 animate-pulse rounded bg-muted"
+								style={{ width: `${w}%`, animationDelay: `${i * 120}ms` }}
+							/>
+						))}
+					</div>
 				) : error ? (
 					<CodeMirrorEditor
 						value={body}
