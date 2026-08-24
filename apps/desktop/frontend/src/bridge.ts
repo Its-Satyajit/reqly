@@ -5,6 +5,8 @@ import type {
 	HistoryAdapter,
 	ExportAdapter,
 	ExportFormat,
+	MockAdapter,
+	MockStatus,
 	RealtimeAdapter,
 	RealtimeFrameView,
 	ImportAdapter,
@@ -24,6 +26,7 @@ import {
 	useExportStore,
 	useHistoryStore,
 	useImportStore,
+	useMockStore,
 	useRealtimeStore,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
@@ -515,6 +518,33 @@ export const wailsImportAdapter: ImportAdapter = {
 		runImport({ content, formatHint, targetDir, dryRun: false }),
 };
 
+export const wailsMockAdapter: MockAdapter = {
+	start: async ({ specPath, port, delayMs, failEvery, routes }) => {
+		const res: MockStatus | null = await AppService.MockStart({
+			specPath,
+			port,
+			delayMs,
+			failEvery,
+			routes,
+		});
+		if (!res) throw new Error("mock start failed");
+		return res;
+	},
+	stop: async () => {
+		await AppService.MockStop();
+	},
+	status: async () => {
+		const res = await AppService.MockStatusSnapshot();
+		if (!res) return { running: false };
+		return {
+			running: res.running,
+			url: res.url,
+			port: res.port,
+			error: res.error,
+		};
+	},
+};
+
 export const wailsRealtimeAdapter: RealtimeAdapter = {
 	open: async ({ sessionId, kind, url, headers }) => {
 		await AppService.RealtimeOpen({
@@ -579,6 +609,7 @@ export function initRequestBridge(): void {
 	useImportStore.getState().setAdapter(wailsImportAdapter);
 	useExportStore.getState().setAdapter(wailsExportAdapter);
 	useRealtimeStore.getState().setAdapter(wailsRealtimeAdapter);
+	useMockStore.getState().setAdapter(wailsMockAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {

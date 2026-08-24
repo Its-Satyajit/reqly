@@ -40,6 +40,27 @@ type Server struct {
 	delay     time.Duration
 	failEvery int
 	logger    *log.Logger
+	// routes are manual overrides checked before spec matching; nil doc with
+	// routes only is valid (spec-less mock server).
+	routes []Route
+}
+
+// Route is a manually defined mock response, matched before the OpenAPI
+// document. Path is matched literally (no templates); Method "" matches any
+// method. Disabled routes are skipped.
+type Route struct {
+	Method  string            `json:"method,omitempty" yaml:"method,omitempty"`
+	Path    string            `json:"path" yaml:"path"`
+	Status  int               `json:"status" yaml:"status"`
+	Body    string            `json:"body,omitempty" yaml:"body,omitempty"`
+	Headers map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Enabled bool              `json:"enabled" yaml:"enabled"`
+}
+
+// WithRoutes adds manual routes served before the OpenAPI document. A nil
+// document combined with routes builds a spec-less mock server.
+func WithRoutes(routes []Route) Option {
+	return func(s *Server) { s.routes = append(s.routes, routes...) }
 }
 
 // Option configures a mock Server.
@@ -66,20 +87,57 @@ func WithLogger(l *log.Logger) Option {
 	return func(s *Server) { s.logger = l }
 }
 
-// NewServer builds a mock server from an OpenAPI document.
-// It returns an error if the document is nil or invalid.
+// NewServer builds a mock server from an OpenAPI document. The document may
+// be nil when manual routes are supplied via WithRoutes.
 func NewServer(doc *openapi3.T, opts ...Option) (*Server, error) {
-	if doc == nil {
-		return nil, errors.New("mocking: nil OpenAPI document")
-	}
-	if err := doc.Validate(context.Background(), openapi3.DisableExamplesValidation()); err != nil {
-		return nil, fmt.Errorf("mocking: invalid OpenAPI document: %w", err)
-	}
-	s := &Server{doc: doc}
+	s := &Server{}
 	for _, opt := range opts {
 		opt(s)
 	}
+	if doc == nil {
+		if len(s.routes) == 0 {
+			return nil, errors.New("mocking: nil OpenAPI document without manual routes")
+		}
+	} else {
+		if err := doc.Validate(context.Background(), openapi3.DisableExamplesValidation()); err != nil {
+			return nil, fmt.Errorf("mocking: invalid OpenAPI document: %w", err)
+		}
+		s.doc = doc
+	}
 	return s, nil
+}
+
+// serveRoute writes one manual route response; ok is false when no enabled
+// route matches the request's path and method.
+func (s *Server) serveRoute(w http.ResponseWriter, r *http.Request) bool {
+	for _, rt := range s.routes {
+		if !rt.Enabled {
+			continue
+		}
+		if rt.Path != r.URL.Path {
+			continue
+		}
+		if rt.Method != "" && !strings.EqualFold(rt.Method, r.Method) {
+			continue
+		}
+		status := rt.Status
+		if status == 0 {
+			status = http.StatusOK
+		}
+		contentType := "application/json"
+		for k, v := range rt.Headers {
+			if strings.EqualFold(k, "Content-Type") {
+				contentType = v
+				continue
+			}
+			w.Header().Set(k, v)
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(rt.Body))
+		return true
+	}
+	return false
 }
 
 // ServeHTTP matches the request against the document and writes the mock

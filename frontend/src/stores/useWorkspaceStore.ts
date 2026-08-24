@@ -44,12 +44,12 @@ export interface RequestTab {
   requestPath?: string
   /** Tab kind: "request" (default) renders the request editor; "run" renders
    * the collection Run View; "test" renders the test runner. */
-  kind?: 'request' | 'run' | 'test'
+  kind?: 'request' | 'run' | 'test' | 'realtime'
   /** Workspace-relative file path for file-backed non-request tabs. */
   filePath?: string
 }
 
-export type WorkspaceView = 'requests' | 'environments' | 'history'
+export type WorkspaceView = 'requests' | 'environments' | 'history' | 'mocks'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null
