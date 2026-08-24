@@ -60,6 +60,7 @@ type InvokeOptions struct {
 type Result struct {
 	MessageJSON   []byte          `json:"messageJson,omitempty"`
 	OK            bool            `json:"ok"`
+	DurationMS    int64           `json:"durationMs,omitempty"`
 	Code          uint32          `json:"code,omitempty"`
 	CodeName      string          `json:"codeName,omitempty"`
 	StatusMessage string          `json:"statusMessage,omitempty"`
@@ -119,9 +120,11 @@ func Invoke(ctx context.Context, call Call, messageJSON []byte, opts InvokeOptio
 	}
 
 	res := &Result{}
+	start := time.Now()
 	rpcMethod := "/" + string(methodDesc.FullName()[:strings.LastIndex(string(methodDesc.FullName()), ".")]) +
 		"/" + string(methodDesc.Name())
 	rpcErr := conn.Invoke(ctx, rpcMethod, in, out, callOpts...)
+	res.DurationMS = time.Since(start).Milliseconds()
 	if rpcErr != nil {
 		st, ok := status.FromError(rpcErr)
 		if !ok {
