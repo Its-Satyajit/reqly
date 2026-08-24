@@ -61,8 +61,8 @@ type RealtimeFrame struct {
 	Direction string `json:"direction,omitempty"`
 	Data      string `json:"data,omitempty"`
 	Encoding  string `json:"encoding,omitempty"`
-	Name      string `json:"name,omitempty"`  // SSE event name
-	ID        string `json:"id,omitempty"`    // SSE event id
+	Name      string `json:"name,omitempty"`    // SSE event name
+	ID        string `json:"id,omitempty"`      // SSE event id
 	RetryMs   int64  `json:"retryMs,omitempty"` // SSE retry hint (G-7.2.3)
 	Timestamp int64  `json:"timestamp"`
 }

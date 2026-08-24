@@ -1,0 +1,40 @@
+// Reqly - A local-first, Git-native API development environment.
+// Copyright 2026 It's Satyajit
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package reqly.test.v1;
+
+option go_package = "github.com/Its-Satyajit/reqly/internal/grpc/testsrv;testsrv";
+
+// EchoService is the shared fixture contract: one unary method and one
+// server-streaming method covering the M43 protocol scope.
+service EchoService {
+  rpc Echo(EchoRequest) returns (EchoResponse);
+  rpc StreamEcho(EchoRequest) returns (stream EchoResponse);
+}
+
+message EchoRequest {
+  string text = 1;
+  map<string, string> labels = 2;
+}
+
+message EchoResponse {
+  string text = 1;
+  int32 sequence = 2;
+  map<string, string> labels = 3;
+}
