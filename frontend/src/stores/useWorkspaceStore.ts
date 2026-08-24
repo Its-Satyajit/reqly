@@ -60,6 +60,7 @@ export type WorkspaceView =
 	| 'runners'
 	| 'explorer'
 	| 'docs'
+	| 'grpc'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null

@@ -3,6 +3,7 @@ export * from "./useCollectionRunStore";
 export * from "./useDocsStore";
 export * from "./useHistoryStore";
 export * from "./useExportStore";
+export * from "./useGrpcStore";
 export * from "./useImportStore";
 export * from "./useRealtimeStore";
 export * from "./useMockStore";
