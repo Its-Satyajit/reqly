@@ -17,7 +17,10 @@ import { TestTab } from "../features/test-runner/TestTab";
 import { Toaster } from "../components/ui/toast";
 import { EnvironmentsView } from "../features/environments-view/EnvironmentsView";
 import { DiffView } from "../features/diff-view/DiffView";
+import { GraphqlBrowser } from "../features/graphql-browser/GraphqlBrowser";
 import { JwtInspector } from "../features/jwt-inspector/JwtInspector";
+import { OpenapiExplorer } from "../features/openapi-explorer/OpenapiExplorer";
+import { RunnersPanel } from "../features/runners-panel/RunnersPanel";
 import { MocksView } from "../features/mock-view/MocksView";
 import { HistoryView } from "../features/history-view/HistoryView";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
@@ -223,6 +226,24 @@ export function App() {
 								<section className="h-full min-h-0 overflow-y-auto">
 									<ErrorBoundary label="JWT inspector">
 										<JwtInspector />
+									</ErrorBoundary>
+								</section>
+							) : activeView === "graphql" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="GraphQL browser">
+										<GraphqlBrowser />
+									</ErrorBoundary>
+								</section>
+							) : activeView === "runners" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Runners">
+										<RunnersPanel />
+									</ErrorBoundary>
+								</section>
+							) : activeView === "explorer" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="OpenAPI explorer">
+										<OpenapiExplorer />
 									</ErrorBoundary>
 								</section>
 							) : (
