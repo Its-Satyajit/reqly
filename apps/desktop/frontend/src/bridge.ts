@@ -875,6 +875,36 @@ export const wailsGitAdapter: GitAdapter = {
 	commit: async (message) => {
 		await AppService.GitCommit(message);
 	},
+	worktrees: async () => {
+		const trees = (await AppService.GitWorktrees()) ?? [];
+		return trees.map((t) => ({
+			path: t.Path,
+			branch: t.Branch,
+			isCurrent: t.IsCurrent,
+			isBare: t.IsBare,
+			detached: t.Detached,
+		}));
+	},
+	addWorktree: async (path) => {
+		await AppService.GitAddWorktree(path);
+	},
+	removeWorktree: async (path) => {
+		await AppService.GitRemoveWorktree(path);
+	},
+	recentCommits: async (limit) => {
+		const commits = (await AppService.GitRecentCommits(limit)) ?? [];
+		return commits.map((c) => ({ hash: c.Hash, subject: c.Subject }));
+	},
+	conflicts: async () => {
+		const files = (await AppService.GitConflicts()) ?? [];
+		return files.map((f) => ({ path: f.Path, code: f.Code }));
+	},
+	resolveSide: async (path, side) => {
+		await AppService.GitResolveSide(path, side);
+	},
+	mergeAbort: async () => {
+		await AppService.GitMergeAbort();
+	},
 };
 
 export const wailsGrpcAdapter: GrpcAdapter = {

@@ -1,18 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { fallbackGitAdapter, type GitAdapter, type GitStatusResult } from '#lib/gitclient'
+import {
+	fallbackGitAdapter,
+	type GitAdapter,
+	type GitStatusResult,
+} from '#lib/gitclient'
 import { useGitStore } from './useGitStore'
+
+const noopAdapter = {
+	status: async () => null,
+	stage: async () => {},
+	unstage: async () => {},
+	commit: async () => {},
+	worktrees: async () => [],
+	addWorktree: async () => {},
+	removeWorktree: async () => {},
+	recentCommits: async () => [],
+	conflicts: async () => [],
+	resolveSide: async () => {},
+	mergeAbort: async () => {},
+}
 
 function adapterWith(status: Partial<GitStatusResult> | null): GitAdapter {
 	return {
+		...noopAdapter,
+		stage: vi.fn(async () => {}),
+		unstage: vi.fn(async () => {}),
+		commit: vi.fn(async () => {}),
 		status: vi.fn(async () =>
 			status === null
 				? null
 				: { branch: '', files: [], clean: true, repoFound: true, ...status },
 		),
-		stage: vi.fn(async () => {}),
-		unstage: vi.fn(async () => {}),
-		commit: vi.fn(async () => {}),
 	}
 }
 

@@ -49,6 +49,11 @@ export function GitPanel() {
 	const stage = useGitStore((s) => s.stage);
 	const unstage = useGitStore((s) => s.unstage);
 	const commit = useGitStore((s) => s.commit);
+	const conflicts = useGitStore((s) => s.conflicts);
+	const worktrees = useGitStore((s) => s.worktrees);
+	const resolveSide = useGitStore((s) => s.resolveSide);
+	const mergeAbort = useGitStore((s) => s.mergeAbort);
+	const removeWorktree = useGitStore((s) => s.removeWorktree);
 
 	const [message, setMessage] = useState("");
 
@@ -145,6 +150,65 @@ export function GitPanel() {
 				</ul>
 			)}
 
+			{conflicts.length > 0 && (
+				<div className="flex flex-col gap-1 px-2 pb-1" role="alert">
+					<p className="text-xs font-medium text-status-error">
+						Merge conflicts ({conflicts.length})
+					</p>
+					{conflicts.map((c) => (
+						<div key={c.path} className="flex items-center justify-between gap-2">
+							<span className="font-data truncate text-xs">{c.path}</span>
+							<span className="flex shrink-0 gap-1">
+								<Button
+									variant="ghost"
+									size="xs"
+									onClick={() => void resolveSide(c.path, "ours")}
+								>
+									Ours
+								</Button>
+								<Button
+									variant="ghost"
+									size="xs"
+									onClick={() => void resolveSide(c.path, "theirs")}
+								>
+									Theirs
+								</Button>
+							</span>
+						</div>
+					))}
+					<Button variant="outline" size="sm" onClick={() => void mergeAbort()}>
+						Abort merge
+					</Button>
+				</div>
+			)}
+
+			{worktrees.length > 1 && (
+				<details className="px-2 pb-1 text-xs text-muted-foreground">
+					<summary className="cursor-pointer select-none py-0.5">
+						Worktrees ({worktrees.length})
+					</summary>
+					<ul className="flex flex-col gap-0.5 pt-1">
+						{worktrees.map((t) => (
+							<li key={t.path} className="flex items-center justify-between gap-2">
+								<span className="font-data truncate" title={t.path}>
+									{t.isCurrent ? "● " : ""}
+									{t.branch || t.path}
+								</span>
+								{!t.isCurrent && !t.isBare && (
+									<Button
+										variant="ghost"
+										size="xs"
+										onClick={() => void removeWorktree(t.path)}
+									>
+										Remove
+									</Button>
+								)}
+							</li>
+						))}
+					</ul>
+				</details>
+			)}
+
 			{files.length > 0 && (
 				<div className="flex flex-col gap-1 px-1 pb-1">
 					<textarea
@@ -162,4 +226,46 @@ export function GitPanel() {
 			)}
 		</section>
 	);
+}
+
+/** Shell commit strip (M44 T7): staged summary + recent commits. */
+export function CommitStrip() {
+	const status = useGitStore((s) => s.status)
+	const recentCommits = useGitStore((s) => s.recentCommits)
+	const conflicts = useGitStore((s) => s.conflicts)
+
+	if (!status?.repoFound) return null
+
+	const files = status.files ?? []
+	const stagedCount = files.filter((f) => f.staged).length
+	const latest = recentCommits[0]
+
+	return (
+		<div className="flex h-6 shrink-0 items-center justify-between border-t border-border px-3 text-xs text-muted-foreground">
+			<span>
+				{files.length > 0 ? (
+					<>
+						<span className="text-status-warn">{stagedCount}</span> of{" "}
+						{files.length} changed file(s) staged
+					</>
+				) : (
+					"Working tree clean"
+				)}
+			</span>
+			{conflicts.length > 0 && (
+				<span className="font-medium text-status-error">
+					{conflicts.length} conflict(s)
+				</span>
+			)}
+			{latest && (
+				<span className="font-data truncate" title={latest.subject}>
+					<Hash hash={latest.hash} /> {latest.subject}
+				</span>
+			)}
+		</div>
+	)
+}
+
+function Hash({ hash, className }: { hash: string; className?: string }) {
+	return <span className={cn("mr-1 text-primary", className)}>{hash}</span>
 }

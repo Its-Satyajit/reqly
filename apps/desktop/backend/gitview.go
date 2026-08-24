@@ -54,3 +54,63 @@ func (s *AppService) GitUnstage(paths []string) error {
 	}
 	return git.Unstage(s.root, paths)
 }
+
+// GitWorktrees lists the worktrees of the workspace repository.
+func (s *AppService) GitWorktrees() ([]git.Worktree, error) {
+	if s == nil || s.root == "" {
+		return nil, noWorkspaceGit()
+	}
+	return git.Worktrees(s.root)
+}
+
+// GitAddWorktree creates a new worktree under the given absolute path.
+func (s *AppService) GitAddWorktree(path string) error {
+	if s == nil || s.root == "" {
+		return noWorkspaceGit()
+	}
+	return git.AddWorktree(s.root, path)
+}
+
+// GitRemoveWorktree deletes the worktree at the given path.
+func (s *AppService) GitRemoveWorktree(path string) error {
+	if s == nil || s.root == "" {
+		return noWorkspaceGit()
+	}
+	return git.RemoveWorktree(s.root, path)
+}
+
+// GitRecentCommits returns up to limit commits from HEAD.
+func (s *AppService) GitRecentCommits(limit int) ([]git.RecentCommit, error) {
+	if s == nil || s.root == "" {
+		return nil, noWorkspaceGit()
+	}
+	return git.RecentCommits(s.root, limit)
+}
+
+// GitConflicts lists files with unresolved merge conflicts.
+func (s *AppService) GitConflicts() ([]git.ConflictFile, error) {
+	if s == nil || s.root == "" {
+		return nil, noWorkspaceGit()
+	}
+	return git.Conflicts(s.root)
+}
+
+// GitResolveSide takes ours/theirs for a conflicted file and stages it.
+func (s *AppService) GitResolveSide(path, side string) error {
+	if s == nil || s.root == "" {
+		return noWorkspaceGit()
+	}
+	return git.ResolveSide(s.root, path, side)
+}
+
+// GitMergeAbort aborts an in-progress merge.
+func (s *AppService) GitMergeAbort() error {
+	if s == nil || s.root == "" {
+		return noWorkspaceGit()
+	}
+	return git.MergeAbort(s.root)
+}
+
+func noWorkspaceGit() error {
+	return fmt.Errorf("no workspace found: open a reqly workspace to manage git")
+}

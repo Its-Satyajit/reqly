@@ -12,6 +12,7 @@ import {
 } from "../components/ui/resizable";
 import { AppShell } from "../components/shell/AppShell";
 import { ResponseModeToggle } from "../components/shell/ResponseModeToggle";
+import { CommitStrip } from "../components/GitPanel";
 import {
 	CommandPalette,
 	PaletteTriggerButton,
@@ -180,6 +181,7 @@ export function App() {
 						<WorkspaceSidebar />
 					</ErrorBoundary>
 				}
+				commitStrip={<CommitStrip />}
 				statusbar={<StatusBar />}
 			>
 							{activeView === "environments" ? (
