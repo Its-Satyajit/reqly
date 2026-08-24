@@ -30,6 +30,7 @@ function EnvPicker({
     <select
       id={id}
       value={value}
+      aria-label={`Environment ${id}`}
       onChange={(e) => onChange(e.target.value)}
       className="rounded-md border border-border bg-transparent px-2 py-1 text-xs"
     >
@@ -82,6 +83,17 @@ function DiffTable({ diffs }: { diffs: EnvKeyDiff[] }) {
       </tbody>
     </table>
   );
+}
+
+/** seenBefore counts prior occurrences so repeated issues get unique keys. */
+function seenBefore(issues: EnvIssue[], index: number): number {
+  let count = 0;
+  for (let i = 0; i < index; i++) {
+    if (issues[i].severity === issues[index].severity && issues[i].message === issues[index].message) {
+      count++;
+    }
+  }
+  return count;
 }
 
 export function EnvToolsPanel() {
@@ -226,7 +238,10 @@ export function EnvToolsPanel() {
             <li className="text-status-ok">No issues found.</li>
           ) : (
             issues.map((issue, i) => (
-              <li key={`${issue.severity}-${issue.message}-${i}`} className="flex items-baseline gap-1.5">
+              <li
+                key={`${issue.severity}-${issue.message}#${seenBefore(issues, i)}`}
+                className="flex items-baseline gap-1.5"
+              >
                 <Badge
                   variant="outline"
                   className={cn(

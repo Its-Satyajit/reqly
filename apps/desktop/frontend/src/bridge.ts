@@ -37,6 +37,9 @@ import {
 	useRealtimeStore,
 	setDiffBridge,
 	setEnvToolsBridge,
+	setGqlBridge,
+	setOpenapiBridge,
+	setRunnerBridge,
 	setJwtBridge,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
@@ -550,6 +553,144 @@ function toDiffResultView(r: WailsDiffResult): import("@reqly/frontend").DiffRes
 	return { hasChanges: r?.hasChanges ?? false, changes };
 }
 
+export const wailsGqlAdapter: GqlAdapter = {
+	introspect: async ({ endpoint, headers, timeoutSec }) => {
+		const res = await AppService.GraphqlIntrospect(endpoint, headers ?? [], timeoutSec ?? 0);
+		if (!res) throw new Error("introspection failed");
+		// mapRef converts the generated wrapped-type reference recursively;
+		// both shapes carry name/kind/of with identical meanings.
+		type RawRef = { name?: string; kind?: string; of?: RawRef | null };
+		const mapRef = (ref: RawRef | null | undefined): import("@reqly/frontend").GqlTypeRef | null =>
+			ref == null
+				? null
+				: { name: ref.name, kind: ref.kind, of: mapRef(ref.of) };
+		const toGqlType = (t: typeof res.query): import("@reqly/frontend").GqlType | null => {
+			if (t == null) return null;
+			const gqlType: import("@reqly/frontend").GqlType = {
+				kind: t.kind,
+				name: t.name,
+				fields: (t.fields ?? []).map((f) => ({
+					name: f.name,
+					// SAFETY: generated refs carry only name/kind/of.
+					type: mapRef(f.type as RawRef | null),
+					args: (f.args ?? []).map((a) => ({
+						name: a.name,
+						// SAFETY: same generated ref shape as field types.
+						type: mapRef(a.type as RawRef | null),
+					})),
+					deprecated: f.deprecated ?? false,
+				})),
+			};
+			if (t.description) gqlType.description = t.description;
+			if (t.enumValues) gqlType.enumValues = [...t.enumValues];
+			return gqlType;
+		};
+		return {
+			query: toGqlType(res.query),
+			mutation: toGqlType(res.mutation),
+			subscription: toGqlType(res.subscription),
+			types: (res.types ?? []).map(toGqlType).filter(
+				(t): t is NonNullable<typeof t> => t != null,
+			),
+		};
+	},
+};
+
+// RunnerStepPayload mirrors backend runnerStep JSON.
+type RunnerStepPayload = {
+	index: number;
+	status?: number;
+	error?: string;
+	url?: string;
+	bodyPreview?: string;
+};
+
+export const wailsRunnerAdapter: RunnerAdapter = {
+	start: async (input) => {
+		await AppService.RunnerStart({
+			runId: input.runId,
+			kind: input.kind,
+			request: input.request,
+
+			pagination: input.pagination,
+			maxPagesOverride: input.maxPagesOverride,
+			data: input.data,
+			dataFormat: input.dataFormat,
+			parallel: input.parallel,
+			concurrency: input.concurrency,
+		});
+	},
+	cancel: async (runId) => {
+		AppService.RunnerCancel(runId);
+	},
+	listen: (runId, handlers) => {
+		const offs = [
+			// SAFETY: frames mirror the Go runnerStep struct field-for-field.
+			Events.On(`reqly.runner.${runId}.step`, (e: { data?: RunnerStepPayload }) => {
+				if (e?.data)
+					handlers.onStep({
+						index: e.data.index,
+						status: e.data.status,
+						error: e.data.error,
+						url: e.data.url,
+						bodyPreview: e.data.bodyPreview,
+					});
+			}),
+			// SAFETY: done summaries are plain string-keyed maps.
+			Events.On(`reqly.runner.${runId}.done`, (e: { data?: RunnerStepPayload }) => {
+				if (e?.data) {
+					// SAFETY: Go only emits scalar summary fields.
+					handlers.onDone({ ...e.data } as import("@reqly/frontend").RunnerSummary);
+				}
+			}),
+		];
+		return () => offs.forEach((off) => off());
+	},
+};
+
+export const wailsOpenapiAdapter: OpenapiAdapter = {
+	explore: async (specPath) => {
+		const res = await AppService.OpenapiExplore(specPath);
+		if (!res) throw new Error("explore failed");
+		const endpoints = (res.endpoints ?? []).map((ep) => {
+			const view: import("@reqly/frontend").OpenapiEndpointView = { method: ep.method, path: ep.path };
+			if (ep.operationId) view.operationId = ep.operationId;
+			if (ep.tags) view.tags = [...ep.tags];
+			if (ep.summary) view.summary = ep.summary;
+			if (ep.requestSchema) view.requestSchema = ep.requestSchema;
+								// SAFETY: responseSchemas values are JSON strings built in Go.
+					if (ep.responseSchemas) {
+						const schemas: Record<string, string> = {};
+						for (const [status, schema] of Object.entries(ep.responseSchemas)) {
+							if (schema != null) schemas[status] = schema;
+						}
+						view.responseSchemas = schemas;
+					}
+			return view;
+		});
+		const out: import("@reqly/frontend").OpenapiExploreResultView = {
+			title: res.title,
+			endpoints,
+		};
+		if (res.version) out.version = res.version;
+		return out;
+	},
+	generate: async (input) => {
+		const res = await AppService.OpenapiGenerateRequests(
+			input.specPath,
+			input.selections,
+			input.dirName,
+		);
+		if (!res) throw new Error("generate failed");
+		const out: import("@reqly/frontend").OpenapiGenerateResultView = {
+			targetDir: res.targetDir,
+			created: [...(res.created ?? [])],
+		};
+		if (res.warnings) out.warnings = [...res.warnings];
+		return out;
+	},
+};
+
 export const wailsEnvToolsAdapter: EnvToolsAdapter = {
 	diff: async (envA, envB) => {
 		const res = await AppService.EnvDiff(envA, envB);
@@ -561,7 +702,15 @@ export const wailsEnvToolsAdapter: EnvToolsAdapter = {
 		if (!res) throw new Error("validate failed");
 		return { env: res.env, issues: res.issues ?? [] };
 	},
-	crossValidate: () => AppService.EnvCrossValidate(),
+	crossValidate: async () => {
+		const gaps = await AppService.EnvCrossValidate();
+		if (!gaps) throw new Error("cross-validation failed");
+		return gaps.map((g) => ({
+			key: g.key,
+			presentIn: [...(g.presentIn ?? [])],
+			missingIn: [...(g.missingIn ?? [])],
+		}));
+	},
 };
 
 export const wailsJwtAdapter: JwtAdapter = {
@@ -698,6 +847,9 @@ export function initRequestBridge(): void {
 	useMockStore.getState().setAdapter(wailsMockAdapter);
 	setDiffBridge(wailsDiffAdapter);
 	setJwtBridge(wailsJwtAdapter);
+	setGqlBridge(wailsGqlAdapter);
+	setRunnerBridge(wailsRunnerAdapter);
+	setOpenapiBridge(wailsOpenapiAdapter);
 	setEnvToolsBridge(wailsEnvToolsAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
