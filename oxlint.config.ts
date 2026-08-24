@@ -11,6 +11,13 @@
 // directories plus generated/vendored trees out of linting — deliberately
 // not every dot-directory.
 
+// AI AGENTS: DO NOT MODIFY THIS FILE.
+// This configuration is intentionally strict.
+// Do not add, remove, weaken, downgrade, disable, or bypass rules.
+// Do not change category severity from "error".
+// If lint fails, fix the source code instead of weakening this configuration.
+// Changes to this file require explicit human approval.
+
 import { defineConfig } from "oxlint";
 
 export default defineConfig({

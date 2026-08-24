@@ -11,6 +11,7 @@ import {
 } from "../components/ui/resizable";
 import { AppShell } from "../components/shell/AppShell";
 import { StatusBar } from "../components/shell/StatusBar";
+import { shellStorage } from "../components/shell/storage";
 import { RequestTabs, RunView, WorkspaceSidebar } from "../components";
 import { RealtimeTab } from "../features/realtime-view/RealtimeTab";
 import { TestTab } from "../features/test-runner/TestTab";
@@ -35,11 +36,6 @@ import { armDebugCrashTrigger, installCrashReporter } from "../lib/crashReporter
 import { addBreadcrumb } from "../lib/crash";
 import { notifyError, notifyWarning } from "../lib/notify";
 import "../index.css";
-
-const shellStorage: Pick<Storage, "getItem" | "setItem"> = {
-	getItem: (key) => window.localStorage.getItem(key),
-	setItem: (key, value) => window.localStorage.setItem(key, value),
-};
 
 export function App() {
 	const theme = useThemeStore((s) => s.appearance);

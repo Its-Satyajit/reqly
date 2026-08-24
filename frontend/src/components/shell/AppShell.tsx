@@ -9,12 +9,8 @@ import {
 } from '../ui/resizable'
 import { Button } from '../ui/button'
 import { ThemeToggle } from '../ThemeToggle'
-import { useShellStore } from '#stores/useShellStore'
-
-const shellStorage: Pick<Storage, "getItem" | "setItem"> = {
-	getItem: (key) => window.localStorage.getItem(key),
-	setItem: (key, value) => window.localStorage.setItem(key, value),
-};
+import { useShellStore } from '#stores'
+import { shellStorage } from './storage'
 
 export interface AppShellProps {
 	/** Brand block rendered at the far left of the header. */
@@ -28,6 +24,8 @@ export interface AppShellProps {
 	children: ReactNode;
 	/** Right-hand inspector mount point content; hidden while closed. */
 	inspector?: ReactNode;
+	/** Commit-strip slot above the statusbar; populated by M44 T7. */
+	commitStrip?: ReactNode;
 	statusbar?: ReactNode;
 }
 
@@ -44,6 +42,7 @@ export function AppShell({
 	sidebar,
 	children,
 	inspector,
+	commitStrip,
 	statusbar,
 }: AppShellProps) {
 	const sidebarLayout = useDefaultLayout({
@@ -105,13 +104,13 @@ export function AppShell({
 					>
 						{sidebar}
 					</ResizablePanel>
-					<ResizableHandle />
+					<ResizableHandle data-split="side" />
 					<ResizablePanel id="main" minSize="35%">
 						{children}
 					</ResizablePanel>
 					{inspector !== undefined && (
 						<>
-							{inspectorOpen && <ResizableHandle />}
+							{inspectorOpen && <ResizableHandle data-split="inspector" />}
 							<ResizablePanel
 								id="inspector"
 								collapsible
@@ -126,6 +125,7 @@ export function AppShell({
 					)}
 				</ResizablePanelGroup>
 			</div>
+			{commitStrip}
 			{statusbar !== undefined && (
 				<footer className="flex h-6 shrink-0 items-center justify-between border-t border-border px-3 text-xs text-muted-foreground">
 					{statusbar}
