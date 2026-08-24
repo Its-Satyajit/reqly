@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.4.0](https://github.com/Its-Satyajit/reqly/compare/v1.3.0...v1.4.0) (2026-08-24)
+
+
+### Features
+
+* **desktop:** export dialog wrapping reqly export postman/har/openapi/workspace ([b196554](https://github.com/Its-Satyajit/reqly/commit/b19655401073f84759c538e1226b104695fc9ecb))
+* **desktop:** GUI-10 JWT inspector ([9917afa](https://github.com/Its-Satyajit/reqly/commit/9917afa055919b4fb3638cf7e5207de32eb40e5d))
+* **desktop:** GUI-11 GraphQL schema browser ([ffc6602](https://github.com/Its-Satyajit/reqly/commit/ffc6602a0a6e46f42001359ca400be999e214289))
+* **desktop:** GUI-11 GraphQL schema browser ([b9f4234](https://github.com/Its-Satyajit/reqly/commit/b9f42348a6da95343aa70b2ef18e1f485a940d87))
+* **desktop:** GUI-12 pagination & bulk runner panels ([2bba7f5](https://github.com/Its-Satyajit/reqly/commit/2bba7f5792a016b597ee1e517d9eed6a8c839e6b))
+* **desktop:** GUI-13 env diff & validation panel ([0c6ddb8](https://github.com/Its-Satyajit/reqly/commit/0c6ddb882cb0e24dd30bb4cb0a786979e641e90c))
+* **desktop:** GUI-13 env diff & validation panel ([6afec32](https://github.com/Its-Satyajit/reqly/commit/6afec32c5f715d8c184f729fcac5c453e877cfb2))
+* **desktop:** GUI-14 OpenAPI explorer ([6878f3c](https://github.com/Its-Satyajit/reqly/commit/6878f3c473d20b63852eb13e12953a57445f8e02))
+* **desktop:** GUI-6 test runner — editor, assertion builder, results, run ([aea427d](https://github.com/Its-Satyajit/reqly/commit/aea427d33f78cc7d861883a32d9e4453508cebbe))
+* **desktop:** GUI-7 WebSocket & SSE realtime tabs ([2f1469d](https://github.com/Its-Satyajit/reqly/commit/2f1469dc5e108a08ce4408aa413c4d81acfc9202))
+* **desktop:** GUI-7 WebSocket & SSE realtime tabs ([5628b0e](https://github.com/Its-Satyajit/reqly/commit/5628b0e324f93b0b34d4b9601c7ebdce8f4feaba))
+* **desktop:** GUI-8 mock server panel ([8b3f516](https://github.com/Its-Satyajit/reqly/commit/8b3f516c475f62546f835520afd344c2fd7d0d71))
+* **desktop:** GUI-9 API diff view ([b7c78e5](https://github.com/Its-Satyajit/reqly/commit/b7c78e5f7f19fe31544f822de2bb6305da5b38f8))
+
+
+### Bug Fixes
+
+* **desktop:** replace undefined setConcurrency with patch in RunnersPanel ([5bf8659](https://github.com/Its-Satyajit/reqly/commit/5bf8659994b31f40f40edd4b3c0d34cec11ca389))
+* **desktop:** satisfy DoD gates — lint exit 0, react-doctor no new warnings ([6b533ca](https://github.com/Its-Satyajit/reqly/commit/6b533ca6a5b50cdc27bbc7fd4a2816c32f1fe84a))
+* **desktop:** typecheck, lint, and react-doctor findings across new views ([03b2390](https://github.com/Its-Satyajit/reqly/commit/03b2390d3c77c755c2e244053bac7c828df239a0))
+
 ## [1.3.0](https://github.com/Its-Satyajit/reqly/compare/v1.2.0...v1.3.0) (2026-08-24)
 
 
