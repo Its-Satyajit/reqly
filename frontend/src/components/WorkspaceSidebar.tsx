@@ -28,6 +28,7 @@ import {
 } from "../stores";
 import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { CollectionTree } from "./CollectionTree";
+import { GitPanel } from "./GitPanel";
 
 export function WorkspaceSidebar() {
 	const activeView = useWorkspaceStore((s) => s.activeView);
@@ -134,6 +135,7 @@ export function WorkspaceSidebar() {
 					</span>
 				</div>
  				<CollectionTree />
+				<GitPanel />
 				<TestsSection />
 				<RealtimeSection />
 				<AuthPanel />

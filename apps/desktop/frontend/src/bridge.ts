@@ -16,6 +16,7 @@ import type {
 	MockStatus,
 	DocsAdapter,
 	DocsResultView,
+	GitAdapter,
 	GrpcAdapter,
 	GrpcService,
 	RealtimeAdapter,
@@ -39,6 +40,7 @@ import {
 	useImportStore,
 	useMockStore,
 	useDocsStore,
+	useGitStore,
 	useGrpcStore,
 	useRealtimeStore,
 	setDiffBridge,
@@ -848,6 +850,33 @@ export const wailsDocsAdapter: DocsAdapter = {
 	},
 };
 
+export const wailsGitAdapter: GitAdapter = {
+	status: async () => {
+		const res = await AppService.GitStatus();
+		if (!res) return null;
+		return {
+			branch: res.Branch,
+			files: (res.Files ?? []).map((f) => ({
+				path: f.Path,
+				x: String.fromCharCode(f.X),
+				y: String.fromCharCode(f.Y),
+				staged: f.Staged,
+			})),
+			clean: res.Clean,
+			repoFound: res.RepoFound,
+		};
+	},
+	stage: async (paths) => {
+		await AppService.GitStage(paths);
+	},
+	unstage: async (paths) => {
+		await AppService.GitUnstage(paths);
+	},
+	commit: async (message) => {
+		await AppService.GitCommit(message);
+	},
+};
+
 export const wailsGrpcAdapter: GrpcAdapter = {
 	services: async ({ target, protoFiles }) => {
 		const services = await AppService.GrpcServices({ target, protoFiles: protoFiles ?? [] });
@@ -929,6 +958,7 @@ export function initRequestBridge(): void {
 	useRealtimeStore.getState().setAdapter(wailsRealtimeAdapter);
 	useMockStore.getState().setAdapter(wailsMockAdapter);
 	useDocsStore.getState().setAdapter(wailsDocsAdapter);
+	useGitStore.getState().setAdapterAndRefresh(wailsGitAdapter);
 	useGrpcStore.getState().setAdapter(wailsGrpcAdapter);
 	setDiffBridge(wailsDiffAdapter);
 	setJwtBridge(wailsJwtAdapter);

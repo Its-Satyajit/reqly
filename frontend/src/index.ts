@@ -23,6 +23,7 @@ export * from "./lib/envtools";
 export * from "./lib/openapi";
 export * from "./lib/runners";
 export * from "./lib/graphql";
+export * from "./lib/gitclient";
 export * from "./lib/grpcclient";
 export * from "./lib/jsonpath";
 export * from "./lib/request";
