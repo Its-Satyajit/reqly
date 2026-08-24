@@ -26,7 +26,9 @@ import (
 	"testing"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 )
 
 // Server is the running fixture; Addr is the plaintext host:port clients dial.
@@ -50,6 +52,7 @@ func Start(t testing.TB) *Server {
 	}
 	srv := grpc.NewServer()
 	RegisterEchoServiceServer(srv, &fixture{})
+	RegisterFailingServiceServer(srv, &fixture{})
 	reflection.Register(srv)
 	go func() { _ = srv.Serve(ln) }()
 	t.Cleanup(srv.Stop)
@@ -60,10 +63,15 @@ func Start(t testing.TB) *Server {
 // number so ordering assertions are possible.
 type fixture struct {
 	UnimplementedEchoServiceServer
+	UnimplementedFailingServiceServer
 }
 
 func (f *fixture) Echo(_ context.Context, req *EchoRequest) (*EchoResponse, error) {
 	return &EchoResponse{Text: req.GetText(), Labels: req.GetLabels()}, nil
+}
+
+func (f *fixture) Boom(_ context.Context, _ *EchoRequest) (*EchoResponse, error) {
+	return nil, status.Errorf(codes.NotFound, "thing missing")
 }
 
 func (f *fixture) StreamEcho(req *EchoRequest, stream EchoService_StreamEchoServer) error {

@@ -38,3 +38,7 @@ message EchoResponse {
   int32 sequence = 2;
   map<string, string> labels = 3;
 }
+
+service FailingService {
+  rpc Boom(EchoRequest) returns (EchoResponse);
+}

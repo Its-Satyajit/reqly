@@ -37,6 +37,22 @@ type Request struct {
 	Pagination *Pagination `json:"pagination,omitempty" yaml:"pagination,omitempty"`
 	Retry      *Retry      `json:"retry,omitempty" yaml:"retry,omitempty"`
 	Timeout    int64       `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
+
+	// GRPC configures a gRPC call (M43). When set, url carries host:port,
+	// headers act as metadata, and body is ignored in favor of Message.
+	GRPC *GRPC `json:"grpc,omitempty" yaml:"grpc,omitempty"`
+}
+
+// GRPC configures one gRPC call (ADR 0028). Service/Method address the call
+// ("/package.Service/Method"); Message holds canonical-JSON; Timeout is a Go
+// duration string ("30s"); ProtoFiles are workspace-relative fallback schemas
+// for reflection-disabled servers.
+type GRPC struct {
+	Service    string   `json:"service" yaml:"service"`
+	Method     string   `json:"method" yaml:"method"`
+	Message    any      `json:"message,omitempty" yaml:"message,omitempty"`
+	Timeout    string   `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	ProtoFiles []string `json:"protoFiles,omitempty" yaml:"protoFiles,omitempty"`
 }
 
 // Retry configures automatic re-sending of a failed request. Count is the
