@@ -171,7 +171,9 @@ const file_internal_grpc_testsrv_testapi_proto_rawDesc = "" +
 	"\vEchoService\x12?\n" +
 	"\x04Echo\x12\x1a.reqly.test.v1.EchoRequest\x1a\x1b.reqly.test.v1.EchoResponse\x12G\n" +
 	"\n" +
-	"StreamEcho\x12\x1a.reqly.test.v1.EchoRequest\x1a\x1b.reqly.test.v1.EchoResponse0\x01B=Z;github.com/Its-Satyajit/reqly/internal/grpc/testsrv;testsrvb\x06proto3"
+	"StreamEcho\x12\x1a.reqly.test.v1.EchoRequest\x1a\x1b.reqly.test.v1.EchoResponse0\x012Q\n" +
+	"\x0eFailingService\x12?\n" +
+	"\x04Boom\x12\x1a.reqly.test.v1.EchoRequest\x1a\x1b.reqly.test.v1.EchoResponseB=Z;github.com/Its-Satyajit/reqly/internal/grpc/testsrv;testsrvb\x06proto3"
 
 var (
 	file_internal_grpc_testsrv_testapi_proto_rawDescOnce sync.Once
@@ -197,10 +199,12 @@ var file_internal_grpc_testsrv_testapi_proto_depIdxs = []int32{
 	3, // 1: reqly.test.v1.EchoResponse.labels:type_name -> reqly.test.v1.EchoResponse.LabelsEntry
 	0, // 2: reqly.test.v1.EchoService.Echo:input_type -> reqly.test.v1.EchoRequest
 	0, // 3: reqly.test.v1.EchoService.StreamEcho:input_type -> reqly.test.v1.EchoRequest
-	1, // 4: reqly.test.v1.EchoService.Echo:output_type -> reqly.test.v1.EchoResponse
-	1, // 5: reqly.test.v1.EchoService.StreamEcho:output_type -> reqly.test.v1.EchoResponse
-	4, // [4:6] is the sub-list for method output_type
-	2, // [2:4] is the sub-list for method input_type
+	0, // 4: reqly.test.v1.FailingService.Boom:input_type -> reqly.test.v1.EchoRequest
+	1, // 5: reqly.test.v1.EchoService.Echo:output_type -> reqly.test.v1.EchoResponse
+	1, // 6: reqly.test.v1.EchoService.StreamEcho:output_type -> reqly.test.v1.EchoResponse
+	1, // 7: reqly.test.v1.FailingService.Boom:output_type -> reqly.test.v1.EchoResponse
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
 	2, // [2:2] is the sub-list for extension extendee
 	0, // [0:2] is the sub-list for field type_name
@@ -219,7 +223,7 @@ func file_internal_grpc_testsrv_testapi_proto_init() {
 			NumEnums:      0,
 			NumMessages:   4,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_internal_grpc_testsrv_testapi_proto_goTypes,
 		DependencyIndexes: file_internal_grpc_testsrv_testapi_proto_depIdxs,
