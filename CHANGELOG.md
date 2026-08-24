@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/Its-Satyajit/reqly/compare/v1.6.0...v1.7.0) (2026-08-24)
+
+
+### Features
+
+* **grpc:** M43 T3 — pipeline integration for gRPC sends ([64b22b3](https://github.com/Its-Satyajit/reqly/commit/64b22b3e7f6f34b702fcbfb6b7910e4db31382ce))
+* **grpc:** M43 T3 — pipeline integration for gRPC sends ([713b964](https://github.com/Its-Satyajit/reqly/commit/713b964e2a9040564960133027a513000a2c8a4b))
+
 ## [1.6.0](https://github.com/Its-Satyajit/reqly/compare/v1.5.0...v1.6.0) (2026-08-24)
 
 
