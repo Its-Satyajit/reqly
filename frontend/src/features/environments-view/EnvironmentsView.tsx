@@ -1,3 +1,4 @@
+import { EnvToolsPanel } from "../env-tools/EnvToolsPanel";
 import { useEffect, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { Button } from "../../components";
@@ -314,6 +315,7 @@ export function EnvironmentsView() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+			<EnvToolsPanel />
 		</div>
 	);
 }

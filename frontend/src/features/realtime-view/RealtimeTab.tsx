@@ -140,9 +140,9 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
           </p>
         ) : (
           <ul className="flex flex-col gap-1">
-            {tab.frames.map((f, i) => (
+            {tab.frames.map((f) => (
               <li
-                key={f.seq ?? `${f.timestamp}-${i}`}
+                key={f.seq}
                 className={cn(
                   "rounded border border-border/60 px-2 py-1 font-mono text-[11px]",
                   f.direction === "out" && "bg-muted/40",

@@ -5,6 +5,12 @@ import type {
 	HistoryAdapter,
 	ExportAdapter,
 	ExportFormat,
+	DiffAdapter,
+	EnvToolsAdapter,
+	JwtAdapter,
+	JwtTokenView,
+	MockAdapter,
+	MockStatus,
 	RealtimeAdapter,
 	RealtimeFrameView,
 	ImportAdapter,
@@ -24,7 +30,11 @@ import {
 	useExportStore,
 	useHistoryStore,
 	useImportStore,
+	useMockStore,
 	useRealtimeStore,
+	setDiffBridge,
+	setEnvToolsBridge,
+	setJwtBridge,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
@@ -515,6 +525,109 @@ export const wailsImportAdapter: ImportAdapter = {
 		runImport({ content, formatHint, targetDir, dryRun: false }),
 };
 
+type WailsDiffResult = NonNullable<Awaited<ReturnType<typeof AppService.DiffSpecs>>>["result"];
+
+// toDiffResultView maps the generated Change shape onto the shared view type;
+// both carry identical JSON fields (type/path/from/to/severity).
+function toDiffResultView(r: WailsDiffResult): import("@reqly/frontend").DiffResultView {
+	const changes: import("@reqly/frontend").DiffChange[] = (r?.changes ?? []).flatMap((c) =>
+		c == null
+			? []
+			: [
+					{
+						// SAFETY: the backend only emits create/update/delete.
+						type: c.type as "create" | "update" | "delete",
+						path: [...(c.path ?? [])],
+						from: c.from,
+						to: c.to,
+						severity: c.severity,
+					},
+				],
+	);
+	return { hasChanges: r?.hasChanges ?? false, changes };
+}
+
+export const wailsEnvToolsAdapter: EnvToolsAdapter = {
+	diff: async (envA, envB) => {
+		const res = await AppService.EnvDiff(envA, envB);
+		if (!res) throw new Error("diff failed");
+		return { envA: res.envA, envB: res.envB, diffs: res.diffs ?? [] };
+	},
+	validate: async (name) => {
+		const res = await AppService.EnvValidate(name);
+		if (!res) throw new Error("validate failed");
+		return { env: res.env, issues: res.issues ?? [] };
+	},
+	crossValidate: () => AppService.EnvCrossValidate(),
+};
+
+export const wailsJwtAdapter: JwtAdapter = {
+	decode: async (token) => {
+		const res = await AppService.JwtDecode(token);
+		if (!res) throw new Error("decode failed");
+		// SAFETY: the backend emits exactly these four expiry statuses.
+		const status = res.expiry?.status as JwtTokenView["expiry"]["status"];
+		const e = res.expiry;
+		return {
+			header: res.header ?? [],
+			payload: res.payload ?? [],
+			signature: res.signature,
+			alg: res.alg,
+			expiry: {
+				status,
+				remaining: e?.remaining ?? 0,
+				exp: e?.exp ?? undefined,
+				nbf: e?.nbf ?? undefined,
+				iat: e?.iat ?? undefined,
+			},
+		};
+	},
+};
+
+export const wailsDiffAdapter: DiffAdapter = {
+	specs: async (pathA, pathB) => {
+		const res = await AppService.DiffSpecs(pathA, pathB);
+		if (!res || !res.result) throw new Error("diff failed");
+		return { result: toDiffResultView(res.result), breaking: res.breaking, addition: res.addition };
+	},
+	responses: async (idA, idB) => {
+		const res = await AppService.DiffResponses(idA, idB);
+		if (!res) throw new Error("diff failed");
+		return {
+			metaA: res.metaA ?? null,
+			metaB: res.metaB ?? null,
+			result: toDiffResultView(res.result ?? { hasChanges: false }),
+		};
+	},
+};
+
+export const wailsMockAdapter: MockAdapter = {
+	start: async ({ specPath, port, delayMs, failEvery, routes }) => {
+		const res: MockStatus | null = await AppService.MockStart({
+			specPath,
+			port,
+			delayMs,
+			failEvery,
+			routes,
+		});
+		if (!res) throw new Error("mock start failed");
+		return res;
+	},
+	stop: async () => {
+		await AppService.MockStop();
+	},
+	status: async () => {
+		const res = await AppService.MockStatusSnapshot();
+		if (!res) return { running: false };
+		return {
+			running: res.running,
+			url: res.url,
+			port: res.port,
+			error: res.error,
+		};
+	},
+};
+
 export const wailsRealtimeAdapter: RealtimeAdapter = {
 	open: async ({ sessionId, kind, url, headers }) => {
 		await AppService.RealtimeOpen({
@@ -579,6 +692,10 @@ export function initRequestBridge(): void {
 	useImportStore.getState().setAdapter(wailsImportAdapter);
 	useExportStore.getState().setAdapter(wailsExportAdapter);
 	useRealtimeStore.getState().setAdapter(wailsRealtimeAdapter);
+	useMockStore.getState().setAdapter(wailsMockAdapter);
+	setDiffBridge(wailsDiffAdapter);
+	setJwtBridge(wailsJwtAdapter);
+	setEnvToolsBridge(wailsEnvToolsAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {

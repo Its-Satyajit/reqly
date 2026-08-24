@@ -26,6 +26,10 @@ type Change struct {
 	Path []string    `json:"path"`
 	From interface{} `json:"from,omitempty"`
 	To   interface{} `json:"to,omitempty"`
+
+	// Severity classifies OpenAPI changes ("breaking", "addition", "info");
+	// populated by WithSeverity, empty for raw JSON diffs.
+	Severity string `json:"severity,omitempty"`
 }
 
 // JSON computes structural diffs between two JSON/YAML byte slices.
