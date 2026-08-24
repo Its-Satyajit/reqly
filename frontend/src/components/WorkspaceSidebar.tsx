@@ -18,6 +18,7 @@ import {
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
 import { AuthPanel, ExportDialog, ImportDialog } from "../features";
+import { useRealtimeStore } from "../stores/useRealtimeStore";
 import { useTestStore } from "../stores/useTestStore";
 import {
 	useExportStore,
@@ -126,6 +127,7 @@ export function WorkspaceSidebar() {
 				</div>
  				<CollectionTree />
 				<TestsSection />
+				<RealtimeSection />
 				<AuthPanel />
 			</div>
 			<ImportDialog
@@ -211,6 +213,45 @@ function TestsSection() {
 					))}
 				</ul>
 			)}
+		</div>
+	);
+}
+
+function RealtimeSection() {
+	const openTab = useWorkspaceStore((s) => s.openTab);
+	const setActiveView = useWorkspaceStore((s) => s.setActiveView);
+	const newTab = useRealtimeStore((s) => s.newTab);
+
+	const openRealtimeTab = (kind: "ws" | "sse") => {
+		const id = `realtime-${kind}-${Date.now()}`;
+		newTab(id, kind);
+		openTab({ id, title: kind === "ws" ? "WebSocket" : "SSE", kind: "realtime" });
+		setActiveView("requests");
+	};
+
+	return (
+		<div className="border-t border-border px-2 pt-2">
+			<p className="pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+				Realtime
+			</p>
+			<div className="flex gap-1 pb-2">
+				<button
+					type="button"
+					onClick={() => openRealtimeTab("ws")}
+					className="flex-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+					title="Open a WebSocket tab"
+				>
+					WS
+				</button>
+				<button
+					type="button"
+					onClick={() => openRealtimeTab("sse")}
+					className="flex-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+					title="Open an SSE tab"
+				>
+					SSE
+				</button>
+			</div>
 		</div>
 	);
 }

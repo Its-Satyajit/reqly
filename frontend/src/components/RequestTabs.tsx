@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, Plus } from "lucide-react";
+import { useRealtimeStore } from "#stores/useRealtimeStore";
 import { useTestStore } from "#stores/useTestStore";
 import { useWorkspaceStore } from "#stores";
 import { NEW_REQUEST_TAB_ID, tabIsDirty } from "#stores/useRequestStore";
@@ -33,6 +34,7 @@ function TabItem({ tab }: { tab: RequestTab }) {
 			return;
 		}
 		if (tab.kind === "test") useTestStore.getState().closeTab(tab.id);
+		if (tab.kind === "realtime") useRealtimeStore.getState().closeTab(tab.id);
 		closeTab(tab.id, { force: true });
 	};
 

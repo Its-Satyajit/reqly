@@ -5,6 +5,8 @@ import type {
 	HistoryAdapter,
 	ExportAdapter,
 	ExportFormat,
+	RealtimeAdapter,
+	RealtimeFrameView,
 	ImportAdapter,
 	ImportOutcome,
 	WorkspaceBootstrapAdapter,
@@ -22,6 +24,7 @@ import {
 	useExportStore,
 	useHistoryStore,
 	useImportStore,
+	useRealtimeStore,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
@@ -512,6 +515,29 @@ export const wailsImportAdapter: ImportAdapter = {
 		runImport({ content, formatHint, targetDir, dryRun: false }),
 };
 
+export const wailsRealtimeAdapter: RealtimeAdapter = {
+	open: async ({ sessionId, kind, url, headers }) => {
+		await AppService.RealtimeOpen({
+			sessionId,
+			kind,
+			url,
+			headers,
+		});
+	},
+	send: async (sessionId, data) => {
+		await AppService.RealtimeSend(sessionId, data);
+	},
+	close: async (sessionId) => {
+		await AppService.RealtimeClose(sessionId);
+	},
+	subscribe: (sessionId, onFrame) => {
+		const off = Events.On(`reqly.realtime.${sessionId}`, (e: { data?: RealtimeFrameView }) => {
+			if (e?.data) onFrame(e.data);
+		});
+		return () => off();
+	},
+};
+
 type WailsExportResult = NonNullable<Awaited<ReturnType<typeof AppService.Export>>>;
 
 export const wailsExportAdapter: ExportAdapter = {
@@ -552,6 +578,7 @@ export function initRequestBridge(): void {
 	useHistoryStore.getState().setAdapter(wailsHistoryAdapter);
 	useImportStore.getState().setAdapter(wailsImportAdapter);
 	useExportStore.getState().setAdapter(wailsExportAdapter);
+	useRealtimeStore.getState().setAdapter(wailsRealtimeAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {
