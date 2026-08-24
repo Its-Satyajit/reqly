@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.0](https://github.com/Its-Satyajit/reqly/compare/v1.5.0...v1.6.0) (2026-08-24)
+
+
+### Features
+
+* **grpc:** M43 T1 — reflection service discovery + shared test fixture ([c964469](https://github.com/Its-Satyajit/reqly/commit/c9644693f8092e66d3936515abd92b633ea6cda6))
+* **grpc:** M43 T1 — reflection service discovery + shared test fixture ([062b69b](https://github.com/Its-Satyajit/reqly/commit/062b69bc6ccd0b5dbacc777548d6b3ad3f7b6975))
+* **grpc:** M43 T2 — unary invoke end-to-end ([af907c3](https://github.com/Its-Satyajit/reqly/commit/af907c3477804937765e93c1f60353320b866f78))
+* **grpc:** M43 T2 — unary invoke end-to-end (grpc: block + CLI) ([a216452](https://github.com/Its-Satyajit/reqly/commit/a216452d99a71d6ba1667c754f2c669cc459a569))
+
 ## [1.5.0](https://github.com/Its-Satyajit/reqly/compare/v1.4.1...v1.5.0) (2026-08-24)
 
 
