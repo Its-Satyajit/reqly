@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/Its-Satyajit/reqly/compare/v1.4.1...v1.5.0) (2026-08-24)
+
+
+### Features
+
+* **desktop:** GUI-15 docs generation panel ([3ebb9ec](https://github.com/Its-Satyajit/reqly/commit/3ebb9ec5ad8c93c455ebb8f76a2df4548970f58c))
+* **desktop:** GUI-15 docs generation panel ([db774ac](https://github.com/Its-Satyajit/reqly/commit/db774ac86061295de5a2e60fab620c3def9a04c3))
+
 ## [1.4.1](https://github.com/Its-Satyajit/reqly/compare/v1.4.0...v1.4.1) (2026-08-24)
 
 
