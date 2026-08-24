@@ -225,7 +225,7 @@ Features that make Reqly more capable than a basic API client.
 - [x] Bulk request execution (CSV/JSON inputs, sequential/parallel, concurrency) — `internal/bulk` + `reqly bulk run --data` ([ADR 0023](docs/adr/0023-bulk-runner.md)) + desktop runners panel
 - [ ] Data-driven testing (same test suite against multiple datasets)
 - [x] Retry & resilience — engine-level `request.retry` block (`count`/`delayMs`/`strategy: fixed|exponential`/`maxDelayMs`/`retryOn`) inside `Client.Execute`, network errors + 429/502/503/504 default set, `Retry-After` honored + clamped, auth refresh orthogonal within one attempt, `response.Attempts` + history carry, `reqly run --retries/--retry-delay`, desktop Retry section ([ADR 0024](docs/adr/0024-retry-resilience.md))
-- [ ] API documentation generation (REST + GraphQL + realtime)
+- [~] API documentation generation (REST + GraphQL + realtime) — REST shipped: `reqly docs generate` (index.md + per-collection Markdown with cURL snippets) + desktop Docs panel (G-15); GraphQL and realtime doc output deferred
 - [ ] CI/CD support (run collections/tests in CI, mock deployment, env validation, docs generation)
 
 ---
