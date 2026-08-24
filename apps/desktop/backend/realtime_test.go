@@ -19,6 +19,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -200,5 +201,99 @@ func TestRealtimeSSEStreamEvents(t *testing.T) {
 	})
 	if ev.ID != "1" || ev.Data != "hello" || ev.Direction != "in" {
 		t.Errorf("event frame = %+v", ev)
+	}
+}
+
+func TestRealtimeWSSendBinaryEchoLoopback(t *testing.T) {
+	svc := &AppService{}
+	frames := captureRealtimeFrames(t)
+	upgraded := make(chan *websocket.Conn, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			return
+		}
+		upgraded <- c
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		defer c.Close(websocket.StatusNormalClosure, "")
+		for {
+			typ, data, err := c.Read(ctx)
+			if err != nil {
+				return
+			}
+			if typ != websocket.MessageBinary {
+				t.Errorf("server got message type %v, want binary", typ)
+				return
+			}
+			if err := c.Write(ctx, typ, data); err != nil {
+				return
+			}
+		}
+	}))
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
+	err := svc.RealtimeOpen(RealtimeOpenRequest{SessionID: "bin", Kind: "ws", URL: wsURL})
+	if err != nil {
+		t.Fatalf("RealtimeOpen: %v", err)
+	}
+	defer func() { _ = svc.RealtimeClose("bin") }()
+
+	waitFrame(t, frames, func(f *RealtimeFrame) bool {
+		return f.Type == "status" && f.Data == "connected"
+	})
+
+	payload := base64.StdEncoding.EncodeToString([]byte{0x00, 0xff, 0x10, 0xfe})
+	if err := svc.RealtimeSendBinary("bin", payload); err != nil {
+		t.Fatalf("RealtimeSendBinary: %v", err)
+	}
+	echoed := waitFrame(t, frames, func(f *RealtimeFrame) bool {
+		return f.Type == "message" && f.Direction == "in"
+	})
+	if echoed.Encoding != "base64" || echoed.Data != payload {
+		t.Errorf("echoed binary frame = %+v", echoed)
+	}
+	out := waitFrame(t, frames, func(f *RealtimeFrame) bool {
+		return f.Direction == "out"
+	})
+	if out.Encoding != "base64" || out.Data != payload {
+		t.Errorf("outgoing binary record = %+v", out)
+	}
+}
+
+func TestRealtimeSendBinaryRejectsNonBase64(t *testing.T) {
+	svc := &AppService{}
+	if err := svc.RealtimeSendBinary("missing-session", "not base64!!!"); err == nil {
+		t.Fatal("expected error for non-base64 payload, got nil")
+	}
+}
+
+func TestRealtimeSSERetryHintForwarded(t *testing.T) {
+	svc := &AppService{}
+	frames := captureRealtimeFrames(t)
+	done := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher := w.(http.Flusher)
+		fmt.Fprint(w, "retry: 3000\n\n")
+		fmt.Fprint(w, "data: after-retry\n\n")
+		flusher.Flush()
+		<-done
+	}))
+	defer srv.Close()
+	defer close(done)
+
+	err := svc.RealtimeOpen(RealtimeOpenRequest{SessionID: "sse2", Kind: "sse", URL: srv.URL + "/events"})
+	if err != nil {
+		t.Fatalf("RealtimeOpen sse: %v", err)
+	}
+	defer func() { _ = svc.RealtimeClose("sse2") }()
+
+	ev := waitFrame(t, frames, func(f *RealtimeFrame) bool {
+		return f.Type == "message" && f.Data == "after-retry"
+	})
+	if ev.RetryMs != 3000 {
+		t.Errorf("RetryMs = %d, want 3000 (frame %+v)", ev.RetryMs, ev)
 	}
 }

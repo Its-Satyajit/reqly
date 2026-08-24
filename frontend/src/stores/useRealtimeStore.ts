@@ -27,6 +27,7 @@ interface RealtimeState {
   newTab(tabId: string, kind: RealtimeKind): void
   connect(tabId: string): Promise<void>
   send(tabId: string, data: string): Promise<void>
+  sendBinary(tabId: string, base64: string): Promise<void>
   disconnect(tabId: string): Promise<void>
   closeTab(tabId: string): void
   appendFrame(tabId: string, frame: RealtimeFrameView): void
@@ -113,6 +114,24 @@ export const useRealtimeStore = create<RealtimeState>((set, get) => ({
     if (!sessionId) return;
     try {
       await adapter.send(sessionId, data);
+    } catch (err) {
+      get().update(tabId, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  },
+
+  async sendBinary(tabId, base64) {
+    const { adapter, tabs } = get();
+    const tab = tabs[tabId];
+    const sessionId = tab?.sessionId;
+    if (!sessionId) return;
+    if (!adapter.sendBinary) {
+      get().update(tabId, { error: "binary send is not supported by this adapter" });
+      return;
+    }
+    try {
+      await adapter.sendBinary(sessionId, base64);
     } catch (err) {
       get().update(tabId, {
         error: err instanceof Error ? err.message : String(err),

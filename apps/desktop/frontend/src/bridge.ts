@@ -792,6 +792,9 @@ export const wailsRealtimeAdapter: RealtimeAdapter = {
 	send: async (sessionId, data) => {
 		await AppService.RealtimeSend(sessionId, data);
 	},
+	sendBinary: async (sessionId, base64) => {
+		await AppService.RealtimeSendBinary(sessionId, base64);
+	},
 	close: async (sessionId) => {
 		await AppService.RealtimeClose(sessionId);
 	},

@@ -10,6 +10,8 @@ export interface RealtimeFrameView {
   encoding?: string;
   name?: string;
   id?: string;
+  /** SSE retry hint in milliseconds ("retry:" field), when the server sent one. */
+  retryMs?: number;
   timestamp: number;
 }
 
@@ -26,6 +28,8 @@ export interface RealtimeAdapter {
     headers?: RealtimeHeaderPair[];
   }): Promise<void>;
   send(sessionId: string, data: string): Promise<void>;
+  /** sendBinary writes raw bytes (base64-encoded payload) as a WS binary frame. */
+  sendBinary?(sessionId: string, base64: string): Promise<void>;
   close(sessionId: string): Promise<void>;
   subscribe(
     sessionId: string,
