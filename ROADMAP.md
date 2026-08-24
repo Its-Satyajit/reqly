@@ -38,6 +38,8 @@ Project skeleton, build system, and the first core primitives.
 - [x] Go ↔ TypeScript bindings generated (`wails3 generate bindings`)
 - [x] Host app (`apps/desktop/backend/frontend`) — Vite + React + Tailwind, wails vite plugin, port 9245
 - [x] `wails3 build` produces `bin/reqly`
+- [x] Backend warning/error log mirror — slog handler emits `reqly.golog` events so desktop crash reports include Go-side diagnostics
+- [x] sqlc-generated typed query layer over `modernc.org/sqlite` for the history store (`internal/history/db`; schema/query SQL in-repo, zero reflection, no CGO)
 
 ### 0.3 Shared UI shell (`frontend/`)
 
