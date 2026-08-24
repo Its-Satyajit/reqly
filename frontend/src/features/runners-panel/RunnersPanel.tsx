@@ -229,7 +229,7 @@ export function RunnersPanel() {
                   type="number"
                   min={1}
                   value={concurrency}
-                  onChange={(e) => setConcurrency(inputInt(e.target.value, concurrency))}
+                  onChange={(e) => patch({ concurrency: inputInt(e.target.value, concurrency) })}
                   className="w-16 rounded-md border border-border bg-transparent px-1 py-0.5 font-mono"
                 />
               </label>
