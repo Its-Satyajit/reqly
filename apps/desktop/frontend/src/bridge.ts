@@ -3,6 +3,8 @@ import type {
 	CollectionsAdapter,
 	EnvAdapter,
 	HistoryAdapter,
+	ExportAdapter,
+	ExportFormat,
 	ImportAdapter,
 	ImportOutcome,
 	WorkspaceBootstrapAdapter,
@@ -17,6 +19,7 @@ import {
 	normalizeHeaderKeys,
 	serializeBody,
 	useAuthStore,
+	useExportStore,
 	useHistoryStore,
 	useImportStore,
 	useRequestStore,
@@ -509,6 +512,31 @@ export const wailsImportAdapter: ImportAdapter = {
 		runImport({ content, formatHint, targetDir, dryRun: false }),
 };
 
+type WailsExportResult = NonNullable<Awaited<ReturnType<typeof AppService.Export>>>;
+
+export const wailsExportAdapter: ExportAdapter = {
+	run: async (input: {
+		format: ExportFormat;
+		collection?: string;
+		outName?: string;
+	}) => {
+		const { format, collection, outName } = input;
+		const res: WailsExportResult | null = await AppService.Export({
+			format,
+			collection,
+			outName,
+		});
+		if (!res) throw new Error("export failed");
+		// SAFETY: the backend only emits the four ExportRequest format values.
+		return {
+			format: res.format as ExportFormat,
+			path: res.path,
+			requestCount: res.requestCount,
+			entryCount: res.entryCount,
+		};
+	},
+};
+
 /**
  * Wires the Go core behind the shared request, auth, and environment stores.
  * Called once from the host entry point, before the React tree mounts.
@@ -523,6 +551,7 @@ export function initRequestBridge(): void {
 	useWorkspaceStore.getState().setWorkspaceAdapter(wailsCollectionsAdapter);
 	useHistoryStore.getState().setAdapter(wailsHistoryAdapter);
 	useImportStore.getState().setAdapter(wailsImportAdapter);
+	useExportStore.getState().setAdapter(wailsExportAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {
