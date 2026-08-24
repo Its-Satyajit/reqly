@@ -133,7 +133,7 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.6 Request builder & response viewer (UI)
 
-> **GUI parity gaps:** Import/Export, WebSocket/SSE, Test runner, Mock server, and 10+ other features have core logic shipped but no desktop GUI. See [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) for the full GUI milestone tracker.
+> **GUI parity:** Import/Export, WebSocket/SSE, Test runner, Mock server, API diff, JWT inspector, env tools, GraphQL browser, pagination/bulk runners, and OpenAPI explorer all have desktop GUIs shipped (GUI-5–GUI-14, v1.4.0). See [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) for the full GUI milestone tracker.
 
 - [x] Method select, URL bar, Send → real response data flow
 - [x] Params/headers/body tabs in the builder
