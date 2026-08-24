@@ -40,8 +40,8 @@ const (
 
 // Issue is a single validation finding.
 type Issue struct {
-	Severity Severity
-	Message  string
+	Severity Severity `json:"severity"`
+	Message  string   `json:"message"`
 }
 
 // secretNamePattern matches variable names that look like they hold secrets:

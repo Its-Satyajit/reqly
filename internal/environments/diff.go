@@ -35,15 +35,15 @@ const (
 // KeyDiff describes a single key-level change between two environments.
 type KeyDiff struct {
 	// Name is the variable or secret key.
-	Name string
+	Name string `json:"name"`
 	// Status is one of the Status* constants: added, removed, or changed.
-	Status string
+	Status string `json:"status"`
 	// Kind is one of the Kind* constants: variable or secret.
-	Kind string
+	Kind string `json:"kind"`
 	// From is the value in the first environment (secrets masked).
-	From string
+	From string `json:"from"`
 	// To is the value in the second environment (secrets masked).
-	To string
+	To string `json:"to"`
 }
 
 // maskSecret replaces a secret value with the masking sentinel. A blank value

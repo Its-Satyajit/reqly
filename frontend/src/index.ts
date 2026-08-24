@@ -18,6 +18,7 @@ export * from "./lib/realtime";
 export * from "./lib/mock";
 export * from "./lib/diff";
 export * from "./lib/jwt";
+export * from "./lib/envtools";
 export * from "./lib/jsonpath";
 export * from "./lib/request";
 export * from "./lib/response";

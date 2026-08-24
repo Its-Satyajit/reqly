@@ -6,6 +6,7 @@ import type {
 	ExportAdapter,
 	ExportFormat,
 	DiffAdapter,
+	EnvToolsAdapter,
 	JwtAdapter,
 	JwtTokenView,
 	MockAdapter,
@@ -32,6 +33,7 @@ import {
 	useMockStore,
 	useRealtimeStore,
 	setDiffBridge,
+	setEnvToolsBridge,
 	setJwtBridge,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
@@ -545,6 +547,20 @@ function toDiffResultView(r: WailsDiffResult): import("@reqly/frontend").DiffRes
 	return { hasChanges: r?.hasChanges ?? false, changes };
 }
 
+export const wailsEnvToolsAdapter: EnvToolsAdapter = {
+	diff: async (envA, envB) => {
+		const res = await AppService.EnvDiff(envA, envB);
+		if (!res) throw new Error("diff failed");
+		return { envA: res.envA, envB: res.envB, diffs: res.diffs ?? [] };
+	},
+	validate: async (name) => {
+		const res = await AppService.EnvValidate(name);
+		if (!res) throw new Error("validate failed");
+		return { env: res.env, issues: res.issues ?? [] };
+	},
+	crossValidate: () => AppService.EnvCrossValidate(),
+};
+
 export const wailsJwtAdapter: JwtAdapter = {
 	decode: async (token) => {
 		const res = await AppService.JwtDecode(token);
@@ -679,6 +695,7 @@ export function initRequestBridge(): void {
 	useMockStore.getState().setAdapter(wailsMockAdapter);
 	setDiffBridge(wailsDiffAdapter);
 	setJwtBridge(wailsJwtAdapter);
+	setEnvToolsBridge(wailsEnvToolsAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {
