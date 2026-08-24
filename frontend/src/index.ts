@@ -16,6 +16,7 @@ export * from "./lib/export";
 export * from "./lib/test";
 export * from "./lib/realtime";
 export * from "./lib/mock";
+export * from "./lib/docs";
 export * from "./lib/diff";
 export * from "./lib/jwt";
 export * from "./lib/envtools";

@@ -20,6 +20,7 @@ import { DiffView } from "../features/diff-view/DiffView";
 import { GraphqlBrowser } from "../features/graphql-browser/GraphqlBrowser";
 import { JwtInspector } from "../features/jwt-inspector/JwtInspector";
 import { OpenapiExplorer } from "../features/openapi-explorer/OpenapiExplorer";
+import { DocsView } from "../features/docs-view/DocsView";
 import { RunnersPanel } from "../features/runners-panel/RunnersPanel";
 import { MocksView } from "../features/mock-view/MocksView";
 import { HistoryView } from "../features/history-view/HistoryView";
@@ -263,6 +264,12 @@ export function App() {
 								<section className="h-full min-h-0 overflow-y-auto">
 									<ErrorBoundary label="OpenAPI explorer">
 										<OpenapiExplorer />
+									</ErrorBoundary>
+								</section>
+							) : activeView === "docs" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Docs generator">
+										<DocsView />
 									</ErrorBoundary>
 								</section>
 							) : (
