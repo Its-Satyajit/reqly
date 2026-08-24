@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderSearch, RefreshCw, SquareArrowOutDownLeft } from "lucide-react";
+import { FileDown, FolderSearch, RefreshCw, SquareArrowOutDownLeft } from "lucide-react";
 import { cn } from "#lib/utils";
 import {
 	AlertDialog,
@@ -11,8 +11,13 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
-import { AuthPanel, ImportDialog } from "../features";
-import { useImportStore, useWorkspaceStore, type WorkspaceView } from "../stores";
+import { AuthPanel, ExportDialog, ImportDialog } from "../features";
+import {
+	useExportStore,
+	useImportStore,
+	useWorkspaceStore,
+	type WorkspaceView,
+} from "../stores";
 import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { CollectionTree } from "./CollectionTree";
 
@@ -24,6 +29,7 @@ export function WorkspaceSidebar() {
 	const workspaceTree = useWorkspaceStore((s) => s.workspaceTree);
 	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
 	const setImportOpen = useImportStore((s) => s.setOpen);
+	const setExportOpen = useExportStore((s) => s.setOpen);
 	const switchWorkspace = useWorkspaceBootstrapStore((s) => s.openFolder);
 	const [pendingView, setPendingView] = useState<WorkspaceView | null>(null);
 
@@ -88,6 +94,17 @@ export function WorkspaceSidebar() {
 							</button>
 						)}
 						{workspaceTree && (
+							<button
+								type="button"
+								onClick={() => setExportOpen(true)}
+								title="Export as Postman, OpenAPI, HAR, or a workspace copy"
+								aria-label="Export workspace"
+								className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+							>
+								<FileDown className="size-3.5" aria-hidden />
+							</button>
+						)}
+						{workspaceTree && (
 						<button
 							type="button"
 							onClick={() => void refreshWorkspace()}
@@ -106,6 +123,7 @@ export function WorkspaceSidebar() {
 			<ImportDialog
 				onImported={() => void refreshWorkspace()}
 			/>
+			<ExportDialog />
 			<AlertDialog
 				open={pendingView != null}
 				onOpenChange={(open) => {
