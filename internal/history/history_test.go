@@ -256,3 +256,48 @@ func TestMigrateAddsAttemptsToLegacyDB(t *testing.T) {
 		t.Fatalf("expected Attempts=2, got %d", got.Attempts)
 	}
 }
+
+func TestStoreSearchSanitizesFTSInput(t *testing.T) {
+	s := newTempStore(t)
+	ctx := context.Background()
+	_ = s.Insert(ctx, &Entry{URL: "https://api.example.com/todo/1", RequestPath: "todo/list-todos", CreatedAt: time.Now().UTC()})
+
+	tests := []struct {
+		name  string
+		query string
+		want  int
+	}{
+		{"trailing slash", "todo/", 1},
+		{"bare slash", "/", 0},
+		{"fts operators treated literally (implicit AND)", `todo OR (list)`, 0},
+		{"hyphenated", "list-todos", 1},
+		{"embedded quotes", `todo"`, 1},
+		{"column filter attempt", "todo:url:*", 0},
+		{"empty", "", 0},
+		{"punctuation only", `- : *`, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := s.Search(ctx, tt.query, 10)
+			if err != nil {
+				t.Fatalf("Search(%q): %v", tt.query, err)
+			}
+			if len(res) != tt.want {
+				t.Errorf("Search(%q) = %d entries, want %d", tt.query, len(res), tt.want)
+			}
+		})
+	}
+}
+
+func TestStoreSearchPrefixMatchesPartialWords(t *testing.T) {
+	s := newTempStore(t)
+	ctx := context.Background()
+	_ = s.Insert(ctx, &Entry{URL: "https://api.example.com/todos/bulk", RequestPath: "todos/bulk", CreatedAt: time.Now().UTC()})
+	res, err := s.Search(ctx, "tod", 10)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(res) != 1 {
+		t.Fatalf("prefix search = %d entries, want 1", len(res))
+	}
+}

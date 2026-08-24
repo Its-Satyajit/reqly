@@ -31,7 +31,6 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
-	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -46,6 +45,13 @@ type AppService struct {
 	runs         *core.CollectionRunService
 	// authBackend is the active token-store backend name ("file"/"keychain").
 	authBackend string
+	// root is the resolved workspace root directory ("" when no workspace).
+	root string
+
+	// pickDir opens the native folder chooser; injectable for tests.
+	pickDir func() (string, error)
+	// configDir resolves the preferences directory; injectable for tests.
+	configDir func() (string, error)
 
 	runMu      sync.Mutex
 	runCancels map[string]context.CancelFunc
@@ -61,23 +67,11 @@ type AppService struct {
 // reqly:// custom-scheme receiver is registered so auth-code logins can
 // complete via deep links (feed them with DeliverCustomSchemeCallback).
 func NewAppService() *AppService {
-	root := collections.FindWorkspaceRoot(".")
-	// One shared seam for token-store policy (ADR 0025): keychain by default,
-	// REQLY_TOKEN_STORE override, file fallback with warning.
-	opened := secrets.OpenForWorkspace(root, "keychain")
-
 	svc := &AppService{
-		requests:     core.NewRunServiceWithTokenStore(root, opened.Store),
-		authBackend:  opened.Backend,
-		environments: core.NewEnvironmentService(root),
-		workspace:    core.NewWorkspaceService(root),
-		runs:         core.NewCollectionRunService(root),
-		runCancels:   make(map[string]context.CancelFunc),
-		sendCancels:  make(map[string]context.CancelFunc),
+		runCancels:  make(map[string]context.CancelFunc),
+		sendCancels: make(map[string]context.CancelFunc),
 	}
-	if opened.Store != nil {
-		svc.auth = core.NewAuthService(opened.Store, root)
-	}
+	svc.rebuildServices(collections.FindWorkspaceRoot("."))
 	auth.RegisterCustomSchemeReceiver("reqly")
 	return svc
 }

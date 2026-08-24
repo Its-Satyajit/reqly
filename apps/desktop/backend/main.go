@@ -19,6 +19,8 @@ package main
 
 import (
 	"log"
+	"log/slog"
+	"os"
 
 	desktopassets "github.com/Its-Satyajit/reqly/apps/desktop"
 
@@ -26,6 +28,13 @@ import (
 )
 
 func main() {
+	// Backend warnings and errors mirror to the webview (reqly.golog events)
+	// so they land in user-copied crash reports; stderr keeps everything.
+	slog.SetDefault(slog.New(newLogMirrorHandler(
+		slog.NewTextHandler(os.Stderr, nil),
+		slog.LevelWarn,
+	)))
+
 	app := application.New(application.Options{
 		Name:        "reqly",
 		Description: "A local-first, Git-native API development environment",

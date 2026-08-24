@@ -32,18 +32,18 @@ const (
 // positional label such as "entry 3"); Message carries the same human-readable
 // text the free-text warning strings used before reports existed.
 type ReportEntry struct {
-	ItemPath string
-	Category Category
-	Severity Severity
-	Message  string
+	ItemPath string   `json:"itemPath"`
+	Category Category `json:"category"`
+	Severity Severity `json:"severity"`
+	Message  string   `json:"message"`
 }
 
 // ImportReport is the structured record of how an import degraded its source.
 // Every parser returns one in place of the former []string warnings; rendering
 // belongs to callers (the CLI groups by category, desktop renders later).
 type ImportReport struct {
-	Importer string
-	Entries  []ReportEntry
+	Importer string        `json:"importer"`
+	Entries  []ReportEntry `json:"entries"`
 }
 
 // NewReport returns an empty report attributed to the named importer.

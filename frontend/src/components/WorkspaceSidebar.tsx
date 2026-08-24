@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { FolderSearch, RefreshCw, SquareArrowOutDownLeft } from "lucide-react";
 import { cn } from "#lib/utils";
 import {
 	AlertDialog,
@@ -11,8 +11,9 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
-import { AuthPanel } from "../features";
-import { useWorkspaceStore, type WorkspaceView } from "../stores";
+import { AuthPanel, ImportDialog } from "../features";
+import { useImportStore, useWorkspaceStore, type WorkspaceView } from "../stores";
+import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { CollectionTree } from "./CollectionTree";
 
 export function WorkspaceSidebar() {
@@ -22,6 +23,8 @@ export function WorkspaceSidebar() {
 	const workspaceName = useWorkspaceStore((s) => s.workspaceTree?.name);
 	const workspaceTree = useWorkspaceStore((s) => s.workspaceTree);
 	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
+	const setImportOpen = useImportStore((s) => s.setOpen);
+	const switchWorkspace = useWorkspaceBootstrapStore((s) => s.openFolder);
 	const [pendingView, setPendingView] = useState<WorkspaceView | null>(null);
 
 	const requestView = (view: WorkspaceView) => {
@@ -61,7 +64,30 @@ export function WorkspaceSidebar() {
 					<p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
 						{workspaceName ? workspaceName : "Collections"}
 					</p>
-					{workspaceTree && (
+					<span className="flex items-center gap-0.5">
+						{workspaceTree && (
+							<button
+								type="button"
+								onClick={() => void switchWorkspace()}
+								title="Switch workspace"
+								aria-label="Switch workspace"
+								className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+							>
+								<FolderSearch className="size-3.5" aria-hidden />
+							</button>
+						)}
+						{workspaceTree && (
+							<button
+								type="button"
+								onClick={() => setImportOpen(true)}
+								title="Import from cURL, OpenAPI, HAR, Postman, Insomnia, or Bruno"
+								aria-label="Import into workspace"
+								className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+							>
+								<SquareArrowOutDownLeft className="size-3.5" aria-hidden />
+							</button>
+						)}
+						{workspaceTree && (
 						<button
 							type="button"
 							onClick={() => void refreshWorkspace()}
@@ -72,10 +98,14 @@ export function WorkspaceSidebar() {
 							<RefreshCw className="size-3.5" aria-hidden />
 						</button>
 					)}
+					</span>
 				</div>
 				<CollectionTree />
 				<AuthPanel />
 			</div>
+			<ImportDialog
+				onImported={() => void refreshWorkspace()}
+			/>
 			<AlertDialog
 				open={pendingView != null}
 				onOpenChange={(open) => {

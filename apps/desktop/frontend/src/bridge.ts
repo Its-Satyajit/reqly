@@ -3,6 +3,9 @@ import type {
 	CollectionsAdapter,
 	EnvAdapter,
 	HistoryAdapter,
+	ImportAdapter,
+	ImportOutcome,
+	WorkspaceBootstrapAdapter,
 	RequestInput,
 	RequestSender,
 	ResponseData,
@@ -15,10 +18,14 @@ import {
 	serializeBody,
 	useAuthStore,
 	useHistoryStore,
+	useImportStore,
 	useRequestStore,
+	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
+	addGoLog,
 } from "@reqly/frontend";
 import { Events } from "@wailsio/runtime";
+
 import { AppService } from "../bindings/github.com/Its-Satyajit/reqly/apps/desktop/backend/index";
 
 /**
@@ -453,6 +460,55 @@ export const wailsHistoryAdapter: HistoryAdapter = {
 	},
 };
 
+type WailsImportResult = NonNullable<Awaited<ReturnType<typeof AppService.Import>>>;
+
+function toImportOutcome(res: WailsImportResult): ImportOutcome {
+	return {
+		kind: res.kind,
+		format: res.format,
+		title: res.title,
+		requestCount: res.requestCount,
+		environmentCount: res.environmentCount,
+		targetDir: res.targetDir,
+		report: res.report ?? undefined,
+		operations: res.operations ?? undefined,
+	};
+}
+
+async function runImport(
+	req: Parameters<typeof AppService.Import>[0],
+): Promise<ImportOutcome> {
+	const res = await AppService.Import(req);
+	if (!res) throw new Error("import failed");
+	return toImportOutcome(res);
+}
+
+export const wailsWorkspaceBootstrapAdapter: WorkspaceBootstrapAdapter = {
+	status: async () => (await AppService.WorkspaceStatus()) ?? { found: false },
+	restoreLast: async () => (await AppService.WorkspaceRestoreLast()) ?? { found: false },
+	pickFolder: async () => {
+		const dir = await AppService.WorkspacePickFolder();
+		return dir ?? "";
+	},
+	open: async (dir) => {
+		await AppService.WorkspaceOpen(dir);
+	},
+	create: async (dir, name) => {
+		await AppService.WorkspaceCreate(dir, name ?? "");
+	},
+};
+
+export const wailsImportAdapter: ImportAdapter = {
+	detect: async (content) => {
+		const [format, ok] = await AppService.Detect(content);
+		return { format, ok };
+	},
+	preview: ({ content, formatHint }) =>
+		runImport({ content, formatHint, dryRun: true }),
+	commit: ({ content, formatHint, targetDir }) =>
+		runImport({ content, formatHint, targetDir, dryRun: false }),
+};
+
 /**
  * Wires the Go core behind the shared request, auth, and environment stores.
  * Called once from the host entry point, before the React tree mounts.
@@ -466,4 +522,11 @@ export function initRequestBridge(): void {
 	useWorkspaceStore.getState().setEnvAdapter(wailsEnvAdapter);
 	useWorkspaceStore.getState().setWorkspaceAdapter(wailsCollectionsAdapter);
 	useHistoryStore.getState().setAdapter(wailsHistoryAdapter);
+	useImportStore.getState().setAdapter(wailsImportAdapter);
+	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
+
+	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {
+		const payload = e.data ?? {};
+		addGoLog(String(payload.level ?? "LOG"), String(payload.message ?? ""));
+	});
 }
