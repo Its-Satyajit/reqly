@@ -12,6 +12,7 @@ import {
 	ResizablePanelGroup,
 } from "../components/ui/resizable";
 import { RequestTabs, RunView, ThemeToggle, WorkspaceSidebar } from "../components";
+import { TestTab } from "../features/test-runner/TestTab";
 import { Toaster } from "../components/ui/toast";
 import { EnvironmentsView } from "../features/environments-view/EnvironmentsView";
 import { HistoryView } from "../features/history-view/HistoryView";
@@ -205,7 +206,13 @@ export function App() {
 							) : (
 								<section className="flex h-full min-h-0 flex-col">
 									<RequestTabs />
-									{activeTab?.kind === "run" ? (
+								{activeTab?.kind === "test" ? (
+									<div className="min-h-0 min-w-0 flex-1">
+										<ErrorBoundary label="Test runner">
+											<TestTab tabId={activeTab.id} />
+										</ErrorBoundary>
+									</div>
+								) : activeTab?.kind === "run" ? (
 										<div className="min-h-0 min-w-0 flex-1">
 											<ErrorBoundary label="Run view">
 												<RunView />

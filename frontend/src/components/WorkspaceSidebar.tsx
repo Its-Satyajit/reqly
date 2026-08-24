@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { FileDown, FolderSearch, RefreshCw, SquareArrowOutDownLeft } from "lucide-react";
+import {
+	FileDown,
+	FilePlus,
+	FolderSearch,
+	RefreshCw,
+	SquareArrowOutDownLeft,
+} from "lucide-react";
 import { cn } from "#lib/utils";
 import {
 	AlertDialog,
@@ -12,6 +18,7 @@ import {
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
 import { AuthPanel, ExportDialog, ImportDialog } from "../features";
+import { useTestStore } from "../stores/useTestStore";
 import {
 	useExportStore,
 	useImportStore,
@@ -117,7 +124,8 @@ export function WorkspaceSidebar() {
 					)}
 					</span>
 				</div>
-				<CollectionTree />
+ 				<CollectionTree />
+				<TestsSection />
 				<AuthPanel />
 			</div>
 			<ImportDialog
@@ -151,5 +159,58 @@ export function WorkspaceSidebar() {
 				</AlertDialogContent>
 			</AlertDialog>
 		</aside>
+	);
+}
+
+function TestsSection() {
+	const tests = useTestStore((s) => s.tests);
+	const openPath = useTestStore((s) => s.openPath);
+	const newTab = useTestStore((s) => s.newTab);
+	const openTab = useWorkspaceStore((s) => s.openTab);
+	const setActiveView = useWorkspaceStore((s) => s.setActiveView);
+
+	const openTestTab = (path: string | null, title: string, fresh: boolean) => {
+		const id = fresh ? `test-new-${Date.now()}` : `test-${path}`;
+		if (fresh) newTab(id);
+		else void openPath(id, path ?? "");
+		openTab({ id, title, kind: "test", filePath: path ?? undefined });
+		setActiveView("requests");
+	};
+
+	return (
+		<div className="border-t border-border px-2 pt-2">
+			<div className="flex items-center justify-between pb-1">
+				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+					Tests {tests.length > 0 && `(${tests.length})`}
+				</p>
+				<button
+					type="button"
+					onClick={() => openTestTab(null, "untitled.reqly-test", true)}
+					title="New test file"
+					aria-label="New test file"
+					className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+				>
+					<FilePlus className="size-3.5" aria-hidden />
+				</button>
+			</div>
+			{tests.length === 0 ? (
+				<p className="pb-2 text-[11px] text-muted-foreground">No *.reqly-test files found.</p>
+			) : (
+				<ul className="flex flex-col gap-0.5 pb-2">
+					{tests.map((t) => (
+						<li key={t.path}>
+							<button
+								type="button"
+								className="w-full truncate rounded px-1 py-0.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+								title={t.path}
+								onClick={() => openTestTab(t.path, t.name || t.path, false)}
+							>
+								{t.name || t.path}
+							</button>
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
 	);
 }

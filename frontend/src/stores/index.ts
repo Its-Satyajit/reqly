@@ -4,6 +4,7 @@ export * from "./useHistoryStore";
 export * from "./useExportStore";
 export * from "./useImportStore";
 export * from "./useRequestStore";
+export * from "./useTestStore";
 export * from "./useThemeStore";
 export * from "./useWorkspaceBootstrap";
 export * from "./useWorkspaceStore";
