@@ -21,6 +21,7 @@ import { GraphqlBrowser } from "../features/graphql-browser/GraphqlBrowser";
 import { JwtInspector } from "../features/jwt-inspector/JwtInspector";
 import { OpenapiExplorer } from "../features/openapi-explorer/OpenapiExplorer";
 import { DocsView } from "../features/docs-view/DocsView";
+import { GrpcTab } from "../features/grpc-view/GrpcTab";
 import { RunnersPanel } from "../features/runners-panel/RunnersPanel";
 import { MocksView } from "../features/mock-view/MocksView";
 import { HistoryView } from "../features/history-view/HistoryView";
@@ -264,6 +265,12 @@ export function App() {
 								<section className="h-full min-h-0 overflow-y-auto">
 									<ErrorBoundary label="OpenAPI explorer">
 										<OpenapiExplorer />
+									</ErrorBoundary>
+								</section>
+							) : activeView === "grpc" ? (
+								<section className="h-full min-h-0">
+									<ErrorBoundary label="gRPC client">
+										<GrpcTab tabId="grpc" />
 									</ErrorBoundary>
 								</section>
 							) : activeView === "docs" ? (

@@ -16,6 +16,8 @@ import type {
 	MockStatus,
 	DocsAdapter,
 	DocsResultView,
+	GrpcAdapter,
+	GrpcService,
 	RealtimeAdapter,
 	RealtimeFrameView,
 	ImportAdapter,
@@ -37,6 +39,7 @@ import {
 	useImportStore,
 	useMockStore,
 	useDocsStore,
+	useGrpcStore,
 	useRealtimeStore,
 	setDiffBridge,
 	setEnvToolsBridge,
@@ -845,6 +848,44 @@ export const wailsDocsAdapter: DocsAdapter = {
 	},
 };
 
+export const wailsGrpcAdapter: GrpcAdapter = {
+	services: async ({ target, protoFiles }) => {
+		const services = await AppService.GrpcServices({ target, protoFiles: protoFiles ?? [] });
+		// SAFETY: the bridge returns the generated GrpcService shape verbatim.
+		return (services ?? []) as GrpcService[];
+	},
+	invoke: async (sessionId, request) => {
+		const res = await AppService.GrpcInvoke({ sessionId, request });
+		if (!res) throw new Error("gRPC invoke failed");
+		return {
+			ok: Boolean(res.ok),
+			messageJson: res.messageJson ?? undefined,
+			codeName: res.codeName ?? undefined,
+			statusMessage: res.statusMessage ?? undefined,
+			durationMs: res.durationMs ?? undefined,
+		};
+	},
+	stream: async (sessionId, request) => {
+		await AppService.GrpcStream({ sessionId, request });
+	},
+	cancel: async (sessionId) => {
+		await AppService.GrpcCancel(sessionId);
+	},
+	subscribe: (sessionId, onEvent) => {
+		const off = Events.On(`reqly.grpc.${sessionId}`, (e: { data?: { type?: string; seq?: number; data?: string; codeName?: string } }) => {
+			if (!e?.data?.type) return;
+			// SAFETY: the backend emits exactly these four event types on the channel.
+			onEvent({
+				type: e.data.type as "message" | "done" | "error" | "cancelled",
+				seq: e.data.seq,
+				data: e.data.data,
+				codeName: e.data.codeName,
+			});
+		});
+		return () => off();
+	},
+};
+
 type WailsExportResult = NonNullable<Awaited<ReturnType<typeof AppService.Export>>>;
 
 export const wailsExportAdapter: ExportAdapter = {
@@ -888,6 +929,7 @@ export function initRequestBridge(): void {
 	useRealtimeStore.getState().setAdapter(wailsRealtimeAdapter);
 	useMockStore.getState().setAdapter(wailsMockAdapter);
 	useDocsStore.getState().setAdapter(wailsDocsAdapter);
+	useGrpcStore.getState().setAdapter(wailsGrpcAdapter);
 	setDiffBridge(wailsDiffAdapter);
 	setJwtBridge(wailsJwtAdapter);
 	setGqlBridge(wailsGqlAdapter);

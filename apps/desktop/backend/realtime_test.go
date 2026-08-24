@@ -34,8 +34,9 @@ import (
 // frameRecorder accumulates every realtime frame so assertions can scan the
 // full history instead of racing a consume-once channel.
 type frameRecorder struct {
-	mu     sync.Mutex
-	frames []*RealtimeFrame
+	mu         sync.Mutex
+	frames     []*RealtimeFrame
+	grpcEvents []*GrpcEvent
 }
 
 func (r *frameRecorder) all() []*RealtimeFrame {
