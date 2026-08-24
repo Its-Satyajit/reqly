@@ -53,6 +53,12 @@ type GRPC struct {
 	Message    any      `json:"message,omitempty" yaml:"message,omitempty"`
 	Timeout    string   `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	ProtoFiles []string `json:"protoFiles,omitempty" yaml:"protoFiles,omitempty"`
+
+	// Transport (M43 T4): plaintext h2c by default; TLS enables TLS against
+	// system roots or CAFile, optionally skipping verification.
+	TLS           bool   `json:"tls,omitempty" yaml:"tls,omitempty"`
+	TLSSkipVerify bool   `json:"tlsSkipVerify,omitempty" yaml:"tlsSkipVerify,omitempty"`
+	CAFile        string `json:"caFile,omitempty" yaml:"caFile,omitempty"`
 }
 
 // Retry configures automatic re-sending of a failed request. Count is the

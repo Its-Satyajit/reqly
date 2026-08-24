@@ -42,3 +42,7 @@ message EchoResponse {
 service FailingService {
   rpc Boom(EchoRequest) returns (EchoResponse);
 }
+
+service SlowService {
+  rpc Slow(EchoRequest) returns (EchoResponse);
+}

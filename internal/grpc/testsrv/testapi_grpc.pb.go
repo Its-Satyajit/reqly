@@ -286,3 +286,105 @@ var FailingService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "internal/grpc/testsrv/testapi.proto",
 }
+
+const (
+	SlowService_Slow_FullMethodName = "/reqly.test.v1.SlowService/Slow"
+)
+
+// SlowServiceClient is the client API for SlowService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type SlowServiceClient interface {
+	Slow(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error)
+}
+
+type slowServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewSlowServiceClient(cc grpc.ClientConnInterface) SlowServiceClient {
+	return &slowServiceClient{cc}
+}
+
+func (c *slowServiceClient) Slow(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EchoResponse)
+	err := c.cc.Invoke(ctx, SlowService_Slow_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// SlowServiceServer is the server API for SlowService service.
+// All implementations must embed UnimplementedSlowServiceServer
+// for forward compatibility.
+type SlowServiceServer interface {
+	Slow(context.Context, *EchoRequest) (*EchoResponse, error)
+	mustEmbedUnimplementedSlowServiceServer()
+}
+
+// UnimplementedSlowServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedSlowServiceServer struct{}
+
+func (UnimplementedSlowServiceServer) Slow(context.Context, *EchoRequest) (*EchoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Slow not implemented")
+}
+func (UnimplementedSlowServiceServer) mustEmbedUnimplementedSlowServiceServer() {}
+func (UnimplementedSlowServiceServer) testEmbeddedByValue()                     {}
+
+// UnsafeSlowServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SlowServiceServer will
+// result in compilation errors.
+type UnsafeSlowServiceServer interface {
+	mustEmbedUnimplementedSlowServiceServer()
+}
+
+func RegisterSlowServiceServer(s grpc.ServiceRegistrar, srv SlowServiceServer) {
+	// If the following call panics, it indicates UnimplementedSlowServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&SlowService_ServiceDesc, srv)
+}
+
+func _SlowService_Slow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EchoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SlowServiceServer).Slow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SlowService_Slow_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SlowServiceServer).Slow(ctx, req.(*EchoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// SlowService_ServiceDesc is the grpc.ServiceDesc for SlowService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var SlowService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "reqly.test.v1.SlowService",
+	HandlerType: (*SlowServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Slow",
+			Handler:    _SlowService_Slow_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "internal/grpc/testsrv/testapi.proto",
+}

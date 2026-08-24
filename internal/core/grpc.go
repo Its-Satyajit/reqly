@@ -127,7 +127,11 @@ func (s *RequestService) RunGRPC(ctx context.Context, r request.Request, opts Ru
 	res, ierr := grpc.Invoke(ctx,
 		grpc.Call{Target: target, Service: g.Service, Method: g.Method, ProtoFiles: protoFiles},
 		messageJSON,
-		grpc.InvokeOptions{Metadata: metadata, Timeout: timeout},
+		grpc.InvokeOptions{
+			Metadata:  metadata,
+			Timeout:   timeout,
+			Transport: grpc.Transport{TLS: g.TLS, TLSSkipVerify: g.TLSSkipVerify, CAFile: interp(g.CAFile)},
+		},
 	)
 	if ierr != nil {
 		return nil, maskErr(masker, ierr)
