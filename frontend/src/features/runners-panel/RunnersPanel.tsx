@@ -153,7 +153,7 @@ export function RunnersPanel() {
       </div>
 
       {activeTabId == null && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Open a request tab to configure a run against it.
         </p>
       )}
@@ -198,7 +198,7 @@ export function RunnersPanel() {
               onChange={(e) => patch({ maxPages: inputInt(e.target.value, maxPages) })}
               className="w-24 rounded-md border border-border bg-transparent px-2 py-1 text-xs font-mono"
             />
-            <span className="text-[11px] text-muted-foreground">stop condition + empty-body guard</span>
+            <span className="text-xs text-muted-foreground">stop condition + empty-body guard</span>
           </div>
         </>
       ) : (
@@ -210,7 +210,7 @@ export function RunnersPanel() {
             spellCheck={false}
             aria-label="Bulk data rows (CSV or JSON array)"
             placeholder={"id,name\n1,ada"}
-            className="resize-y font-mono text-[11px]"
+            className="resize-y font-mono text-xs"
           />
           <div className="flex items-center gap-3 text-xs">
             <label className="flex items-center gap-1.5">
@@ -279,7 +279,7 @@ export function RunnersPanel() {
       {steps.length > 0 && (
         <ul className="flex flex-col gap-0.5">
           {steps.map((st) => (
-            <li key={st.seq} className="font-mono text-[11px]">
+            <li key={st.seq} className="font-mono text-xs">
               <span className="mr-1.5 text-muted-foreground">#{st.index}</span>
               {st.error ? (
                 <span className="text-status-error">{st.error}</span>

@@ -45,7 +45,7 @@ export function RealtimeView() {
 					</span>
 				</button>
 			</div>
-			<p className="flex max-w-xl items-center gap-1.5 text-[11px] text-muted-foreground/70">
+			<p className="flex max-w-xl items-center gap-1.5 text-xs text-muted-foreground/70">
 				<Radio className="size-3" aria-hidden />
 				Connections run through the desktop bridge; frames stay local.
 			</p>

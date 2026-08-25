@@ -115,7 +115,7 @@ export function CodegenView() {
 		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Code generation">
 			<aside className="flex w-60 shrink-0 flex-col gap-3 overflow-y-auto rounded-xl border border-border bg-card p-3">
 				<div className="flex flex-col gap-1">
-					<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Source
 					</p>
 					<select
@@ -133,7 +133,7 @@ export function CodegenView() {
 					</select>
 				</div>
 				<div className="flex flex-col gap-1">
-					<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Language
 					</p>
 					<div role="radiogroup" aria-label="Language" className="flex flex-col gap-1">
@@ -158,7 +158,7 @@ export function CodegenView() {
 					</div>
 				</div>
 				<div className="flex flex-col gap-1">
-					<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Options
 					</p>
 					<label className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -170,7 +170,7 @@ export function CodegenView() {
 						/>
 						include authentication
 					</label>
-					<p className="text-[11px] text-muted-foreground/70">
+					<p className="text-xs text-muted-foreground/70">
 						Secrets are emitted as-is from the draft — never stored in generated code.
 					</p>
 				</div>
@@ -182,7 +182,7 @@ export function CodegenView() {
 						<>
 							<span
 								className={cn(
-									"shrink-0 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-[10px] font-semibold uppercase",
+									"shrink-0 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-2xs font-semibold uppercase",
 									methodTintClass(draft.method),
 								)}
 							>
@@ -191,7 +191,7 @@ export function CodegenView() {
 							<span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
 								{draft.url || "—"}
 							</span>
-							<span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 font-data text-[10px] text-primary">
+							<span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 font-data text-2xs text-primary">
 								{LANGS.find((l) => l.id === lang)?.label}
 							</span>
 						</>

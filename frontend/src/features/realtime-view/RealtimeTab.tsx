@@ -28,7 +28,7 @@ function statusPill(status: string) {
 	return (
 		<span
 			className={cn(
-				"flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 font-data text-[10px] font-semibold",
+				"flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 font-data text-2xs font-semibold",
 				tone,
 			)}
 		>
@@ -52,7 +52,7 @@ function FrameRow({ frame, isWS }: { frame: RealtimeFrameView; isWS: boolean }) 
 	return (
 		<li
 			className={cn(
-				"rounded border border-border/50 px-2 py-1 font-mono text-[11px]",
+				"rounded border border-border/50 px-2 py-1 font-mono text-xs",
 				frame.direction === "out" && "bg-muted/40",
 			)}
 		>
@@ -329,7 +329,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 							}
 						>
 							Message log{" "}
-							<span className="ml-1 rounded bg-muted px-1.5 font-data text-[10px] text-muted-foreground">
+							<span className="ml-1 rounded bg-muted px-1.5 font-data text-2xs text-muted-foreground">
 								{(paused ? pausedFrames : tab.frames).length}
 							</span>
 						</CardTitle>
@@ -378,7 +378,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 							/>
 							auto-scroll
 						</label>
-						<span className="ml-auto font-data text-[11px] text-muted-foreground">
+						<span className="ml-auto font-data text-xs text-muted-foreground">
 							retry: {lastRetry != null ? `${lastRetry}ms` : "—"} · last-event-id:{" "}
 							{lastEventId ?? "—"}
 						</span>

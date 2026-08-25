@@ -70,20 +70,20 @@ function SavedSearchesPanel({
 	};
 	return (
 		<aside className="flex w-52 shrink-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
-			<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+			<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 				Saved searches
 			</p>
 			<button
 				type="button"
 				onClick={save}
 				disabled={currentQuery.trim() === ""}
-				className="flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+				className="flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
 			>
 				<Star className="size-3" aria-hidden />
 				Save current search
 			</button>
 			{list.length === 0 ? (
-				<p className="text-[11px] text-muted-foreground/70">
+				<p className="text-xs text-muted-foreground/70">
 					Search, then save it to pin it here.
 				</p>
 			) : (
@@ -358,7 +358,7 @@ export function HistoryView() {
 						</tbody>
 					</table>
 				)}
-				<p className="shrink-0 px-1 pt-1 font-data text-[11px] text-muted-foreground/70">
+				<p className="shrink-0 px-1 pt-1 font-data text-xs text-muted-foreground/70">
 					{displayEntries.length} of {pool.length} entries · stored locally ·
 					FTS5 indexed
 				</p>

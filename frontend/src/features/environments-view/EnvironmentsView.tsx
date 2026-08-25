@@ -99,7 +99,7 @@ function CreateEnvFields({ onCreated, onError }: CreateEnvFieldsProps) {
 							className={`${inputClass} font-mono text-xs`}
 						/>
 						{field.state.meta.errors.length > 0 ? (
-							<span className="text-[11px] text-status-error">
+							<span className="text-xs text-status-error">
 								{field.state.meta.errors[0]}
 							</span>
 						) : null}
@@ -218,7 +218,7 @@ export function EnvironmentsView() {
 			<aside className="flex w-64 shrink-0 flex-col gap-3 overflow-y-auto">
 				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
 					<div className="flex items-center justify-between">
-						<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+						<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 							Environments
 						</p>
 						<Button
@@ -260,32 +260,32 @@ export function EnvironmentsView() {
 									/>
 									<span className="truncate text-xs font-semibold text-foreground">{env.name}</span>
 									{envActive ? (
-										<span className="ml-auto shrink-0 rounded-full border border-status-ok/40 px-1.5 font-data text-[9px] text-status-ok">
+										<span className="ml-auto shrink-0 rounded-full border border-status-ok/40 px-1.5 font-data text-2xs text-status-ok">
 											active
 										</span>
 									) : null}
 								</span>
-								<span className="pl-3.5 text-[11px] text-muted-foreground">
+								<span className="pl-3.5 text-xs text-muted-foreground">
 									{Object.keys(env.variables).length} vars · {env.secrets.length} secrets
 								</span>
 							</button>
 						);
 					})}
 					{environments.length === 0 ? (
-						<p className="pb-1 text-[11px] text-muted-foreground">
+						<p className="pb-1 text-xs text-muted-foreground">
 							No environments yet — hit + to create one.
 						</p>
 					) : null}
 				</div>
 
 				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
-					<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Shared scopes
 					</p>
 					{SHARED_SCOPES.map((s) => (
 						<div key={s.name} className="rounded-lg border border-border bg-muted/20 px-2.5 py-1.5">
 							<p className="text-xs font-semibold text-foreground">{s.name}</p>
-							<p className="text-[11px] text-muted-foreground">{s.detail}</p>
+							<p className="text-xs text-muted-foreground">{s.detail}</p>
 						</div>
 					))}
 				</div>
@@ -297,7 +297,7 @@ export function EnvironmentsView() {
 						<div className="flex flex-wrap items-center gap-2">
 							<h2 className="text-lg font-semibold text-foreground">{selected.name}</h2>
 							{isActive ? (
-								<span className="rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-[10px] text-status-ok">
+								<span className="rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-2xs text-status-ok">
 									ok
 								</span>
 							) : null}
@@ -376,7 +376,7 @@ export function EnvironmentsView() {
 						)}
 
 						<div className="flex flex-col gap-1.5">
-							<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+							<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 								Dynamic tags
 							</p>
 							<div className="flex flex-wrap gap-1.5">
@@ -386,13 +386,13 @@ export function EnvironmentsView() {
 										type="button"
 										onClick={() => copyTagChip(tag)}
 										title="Click to copy"
-										className="rounded-full border border-border bg-muted/30 px-2 py-0.5 font-data text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+										className="rounded-full border border-border bg-muted/30 px-2 py-0.5 font-data text-xs text-muted-foreground transition-colors hover:text-foreground"
 									>
 										{copiedTag === tag ? "copied!" : `{{$${tag}}}`}
 									</button>
 								))}
 							</div>
-							<p className="text-[11px] text-muted-foreground/70">click to copy</p>
+							<p className="text-xs text-muted-foreground/70">click to copy</p>
 						</div>
 					</>
 				) : (

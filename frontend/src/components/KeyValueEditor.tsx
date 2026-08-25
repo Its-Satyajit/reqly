@@ -23,7 +23,7 @@ export function KeyValueEditor({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1 px-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+      <div className="flex items-center gap-1 px-2 text-2xs font-medium uppercase tracking-widest text-muted-foreground">
         <span className="w-3.5 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1">Key</span>
         <span className="min-w-0 flex-1">Value</span>

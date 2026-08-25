@@ -60,7 +60,7 @@ export function StatusBar() {
 				</span>
 				{paletteOpen ? <span className="font-data">· Palette</span> : null}
 			</span>
-			<span className="flex items-center gap-1 rounded-md border border-border bg-muted/30 px-1 py-0.5 font-data text-[11px]">
+			<span className="flex items-center gap-1 rounded-md border border-border bg-muted/30 px-1 py-0.5 font-data text-xs">
 				<button
 					type="button"
 					onClick={toggleInspector}

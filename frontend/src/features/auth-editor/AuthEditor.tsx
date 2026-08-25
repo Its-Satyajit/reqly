@@ -144,7 +144,7 @@ function AuthFieldRow({
         />
       )}
       {field.help ? (
-        <p className="text-[11px] text-muted-foreground/70">{field.help}</p>
+        <p className="text-xs text-muted-foreground/70">{field.help}</p>
       ) : null}
     </Field.Root>
   )
@@ -153,7 +153,7 @@ function AuthFieldRow({
 /** SecretBadge is the visual flag on sensitive auth fields. */
 function SecretBadge() {
   return (
-    <span className="rounded-sm border border-status-warn/30 bg-status-warn/10 px-1 text-[9px] font-medium uppercase tracking-wide text-status-warn">
+    <span className="rounded-sm border border-status-warn/30 bg-status-warn/10 px-1 text-2xs font-medium uppercase tracking-wide text-status-warn">
       secret
     </span>
   )
@@ -238,7 +238,7 @@ function InheritedAuth({ inherited }: { inherited: RequestAuth | undefined }) {
 
   return (
     <div className="rounded-md border border-border bg-muted/30 p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Inherited from workspace / collection / folder
       </p>
       <p className="mt-1 text-xs text-foreground">
@@ -246,7 +246,7 @@ function InheritedAuth({ inherited }: { inherited: RequestAuth | undefined }) {
         {publicValues.length > 0 ? ` · ${publicValues.join(", ")}` : ""}
       </p>
       {hasSecrets ? (
-        <p className="mt-1 text-[11px] text-muted-foreground/70">
+        <p className="mt-1 text-xs text-muted-foreground/70">
           Secret values are masked and only applied at send.
         </p>
       ) : null}

@@ -29,7 +29,7 @@ function FilterChip({
 			type="button"
 			onClick={onClick}
 			className={cn(
-				"rounded-full border px-2.5 py-0.5 text-[11px] transition-colors",
+				"rounded-full border px-2.5 py-0.5 text-xs transition-colors",
 				active
 					? "border-primary/50 bg-primary/10 font-medium text-primary"
 					: "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
@@ -72,7 +72,7 @@ function EndpointRow({
 				<span className="flex items-center gap-2">
 					<span
 						className={cn(
-							"shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px font-data text-[10px] font-semibold uppercase",
+							"shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px font-data text-2xs font-semibold uppercase",
 							methodTintClass(endpoint.method),
 						)}
 					>
@@ -81,7 +81,7 @@ function EndpointRow({
 					<span className="truncate font-mono text-xs text-foreground">{endpoint.path}</span>
 				</span>
 				{endpoint.summary ? (
-					<span className="block truncate pl-1 text-[11px] text-muted-foreground">
+					<span className="block truncate pl-1 text-xs text-muted-foreground">
 						{endpoint.summary}
 					</span>
 				) : null}
@@ -95,10 +95,10 @@ function SchemaBlock({ label, schema }: { label: string; schema: string }) {
 	if (schema === "") return null;
 	return (
 		<div className="flex flex-col gap-1">
-			<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+			<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 				{label}
 			</p>
-			<pre className="max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-background p-2 font-mono text-[11px]">
+			<pre className="max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-background p-2 font-mono text-xs">
 				{schema}
 			</pre>
 		</div>
@@ -113,7 +113,7 @@ function EndpointDetail({ endpoint }: { endpoint: OpenapiEndpointView }) {
 			<div className="flex flex-wrap items-center gap-2">
 				<span
 					className={cn(
-						"shrink-0 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-[10px] font-semibold uppercase",
+						"shrink-0 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-2xs font-semibold uppercase",
 						methodTintClass(endpoint.method),
 					)}
 				>
@@ -124,7 +124,7 @@ function EndpointDetail({ endpoint }: { endpoint: OpenapiEndpointView }) {
 				</h3>
 			</div>
 			{endpoint.operationId ? (
-				<p className="font-data text-[11px] text-muted-foreground">{endpoint.operationId}</p>
+				<p className="font-data text-xs text-muted-foreground">{endpoint.operationId}</p>
 			) : null}
 			{endpoint.summary ? <p className="text-xs text-foreground">{endpoint.summary}</p> : null}
 			<SchemaBlock label="Request body" schema={endpoint.requestSchema ?? ""} />
@@ -322,7 +322,7 @@ export function OpenapiExplorer() {
 
 						{grouped.map(([tag, eps]) => (
 							<div key={tag} className="flex flex-col gap-0.5">
-								<p className="px-1 pt-1 font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+								<p className="px-1 pt-1 font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 									{tag}
 								</p>
 								{eps.map((ep) => {
@@ -361,7 +361,7 @@ export function OpenapiExplorer() {
 							</Button>
 						</div>
 						{generated ? (
-							<p className="text-[11px] text-status-ok">
+							<p className="text-xs text-status-ok">
 								Created {generated.length} request file(s) — see the sidebar.
 							</p>
 						) : null}

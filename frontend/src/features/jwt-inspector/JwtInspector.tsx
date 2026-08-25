@@ -164,7 +164,7 @@ export function JwtInspector() {
           <div className="rounded-md border border-border p-2">
             <p
               className={cn(
-                "pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground",
+                "pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground",
               )}
             >
               Header
@@ -172,7 +172,7 @@ export function JwtInspector() {
             <ClaimsTable claims={decoded.header} />
           </div>
           <div className="rounded-md border border-border p-2">
-            <p className="pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Payload (claims)
             </p>
             <ClaimsTable

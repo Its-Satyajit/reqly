@@ -77,7 +77,7 @@ function ThemeCard({
 			</span>
 			<span
 				className={cn(
-					"px-2 py-1 font-data text-[11px]",
+					"px-2 py-1 font-data text-xs",
 					appearance === "light" ? "bg-zinc-200 text-zinc-700" : "bg-zinc-950 text-zinc-300",
 				)}
 			>
@@ -113,7 +113,7 @@ function AppearanceSection() {
 					);
 				})}
 				</div>
-				<p className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
+				<p className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
 					<SunMoon className="size-3" aria-hidden />
 					System follows the operating system setting.
 				</p>
@@ -212,7 +212,7 @@ function ShortcutsSection() {
 					className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs"
 				>
 					<span className="text-muted-foreground">{s.label}</span>
-					<kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-data text-[11px]">
+					<kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-data text-xs">
 						{s.keys}
 					</kbd>
 				</li>
@@ -246,7 +246,7 @@ export function SettingsView() {
 	return (
 		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Settings">
 			<nav aria-label="Settings sections" className="flex w-52 shrink-0 flex-col gap-0.5">
-				<p className="px-2 pb-1 font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+				<p className="px-2 pb-1 font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 					Settings
 				</p>
 				{SECTIONS.map((s) => (

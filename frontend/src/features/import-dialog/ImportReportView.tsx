@@ -106,7 +106,7 @@ export function ImportReportView({ report }: { report: ImportReport | null | und
                   className="px-3 py-1.5 text-xs"
                 >
                   {entry.itemPath !== "" && (
-                    <span className="font-mono text-[11px] text-muted-foreground">
+                    <span className="font-mono text-xs text-muted-foreground">
                       {entry.itemPath}
                       {" · "}
                     </span>

@@ -33,7 +33,7 @@ const STEPS = [
 		body: (
 			<>
 				— variables like{" "}
-				<code className="rounded bg-muted px-1 font-data text-[11px]">
+				<code className="rounded bg-muted px-1 font-data text-xs">
 					{"{{baseUrl}}"}
 				</code>{" "}
 				resolve through 6 scopes.

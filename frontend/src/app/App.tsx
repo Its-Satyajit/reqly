@@ -201,7 +201,7 @@ export function App() {
 							/>
 						</div>
 						{gitBranch && (
-							<span className="font-data inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground">
+							<span className="font-data inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
 								<GitBranch className="size-3" aria-hidden />
 								{gitBranch}
 							</span>

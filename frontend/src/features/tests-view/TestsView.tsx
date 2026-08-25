@@ -159,7 +159,7 @@ export function TestsView() {
 		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Tests">
 			<aside className="flex w-64 shrink-0 flex-col gap-2 rounded-xl border border-border bg-card p-3">
 				<div className="flex items-center justify-between">
-					<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Test suites
 					</p>
 					<Button size="icon" variant="ghost" aria-label="New test file" onClick={newTest}>
@@ -167,7 +167,7 @@ export function TestsView() {
 					</Button>
 				</div>
 				{tests.length === 0 ? (
-					<p className="text-[11px] text-muted-foreground">
+					<p className="text-xs text-muted-foreground">
 						No *.reqly-test files found in the workspace.
 					</p>
 				) : (
@@ -189,13 +189,13 @@ export function TestsView() {
 										<span className="block truncate text-xs font-medium text-foreground">
 											{t.name || t.path}
 										</span>
-										<span className="block truncate font-mono text-[10px] text-muted-foreground">
+										<span className="block truncate font-mono text-2xs text-muted-foreground">
 											{t.path}
 										</span>
 										{run ? (
 											<span
 												className={cn(
-													"mt-0.5 block font-data text-[10px]",
+													"mt-0.5 block font-data text-2xs",
 													run.outcome.passed ? "text-status-ok" : "text-status-error",
 												)}
 											>
@@ -231,7 +231,7 @@ export function TestsView() {
 							{lastRun ? (
 								<span
 									className={cn(
-										"rounded-full border px-2 py-0.5 font-data text-[10px]",
+										"rounded-full border px-2 py-0.5 font-data text-2xs",
 										lastRun.outcome.passed
 											? "border-status-ok/40 text-status-ok"
 											: "border-status-error/40 text-status-error",
@@ -273,7 +273,7 @@ export function TestsView() {
 							</div>
 						</div>
 
-						<p className="font-mono text-[11px] text-muted-foreground">{selected.path}</p>
+						<p className="font-mono text-xs text-muted-foreground">{selected.path}</p>
 
 						{lastRun ? (
 							<SuiteResultList outcome={lastRun.outcome} />
