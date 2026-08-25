@@ -30,6 +30,8 @@ interface RealtimeState {
   sendBinary(tabId: string, base64: string): Promise<void>
   disconnect(tabId: string): Promise<void>
   closeTab(tabId: string): void
+  /** Drop all captured frames for a tab (message-log Clear). */
+  clearFrames(tabId: string): void
   appendFrame(tabId: string, frame: RealtimeFrameView): void
 }
 
@@ -156,6 +158,14 @@ export const useRealtimeStore = create<RealtimeState>((set, get) => ({
       const tabs = { ...s.tabs };
       delete tabs[tabId];
       return { tabs };
+    });
+  },
+
+  clearFrames(tabId) {
+    set((s) => {
+      const tab = s.tabs[tabId];
+      if (!tab) return s;
+      return { tabs: { ...s.tabs, [tabId]: { ...tab, frames: [] } } };
     });
   },
 
