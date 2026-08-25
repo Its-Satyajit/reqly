@@ -108,7 +108,7 @@ export function DocsView() {
 
 			{result && (
 				<>
-					<p className="font-data text-[11px] text-muted-foreground" title={result.path}>
+					<p className="font-data text-xs text-muted-foreground" title={result.path}>
 						Saved to <span className="font-mono">{result.path}</span> ·{" "}
 						{result.requestCount} requests · {result.files.length} files
 					</p>

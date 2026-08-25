@@ -23,7 +23,7 @@ const numberInput =
 
 function FieldLabel({ children }: { children: string }) {
 	return (
-		<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+		<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 			{children}
 		</p>
 	);
@@ -108,7 +108,7 @@ function RouteEditor({
 				spellCheck={false}
 				aria-label={`Route ${route.path} response headers`}
 				placeholder={"Content-Type: application/json\nX-Mock: true"}
-				className="resize-y font-mono text-[11px]"
+				className="resize-y font-mono text-xs"
 			/>
 		</div>
 	);
@@ -190,7 +190,7 @@ export function MocksView() {
 							/>
 							Mock server
 						</span>
-						<span className="truncate font-data text-[11px] text-muted-foreground">
+						<span className="truncate font-data text-xs text-muted-foreground">
 							{status.running ? status.url : `localhost:${port} · stopped`}
 						</span>
 					</button>
@@ -271,7 +271,7 @@ export function MocksView() {
 						Mock server
 					</h2>
 					{status.running ? (
-						<span className="rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-[10px] text-status-ok">
+						<span className="rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-2xs text-status-ok">
 							running
 						</span>
 					) : null}
@@ -323,7 +323,7 @@ export function MocksView() {
 								{["Method", "Path", "Status", "Delay", ""].map((h) => (
 									<th
 										key={h}
-										className="border-b border-border px-3 py-1.5 font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground"
+										className="border-b border-border px-3 py-1.5 font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground"
 									>
 										{h}
 									</th>
@@ -343,7 +343,7 @@ export function MocksView() {
 										<td className="border-b border-border/40 px-3 py-1.5">
 											<span
 												className={cn(
-													"rounded-full border border-border bg-muted/40 px-1.5 py-px font-data text-[10px] font-semibold uppercase",
+													"rounded-full border border-border bg-muted/40 px-1.5 py-px font-data text-2xs font-semibold uppercase",
 													methodTintClass(route.method),
 												)}
 											>

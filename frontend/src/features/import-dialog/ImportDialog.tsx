@@ -85,20 +85,20 @@ function OperationGroups({ operations }: { operations: ImportedOperation[] }) {
           if (visible.length === 0) return null;
           return (
             <div key={tag}>
-              <p className="pb-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="pb-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {tag} · {ops.length}
               </p>
               <ul className="flex flex-col divide-y divide-border/60 rounded-md border border-border">
                 {visible.map((op) => {
                   const key = `${op.method}-${op.path}-${op.operationId ?? ""}`;
                   return (
-                  <li key={key} className="flex items-baseline gap-2 px-2 py-1 font-mono text-[11px]">
-                    <span className="w-12 shrink-0 font-sans text-[10px] font-semibold text-status-info">
+                  <li key={key} className="flex items-baseline gap-2 px-2 py-1 font-mono text-xs">
+                    <span className="w-12 shrink-0 font-sans text-2xs font-semibold text-status-info">
                       {op.method}
                     </span>
                     <span className="truncate">{op.path}</span>
                     {op.summary && (
-                      <span className="truncate font-sans text-[10px] text-muted-foreground">
+                      <span className="truncate font-sans text-2xs text-muted-foreground">
                         {op.summary}
                       </span>
                     )}

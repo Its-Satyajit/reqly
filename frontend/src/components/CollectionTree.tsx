@@ -92,7 +92,7 @@ function MethodChip({ method }: { method: string }) {
 	return (
 		<span
 			className={cn(
-				"font-data shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px text-[10px] font-semibold uppercase",
+				"font-data shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px text-2xs font-semibold uppercase",
 				methodTintClass(method),
 			)}
 		>

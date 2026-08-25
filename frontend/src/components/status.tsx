@@ -23,7 +23,7 @@ export function StatusPill({
 	return (
 		<span
 			className={cn(
-				"inline-flex items-center gap-1.5 rounded-full border px-2 py-px font-mono text-[11px] font-medium tabular-nums",
+				"inline-flex items-center gap-1.5 rounded-full border px-2 py-px font-mono text-xs font-medium tabular-nums",
 				STATUS_CLASSES[tier],
 				className,
 			)}
@@ -49,7 +49,7 @@ export function MethodLabel({
 	return (
 		<span
 			className={cn(
-				"font-mono text-[11px] font-semibold tracking-wide",
+				"font-mono text-xs font-semibold tracking-wide",
 				// SAFETY: unknown methods miss the lookup and fall back to muted text
 				METHOD_CLASSES[method.toUpperCase() as keyof typeof METHOD_CLASSES] ??
 					"text-muted-foreground",

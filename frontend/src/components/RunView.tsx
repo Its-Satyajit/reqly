@@ -77,7 +77,7 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 						</ul>
 					)}
 					{step.logs.length > 0 && (
-						<pre className="max-h-40 overflow-auto rounded-md bg-muted/50 p-2 font-mono text-[11px] leading-relaxed">
+						<pre className="max-h-40 overflow-auto rounded-md bg-muted/50 p-2 font-mono text-xs leading-relaxed">
 							{step.logs.join("\n")}
 						</pre>
 					)}
@@ -92,7 +92,7 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 								<span>·</span>
 								<span>{formatBytes(response.size)}</span>
 							</div>
-							<pre className="mt-1 max-h-40 overflow-auto font-mono text-[11px] leading-relaxed">
+							<pre className="mt-1 max-h-40 overflow-auto font-mono text-xs leading-relaxed">
 								{previewBody(response.body)}
 							</pre>
 						</div>
@@ -232,10 +232,10 @@ export function RunView() {
 					</div>
 				</div>
 				{exportError && (
-					<p className="mt-2 text-[11px] text-status-error">{exportError}</p>
+					<p className="mt-2 text-xs text-status-error">{exportError}</p>
 				)}
 				{!dismissed && (
-					<div className="mt-2 flex items-start justify-between gap-2 rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground">						<span>
+					<div className="mt-2 flex items-start justify-between gap-2 rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">						<span>
 							Runs execute the saved request files from disk — unsaved changes in request tabs are
 							not included.
 						</span>

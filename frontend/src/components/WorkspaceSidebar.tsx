@@ -89,7 +89,7 @@ export function WorkspaceSidebar() {
 	return (
 		<aside className="flex h-full w-full flex-col overflow-y-auto border-r border-border p-2">
 			<div className="flex items-center justify-between px-2 pb-1">
-				<p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+				<p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
 					Collections
 				</p>
 				<span className="flex items-center gap-0.5">

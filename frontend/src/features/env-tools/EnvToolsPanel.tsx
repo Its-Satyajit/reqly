@@ -73,7 +73,7 @@ function DiffTable({ diffs }: { diffs: EnvKeyDiff[] }) {
             <td className="truncate py-0.5 font-mono" title={d.name}>
               {d.name}
               {d.kind === "secret" && (
-                <span className="ml-1 text-[10px] text-muted-foreground">(secret)</span>
+                <span className="ml-1 text-2xs text-muted-foreground">(secret)</span>
               )}
             </td>
             <td className="truncate py-0.5 font-mono text-muted-foreground">{d.from}</td>
@@ -268,7 +268,7 @@ export function EnvToolsPanel() {
                 <span className="text-muted-foreground">
                   missing in {gap.missingIn.join(", ")}
                 </span>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   (present in {gap.presentIn.join(", ")})
                 </span>
               </li>
