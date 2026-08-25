@@ -6,6 +6,7 @@ import { cn } from "#lib/utils";
 import type { TestFileRef, TestRunOutcome } from "#lib/test";
 import { useTestStore } from "#stores/useTestStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 
 interface SuiteRun {
 	outcome: TestRunOutcome;
@@ -156,9 +157,13 @@ export function TestsView() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Tests">
-			<aside className="flex w-64 shrink-0 flex-col gap-2 rounded-xl border border-border bg-card p-3">
-				<div className="flex items-center justify-between">
+		<ViewShell label="Tests">
+			<SplitView
+				asideLabel="Test suites"
+				asideClassName="gap-2 rounded-xl border border-border bg-card p-3"
+				aside={
+					<>
+					<div className="flex items-center justify-between">
 					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Test suites
 					</p>
@@ -218,7 +223,9 @@ export function TestsView() {
 					{runAll ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
 					Run all suites
 				</Button>
-			</aside>
+				</>
+			}
+			>
 
 			<section className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
 				{error ? <p className="text-xs text-status-error">{error}</p> : null}
@@ -293,6 +300,7 @@ export function TestsView() {
 					</div>
 				)}
 			</section>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

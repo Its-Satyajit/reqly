@@ -12,6 +12,7 @@ import {
 	AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 import { MethodLabel, StatusPill } from "../../components/status";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 import { CompactSelect } from "../../components/CompactSelect";
 import { CodeMirrorEditor } from "../../editors";
 import { HISTORY_PAGE_SIZE, useHistoryStore } from "../../stores/useHistoryStore";
@@ -69,7 +70,7 @@ function SavedSearchesPanel({
 		persistSavedSearches(next);
 	};
 	return (
-		<aside className="flex w-52 shrink-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
+		<div className="flex min-w-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
 			<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 				Saved searches
 			</p>
@@ -108,7 +109,7 @@ function SavedSearchesPanel({
 					</div>
 				))
 			)}
-		</aside>
+		</div>
 	);
 }
 
@@ -181,8 +182,11 @@ export function HistoryView() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4">
-			<SavedSearchesPanel currentQuery={query} onApply={applySavedSearch} />
+		<ViewShell>
+			<SplitView
+				asideLabel="Saved searches"
+				aside={<SavedSearchesPanel currentQuery={query} onApply={applySavedSearch} />}
+			>
 			<div className="flex min-w-0 flex-1 flex-col">
 			<div className="flex shrink-0 flex-col gap-3 pb-3">
 				<div>
@@ -388,6 +392,7 @@ export function HistoryView() {
 				</AlertDialogContent>
 			</AlertDialog>
 			</div>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

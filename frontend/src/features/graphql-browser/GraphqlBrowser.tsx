@@ -21,6 +21,7 @@ import {
 	type GqlType,
 } from "#lib/graphql";
 import { useRequestStore } from "#stores/useRequestStore";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 
 type EditorTab = "query" | "variables" | "headers";
 
@@ -191,9 +192,9 @@ function SchemaBrowser({
 	);
 	const selectedType = schema?.types?.find((t) => t.name === selected);
 	return (
-		<aside
+		<div
 			aria-label="Schema browser"
-			className="flex w-80 shrink-0 flex-col gap-2 border-l border-border p-3"
+			className="flex min-w-0 flex-col gap-2 border-l border-border p-3"
 		>
 			<div className="flex items-center justify-between">
 				<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -245,7 +246,7 @@ function SchemaBrowser({
 					</p>
 				</div>
 			)}
-		</aside>
+		</div>
 	);
 }
 
@@ -382,7 +383,22 @@ export function GraphqlBrowser() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0">
+		<ViewShell flush>
+			<SplitView
+				className="gap-0"
+				asideSide="right"
+				asideLabel="Schema browser"
+				asideWidth={{ min: 224, preferred: 0.32, max: 320 }}
+				aside={
+					<SchemaBrowser
+						schema={schema}
+						busy={introspecting}
+						selected={selectedType}
+						onSelect={setSelectedType}
+						onIntrospect={introspect}
+					/>
+				}
+			>
 			<section
 				aria-label="GraphQL client"
 				className="flex min-w-0 flex-1 flex-col gap-2 p-4"
@@ -507,14 +523,7 @@ export function GraphqlBrowser() {
 
 				<ResultArea loading={running} response={response} error={runError} />
 			</section>
-
-			<SchemaBrowser
-				schema={schema}
-				busy={introspecting}
-				selected={selectedType}
-				onSelect={setSelectedType}
-				onIntrospect={introspect}
-			/>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

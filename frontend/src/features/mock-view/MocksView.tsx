@@ -3,6 +3,7 @@ import { Check, Copy, FileText, Pencil, Play, Plus, Square, Trash2 } from "lucid
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 import { Spinner } from "#components/ui/spinner";
 import { Textarea } from "#components/ui/textarea";
 import { cn } from "#lib/utils";
@@ -157,8 +158,11 @@ export function MocksView() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Mock server">
-			<aside className="flex w-60 shrink-0 flex-col gap-3">
+		<ViewShell label="Mock server">
+			<SplitView
+				asideLabel="Mock servers"
+				aside={
+					<>
 				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
 					<div className="flex items-center justify-between">
 						<FieldLabel>Servers</FieldLabel>
@@ -256,8 +260,9 @@ export function MocksView() {
 						aria-label="OpenAPI spec path"
 					/>
 				</div>
-			</aside>
-
+					</>
+			}
+		>
 			<section className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
 				<div className="flex flex-wrap items-center gap-2">
 					<h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -389,6 +394,7 @@ export function MocksView() {
 					)}
 				</div>
 			</section>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }
