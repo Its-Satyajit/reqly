@@ -1,6 +1,7 @@
 import { Radio } from "lucide-react";
 import { useRealtimeStore } from "#stores/useRealtimeStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { ViewShell } from "../../components/shell/ViewLayout";
 
 /** RealtimeView is the G-17.4.15 full-page home for WebSocket/SSE client
  * tabs, replacing the sidebar REALTIME strip (user directive). Opening a
@@ -18,10 +19,7 @@ export function RealtimeView() {
 	};
 
 	return (
-		<section
-			className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4"
-			aria-label="Realtime"
-		>
+		<ViewShell label="Realtime" className="overflow-y-auto">
 			<h2 className="text-sm font-semibold">Realtime</h2>
 			<div className="grid max-w-xl grid-cols-2 gap-3">
 				<button
@@ -49,6 +47,6 @@ export function RealtimeView() {
 				<Radio className="size-3" aria-hidden />
 				Connections run through the desktop bridge; frames stay local.
 			</p>
-		</section>
+		</ViewShell>
 	);
 }

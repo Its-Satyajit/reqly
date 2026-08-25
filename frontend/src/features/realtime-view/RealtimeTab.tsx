@@ -15,6 +15,7 @@ import {
 	type RealtimeKind,
 } from "#lib/realtime";
 import { useRealtimeStore } from "#stores/useRealtimeStore";
+import { ViewShell } from "../../components/shell/ViewLayout";
 
 /** statusPill renders the connection-state pill (CLOSED/IDLE/…). */
 function statusPill(status: string) {
@@ -110,7 +111,7 @@ function MessageLog({
 	const shown = paused ? pausedFrames : frames;
 	if (shown.length === 0) {
 		return (
-			<div className="flex flex-1 flex-col items-center justify-center gap-1.5 py-10">
+			<div className="flex flex-1 flex-col items-center justify-center gap-1.5 py-8">
 				{isWS ? (
 					<PlugZap className="size-8 text-muted-foreground/40" aria-hidden />
 				) : (
@@ -181,7 +182,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 	const lastEventId = visibleFrames.filter((f) => f.id).at(-1)?.id;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-3 p-4">
+		<ViewShell label="Realtime tab">
 			<div className="flex items-center gap-2">
 				{statusPill(tab.status)}
 				<select
@@ -409,7 +410,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 					</dl>
 				</div>
 			) : null}
-		</div>
+		</ViewShell>
 	);
 }
 

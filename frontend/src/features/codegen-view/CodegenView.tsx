@@ -9,6 +9,7 @@ import { copyText } from "#lib/response";
 import { notifyError } from "#lib/notify";
 import { useRequestStore, type TabDraft } from "#stores/useRequestStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 
 const LANGS: { id: CodeLang; label: string }[] = [
 	{ id: "curl", label: "cURL" },
@@ -112,70 +113,75 @@ export function CodegenView() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Code generation">
-			<aside className="flex w-60 shrink-0 flex-col gap-3 overflow-y-auto rounded-xl border border-border bg-card p-3">
-				<div className="flex flex-col gap-1">
-					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
-						Source
-					</p>
-					<select
-						value={selectedId ?? ""}
-						onChange={(e) => setTabId(e.target.value)}
-						aria-label="Source request"
-						className="h-8 rounded-md border border-border bg-transparent px-2 text-xs"
-					>
-						{candidates.length === 0 ? <option value="">No open requests</option> : null}
-						{candidates.map((t) => (
-							<option key={t.id} value={t.id}>
-								{t.title}
-							</option>
-						))}
-					</select>
-				</div>
-				<div className="flex flex-col gap-1">
-					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
-						Language
-					</p>
-					<div role="radiogroup" aria-label="Language" className="flex flex-col gap-1">
-						{LANGS.map((l) => (
-							<button
-								key={l.id}
-								type="button"
-								role="radio"
-								aria-checked={lang === l.id}
-								onClick={() => setLang(l.id)}
-								className={cn(
-									"flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-colors",
-									lang === l.id
-										? "border-primary/50 bg-primary/5 font-medium text-primary"
-										: "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-								)}
-							>
-								<Code className="size-3.5" aria-hidden />
-								{l.label}
-							</button>
-						))}
+		<ViewShell label="Code generation">
+			<SplitView
+				asideLabel="Generator options"
+				asideClassName="rounded-xl border border-border bg-card p-3"
+				aside={
+						<>
+					<div className="flex flex-col gap-1">
+						<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
+							Source
+						</p>
+						<select
+							value={selectedId ?? ""}
+							onChange={(e) => setTabId(e.target.value)}
+							aria-label="Source request"
+							className="h-8 rounded-md border border-border bg-transparent px-2 text-xs"
+						>
+							{candidates.length === 0 ? <option value="">No open requests</option> : null}
+							{candidates.map((t) => (
+								<option key={t.id} value={t.id}>
+									{t.title}
+								</option>
+							))}
+						</select>
 					</div>
-				</div>
-				<div className="flex flex-col gap-1">
-					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
-						Options
-					</p>
-					<label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<input
-							type="checkbox"
-							checked={includeAuth}
-							onChange={(e) => setIncludeAuth(e.target.checked)}
-							className="size-3.5 accent-(--primary)"
-						/>
-						include authentication
-					</label>
-					<p className="text-xs text-muted-foreground/70">
-						Secrets are emitted as-is from the draft — never stored in generated code.
-					</p>
-				</div>
-			</aside>
-
+					<div className="flex flex-col gap-1">
+						<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
+							Language
+						</p>
+						<div role="radiogroup" aria-label="Language" className="flex flex-col gap-1">
+							{LANGS.map((l) => (
+								<button
+									key={l.id}
+									type="button"
+									role="radio"
+									aria-checked={lang === l.id}
+									onClick={() => setLang(l.id)}
+									className={cn(
+										"flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-colors",
+										lang === l.id
+											? "border-primary/50 bg-primary/5 font-medium text-primary"
+											: "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+									)}
+								>
+									<Code className="size-3.5" aria-hidden />
+									{l.label}
+								</button>
+							))}
+						</div>
+					</div>
+					<div className="flex flex-col gap-1">
+						<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
+							Options
+						</p>
+						<label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+							<input
+								type="checkbox"
+								checked={includeAuth}
+								onChange={(e) => setIncludeAuth(e.target.checked)}
+								className="size-3.5 accent-(--primary)"
+							/>
+							include authentication
+						</label>
+						<p className="text-xs text-muted-foreground/70">
+							Secrets are emitted as-is from the draft — never stored in generated code.
+						</p>
+					</div>
+					</>
+				}
+			>
 			<section className="flex min-w-0 flex-1 flex-col gap-2">
 				<div className="flex flex-wrap items-center gap-2">
 					{draft ? (
@@ -220,6 +226,7 @@ export function CodegenView() {
 					/>
 				</div>
 			</section>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

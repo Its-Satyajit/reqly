@@ -15,6 +15,7 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import { SiGraphql } from "@icons-pack/react-simple-icons";
+import { ViewShell } from "../../components/shell/ViewLayout";
 import { NEW_REQUEST_TAB_ID } from "#stores/useRequestStore";
 import { useGitStore } from "#stores/useGitStore";
 import type { HistoryEntry } from "#lib/history";
@@ -230,8 +231,8 @@ export function OverviewHome() {
 	];
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4">
-			<section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-5">
+		<ViewShell label="Overview" className="overflow-y-auto">
+			<section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4">
 				<div className="flex min-w-0 flex-col gap-2">
 					<h2 className="text-xl font-semibold text-foreground">
 						{workspace?.name ?? "Workspace"}
@@ -368,6 +369,6 @@ export function OverviewHome() {
 				<Clock className="size-3" aria-hidden />
 				Stats cover today's sends recorded in local history.
 			</p>
-		</div>
+		</ViewShell>
 	);
 }
