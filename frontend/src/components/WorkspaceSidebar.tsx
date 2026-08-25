@@ -17,18 +17,14 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
-import { AuthPanel } from "../features/auth-panel/AuthPanel";
 import { ExportDialog } from "../features/export-dialog/ExportDialog";
 import { ImportDialog } from "../features/import-dialog/ImportDialog";
-import { useRealtimeStore } from "../stores/useRealtimeStore";
-import { useTestStore } from "../stores/useTestStore";
 import { useExportStore } from "../stores/useExportStore";
 import { useImportStore } from "../stores/useImportStore";
 import { useWorkspaceStore, type WorkspaceView } from "../stores/useWorkspaceStore";
 import { NEW_REQUEST_TAB_ID } from "../stores/useRequestStore";
 import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { CollectionTree } from "./CollectionTree";
-import { GitPanel } from "./GitPanel";
 import { NewContainerDialog } from "./NewContainerDialog";
 
 /** Runs a create call, mapping failures to a display message. Module-level
@@ -178,10 +174,6 @@ export function WorkspaceSidebar() {
 					Request
 				</button>
 			</div>
-			<GitPanel />
-			<TestsSection />
-			<RealtimeSection />
-			<AuthPanel />
 			<ImportDialog
 				onImported={() => void refreshWorkspace()}
 			/>
@@ -229,97 +221,5 @@ export function WorkspaceSidebar() {
 				</AlertDialogContent>
 			</AlertDialog>
 		</aside>
-	);
-}
-
-function TestsSection() {
-	const tests = useTestStore((s) => s.tests);
-	const openPath = useTestStore((s) => s.openPath);
-	const newTab = useTestStore((s) => s.newTab);
-	const openTab = useWorkspaceStore((s) => s.openTab);
-	const setActiveView = useWorkspaceStore((s) => s.setActiveView);
-
-	const openTestTab = (path: string | null, title: string, fresh: boolean) => {
-		const id = fresh ? `test-new-${Date.now()}` : `test-${path}`;
-		if (fresh) newTab(id);
-		else void openPath(id, path ?? "");
-		openTab({ id, title, kind: "test", filePath: path ?? undefined });
-		setActiveView("requests");
-	};
-
-	return (
-		<div className="border-t border-border px-2 pt-2">
-			<div className="flex items-center justify-between pb-1">
-				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-					Tests {tests.length > 0 && `(${tests.length})`}
-				</p>
-				<button
-					type="button"
-					onClick={() => openTestTab(null, "untitled.reqly-test", true)}
-					title="New test file"
-					aria-label="New test file"
-					className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-				>
-					<FilePlus className="size-3.5" aria-hidden />
-				</button>
-			</div>
-			{tests.length === 0 ? (
-				<p className="pb-2 text-[11px] text-muted-foreground">No *.reqly-test files found.</p>
-			) : (
-				<ul className="flex flex-col gap-0.5 pb-2">
-					{tests.map((t) => (
-						<li key={t.path}>
-							<button
-								type="button"
-								className="w-full truncate rounded px-1 py-0.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-								title={t.path}
-								onClick={() => openTestTab(t.path, t.name || t.path, false)}
-							>
-								{t.name || t.path}
-							</button>
-						</li>
-					))}
-				</ul>
-			)}
-		</div>
-	);
-}
-
-function RealtimeSection() {
-	const openTab = useWorkspaceStore((s) => s.openTab);
-	const setActiveView = useWorkspaceStore((s) => s.setActiveView);
-	const newTab = useRealtimeStore((s) => s.newTab);
-
-	const openRealtimeTab = (kind: "ws" | "sse") => {
-		const id = `realtime-${kind}-${Date.now()}`;
-		newTab(id, kind);
-		openTab({ id, title: kind === "ws" ? "WebSocket" : "SSE", kind: "realtime" });
-		setActiveView("requests");
-	};
-
-	return (
-		<div className="border-t border-border px-2 pt-2">
-			<p className="pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-				Realtime
-			</p>
-			<div className="flex gap-1 pb-2">
-				<button
-					type="button"
-					onClick={() => openRealtimeTab("ws")}
-					className="flex-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-					title="Open a WebSocket tab"
-				>
-					WS
-				</button>
-				<button
-					type="button"
-					onClick={() => openRealtimeTab("sse")}
-					className="flex-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-					title="Open an SSE tab"
-				>
-					SSE
-				</button>
-			</div>
-		</div>
 	);
 }

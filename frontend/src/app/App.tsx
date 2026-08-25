@@ -47,6 +47,10 @@ import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { useWorkspaceStore } from "../stores/useWorkspaceStore";
 import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
 import { OverviewHome } from "../features/overview-home/OverviewHome";
+import { TestsView } from "../features/tests-view/TestsView";
+import { RealtimeView } from "../features/realtime-view/RealtimeView";
+import { AuthPanel } from "../features/auth-panel/AuthPanel";
+import { GitPanel } from "../components/GitPanel";
 import { NEW_REQUEST_TAB_ID, tabIsDirty, useRequestStore } from "../stores/useRequestStore";
 import { useDefaultLayout } from "react-resizable-panels";
 import { armDebugCrashTrigger, installCrashReporter } from "../lib/crashReporter";
@@ -209,79 +213,7 @@ export function App() {
 				commitStrip={<CommitStrip />}
 				statusbar={<StatusBar />}
 			>
-							{activeView === "overview" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="Overview">
-										<OverviewHome />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "environments" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="Environments">
-										<EnvironmentsView />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "history" ? (
-								<section className="h-full min-h-0">
-									<ErrorBoundary label="History">
-										<HistoryView />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "mocks" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="Mock server">
-										<MocksView />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "diff" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="API diff">
-										<DiffView />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "jwt" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="JWT inspector">
-										<JwtInspector />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "graphql" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="GraphQL browser">
-										<GraphqlBrowser />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "runners" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="Runners">
-										<RunnersPanel />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "explorer" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="OpenAPI explorer">
-										<OpenapiExplorer />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "grpc" ? (
-								<section className="h-full min-h-0">
-									<ErrorBoundary label="gRPC client">
-										<GrpcTab tabId="grpc" />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "docs" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="Docs generator">
-										<DocsView />
-									</ErrorBoundary>
-								</section>
-							) : activeView === "settings" ? (
-								<section className="h-full min-h-0 overflow-y-auto">
-									<ErrorBoundary label="Settings">
-										<SettingsView />
-									</ErrorBoundary>
-								</section>
-							) : (
+{activeView === "requests" ? (
 								<section className="flex h-full min-h-0 flex-col">
 									<RequestTabs />
 								{activeTab?.kind === "test" ? (
@@ -339,8 +271,122 @@ export function App() {
 										</div>
 									)}
 								</section>
+							) : (
+								<SecondaryView />
 							)}
 			</AppShell>
 		</ErrorBoundary>
+	);
+}
+
+
+/** SecondaryView hosts every non-requests workspace view, keeping App's own
+ * body small (react-doctor no-giant-component). */
+function SecondaryView() {
+	const view = useWorkspaceStore((s) => s.activeView);
+	return (
+		<>
+							{view === "tests" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Tests">
+										<TestsView />
+									</ErrorBoundary>
+								</section>
+							) : view === "realtime" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Realtime">
+										<RealtimeView />
+									</ErrorBoundary>
+								</section>
+							) : view === "oauth" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="OAuth tokens">
+										<div className="mx-auto max-w-xl p-4">
+											<AuthPanel />
+										</div>
+									</ErrorBoundary>
+								</section>
+							) : view === "git" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Git">
+										<div className="p-4">
+											<GitPanel />
+										</div>
+									</ErrorBoundary>
+								</section>
+							) : view === "overview" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Overview">
+										<OverviewHome />
+									</ErrorBoundary>
+								</section>
+							) : view === "environments" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Environments">
+										<EnvironmentsView />
+									</ErrorBoundary>
+								</section>
+							) : view === "history" ? (
+								<section className="h-full min-h-0">
+									<ErrorBoundary label="History">
+										<HistoryView />
+									</ErrorBoundary>
+								</section>
+							) : view === "mocks" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Mock server">
+										<MocksView />
+									</ErrorBoundary>
+								</section>
+							) : view === "diff" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="API diff">
+										<DiffView />
+									</ErrorBoundary>
+								</section>
+							) : view === "jwt" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="JWT inspector">
+										<JwtInspector />
+									</ErrorBoundary>
+								</section>
+							) : view === "graphql" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="GraphQL browser">
+										<GraphqlBrowser />
+									</ErrorBoundary>
+								</section>
+							) : view === "runners" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Runners">
+										<RunnersPanel />
+									</ErrorBoundary>
+								</section>
+							) : view === "explorer" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="OpenAPI explorer">
+										<OpenapiExplorer />
+									</ErrorBoundary>
+								</section>
+							) : view === "grpc" ? (
+								<section className="h-full min-h-0">
+									<ErrorBoundary label="gRPC client">
+										<GrpcTab tabId="grpc" />
+									</ErrorBoundary>
+								</section>
+							) : view === "docs" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Docs generator">
+										<DocsView />
+									</ErrorBoundary>
+								</section>
+							) : view === "settings" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Settings">
+										<SettingsView />
+									</ErrorBoundary>
+								</section>
+							) : null}
+		</>
 	);
 }

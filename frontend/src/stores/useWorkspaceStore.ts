@@ -52,6 +52,10 @@ export interface RequestTab {
 export type WorkspaceView =
 	| 'overview'
 	| 'requests'
+	| 'tests'
+	| 'realtime'
+	| 'oauth'
+	| 'git'
 	| 'environments'
 	| 'history'
 	| 'mocks'

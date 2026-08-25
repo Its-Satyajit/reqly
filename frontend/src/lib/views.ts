@@ -3,6 +3,10 @@
 export const WORKSPACE_VIEWS = [
 	{ id: "overview", label: "Overview" },
 	{ id: "requests", label: "Requests" },
+	{ id: "tests", label: "Tests" },
+	{ id: "realtime", label: "Realtime" },
+	{ id: "oauth", label: "OAuth tokens" },
+	{ id: "git", label: "Git" },
 	{ id: "environments", label: "Environments" },
 	{ id: "history", label: "History" },
 	{ id: "mocks", label: "Mock servers" },
