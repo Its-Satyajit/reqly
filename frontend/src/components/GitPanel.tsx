@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { GitBranch, Loader2, RotateCcw } from "lucide-react";
+import {
+	GitBranch,
+	GitCommitHorizontal,
+	Loader2,
+	Plus,
+	RotateCcw,
+	ShieldCheck,
+	TriangleAlert,
+	X,
+} from "lucide-react";
 
 import { cn } from "#lib/utils";
 import type { GitFileStatus } from "#lib/gitclient";
@@ -54,6 +63,7 @@ export function GitPanel() {
 	const resolveSide = useGitStore((s) => s.resolveSide);
 	const mergeAbort = useGitStore((s) => s.mergeAbort);
 	const removeWorktree = useGitStore((s) => s.removeWorktree);
+	const recentCommits = useGitStore((s) => s.recentCommits);
 
 	const [message, setMessage] = useState("");
 
@@ -69,176 +79,228 @@ export function GitPanel() {
 		};
 	}, [refresh]);
 
-	if (!status?.repoFound) return null;
+	if (!status?.repoFound) {
+		return (
+			<div className="flex h-full items-center justify-center p-4">
+				<p className="text-xs text-muted-foreground">
+					Not a git repository — collections still save as plain files.
+				</p>
+			</div>
+		);
+	}
 
 	const files = status.files ?? [];
-	const staged = files.flatMap((f) => (f.staged ? [f.path] : []));
-	const canCommit = staged.length > 0 && message.trim().length > 0;
+	const stagedFiles = files.filter((f) => f.staged);
+	const unstagedFiles = files.filter((f) => !f.staged);
+	const staged = stagedFiles.map((f) => f.path);
+	const canCommit = staged.length > 0 && message.trim().length > 0 && conflicts.length === 0;
 
-	const toggle = (f: GitFileStatus) => {
-		if (f.staged) void unstage([f.path]);
-		else void stage([f.path]);
-	};
+	const stageAll = () => void stage(unstagedFiles.map((f) => f.path));
 
 	const onCommit = async () => {
 		if (await commit(message.trim())) setMessage("");
 	};
 
-	return (
-		<section aria-label="Source control" className="flex flex-col gap-1 border-t border-border pt-2">
-			<div className="flex items-center justify-between px-2">
-				<span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-					<GitBranch className="size-3.5" aria-hidden />
-					<span className="font-data">{status.branch || "(no branch)"}</span>
-				</span>
-				<Button
-					variant="ghost"
-					size="icon-xs"
-					onClick={() => void refresh()}
-					aria-label="Refresh git status"
-					title="Refresh"
-				>
-					{loading ? (
-						<Loader2 className="size-3.5 animate-spin" aria-hidden />
-					) : (
-						<RotateCcw className="size-3.5" aria-hidden />
+	const fileRow = (f: GitFileStatus, action: "stage" | "unstage") => (
+		<li key={f.path} className="flex items-center gap-2 rounded-md px-2 py-1 text-xs hover:bg-muted/50">
+			<span aria-hidden className={cn("font-data shrink-0 font-medium", statusTone(f))}>
+				{glyphOf(f)}
+			</span>
+			<span className="min-w-0 flex-1 truncate font-data" title={f.path}>
+				{f.path}
+			</span>
+			{(f.adds > 0 || f.dels > 0) && (
+				<span className="flex shrink-0 gap-1 font-data text-[10px] tabular-nums">
+					{f.adds > 0 && (
+						<span className="text-status-ok" title={`${f.adds} added`}>
+							+{f.adds}
+						</span>
 					)}
-				</Button>
-			</div>
-
-			{error && (
-				<p role="alert" className="px-2 py-1 text-xs text-destructive">
-					{error}
-				</p>
+					{f.dels > 0 && (
+						<span className="text-status-error" title={`${f.dels} removed`}>
+							−{f.dels}
+						</span>
+					)}
+				</span>
 			)}
+			<Button
+				variant="ghost"
+				size="icon-xs"
+				aria-label={action === "stage" ? `Stage ${f.path}` : `Unstage ${f.path}`}
+				onClick={() => (action === "stage" ? void stage([f.path]) : void unstage([f.path]))}
+			>
+				{action === "stage" ? <Plus className="size-3.5" /> : <X className="size-3.5" />}
+			</Button>
+		</li>
+	);
 
-			{files.length === 0 ? (
-				<p className="px-2 pb-1 text-xs text-muted-foreground">
-					Working tree clean
-				</p>
-			) : (
-				<ul className="max-h-44 overflow-y-auto" aria-label="Changed files">
-					{files.map((f) => (
-						<li key={f.path}>
-							<button
-								type="button"
-								onClick={() => toggle(f)}
-								className={cn(
-									"flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs hover:bg-muted/50",
-									f.staged && "bg-muted/30",
-								)}
-								title={f.staged ? "Click to unstage" : "Click to stage"}
-							>
-								<span
-									aria-hidden
-									className={cn(
-										"flex size-3 shrink-0 items-center justify-center rounded-[3px] border border-input",
-										f.staged && "bg-primary text-primary-foreground",
-									)}
-								>
-									{f.staged ? "✓" : ""}
-								</span>
-								<span
-									className={cn("font-data shrink-0 font-medium", statusTone(f))}
-								>
-									{glyphOf(f)}
-								</span>
-								<span className="truncate">{f.path}</span>
-							{(f.adds > 0 || f.dels > 0) && (
-								<span className="ml-auto flex shrink-0 gap-1 font-data text-[10px] tabular-nums">
-									{f.adds > 0 && (
-										<span className="text-status-ok" title={`${f.adds} added`}>
-											+{f.adds}
-										</span>
-									)}
-									{f.dels > 0 && (
-										<span className="text-status-error" title={`${f.dels} removed`}>
-											−{f.dels}
-										</span>
-									)}
-								</span>
-							)}
-							</button>
-						</li>
-					))}
-				</ul>
-			)}
-
-			{conflicts.length > 0 && (
-				<div className="flex flex-col gap-1 px-2 pb-1" role="alert">
-					<p className="text-xs font-medium text-status-error">
-						Merge conflicts ({conflicts.length})
+	return (
+		<div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row" aria-label="Source control">
+			<div className="flex w-full max-w-sm shrink-0 flex-col gap-2 rounded-xl border border-border bg-card p-3">
+				<div className="flex items-center justify-between">
+					<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+						Working tree {files.length > 0 ? `(${files.length})` : ""}
 					</p>
-					{conflicts.map((c) => (
-						<div key={c.path} className="flex items-center justify-between gap-2">
-							<span className="font-data truncate text-xs">{c.path}</span>
-							<span className="flex shrink-0 gap-1">
-								<Button
-									variant="ghost"
-									size="xs"
-									onClick={() => void resolveSide(c.path, "ours")}
-								>
-									Ours
-								</Button>
-								<Button
-									variant="ghost"
-									size="xs"
-									onClick={() => void resolveSide(c.path, "theirs")}
-								>
-									Theirs
-								</Button>
-							</span>
-						</div>
-					))}
-					<Button variant="outline" size="sm" onClick={() => void mergeAbort()}>
-						Abort merge
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						onClick={() => void refresh()}
+						aria-label="Refresh git status"
+						title="Refresh"
+					>
+						{loading ? (
+							<Loader2 className="size-3.5 animate-spin" aria-hidden />
+						) : (
+							<RotateCcw className="size-3.5" aria-hidden />
+						)}
 					</Button>
 				</div>
-			)}
 
-			{worktrees.length > 1 && (
-				<details className="px-2 pb-1 text-xs text-muted-foreground">
-					<summary className="cursor-pointer select-none py-0.5">
-						Worktrees ({worktrees.length})
-					</summary>
-					<ul className="flex flex-col gap-0.5 pt-1">
-						{worktrees.map((t) => (
-							<li key={t.path} className="flex items-center justify-between gap-2">
-								<span className="font-data truncate" title={t.path}>
-									{t.isCurrent ? "● " : ""}
-									{t.branch || t.path}
-								</span>
-								{!t.isCurrent && !t.isBare && (
-									<Button
-										variant="ghost"
-										size="xs"
-										onClick={() => void removeWorktree(t.path)}
-									>
-										Remove
+				{error && (
+					<p role="alert" className="text-xs text-destructive">
+						{error}
+					</p>
+				)}
+
+				{conflicts.length > 0 && (
+					<div className="flex flex-col gap-1 rounded-lg border border-status-error/40 bg-status-error/10 p-2" role="alert">
+						<p className="flex items-center gap-1.5 text-xs font-medium text-status-error">
+							<TriangleAlert className="size-3.5" aria-hidden />
+							UNMERGED — resolve before commit
+						</p>
+						{conflicts.map((c) => (
+							<div key={c.path} className="flex items-center justify-between gap-2">
+								<span className="truncate font-data text-xs">{c.path}</span>
+								<span className="flex shrink-0 gap-1">
+									<Button variant="outline" size="xs" onClick={() => void resolveSide(c.path, "ours")}>
+										Ours
 									</Button>
-								)}
-							</li>
+									<Button variant="outline" size="xs" onClick={() => void resolveSide(c.path, "theirs")}>
+										Theirs
+									</Button>
+								</span>
+							</div>
 						))}
-					</ul>
-				</details>
-			)}
+						<Button variant="outline" size="xs" className="self-start" onClick={() => void mergeAbort()}>
+							Abort merge
+						</Button>
+					</div>
+				)}
 
-			{files.length > 0 && (
-				<div className="flex flex-col gap-1 px-1 pb-1">
+				{files.length === 0 ? (
+					<p className="py-2 text-xs text-muted-foreground">Working tree clean</p>
+				) : (
+					<div className="min-h-0 flex-1 overflow-y-auto">
+						{stagedFiles.length > 0 ? (
+							<div className="flex flex-col gap-0.5">
+								<div className="flex items-center justify-between px-2">
+									<p className="font-data text-[10px] uppercase tracking-widest text-muted-foreground">
+										Staged ({stagedFiles.length})
+									</p>
+								</div>
+								<ul>{stagedFiles.map((f) => fileRow(f, "unstage"))}</ul>
+							</div>
+						) : null}
+						{unstagedFiles.length > 0 ? (
+							<div className="flex flex-col gap-0.5 pt-1">
+								<div className="flex items-center justify-between px-2">
+									<p className="font-data text-[10px] uppercase tracking-widest text-muted-foreground">
+										Unstaged ({unstagedFiles.length})
+									</p>
+									<Button variant="ghost" size="xs" onClick={stageAll}>
+										Stage all
+									</Button>
+								</div>
+								<ul>{unstagedFiles.map((f) => fileRow(f, "stage"))}</ul>
+							</div>
+						) : null}
+					</div>
+				)}
+
+				<div className="flex shrink-0 flex-col gap-1.5 border-t border-border pt-2">
 					<textarea
 						value={message}
 						onChange={(e) => setMessage(e.target.value)}
-						placeholder={`Commit ${staged.length} staged file(s)…`}
+						placeholder="Commit message (feat(scope): summary)"
 						aria-label="Commit message"
 						rows={2}
-						className="resize-none rounded-md border border-input bg-input-bg px-2 py-1 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+						className="resize-none rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
 					/>
-					<Button size="sm" disabled={!canCommit} onClick={() => void onCommit()}>
-						Commit{staged.length > 0 ? ` (${staged.length})` : ""}
+					<Button
+						variant="destructive"
+						size="sm"
+						disabled={!canCommit}
+						onClick={() => void onCommit()}
+						title={conflicts.length > 0 ? "Resolve conflicts before committing" : undefined}
+					>
+						<GitCommitHorizontal data-icon="inline-start" />
+						Commit {staged.length > 0 ? `${staged.length} file${staged.length === 1 ? "" : "s"}` : ""}
 					</Button>
 				</div>
-			)}
-		</section>
+			</div>
+
+			<div className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
+				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
+					<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+						Recent commits — {status.branch || "HEAD"}
+					</p>
+					{recentCommits.length === 0 ? (
+						<p className="text-xs text-muted-foreground">No commits yet.</p>
+					) : (
+						<ul className="flex flex-col gap-0.5">
+							{recentCommits.map((t) => (
+								<li key={t.hash} className="flex items-center gap-2 text-xs">
+									<Hash hash={t.hash} />
+									<span className="min-w-0 flex-1 truncate text-foreground">{t.subject}</span>
+								</li>
+							))}
+						</ul>
+					)}
+				</div>
+
+				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
+					<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+						Branch
+					</p>
+					<p className="flex items-center gap-1.5 font-data text-xs text-foreground">
+						<GitBranch className="size-3.5" aria-hidden />
+						{status.branch || "(no branch)"}
+					</p>
+					{worktrees.length > 1 ? (
+						<details className="text-xs text-muted-foreground">
+							<summary className="cursor-pointer select-none py-0.5">
+								Worktrees ({worktrees.length})
+							</summary>
+							<ul className="flex flex-col gap-0.5 pt-1">
+								{worktrees.map((t) => (
+									<li key={t.path} className="flex items-center justify-between gap-2">
+										<span className="truncate font-data" title={t.path}>
+											{t.branch || t.path}
+										</span>
+										{!t.isCurrent && !t.isBare ? (
+											<Button
+												variant="ghost"
+												size="icon-xs"
+												aria-label={`Remove worktree ${t.path}`}
+												onClick={() => void removeWorktree(t.path)}
+											>
+												<X className="size-3" />
+											</Button>
+										) : null}
+									</li>
+								))}
+							</ul>
+						</details>
+					) : null}
+				</div>
+
+				<div className="flex items-start gap-2 rounded-xl border border-border bg-card p-3 text-[11px] text-muted-foreground">
+					<ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+					Everything here reads the plain-text worktree. No network calls unless
+					you push from outside — Reqly never talks to remotes.
+				</div>
+			</div>
+		</div>
 	);
 }
 
