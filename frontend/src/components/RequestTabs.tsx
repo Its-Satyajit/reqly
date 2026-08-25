@@ -29,6 +29,7 @@ import {
 function TabItem({ tab }: { tab: RequestTab }) {
 	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
 	const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
+	const setActiveView = useWorkspaceStore((s) => s.setActiveView);
 	const closeTab = useWorkspaceStore((s) => s.closeTab);
 	const dirty = useRequestStore((s) =>
 		tabIsDirty(s.drafts[tab.id], s.meta[tab.id]),
@@ -66,7 +67,10 @@ function TabItem({ tab }: { tab: RequestTab }) {
 				role="tab"
 				aria-selected={active}
 				tabIndex={active ? 0 : -1}
-				onClick={() => setActiveTab(tab.id)}
+				onClick={() => {
+					setActiveView("requests");
+					setActiveTab(tab.id);
+				}}
 				className="max-w-40 truncate"
 				title={tab.title}
 			>
@@ -155,6 +159,7 @@ function TabItem({ tab }: { tab: RequestTab }) {
 export function RequestTabs() {
 	const openTabs = useWorkspaceStore((s) => s.openTabs);
 	const openTab = useWorkspaceStore((s) => s.openTab);
+	const setActiveView = useWorkspaceStore((s) => s.setActiveView);
 
 	return (
 		<div
@@ -171,9 +176,10 @@ export function RequestTabs() {
 				variant="ghost"
 				size="icon-sm"
 				className="shrink-0 text-muted-foreground"
-				onClick={() =>
-					openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" })
-				}
+				onClick={() => {
+					setActiveView("requests");
+					openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" });
+				}}
 				title="New request"
 			>
 				<Plus className="size-3.5" aria-hidden />
