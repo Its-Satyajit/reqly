@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useForm } from "@tanstack/react-form";
 import {
 	Dialog,
 	DialogContent,
@@ -19,24 +19,6 @@ export interface NewContainerDialogProps {
 	onClose: () => void;
 }
 
-/** Runs a create call, mapping failures to a display message. Module-level
- * because React Compiler cannot handle try/catch, and owns the busy flag so
- * its reset sits in a finally. */
-async function runCreate(
-	create: (name: string) => Promise<string | null>,
-	name: string,
-	setBusy: (busy: boolean) => void,
-): Promise<string | null> {
-	setBusy(true);
-	try {
-		return await create(name);
-	} catch (err) {
-		return err instanceof Error ? err.message : String(err);
-	} finally {
-		setBusy(false);
-	}
-}
-
 /** Name prompt for scaffolding a collection or folder descriptor on disk.
  * Mounted only while open (parent conditionally renders it), so state starts
  * fresh on every open without reset effects. */
@@ -46,21 +28,20 @@ export function NewContainerDialog({
 	onCreate,
 	onClose,
 }: NewContainerDialogProps) {
-	const [name, setName] = useState("");
-	const [error, setError] = useState<string | null>(null);
-	const [busy, setBusy] = useState(false);
-
-	const canCreate = name.trim() !== "" && !busy;
-
-	const submit = async () => {
-		if (!canCreate) return;
-		const createError = await runCreate(onCreate, name.trim(), setBusy);
-		if (createError !== null) {
-			setError(createError);
-			return;
-		}
-		onClose();
-	};
+	const form = useForm({
+		defaultValues: { name: "" },
+		onSubmit: async ({ value }) => {
+			const createError = await onCreate(value.name.trim());
+			if (createError !== null) {
+				form.setFieldMeta("name", (meta) => ({
+					...meta,
+					errors: [createError],
+				}));
+				return;
+			}
+			onClose();
+		},
+	});
 
 	return (
 		<Dialog open onOpenChange={(next) => !next && onClose()}>
@@ -72,27 +53,59 @@ export function NewContainerDialog({
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();
-						void submit();
+						void form.handleSubmit();
 					}}
 					className="flex flex-col gap-2"
 				>
-					<input
-						value={name}
-						onChange={(e) => setName(e.target.value)}
-						placeholder="name (e.g. payments)"
-						aria-label="Container name"
-						spellCheck={false}
-						className={inputClass}
-					/>
-					{error && <p className="text-xs text-destructive">{error}</p>}
-					<DialogFooter>
-						<Button type="button" variant="ghost" size="sm" onClick={onClose}>
-							Cancel
-						</Button>
-						<Button type="submit" size="sm" disabled={!canCreate}>
-							{busy ? "Creating…" : "Create"}
-						</Button>
-					</DialogFooter>
+					<form.Field
+						name="name"
+						validators={{
+							onChange: ({ value }) =>
+								value.trim() ? undefined : "Name is required.",
+						}}
+					>
+						{(field) => (
+							<span className="flex flex-col gap-2">
+								<input
+									name={field.name}
+									value={field.state.value}
+									onBlur={field.handleBlur}
+									onChange={(e) => field.handleChange(e.target.value)}
+									placeholder="name (e.g. payments)"
+									aria-label="Container name"
+									spellCheck={false}
+									className={inputClass}
+								/>
+								{field.state.meta.errors.length > 0 ? (
+									<p className="text-xs text-destructive">
+										{field.state.meta.errors[0]}
+									</p>
+								) : null}
+							</span>
+						)}
+					</form.Field>
+					<form.Subscribe
+						selector={(state) => ({
+							canSubmit: state.canSubmit,
+							isSubmitting: state.isSubmitting,
+						})}
+					>
+						{({ canSubmit, isSubmitting }: { canSubmit: boolean; isSubmitting: boolean }) => (
+							<DialogFooter>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={onClose}
+								>
+									Cancel
+								</Button>
+								<Button type="submit" size="sm" disabled={!canSubmit}>
+									{isSubmitting ? "Creating…" : "Create"}
+								</Button>
+							</DialogFooter>
+						)}
+					</form.Subscribe>
 				</form>
 			</DialogContent>
 		</Dialog>
