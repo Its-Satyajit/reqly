@@ -159,6 +159,24 @@ func (s *AppService) WorkspaceCreateFolder(parent string, name string) (*core.Wo
 	return s.workspace.Load()
 }
 
+// WorkspaceDuplicateRequest copies a request file in place as "<name> copy"
+// (file name suffixed -copy, -copy-2, …) and returns the refreshed tree plus
+// the copy's workspace-relative Request Path.
+func (s *AppService) WorkspaceDuplicateRequest(path string) (*core.WorkspaceDuplicateResult, error) {
+	if s == nil || s.root == "" {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to duplicate requests")
+	}
+	newPath, err := s.workspace.DuplicateRequest(path)
+	if err != nil {
+		return nil, err
+	}
+	tree, err := s.workspace.Load()
+	if err != nil {
+		return nil, err
+	}
+	return &core.WorkspaceDuplicateResult{Tree: tree, Path: newPath}, nil
+}
+
 // WorkspaceRestoreLast reopens the persisted last workspace when it is still
 // valid, so a normally-launched app lands back where the user left off. A
 // missing or invalid stored path is a silent no-op returning current status.

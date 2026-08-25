@@ -85,9 +85,11 @@ export const wailsSender: RequestSender = async (
 				headers,
 				query: (req.params ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
 				body,
-				auth: req.auth,
-				retry: req.retry ?? null,
-			} as never,
+		auth: req.auth,
+			retry: req.retry ?? null,
+			timeout: req.timeout ?? 0,
+			followRedirects: req.followRedirects ?? null,
+		} as never,
 			{
 				env: req.env ?? "",
 				requestPath: req.requestPath ?? "",
@@ -249,6 +251,26 @@ const normalizeAuth = (
 			}
 		: undefined;
 
+const normalizeRetry = (
+	r: {
+		count?: number;
+		delayMs?: number;
+		strategy?: string;
+		maxDelayMs?: number;
+		retryOn?: number[] | null;
+	} | null | undefined,
+): import("@reqly/frontend").RequestRetry | undefined =>
+	r
+		? {
+				count: r.count,
+				delayMs: r.delayMs,
+				strategy:
+					r.strategy === "exponential" ? "exponential" : "fixed",
+				maxDelayMs: r.maxDelayMs,
+				retryOn: r.retryOn ?? undefined,
+			}
+		: undefined;
+
 const normalizeOpenedRequest = (
 	o: WailsOpened,
 ): import("@reqly/frontend").OpenedRequest => ({
@@ -275,6 +297,9 @@ const normalizeOpenedRequest = (
 		query: (o.fileRequest?.query ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
 		body: o.fileRequest?.body ?? "",
 		auth: normalizeAuth(o.fileRequest?.auth),
+		retry: normalizeRetry(o.fileRequest?.retry),
+		timeout: o.fileRequest?.timeout || undefined,
+		followRedirects: o.fileRequest?.followRedirects ?? undefined,
 	},
 	variables: (o.variables ?? []).map(({ name, value, scope }: { name: string; value: string; scope: string }) => ({
 		name,
@@ -380,6 +405,8 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 					body: draft.body,
 					auth: draft.auth,
 					retry: draft.retry ?? null,
+					timeout: draft.timeout ?? 0,
+					followRedirects: draft.followRedirects ?? null,
 				} as never,
 				preRequest: draft.preRequest ?? "",
 				postRequest: draft.postRequest ?? "",
@@ -396,6 +423,10 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 	},
 	createFolder: async (parent, name) => {
 		await AppService.WorkspaceCreateFolder(parent, name);
+	},
+	duplicateRequest: async (path) => {
+		const res = await AppService.WorkspaceDuplicateRequest(path);
+		return res?.path ?? "";
 	},
 	run: async (path, env, failFast, onEvent) => {
 		const id = await AppService.WorkspaceRunCollection(path, env ?? "", failFast);
