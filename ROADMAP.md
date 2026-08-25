@@ -150,6 +150,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Request chaining (login → extract token → next request) — runtime variables persist across collection steps
 - [x] Chain runner — sequential execution, variable passing, assertions, script execution, fail-fast failure handling (conditional branching deferred to P1)
 - [x] Collection runner (sequential, variable passing, assertions, fail-fast) — `reqly collection test` + desktop Run View streaming
+- [ ] Desktop scripting sandbox view — script playground with console output + captured-variables panel over the Goja sandbox (needs a desktop run-script bridge seam; see §1.13)
 
 ### 1.8 Protocols (P0: REST-first, then extended)
 
@@ -158,7 +159,7 @@ The minimum set to make Reqly a serious API client.
 - [x] **SSE** — live event stream, inspection, event history (`internal/sse` + `reqly sse`)
 - [~] **GraphQL** — query editor + variables via `BodyType: graphql` shipped (ADR 0013); introspection/autocomplete/schema browser deferred to P1
 - [x] **gRPC** — proto files, reflection, service/method discovery, unary + server-streaming — `internal/grpc` (reflection via v1 protocol, protocompile `.proto` fallback, TLS/h2c, deadlines), `grpc:` request-file block, scripting/assertions parity, history, `reqly grpc services|invoke`, desktop gRPC view (ADR 0028, M43; client-stream/bidi deferred)
-- [~] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; external schemas/rpc-encoded best-effort with warnings; the "XML builder" surface is these generated envelopes, no runtime builder)
+- [~] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; external schemas/rpc-encoded best-effort with warnings; the "XML builder" surface is these generated envelopes, no runtime builder); desktop SOAP client view open (§1.13)
 
 ### 1.9 Import / export
 
@@ -197,6 +198,14 @@ The minimum set to make Reqly a serious API client.
 - [x] macOS build (WebKit) — `darwin:build` (amd64/arm64), ad-hoc `codesign -s -` + `xattr -d com.apple.quarantine` fallback, `install.sh` — ADR 0019
 - [x] Windows build (WebView2) — `windows:build` (amd64), unsigned `.exe`/`.zip`, `install.ps1` — ADR 0019
 - [x] Release CI — `release.yml` OS matrix + `checksums.txt` on semver tags (`v*.*.*`), Conventional Commits notes
+
+### 1.13 Desktop GUI (G-17.x — consolidated from the GUI roadmap, 2026-08-25)
+
+- [x] **G-17.2/G-17.3** Native React re-implementation + visual parity with `docs/internal/ui-demos/design-9-git-native` — shell chrome (activity rail, workspace-pill header, ⌘K), collections sidebar (filter, method chips, ±diff counts, create dialogs), request builder (orange Send, Scripts tab, codegen overflow), response panel (Ready-to-send hero, resolved URL), statusbar, overview home dashboard
+- [x] **G-17.4 per-page parity** — API diff (count cards, detail pane, breaking banner), GraphQL playground (Run, schema browser), gRPC client (Reflect, metadata, CHANNEL footer), realtime WS/SSE restyle, mock server (servers panel, endpoints table), environments (scope cards, tabs, dynamic tags), settings (sectioned nav), OpenAPI explorer (filter chips, detail pane), git panel (working-tree groups, recent commits), import/export page (stepper, drop zone), tests suites view (run-all, per-suite runner), history polish (saved searches, HAR export), welcome modal, sidebar declutter (Tests/Realtime/OAuth/Git own views), REST breadcrumb, code-generation view
+- [ ] **SOAP client view** (`07-soap.png`) — envelope editor, SOAPAction, WSDL-driven operations in the desktop; needs a SOAP transport seam in the Go core (WSDL import already shipped, §1.8)
+- [ ] **Scripting sandbox view** (`10-scripting.png`) — dedicated script playground with console output and captured-variables panel; needs a desktop run-script bridge seam over the Goja sandbox (§1.7)
+- Deferred seams (tracked here after the GUI-roadmap consolidation): mock-server hit counters/live logs, environment rename + diff-vs + resolution preview, try-it panel + security schemes in the explorer, git inline diff + ahead/behind, JUnit export from the tests view, density toggle, import mask-secrets option, codegen PHP/Rust generators
 
 ---
 
