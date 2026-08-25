@@ -56,6 +56,7 @@ export type WorkspaceView =
 	| 'realtime'
 	| 'oauth'
 	| 'git'
+	| 'importexport'
 	| 'environments'
 	| 'history'
 	| 'mocks'

@@ -6,6 +6,7 @@ import {
 	GitBranch,
 	GitCompare,
 	House,
+	Import,
 	KeyRound,
 	ListChecks,
 	Network,
@@ -56,6 +57,7 @@ const RAIL_GROUPS: RailGroup[] = [
 		items: [
 			{ view: "tests", label: "Tests", icon: ListChecks },
 			{ view: "git", label: "Git", icon: GitBranch },
+			{ view: "importexport", label: "Import / Export", icon: Import },
 			{ view: "oauth", label: "OAuth tokens", icon: KeyRound },
 			{ view: "environments", label: "Environments", icon: SlidersHorizontal },
 			{ view: "history", label: "History", icon: Clock },
