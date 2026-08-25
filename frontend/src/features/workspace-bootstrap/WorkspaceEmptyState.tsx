@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useForm } from "@tanstack/react-form";
 import { FolderOpen, FolderPlus } from "lucide-react";
 import logoDark from "../../assets/logo-dark.svg";
 import logoLight from "../../assets/logo-light.svg";
@@ -20,7 +20,10 @@ export function WorkspaceEmptyState() {
   const cancelPendingCreate = useWorkspaceBootstrapStore(
     (s) => s.cancelPendingCreate,
   );
-  const [name, setName] = useState(pendingCreate?.suggestedName ?? "");
+  const form = useForm({
+    defaultValues: { name: pendingCreate?.suggestedName ?? "" },
+    onSubmit: ({ value }) => void createPending(value.name),
+  });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6 text-foreground">
@@ -49,22 +52,28 @@ export function WorkspaceEmptyState() {
           key={pendingCreate.dir}
           className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-border p-4"
         >
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="workspace-name" className="text-xs font-medium">
-              Workspace name
-            </label>
-            <Input
-              id="workspace-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={pendingCreate.suggestedName || "my-workspace"}
-              autoFocus
-            />
-            <p className="text-xs text-muted-foreground">
-              Created inside{" "}
-              <span className="font-mono">{pendingCreate.dir}</span>
-            </p>
-          </div>
+          <form.Field name="name">
+            {(field) => (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="workspace-name" className="text-xs font-medium">
+                  Workspace name
+                </label>
+                <Input
+                  id="workspace-name"
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder={pendingCreate.suggestedName || "my-workspace"}
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">
+                  Created inside{" "}
+                  <span className="font-mono">{pendingCreate.dir}</span>
+                </p>
+              </div>
+            )}
+          </form.Field>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={cancelPendingCreate}>
               Back
@@ -72,7 +81,7 @@ export function WorkspaceEmptyState() {
             <Button
               size="sm"
               disabled={busy}
-              onClick={() => void createPending(name)}
+              onClick={() => void form.handleSubmit()}
             >
               Create workspace
             </Button>

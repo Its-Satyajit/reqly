@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "@tanstack/react-form";
 import { Button } from "../../components/ui/button";
 import { CompactSelect } from "#components/CompactSelect";
 import { useAuthStore } from "../../stores/useAuthStore";
@@ -34,31 +35,32 @@ function formatExpiry(expiry: string): string {
 	return new Date(expiry).toLocaleString();
 }
 
+interface AuthFormValues {
+	flow: "authorization_code" | "device_code";
+	configText: string;
+}
+
 export function AuthPanel() {
 	const { status, loading, error, refresh, login, logout, clearError } =
 		useAuthStore();
-	const [flow, setFlow] = useState<"authorization_code" | "device_code">(
-		"authorization_code",
-	);
-	const [configText, setConfigText] = useState(DEFAULT_CONFIG);
-	const [configError, setConfigError] = useState<string | null>(null);
+
+	const form = useForm({
+		// SAFETY: literal matches AuthFormValues["flow"]; assertion widens the
+		// default so the form field accepts both flow options.
+		defaultValues: {
+			flow: "authorization_code",
+			configText: DEFAULT_CONFIG,
+		} as AuthFormValues,
+		onSubmit: async ({ value }) => {
+			const config = parseConfig(value.configText);
+			clearError();
+			await login(config, value.flow);
+		},
+	});
 
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
-
-	const onLogin = async () => {
-		setConfigError(null);
-		let config: Record<string, string>;
-		try {
-			config = parseConfig(configText);
-		} catch (err) {
-			setConfigError(err instanceof Error ? err.message : String(err));
-			return;
-		}
-		clearError();
-		await login(config, flow);
-	};
 
 	const tokens = status?.tokens ?? [];
 	const canLogout = tokens.length > 0 && !loading;
@@ -110,56 +112,111 @@ export function AuthPanel() {
 				className="flex flex-col gap-2"
 				onSubmit={(e) => {
 					e.preventDefault();
-					void onLogin();
+					void form.handleSubmit();
 				}}
 			>
-				<div className="flex flex-col gap-1">
-					<span className="text-xs text-muted-foreground">Flow</span>
-					<CompactSelect
-						value={flow}
-						onChange={(v) =>
-							// SAFETY: options are constrained to authorization_code | device_code
-							setFlow(v as "authorization_code" | "device_code")
-						}
-						ariaLabel="OAuth flow"
-						options={[
-							{ value: "authorization_code", label: "Browser (auth code + PKCE)" },
-							{ value: "device_code", label: "Device code" },
-						]}
-					/>
-				</div>
+				<form.Field name="flow">
+					{(field) => (
+						<div className="flex flex-col gap-1">
+							<span className="text-xs text-muted-foreground">Flow</span>
+							<CompactSelect
+								value={field.state.value}
+								onChange={(v) =>
+									field.handleChange(
+										// SAFETY: options are constrained to
+										// authorization_code | device_code
+										v as AuthFormValues["flow"],
+									)
+								}
+								ariaLabel="OAuth flow"
+								options={[
+									{
+										value: "authorization_code",
+										label: "Browser (auth code + PKCE)",
+									},
+									{ value: "device_code", label: "Device code" },
+								]}
+							/>
+						</div>
+					)}
+				</form.Field>
 
-				<label className="flex flex-col gap-1">
-					<span className="text-xs text-muted-foreground">
-						OAuth 2.0 config (JSON)
-					</span>
-					<textarea
-						value={configText}
-						onChange={(e) => setConfigText(e.target.value)}
-						rows={9}
-						spellCheck={false}
-						className="rounded-md border border-input bg-background p-2 font-mono text-xs text-foreground"
-					/>
-				</label>
+				<form.Field
+					name="configText"
+					validators={{
+						onChange: ({ value }) => {
+							try {
+								parseConfig(value);
+								return undefined;
+							} catch (err) {
+								return err instanceof Error ? err.message : String(err);
+							}
+						},
+					}}
+				>
+					{(field) => (
+						<label className="flex flex-col gap-1">
+							<span className="text-xs text-muted-foreground">
+								OAuth 2.0 config (JSON)
+							</span>
+							<textarea
+								name={field.name}
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(e) => field.handleChange(e.target.value)}
+								rows={9}
+								spellCheck={false}
+								className="rounded-md border border-input bg-background p-2 font-mono text-xs text-foreground"
+							/>
+						</label>
+					)}
+				</form.Field>
 
-				{configError ? (
-					<p className="text-xs text-destructive">{configError}</p>
-				) : null}
-				{error ? <p className="text-xs text-destructive">{error}</p> : null}
+				<form.Subscribe
+					selector={(state) => ({
+						errors: state.fieldMeta.configText?.errors ?? [],
+						canSubmit: state.canSubmit,
+						isSubmitting: state.isSubmitting,
+						flow: state.values.flow,
+					})}
+				>
+					{({
+						errors,
+						canSubmit,
+						isSubmitting,
+						flow,
+					}: {
+						errors: unknown[];
+						canSubmit: boolean;
+						isSubmitting: boolean;
+						flow: AuthFormValues["flow"];
+					}) => (
+						<>
+							{errors.length > 0 ? (
+								<p className="text-xs text-destructive">{String(errors[0])}</p>
+							) : null}
+							{error ? (
+								<p className="text-xs text-destructive">{error}</p>
+							) : null}
 
-				<div className="flex gap-2">
-					<Button type="submit" disabled={loading} className="flex-1">
-						{flow === "device_code" ? "Log in with device code" : "Log in"}
-					</Button>
-					<Button
-						type="button"
-						variant="outline"
-						disabled={!canLogout}
-						onClick={() => void logout()}
-					>
-						Log out
-					</Button>
-				</div>
+							<div className="flex gap-2">
+								<Button type="submit" disabled={loading || !canSubmit || isSubmitting} className="flex-1">
+									{flow === "device_code"
+										? "Log in with device code"
+										: "Log in"}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									disabled={!canLogout}
+									onClick={() => void logout()}
+								>
+									Log out
+								</Button>
+							</div>
+						</>
+					)}
+				</form.Subscribe>
 			</form>
 		</div>
 	);
