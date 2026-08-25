@@ -80,7 +80,7 @@ function SavedSearchesPanel({
 				disabled={currentQuery.trim() === ""}
 				className="flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
 			>
-				<Star className="size-3" aria-hidden />
+				<Star className="size-3.5" aria-hidden />
 				Save current search
 			</button>
 			{list.length === 0 ? (
@@ -104,7 +104,7 @@ function SavedSearchesPanel({
 							aria-label={`Remove saved search ${q}`}
 							onClick={() => remove(q)}
 						>
-							<Trash2 className="size-3" />
+							<Trash2 className="size-3.5" />
 						</Button>
 					</div>
 				))
@@ -190,7 +190,7 @@ export function HistoryView() {
 			<div className="flex min-w-0 flex-1 flex-col">
 			<div className="flex shrink-0 flex-col gap-3 pb-3">
 				<div>
-					<h2 className="text-sm font-semibold">History</h2>
+					<h2 className="text-lg font-medium">History</h2>
 					<p className="text-xs text-muted-foreground">
 						Local request history for this workspace — stored on disk, never
 						sent anywhere.
@@ -353,7 +353,7 @@ export function HistoryView() {
 											onClick={() => onReplay(entry)}
 											title={`Replay ${entry.method} ${entry.url}`}
 										>
-											<RotateCcw className="size-3" aria-hidden />
+											<RotateCcw className="size-3.5" aria-hidden />
 											Replay
 										</Button>
 									</td>

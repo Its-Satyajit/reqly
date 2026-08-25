@@ -3,6 +3,7 @@ import type { KeyValueRow } from '../lib/request'
 import { cn } from '../lib/utils'
 import { inputClass } from '../lib/ui'
 import { Button } from './ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 interface KeyValueEditorProps {
   rows: KeyValueRow[]
@@ -68,7 +69,12 @@ export function KeyValueEditor({
                 spellCheck={false}
                 className={cn(inputClass, 'w-24 font-mono', !row.enabled && 'opacity-50')}
               />
-              <Button type="button" variant="ghost" size="icon-xs" title="Use text value" aria-label="Use text value" onClick={() => update(i, { file: undefined, filename: undefined })}><Type className="size-3" aria-hidden /></Button>
+              <Tooltip>
+                <TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="Use text value" onClick={() => update(i, { file: undefined, filename: undefined })} />}>
+                  <Type className="size-3" aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent>Use text value</TooltipContent>
+              </Tooltip>
             </div>
           ) : (
             <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -80,28 +86,40 @@ export function KeyValueEditor({
                 spellCheck={false}
                 className={cn(inputClass, 'min-w-0 flex-1 font-mono', !row.enabled && 'opacity-50')}
               />
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label="Use file"
+                      onClick={() => update(i, { file: '', filename: undefined })}
+                    />
+                  }
+                >
+                  <Paperclip className="size-3" aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent>Use file</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
+        <Tooltip>
+          <TooltipTrigger
+            render={
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                title="Use file"
-                aria-label="Use file"
-                onClick={() => update(i, { file: '', filename: undefined })}
-              >
-                <Paperclip className="size-3" aria-hidden />
-              </Button>
-            </div>
-          )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            title="Remove row"
-            aria-label={`Remove ${keyPlaceholder ?? 'key'} row`}
-            onClick={() => onChange(rows.filter((_, j) => j !== i))}
+                aria-label={`Remove ${keyPlaceholder ?? 'key'} row`}
+                onClick={() => onChange(rows.filter((_, j) => j !== i))}
+              />
+            }
           >
             <X className="size-3" aria-hidden />
-          </Button>
+          </TooltipTrigger>
+          <TooltipContent>Remove row</TooltipContent>
+        </Tooltip>
         </div>
       ))}
       <div>

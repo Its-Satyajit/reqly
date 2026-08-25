@@ -24,7 +24,10 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
 			if (ref.current && !ref.current.contains(e.target as Node)) onClose();
 		};
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") onClose();
+			if (e.key === "Escape") {
+				e.stopPropagation();
+				onClose();
+			}
 		};
 		window.addEventListener("mousedown", close);
 		window.addEventListener("keydown", onKey);
@@ -39,7 +42,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
 			ref={ref}
 			role="menu"
 			style={{ left: x, top: y }}
-			className="fixed z-50 min-w-36 rounded-md border border-border bg-popover p-1 text-xs shadow-md"
+			className="fixed z-(--z-overlay) min-w-36 rounded-md border border-border bg-popover p-1 text-xs shadow-lg ring-1 ring-foreground/10"
 		>
 			{items.map((item) => (
 				<button

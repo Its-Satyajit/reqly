@@ -3,6 +3,11 @@ import { GitBranch, Leaf, ShieldCheck, Terminal } from "lucide-react";
 import { workspaceViewLabel } from "#lib/views";
 import { type WorkspaceFolder, type WorkspaceTree } from "#lib/collections";
 import { cn } from "#lib/utils";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "#components/ui/tooltip";
 import { useGitStore, usePaletteStore, useShellStore, useWorkspaceStore } from "#stores";
 
 /** countTreeRequests totals requests across every collection/folder. */
@@ -61,19 +66,24 @@ export function StatusBar() {
 				{paletteOpen ? <span className="font-data">· Palette</span> : null}
 			</span>
 			<span className="flex items-center gap-1 rounded-md border border-border bg-muted/30 px-1 py-0.5 font-data text-xs">
-				<button
-					type="button"
-					onClick={toggleInspector}
-					className={cn(
-						"flex items-center gap-1 rounded px-1.5 py-px hover:bg-muted",
-						inspectorOpen ? "text-foreground" : "text-muted-foreground",
-					)}
-				>
-					<Terminal className="size-3" aria-hidden />
-					Console
-				</button>
-				<span className="px-1 text-muted-foreground/60">Test output</span>
-				<span className="px-1 text-muted-foreground/60">Network</span>
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<button
+								type="button"
+								onClick={toggleInspector}
+								className={cn(
+									"flex items-center gap-1 rounded px-1.5 py-px hover:bg-muted",
+									inspectorOpen ? "text-foreground" : "text-muted-foreground",
+								)}
+							>
+								<Terminal className="size-3" aria-hidden />
+								Console
+							</button>
+						}
+					/>
+					<TooltipContent side="top">Toggle the console inspector</TooltipContent>
+				</Tooltip>
 			</span>
 		</>
 	);

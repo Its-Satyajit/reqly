@@ -18,6 +18,7 @@ import {
 	CommandList,
 } from '../ui/command'
 import { Button } from '../ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
 /** Global ⌘K / Ctrl+K command palette (M44 T3), composed on cmdk. */
 export function CommandPalette({
@@ -118,15 +119,13 @@ export function useAppCommands(
 export function PaletteTriggerButton() {
 	const openPalette = usePaletteStore((s) => s.openPalette)
 	return (
-		<Button
-			variant="ghost"
-			size="sm"
-			onClick={openPalette}
-			className="gap-2 text-muted-foreground"
-		>
-			<Search data-icon="inline-start" />
-			<span>Search or jump…</span>
-			<kbd className="font-data rounded border border-border px-1 text-xs">⌘K</kbd>
-		</Button>
+		<Tooltip>
+			<TooltipTrigger render={<Button variant="ghost" size="sm" onClick={openPalette} className="gap-2 text-muted-foreground" />}>
+				<Search data-icon="inline-start" />
+				<span>Search or jump…</span>
+				<kbd className="font-data rounded border border-border px-1 text-xs">⌘K</kbd>
+			</TooltipTrigger>
+			<TooltipContent>Command palette (⌘K)</TooltipContent>
+		</Tooltip>
 	)
 }

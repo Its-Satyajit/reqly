@@ -3,6 +3,7 @@ import { Download, FilePlus, Play, Pencil } from "lucide-react";
 import { Button } from "#components/ui/button";
 import { Spinner } from "#components/ui/spinner";
 import { cn } from "#lib/utils";
+import { idleRow, selectedRow } from "#lib/ui";
 import type { TestFileRef, TestRunOutcome } from "#lib/test";
 import { useTestStore } from "#stores/useTestStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
@@ -172,8 +173,8 @@ export function TestsView() {
 					</Button>
 				</div>
 				{tests.length === 0 ? (
-					<p className="text-xs text-muted-foreground">
-						No *.reqly-test files found in the workspace.
+					<p className="py-8 text-center text-sm text-muted-foreground">
+						No tests yet.
 					</p>
 				) : (
 					<ul className="flex flex-col gap-1">
@@ -186,9 +187,7 @@ export function TestsView() {
 										onClick={() => setSelectedPath(t.path)}
 										className={cn(
 											"w-full rounded-lg border px-2.5 py-2 text-left transition-colors",
-											selectedPath === t.path
-												? "border-primary/50 bg-primary/5"
-												: "border-transparent hover:bg-accent",
+											selectedPath === t.path ? selectedRow : idleRow,
 										)}
 									>
 										<span className="block truncate text-xs font-medium text-foreground">
@@ -228,11 +227,11 @@ export function TestsView() {
 			>
 
 			<section className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
-				{error ? <p className="text-xs text-status-error">{error}</p> : null}
+				{error ? <p className="text-xs text-destructive">{error}</p> : null}
 				{selected ? (
 					<>
 						<div className="flex flex-wrap items-center gap-2">
-							<h2 className="text-sm font-semibold text-foreground">
+							<h2 className="text-lg font-medium text-foreground">
 								{selected.name || selected.path}
 							</h2>
 							{lastRun ? (

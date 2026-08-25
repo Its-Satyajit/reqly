@@ -97,7 +97,7 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.45;
   background-color: var(--color-background);
   color: var(--color-foreground);
