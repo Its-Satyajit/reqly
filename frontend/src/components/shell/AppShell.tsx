@@ -15,6 +15,8 @@ import { shellStorage } from './storage'
 export interface AppShellProps {
 	/** Brand block rendered at the far left of the header. */
 	brand?: ReactNode;
+	/** Icon activity rail rendered on the left edge of the body (G-17.3.1). */
+	rail?: ReactNode;
 	/** Center header slot — command-palette trigger lands here (M44 T3). */
 	headerCenter?: ReactNode;
 	/** Right-aligned header actions (environment pill, settings, …). */
@@ -37,6 +39,7 @@ export interface AppShellProps {
  */
 export function AppShell({
 	brand,
+	rail,
 	headerCenter,
 	headerActions,
 	sidebar,
@@ -86,7 +89,8 @@ export function AppShell({
 					<ThemeToggle />
 				</div>
 			</header>
-			<div className="min-h-0 flex-1">
+			<div className="flex min-h-0 flex-1">
+				{rail}
 				<ResizablePanelGroup
 					orientation="horizontal"
 					defaultLayout={sidebarLayout.defaultLayout}

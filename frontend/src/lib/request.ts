@@ -138,6 +138,10 @@ export const fetchSender: RequestSender = async (req) => {
 			? undefined
 			: requestBodyText || undefined;
 
+	// Non-2xx is a valid, expected outcome for an API client — the status and
+	// body are surfaced to the user verbatim, never treated as a transport
+	// failure. Only a thrown fetch error (network/DNS) is an error here.
+	// react-doctor-disable-next-line react-doctor/no-fetch-response-used-without-status-check
 	const res = await fetch(appendParams(req.url, req.params ?? []), {
 		method,
 		headers,

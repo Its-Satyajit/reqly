@@ -17,15 +17,14 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
-import { AuthPanel, ExportDialog, ImportDialog } from "../features";
+import { AuthPanel } from "../features/auth-panel/AuthPanel";
+import { ExportDialog } from "../features/export-dialog/ExportDialog";
+import { ImportDialog } from "../features/import-dialog/ImportDialog";
 import { useRealtimeStore } from "../stores/useRealtimeStore";
 import { useTestStore } from "../stores/useTestStore";
-import {
-	useExportStore,
-	useImportStore,
-	useWorkspaceStore,
-	type WorkspaceView,
-} from "../stores";
+import { useExportStore } from "../stores/useExportStore";
+import { useImportStore } from "../stores/useImportStore";
+import { useWorkspaceStore, type WorkspaceView } from "../stores/useWorkspaceStore";
 import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { CollectionTree } from "./CollectionTree";
 import { GitPanel } from "./GitPanel";

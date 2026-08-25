@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { cn } from "#lib/utils";
 import { Badge } from "#components/ui/badge";
 import type { ImportReport, ImportReportEntry } from "#lib/import";
@@ -42,21 +41,27 @@ function severityTally(entries: ImportReportEntry[]) {
 
 }
 
+/** Groups report entries by category in roadmap order. Module-level so the
+ * component carries no manual memoization (React Compiler manages it). */
+function groupByCategory(
+  report: ImportReport | null | undefined,
+): [string, ImportReportEntry[]][] {
+  if (!report) return [];
+  const byCategory = new Map<string, ImportReportEntry[]>();
+  for (const entry of report.entries ?? []) {
+    const list = byCategory.get(entry.category) ?? [];
+    list.push(entry);
+    byCategory.set(entry.category, list);
+  }
+  return [...byCategory.entries()].sort(
+    ([a], [b]) =>
+      (CATEGORY_ORDER.indexOf(a) === -1 ? CATEGORY_ORDER.length : CATEGORY_ORDER.indexOf(a)) -
+      (CATEGORY_ORDER.indexOf(b) === -1 ? CATEGORY_ORDER.length : CATEGORY_ORDER.indexOf(b)),
+  );
+}
+
 export function ImportReportView({ report }: { report: ImportReport | null | undefined }) {
-  const groups = useMemo(() => {
-    if (!report) return [];
-    const byCategory = new Map<string, ImportReportEntry[]>();
-    for (const entry of report.entries ?? []) {
-      const list = byCategory.get(entry.category) ?? [];
-      list.push(entry);
-      byCategory.set(entry.category, list);
-    }
-    return [...byCategory.entries()].sort(
-      ([a], [b]) =>
-        (CATEGORY_ORDER.indexOf(a) === -1 ? CATEGORY_ORDER.length : CATEGORY_ORDER.indexOf(a)) -
-        (CATEGORY_ORDER.indexOf(b) === -1 ? CATEGORY_ORDER.length : CATEGORY_ORDER.indexOf(b)),
-    );
-  }, [report]);
+  const groups = groupByCategory(report);
 
   if (!report || (report.entries?.length ?? 0) === 0) {
     return (

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, FileUp, Upload } from "lucide-react";
 import {
   Dialog,
@@ -28,6 +28,38 @@ import { ImportReportView } from "./ImportReportView";
 
 const OPERATION_CAP = 50;
 
+interface OperationGroup {
+  tag: string;
+  ops: ImportedOperation[];
+  visible: ImportedOperation[];
+}
+
+/** Groups operations by first tag and applies the collapsed cap across
+ * groups in tag order. Module-level so the component stays mutation-free
+ * (React Compiler cannot optimize render-time accumulation). */
+function visibleGroups(
+  operations: ImportedOperation[],
+  expanded: boolean,
+): OperationGroup[] {
+  const byTag = new Map<string, ImportedOperation[]>();
+  for (const op of operations) {
+    const tag = op.tags?.[0] ?? "untagged";
+    const list = byTag.get(tag) ?? [];
+    list.push(op);
+    byTag.set(tag, list);
+  }
+  const groups = [...byTag.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([tag, ops]) => ({ tag, ops, visible: ops }));
+  if (expanded) return groups;
+  let budget = OPERATION_CAP;
+  for (const group of groups) {
+    group.visible = group.ops.slice(0, Math.max(0, budget));
+    budget -= group.visible.length;
+  }
+  return groups;
+}
+
 function formatBadge(format: string, ok: boolean, hint: string) {
   if (hint !== "") return null;
   if (!ok) {
@@ -42,27 +74,14 @@ function formatBadge(format: string, ok: boolean, hint: string) {
 
 function OperationGroups({ operations }: { operations: ImportedOperation[] }) {
   const [expanded, setExpanded] = useState(false);
-  const groups = useMemo(() => {
-    const byTag = new Map<string, ImportedOperation[]>();
-    for (const op of operations) {
-      const tag = op.tags?.[0] ?? "untagged";
-      const list = byTag.get(tag) ?? [];
-      list.push(op);
-      byTag.set(tag, list);
-    }
-    return [...byTag.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [operations]);
+  const groups = visibleGroups(operations, expanded);
 
   const total = operations.length;
-  const shown = expanded ? total : Math.min(total, OPERATION_CAP);
 
-  let rendered = 0;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-2">
-        {groups.map(([tag, ops]) => {
-          const visible = expanded ? ops : ops.slice(0, Math.max(0, shown - rendered));
-          rendered += visible.length;
+        {groups.map(({ tag, ops, visible }) => {
           if (visible.length === 0) return null;
           return (
             <div key={tag}>

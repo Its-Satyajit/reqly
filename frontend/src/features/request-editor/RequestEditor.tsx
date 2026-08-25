@@ -2,18 +2,20 @@ import { useEffect, useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
 import { CompactSelect } from '../../components/CompactSelect'
-import { methodTintClass } from '../../components/status'
+import { methodTintClass } from '../../lib/status'
 import { cn } from '#lib/utils'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
 import { ChevronRight, Loader2 } from 'lucide-react'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
-import { useRequestStore, useWorkspaceStore } from '../../stores'
+import { useRequestStore } from '../../stores/useRequestStore'
+import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
 import { tabIsDirty } from '../../stores/useRequestStore'
 import { effectiveUrlFor } from '../../stores/useWorkspaceStore'
 import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
 import type { KeyValueRow, RequestAuth, RequestRetry } from '../../lib/request'
+import type { TabDraft } from '../../stores/useRequestStore'
 import type { ResolvedVariable } from '../../lib/collections'
 import { TagPicker } from '../../components/TagPicker'
 import { tagWarnings } from '../../lib/tags'
@@ -115,8 +117,6 @@ export function RequestEditor() {
   const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId)
   const environments = useWorkspaceStore((s) => s.environments)
   const [tab, setTab] = useState<Tab>('params')
-  const [codeLang, setCodeLang] = useState<'curl' | 'js' | 'python' | 'go'>('curl')
-  const [copiedCode, setCopiedCode] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -202,92 +202,19 @@ export function RequestEditor() {
           ))}
         </div>
       )}
-      <div className="flex min-w-0 items-center gap-2 p-2">
-        <CompactSelect
-          value={draft.method}
-          onChange={(method) => patch({ method })}
-          ariaLabel="HTTP method"
-          className={cn("w-24 shrink-0 font-mono font-semibold", methodTintClass(draft.method))}
-          options={methods.map((m) => ({ value: m, label: m }))}
-        />
-        <input
-          value={draft.url}
-          onChange={(e) => patch({ url: e.target.value })}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-              e.preventDefault()
-              if (!loading) handleSend()
-            }
-          }}
-          placeholder="https://reqly-test-api.vercel.app/api/users?page=1 — mock API for testing"
-          spellCheck={false}
-          aria-label="Request URL"
-          className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
-        />
-        <span
-          title={meta?.env ? 'Environment pinned by the request file' : 'Environment from the app header'}
-          className="shrink-0 rounded-full border border-border bg-muted/50 px-2 py-1 text-[10px] font-medium text-muted-foreground"
-        >
-          {envPill ?? 'No environment'}
-          {meta?.env ? ' • file' : ''}
-        </span>
-        {requestPath && (
-          <Button size="sm" variant="outline" onClick={() => void saveRequest(activeTabId)} disabled={!canSave}>
-            {dirty ? 'Save' : 'Saved'}
-          </Button>
-        )}
-        {loading ? (
-          <Button size="sm" variant="destructive" onClick={() => void cancel(activeTabId)}>
-            <Loader2 className="size-3.5 animate-spin" aria-hidden />
-            Stop
-          </Button>
-        ) : (
-          <Button size="sm" onClick={handleSend}>
-            Send
-          </Button>
-        )}
-        <CompactSelect
-          value={codeLang}
-          onChange={(v) => {
-            if (v === "curl" || v === "js" || v === "python" || v === "go") setCodeLang(v)
-          }}
-          ariaLabel="Snippet language"
-          className="shrink-0"
-          options={[
-            { value: "curl", label: "cURL" },
-            { value: "js", label: "JS" },
-            { value: "python", label: "Python" },
-            { value: "go", label: "Go" },
-          ]}
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            const code = generateCode(
-              {
-                method: draft.method,
-                url: draft.url,
-                headers: sentRows(draft.headers).map(({ key, value }) => ({ key, value })),
-                query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
-                body: draft.body,
-                auth: draft.auth,
-              },
-              codeLang,
-            )
-            void copyText(code).then((ok) => {
-              if (ok) {
-                setCopiedCode(true)
-                setTimeout(() => setCopiedCode(false), 1500)
-              } else {
-                notifyError('Copy failed', 'Clipboard access was denied — copy the snippet manually.')
-              }
-            })
-          }}
-        >
-          {copiedCode ? 'Copied' : 'Copy as'}
-        </Button>
-      </div>
+      <RequestToolbar
+        draft={draft}
+        patch={patch}
+        envPill={envPill}
+        envPinned={Boolean(meta?.env)}
+        requestPath={requestPath}
+        dirty={dirty}
+        canSave={canSave}
+        loading={Boolean(loading)}
+        onSave={() => void saveRequest(activeTabId)}
+        onSend={handleSend}
+        onCancelSend={() => void cancel(activeTabId)}
+      />
 
       {requestPath && (
         <div className="flex items-center gap-1 px-2 pb-1">
@@ -354,7 +281,7 @@ export function RequestEditor() {
                 <div className="overflow-hidden rounded-md border border-border">
                   {meta!.inheritedHeaders.map((h, i) => (
                     <div
-                      key={`${h.key}:${h.value}:${i}`}
+                      key={`${h.key}:${h.value}`}
                       className={`flex items-center gap-2 px-2 py-1 text-xs ${
                         i % 2 === 0 ? 'bg-muted/30' : ''
                       }`}
@@ -382,77 +309,7 @@ export function RequestEditor() {
             headerEnv={environments.find((e) => e.id === activeEnvironmentId)?.name ?? null}
           />
         ) : (
-          <div className="flex h-full flex-col gap-1">
-            <div className="flex items-center gap-1">
-              {bodyTypes.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => patch({ bodyType: t.id })}
-                  className={tabClass(draft.bodyType === t.id)}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            {draft.bodyType === 'form-data' || draft.bodyType === 'urlencoded' ? (
-              <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border p-2">
-                <KeyValueEditor
-                  rows={draft.form}
-                  onChange={(rows) => patch({ form: rows })}
-                  keyPlaceholder="field"
-                  valuePlaceholder="value"
-                />
-              </div>
-            ) : draft.bodyType === 'binary' ? (
-              <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-md border border-border p-2">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    File path — relative to the request file
-                  </span>
-                  <input
-                    value={draft.body}
-                    onChange={(e) => patch({ body: e.target.value })}
-                    placeholder="./fixtures/payload.bin"
-                    aria-label="Binary file path"
-                    spellCheck={false}
-                    className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground"
-                  />
-                </div>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Enter a Git-native path relative to the request file (a browser file picker cannot produce one). The core reads the bytes from disk at send time.
-                </p>
-              </div>
-            ) : draft.bodyType === 'graphql' ? (
-              <div className="flex min-h-0 flex-1 flex-col gap-2">
-                <div className="flex min-h-0 flex-1 flex-col gap-1">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Query</span>
-                  <CodeMirrorEditor
-                    value={draft.graphqlQuery ?? draft.body}
-                    language="graphql"
-                    onChange={(graphqlQuery) => patch({ graphqlQuery })}
-                    className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
-                  />
-                </div>
-                <div className="flex min-h-0 flex-1 flex-col gap-1">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Variables (JSON)</span>
-                  <CodeMirrorEditor
-                    value={draft.graphqlVariables ?? '{\n  \n}'}
-                    language="json"
-                    onChange={(graphqlVariables) => patch({ graphqlVariables })}
-                    className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
-                  />
-                </div>
-              </div>
-            ) : (
-              <CodeMirrorEditor
-                value={draft.body}
-                language={bodyLanguage[draft.bodyType]}
-                onChange={(body) => patch({ body })}
-                className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
-              />
-            )}
-          </div>
+          <BodyTab draft={draft} patch={patch} />
         )}
       </div>
     </div>
@@ -463,6 +320,220 @@ const retryStrategies = [
   { value: 'exponential', label: 'Exponential' },
   { value: 'fixed', label: 'Fixed' },
 ] as const
+
+interface RequestEditorDraft {
+  method: string
+  url: string
+  bodyType: BodyType
+  body: string
+  form: KeyValueRow[]
+  graphqlQuery?: string
+  graphqlVariables?: string
+  auth?: RequestAuth
+  params: KeyValueRow[]
+  headers: KeyValueRow[]
+  retry?: RequestRetry
+}
+
+function RequestToolbar({
+  draft,
+  patch,
+  envPill,
+  envPinned,
+  requestPath,
+  dirty,
+  canSave,
+  loading,
+  onSave,
+  onSend,
+  onCancelSend,
+}: {
+  draft: RequestEditorDraft
+  patch: (p: Partial<TabDraft>) => void
+  envPill: string | null
+  envPinned: boolean
+  requestPath?: string
+  dirty: boolean
+  canSave: boolean
+  loading: boolean
+  onSave: () => void
+  onSend: () => void
+  onCancelSend: () => void
+}) {
+  const [codeLang, setCodeLang] = useState<'curl' | 'js' | 'python' | 'go'>('curl')
+  const [copiedCode, setCopiedCode] = useState(false)
+
+  return (
+    <div className="flex min-w-0 items-center gap-2 p-2">
+      <CompactSelect
+        value={draft.method}
+        onChange={(method) => patch({ method })}
+        ariaLabel="HTTP method"
+        className={cn("w-24 shrink-0 font-mono font-semibold", methodTintClass(draft.method))}
+        options={methods.map((m) => ({ value: m, label: m }))}
+      />
+      <input
+        value={draft.url}
+        onChange={(e) => patch({ url: e.target.value })}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault()
+            if (!loading) onSend()
+          }
+        }}
+        placeholder="https://reqly-test-api.vercel.app/api/users?page=1 — mock API for testing"
+        spellCheck={false}
+        aria-label="Request URL"
+        className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
+      />
+      <span
+        title={envPinned ? 'Environment pinned by the request file' : 'Environment from the app header'}
+        className="shrink-0 rounded-full border border-border bg-muted/50 px-2 py-1 text-[10px] font-medium text-muted-foreground"
+      >
+        {envPill ?? 'No environment'}
+        {envPinned ? ' • file' : ''}
+      </span>
+      {requestPath && (
+        <Button size="sm" variant="outline" onClick={onSave} disabled={!canSave}>
+          {dirty ? 'Save' : 'Saved'}
+        </Button>
+      )}
+      {loading ? (
+        <Button size="sm" variant="destructive" onClick={onCancelSend}>
+          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+          Stop
+        </Button>
+      ) : (
+        <Button size="sm" onClick={onSend}>
+          Send
+        </Button>
+      )}
+      <CompactSelect
+        value={codeLang}
+        onChange={(v) => {
+          if (v === "curl" || v === "js" || v === "python" || v === "go") setCodeLang(v)
+        }}
+        ariaLabel="Snippet language"
+        className="shrink-0"
+        options={[
+          { value: "curl", label: "cURL" },
+          { value: "js", label: "JS" },
+          { value: "python", label: "Python" },
+          { value: "go", label: "Go" },
+        ]}
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          const code = generateCode(
+            {
+              method: draft.method,
+              url: draft.url,
+              headers: sentRows(draft.headers).map(({ key, value }) => ({ key, value })),
+              query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
+              body: draft.body,
+              auth: draft.auth,
+            },
+            codeLang,
+          )
+          void copyText(code).then((ok) => {
+            if (ok) {
+              setCopiedCode(true)
+              setTimeout(() => setCopiedCode(false), 1500)
+            } else {
+              notifyError('Copy failed', 'Clipboard access was denied — copy the snippet manually.')
+            }
+          })
+        }}
+      >
+        {copiedCode ? 'Copied' : 'Copy as'}
+      </Button>
+    </div>
+  )
+}
+
+function BodyTab({
+  draft,
+  patch,
+}: {
+  draft: RequestEditorDraft
+  patch: (p: Partial<TabDraft>) => void
+}) {
+  return (
+    <div className="flex h-full flex-col gap-1">
+      <div className="flex items-center gap-1">
+        {bodyTypes.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => patch({ bodyType: t.id })}
+            className={tabClass(draft.bodyType === t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {draft.bodyType === 'form-data' || draft.bodyType === 'urlencoded' ? (
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border p-2">
+          <KeyValueEditor
+            rows={draft.form}
+            onChange={(rows) => patch({ form: rows })}
+            keyPlaceholder="field"
+            valuePlaceholder="value"
+          />
+        </div>
+      ) : draft.bodyType === 'binary' ? (
+        <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-md border border-border p-2">
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              File path — relative to the request file
+            </span>
+            <input
+              value={draft.body}
+              onChange={(e) => patch({ body: e.target.value })}
+              placeholder="./fixtures/payload.bin"
+              aria-label="Binary file path"
+              spellCheck={false}
+              className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Enter a Git-native path relative to the request file (a browser file picker cannot produce one). The core reads the bytes from disk at send time.
+          </p>
+        </div>
+      ) : draft.bodyType === 'graphql' ? (
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-1">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Query</span>
+            <CodeMirrorEditor
+              value={draft.graphqlQuery ?? draft.body}
+              language="graphql"
+              onChange={(graphqlQuery) => patch({ graphqlQuery })}
+              className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
+            />
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-1">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Variables (JSON)</span>
+            <CodeMirrorEditor
+              value={draft.graphqlVariables ?? '{\n  \n}'}
+              language="json"
+              onChange={(graphqlVariables) => patch({ graphqlVariables })}
+              className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
+            />
+          </div>
+        </div>
+      ) : (
+        <CodeMirrorEditor
+          value={draft.body}
+          language={bodyLanguage[draft.bodyType]}
+          onChange={(body) => patch({ body })}
+          className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
+        />
+      )}
+    </div>
+  )
+}
 
 function retrySummary(retry: RequestRetry | undefined): string {
   if (!retry || !retry.count) return 'Off'

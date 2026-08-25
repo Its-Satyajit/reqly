@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button } from "../../components";
+import { Button } from "../../components/ui/button";
 import { CompactSelect } from "#components/CompactSelect";
-import { useAuthStore } from "../../stores";
+import { useAuthStore } from "../../stores/useAuthStore";
 import { isRecord, isString, type JsonObject, type JsonValue } from "../../lib/typeGuards";
 
 const DEFAULT_CONFIG = JSON.stringify(
@@ -79,9 +79,9 @@ export function AuthPanel() {
 				</p>
 			) : (
 				<ul className="flex flex-col gap-2">
-					{tokens.map((tok, i) => (
+					{tokens.map((tok) => (
 						<li
-							key={`${tok.endpoint}-${i}`}
+							key={`${tok.endpoint}-${tok.expiry}-${tok.grantType}`}
 							className="rounded-md border border-border p-2 text-xs"
 						>
 							<p className="truncate text-foreground" title={tok.endpoint}>

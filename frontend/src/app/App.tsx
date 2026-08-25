@@ -1,3 +1,4 @@
+import { GitBranch } from "lucide-react";
 import { useEffect } from "react";
 import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
@@ -10,6 +11,7 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "../components/ui/resizable";
+import { ActivityRail } from "../components/shell/ActivityRail";
 import { AppShell } from "../components/shell/AppShell";
 import { ResponseModeToggle } from "../components/shell/ResponseModeToggle";
 import { CommitStrip } from "../components/GitPanel";
@@ -19,7 +21,9 @@ import {
 } from "../components/palette/CommandPalette";
 import { StatusBar } from "../components/shell/StatusBar";
 import { shellStorage } from "../components/shell/storage";
-import { RequestTabs, RunView, WorkspaceSidebar } from "../components";
+import { RequestTabs } from "../components/RequestTabs";
+import { RunView } from "../components/RunView";
+import { WorkspaceSidebar } from "../components/WorkspaceSidebar";
 import { RealtimeTab } from "../features/realtime-view/RealtimeTab";
 import { TestTab } from "../features/test-runner/TestTab";
 import { Toaster } from "../components/ui/toast";
@@ -36,7 +40,11 @@ import { MocksView } from "../features/mock-view/MocksView";
 import { HistoryView } from "../features/history-view/HistoryView";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
-import { useShellStore, useThemeStore, useWorkspaceBootstrapStore, useWorkspaceStore } from "../stores";
+import { useGitStore } from "../stores/useGitStore";
+import { useShellStore } from "../stores/useShellStore";
+import { useThemeStore } from "../stores/useThemeStore";
+import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
+import { useWorkspaceStore } from "../stores/useWorkspaceStore";
 import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
 import { NEW_REQUEST_TAB_ID, tabIsDirty, useRequestStore } from "../stores/useRequestStore";
 import { useDefaultLayout } from "react-resizable-panels";
@@ -56,6 +64,8 @@ export function App() {
 	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
 	const openTabs = useWorkspaceStore((s) => s.openTabs);
 	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
+	const workspaceName = useWorkspaceStore((s) => s.workspaceTree?.name);
+	const gitBranch = useGitStore((s) => s.status?.branch ?? "");
 
 	const bootChecked = useWorkspaceBootstrapStore((s) => s.checked);
 	const bootFound = useWorkspaceBootstrapStore((s) => s.status?.found ?? false);
@@ -149,33 +159,47 @@ export function App() {
 			<CrashOverlay />
 			<CommandPalette onSelectEnvironment={(id) => void onSelectEnvironment(id)} />
 			<AppShell
+				rail={
+					<ErrorBoundary label="Activity rail">
+						<ActivityRail />
+					</ErrorBoundary>
+				}
 				brand={
 					<>
-						<img
-							src={theme === "dark" ? logoDark : logoLight}
-							alt="Reqly"
-							className="size-6"
-						/>
-						<h1 className="text-sm font-semibold tracking-tight">Reqly</h1>
+						<div className="flex items-center gap-2 rounded-full border border-border bg-card py-1 pr-1 pl-2">
+							<img
+								src={theme === "dark" ? logoDark : logoLight}
+								alt="Reqly"
+								className="size-5"
+							/>
+							<h1 className="max-w-40 truncate text-sm font-semibold tracking-tight">
+								{workspaceName ?? "Reqly"}
+							</h1>
+							<CompactSelect
+								value={activeEnvironment?.id ?? ""}
+								onChange={(next) => void onSelectEnvironment(next)}
+								ariaLabel={
+									environmentsError ?? "Select the active environment"
+								}
+								className="h-6 rounded-full border-none bg-muted px-2 text-xs"
+								options={[
+									{ value: "", label: "No environment" },
+									...environments.map((env) => ({
+										value: env.id,
+										label: env.name,
+									})),
+								]}
+							/>
+						</div>
+						{gitBranch && (
+							<span className="font-data inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground">
+								<GitBranch className="size-3" aria-hidden />
+								{gitBranch}
+							</span>
+						)}
 					</>
 				}
 				headerCenter={<PaletteTriggerButton />}
-				headerActions={
-					<CompactSelect
-						value={activeEnvironment?.id ?? ""}
-						onChange={(next) => void onSelectEnvironment(next)}
-						ariaLabel={
-							environmentsError ?? "Select the active environment"
-						}
-						options={[
-							{ value: "", label: "No environment" },
-							...environments.map((env) => ({
-								value: env.id,
-								label: env.name,
-							})),
-						]}
-					/>
-				}
 				sidebar={
 					<ErrorBoundary label="Sidebar">
 						<WorkspaceSidebar />

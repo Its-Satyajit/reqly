@@ -24,6 +24,9 @@ export function KeyValueEditor({
   return (
     <div className="flex flex-col gap-1">
       {rows.map((row, i) => (
+        // Rows are anonymous value objects (often several blank rows at once)
+        // with no stable identity — positional keys are the only correct choice.
+        // react-doctor-disable-next-line react-doctor/no-array-index-as-key
         <div key={i} className="flex items-center gap-1">
           <input
             type="checkbox"

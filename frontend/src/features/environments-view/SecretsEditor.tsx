@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "../../components";
-import { useWorkspaceStore } from "../../stores";
+import { useEffect, useState } from "react";
+import { Button } from "../../components/ui/button";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { inputClass } from "../../lib/ui";
+import type { EnvAdapter } from "../../lib/env";
 
 interface SecretRow {
 	name: string;
@@ -9,6 +10,28 @@ interface SecretRow {
 	touched: boolean;
 	revealed: boolean;
 	removing: boolean;
+}
+
+/** Persists secret changes. Kept at module level (outside the compiled
+ * component) because React Compiler cannot handle try/catch. */
+async function persistSecrets(
+	envAdapter: EnvAdapter,
+	refresh: () => Promise<void>,
+	setSaving: (saving: boolean) => void,
+	envName: string,
+	values: Record<string, string>,
+	remove: string[],
+): Promise<string | null> {
+	setSaving(true);
+	try {
+		await envAdapter.updateSecrets(envName, values, remove);
+		await refresh();
+		return null;
+	} catch (err) {
+		return err instanceof Error ? err.message : String(err);
+	} finally {
+		setSaving(false);
+	}
 }
 
 /**
@@ -44,20 +67,15 @@ export function SecretsEditor({
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const dirty = useMemo(
-		() => rows.some((r) => r.touched || r.removing) || newName.trim() !== "",
-		[rows, newName],
-	);
+	const dirty = rows.some((r) => r.touched || r.removing) || newName.trim() !== "";
 
 	useEffect(() => {
 		setEditorDirty(`secrets:${envName}`, dirty);
 		return () => setEditorDirty(`secrets:${envName}`, false);
 	}, [dirty, envName, setEditorDirty]);
 
-	const duplicateName = useMemo(() => {
-		const seen = new Set([...secretNames, ...variableNames]);
-		return seen.has(newName.trim()) ? newName.trim() : null;
-	}, [secretNames, variableNames, newName]);
+	const seen = new Set([...secretNames, ...variableNames]);
+	const duplicateName = seen.has(newName.trim()) ? newName.trim() : null;
 
 	const setRow = (index: number, patch: Partial<SecretRow>) =>
 		setRows((rs) => rs.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -82,16 +100,19 @@ export function SecretsEditor({
 		if (Object.keys(values).length === 0 && remove.length === 0) {
 			return;
 		}
-		setSaving(true);
-		try {
-			await envAdapter.updateSecrets(envName, values, remove);
-			await refreshEnvironments();
-			setEditorDirty(`secrets:${envName}`, false);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
-		} finally {
-			setSaving(false);
+		const saveError = await persistSecrets(
+			envAdapter,
+			refreshEnvironments,
+			setSaving,
+			envName,
+			values,
+			remove,
+		);
+		if (saveError !== null) {
+			setError(saveError);
+			return;
 		}
+		setEditorDirty(`secrets:${envName}`, false);
 	};
 
 	return (

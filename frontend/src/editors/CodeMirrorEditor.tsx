@@ -1,13 +1,5 @@
-import { javascript } from "@codemirror/lang-javascript";
-import { json } from "@codemirror/lang-json";
-import { markdown } from "@codemirror/lang-markdown";
-import { xml } from "@codemirror/lang-xml";
-import { yaml } from "@codemirror/lang-yaml";
-import { EditorState, type Extension } from "@codemirror/state";
-import { oneDark } from "@codemirror/theme-one-dark";
-import { EditorView } from "@codemirror/view";
-import { basicSetup } from "codemirror";
 import { useEffect, useRef } from "react";
+import type { Extension } from "@codemirror/state";
 
 export type EditorLanguage =
 	| "json"
@@ -18,15 +10,58 @@ export type EditorLanguage =
 	| "graphql"
 	| "text";
 
-const languageExtensions = {
-	json: json(),
-	javascript: javascript(),
-	xml: xml(),
-	yaml: yaml(),
-	markdown: markdown(),
-	graphql: [],
-	text: [],
-} satisfies Record<EditorLanguage, Extension>;
+interface CodeMirrorModules {
+	EditorState: typeof import("@codemirror/state").EditorState;
+	EditorView: typeof import("@codemirror/view").EditorView;
+	oneDark: typeof import("@codemirror/theme-one-dark").oneDark;
+	basicSetup: typeof import("codemirror").basicSetup;
+	languageExtensions: Record<EditorLanguage, Extension>;
+}
+
+// The CodeMirror stack (~400KB) is loaded lazily on first editor mount so the
+// app shell paints without it.
+let cmPromise: Promise<CodeMirrorModules> | null = null;
+
+function loadCodeMirror(): Promise<CodeMirrorModules> {
+	cmPromise ??= Promise.all([
+		import("@codemirror/lang-javascript"),
+		import("@codemirror/lang-json"),
+		import("@codemirror/lang-markdown"),
+		import("@codemirror/lang-xml"),
+		import("@codemirror/lang-yaml"),
+		import("@codemirror/state"),
+		import("@codemirror/theme-one-dark"),
+		import("@codemirror/view"),
+		import("codemirror"),
+	]).then(
+		([
+			{ javascript },
+			{ json },
+			{ markdown },
+			{ xml },
+			{ yaml },
+			{ EditorState },
+			{ oneDark },
+			{ EditorView },
+			{ basicSetup },
+		]) => ({
+			EditorState,
+			EditorView,
+			oneDark,
+			basicSetup,
+			languageExtensions: {
+				json: json(),
+				javascript: javascript(),
+				xml: xml(),
+				yaml: yaml(),
+				markdown: markdown(),
+				graphql: [],
+				text: [],
+			},
+		}),
+	);
+	return cmPromise;
+}
 
 export interface CodeMirrorEditorProps {
 	value?: string;
@@ -46,28 +81,36 @@ export function CodeMirrorEditor({
 	className,
 }: CodeMirrorEditorProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
-	const viewRef = useRef<EditorView | null>(null);
+	// SAFETY: viewRef holds the live EditorView instance created in the mount effect below.
+	const viewRef = useRef<import("@codemirror/view").EditorView | null>(null);
 
 	useEffect(() => {
-		if (!containerRef.current) return;
+		let disposed = false;
+		void loadCodeMirror().then((cm) => {
+			if (disposed || !containerRef.current) return;
 
-		const state = EditorState.create({
-			doc: value,
-			extensions: [
-				basicSetup,
-				languageExtensions[language],
-				readOnly ? EditorState.readOnly.of(true) : [],
-				theme === "dark" ? oneDark : [],
-				EditorView.updateListener.of((update) => {
-					if (update.docChanged) onChange?.(update.state.doc.toString());
-				}),
-			],
+			const state = cm.EditorState.create({
+				doc: value,
+				extensions: [
+					cm.basicSetup,
+					cm.languageExtensions[language],
+					readOnly ? cm.EditorState.readOnly.of(true) : [],
+					theme === "dark" ? cm.oneDark : [],
+					cm.EditorView.updateListener.of((update) => {
+						if (update.docChanged) onChange?.(update.state.doc.toString());
+					}),
+				],
+			});
+			const view = new cm.EditorView({
+				state,
+				parent: containerRef.current,
+			});
+			viewRef.current = view;
 		});
-		const view = new EditorView({ state, parent: containerRef.current });
-		viewRef.current = view;
 
 		return () => {
-			view.destroy();
+			disposed = true;
+			viewRef.current?.destroy();
 			viewRef.current = null;
 		};
 		// Intentionally ignore `value` and `onChange`: the editor is built once.

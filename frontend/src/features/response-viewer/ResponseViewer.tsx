@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { JsonTree } from "../../components/JsonTree";
 import { StatusPill } from "../../components/status";
 import { Button } from "../../components/ui/button";
 import { CodeMirrorEditor } from "../../editors";
 import { formatBytes, handleTabArrowKeys, tabClass } from "../../lib/ui";
-import { type JSONPathMatch, queryJSONPath } from "../../lib/jsonpath";
+import { type JSONPathMatch, type JSONPathResult, queryJSONPath } from "../../lib/jsonpath";
 import { isRecord, type JsonValue } from "../../lib/typeGuards";
 import {
 	binaryPreviewType,
@@ -22,7 +22,8 @@ import {
 	suggestedFilename,
 } from "../../lib/response";
 import { notifyError } from "../../lib/notify";
-import { useRequestStore, useWorkspaceStore } from "../../stores";
+import { useRequestStore } from "../../stores/useRequestStore";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 
 type View = "raw" | "pretty" | "headers" | "tree" | "cookies" | "table";
 
@@ -34,6 +35,313 @@ const views: { id: View; label: string }[] = [
 	{ id: "cookies", label: "Cookies" },
 	{ id: "table", label: "Table" },
 ];
+
+type ResponseData = NonNullable<
+	ReturnType<typeof useRequestStore.getState>["responses"][string]
+>["response"];
+
+/** Parses a JSON response body. Module-level because React Compiler cannot
+ * handle try/catch. */
+function parseJsonBody(body: string): JsonValue | null {
+	try {
+		// SAFETY: JSON response body parsed at I/O boundary; validated as JsonValue via isRecord/Array checks in viewers
+		return JSON.parse(body) as JsonValue;
+	} catch {
+		return null;
+	}
+}
+
+function cookieText(c: {
+	name: string;
+	value: string;
+	domain?: string | null;
+	path?: string | null;
+	secure?: boolean;
+	httpOnly?: boolean;
+}): string {
+	return `${c.name}=${c.value}; ${[
+		c.domain ? `Domain=${c.domain}` : "",
+		c.path ? `Path=${c.path}` : "",
+		c.secure ? "Secure" : "",
+		c.httpOnly ? "HttpOnly" : "",
+	]
+		.filter(Boolean)
+		.join("; ")}`;
+}
+
+function ResponseMeta({
+	response,
+	cancelled,
+	ct,
+}: {
+	response: ResponseData;
+	cancelled: boolean;
+	ct: string;
+}) {
+	if (cancelled) {
+		return (
+			<p className="font-data text-xs text-muted-foreground">Request cancelled</p>
+		);
+	}
+	if (!response) return null;
+	return (
+		<p className="flex min-w-0 items-center gap-2 font-data text-xs tabular-nums text-muted-foreground">
+			<StatusPill status={response.statusCode} />
+			<span className="truncate">
+				{response.proto ? `${response.proto} · ` : ""}
+				{response.statusText}
+			</span>
+			<span aria-hidden>·</span>
+			<span>{response.durationMs}ms</span>
+			{(response.attempts ?? 1) > 1 ? (
+				<>
+					<span aria-hidden>·</span>
+					<span title="Sends including automatic retries">
+						{response.attempts} attempts
+					</span>
+				</>
+			) : null}
+			<span aria-hidden>·</span>
+			<span>{formatBytes(response.size)}</span>
+			{ct ? (
+				<>
+					<span aria-hidden>·</span>
+					<span className="truncate">{ct.split(";")[0]}</span>
+				</>
+			) : null}
+		</p>
+	);
+}
+
+function BinaryPreviewBlock({
+	response,
+	binaryType,
+	imageDataUrl,
+	hexPreview,
+}: {
+	response: ResponseData;
+	binaryType: string;
+	imageDataUrl: string;
+	hexPreview: string;
+}) {
+	if (!response || binaryType === "none") return null;
+	return (
+		<div className="mx-2 mb-1 shrink-0 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs">
+			{binaryType === "image" ? (
+				<div className="flex flex-col gap-1">
+					<p className="text-muted-foreground">Image preview</p>
+					<img src={imageDataUrl} alt="response" className="max-h-64 rounded" />
+				</div>
+			) : binaryType === "pdf" ? (
+				<p className="text-muted-foreground">PDF response — use Download.</p>
+			) : (
+				<div className="flex flex-col gap-1">
+					<p className="text-muted-foreground">
+						Binary ({formatBytes(response.size)}) — first 4KB + Download.
+					</p>
+					<pre className="max-h-40 overflow-auto whitespace-pre rounded bg-background p-2 font-mono text-[11px] leading-snug text-muted-foreground">
+						{hexPreview}
+					</pre>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function ViewerToolbar({
+	view,
+	setView,
+	tabular,
+	query,
+	setQuery,
+	searchCount,
+}: {
+	view: View;
+	setView: (v: View) => void;
+	tabular: boolean;
+	query: string;
+	setQuery: (q: string) => void;
+	searchCount: number | null;
+}) {
+	return (
+		<div
+			className="flex shrink-0 items-center gap-1 px-2 pb-1"
+			role="tablist"
+			aria-label="Response views"
+			onKeyDown={(e) => handleTabArrowKeys(e)}
+		>
+			{views.map((v) => (
+				<button
+					key={v.id}
+					type="button"
+					role="tab"
+					aria-selected={view === v.id}
+					tabIndex={view === v.id ? 0 : -1}
+					onClick={() => setView(v.id)}
+					disabled={v.id === "table" && !tabular}
+					title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
+					className={`${tabClass(view === v.id)} ${v.id === "table" && !tabular ? "opacity-50" : ""}`}
+				>
+					{v.label}
+				</button>
+			))}
+			<input
+				value={query}
+				onChange={(e) => setQuery(e.target.value)}
+				placeholder="Search response…"
+				aria-label="Search response"
+				className="ml-auto w-44 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
+			/>
+			{searchCount !== null && searchCount > 0 ? (
+				<span className="shrink-0 font-data text-xs tabular-nums text-muted-foreground">
+					{searchCount} matches
+				</span>
+			) : null}
+		</div>
+	);
+}
+
+function TableView({ tableData }: { tableData: NonNullable<ReturnType<typeof parseTable>> }) {
+	return (
+		<div className="flex h-full min-h-0 flex-col">
+			<div className="min-h-0 flex-1 overflow-auto rounded-md border border-border bg-background">
+				<table className="w-full border-separate border-spacing-0 text-left text-xs">
+					<thead>
+						<tr>
+							{tableData.columns.map((c) => (
+								<th
+									key={c}
+									className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1 font-medium"
+								>
+									{c}
+								</th>
+							))}
+						</tr>
+					</thead>
+					<tbody>
+						{tableData.rows.map((row) => (
+							<tr key={row.join("¦")}>
+								{row.map((cell, j) => (
+									<td
+										key={`${cell}:${j}`}
+										className="break-all border-b border-border/50 px-2 py-1 font-mono"
+									>
+										{cell}
+									</td>
+								))}
+							</tr>
+						))}
+					</tbody>
+				</table>
+				{tableData.rows.length >= 1000 ? <p className="p-2 text-xs text-muted-foreground">Showing first 1000 rows.</p> : null}
+			</div>
+		</div>
+	);
+}
+
+function CookiesView({
+	cookies,
+	filteredCookies,
+}: {
+	cookies: ReturnType<typeof parseSetCookies>;
+	filteredCookies: ReturnType<typeof parseSetCookies>;
+}) {
+	return (
+		<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
+			{filteredCookies.length === 0 ? (
+				<div className="flex h-full flex-col items-start justify-center gap-2 px-4">
+					<p className="text-sm font-medium text-foreground">
+						{cookies.length === 0
+							? "No cookies set by this response."
+							: "No cookies match your search."}
+					</p>
+					{cookies.length === 0 ? (
+						<p className="max-w-sm text-xs text-muted-foreground">
+							Servers set cookies via{" "}
+							<code className="font-mono">Set-Cookie</code> response
+							headers. Send a request to an endpoint that sets a cookie to
+							see it here — persistence is a separate roadmap item.
+						</p>
+					) : null}
+				</div>
+			) : (
+				<table className="w-full text-left text-xs">
+					<tbody>
+						{filteredCookies.map((c) => (
+							<tr
+								key={`${c.name}-${c.value}-${c.domain ?? ""}-${c.path ?? ""}`}
+								className="border-b border-border/50 last:border-0"
+							>
+								<td className="py-1 pr-3 align-top font-mono text-foreground">
+									{c.name}
+								</td>
+								<td className="py-1 pr-3 font-mono text-muted-foreground break-all">
+									{c.value}
+								</td>
+								<td className="py-1 pr-3 align-top text-muted-foreground">
+									{c.domain ?? "—"}
+								</td>
+								<td className="py-1 pr-3 align-top font-mono text-muted-foreground">
+									{c.path ?? "/"}
+								</td>
+								<td className="py-1 pr-3 align-top text-muted-foreground">
+									{cookieExpiry(c) ?? "Session"}
+								</td>
+								<td className="py-1 align-top whitespace-nowrap text-muted-foreground">
+									{[
+										c.secure ? "Secure" : "",
+										c.httpOnly ? "HttpOnly" : "",
+										c.sameSite ? `SameSite=${c.sameSite}` : "",
+									]
+										.filter(Boolean)
+										.join(" · ") || "—"}
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			)}
+		</div>
+	);
+}
+
+function HeadersView({
+	headers,
+	query,
+}: {
+	headers: ReturnType<typeof headerRows>;
+	query: string;
+}) {
+	return (
+		<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
+			{headers.length === 0 ? (
+				<p className="text-xs text-muted-foreground">
+					{query
+						? "No headers match your search."
+						: "No response headers."}
+				</p>
+			) : (
+				<table className="w-full text-left text-xs">
+					<tbody>
+						{headers.map((h) => (
+							<tr
+								key={`${h.key}-${h.value}`}
+								className="border-b border-border/50 last:border-0"
+							>
+								<td className="py-1 pr-3 align-top font-mono text-muted-foreground">
+									{h.key}
+								</td>
+								<td className="py-1 font-mono text-foreground break-all">
+									{h.value}
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			)}
+		</div>
+	);
+}
 
 export function ResponseViewer() {
 	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
@@ -50,61 +358,29 @@ export function ResponseViewer() {
 	const [copied, setCopied] = useState(false);
 
 	const ct = response ? contentType(response.headers) : "";
-	const pretty = useMemo(
-		() => (response ? prettyBody(response.body, ct) : ""),
-		[response, ct],
-	);
+	const pretty = response ? prettyBody(response.body, ct) : "";
 	const raw = response?.body ?? "";
-	const parsed = useMemo(() => {
-		if (!response) return null;
-		try {
-			// SAFETY: JSON response body parsed at I/O boundary; validated as JsonValue via isRecord/Array checks in viewers
-			return JSON.parse(response.body) as JsonValue;
-		} catch {
-			return null;
-		}
-	}, [response]);
+	const parsed = response ? parseJsonBody(response.body) : null;
 	const bodyView = view === "pretty" ? pretty : view === "raw" ? raw : "";
 	const treeFallback = view === "tree" && parsed === null && response != null;
 	const headers = response ? headerRows(response.headers) : [];
 
 	const filename = response ? suggestedFilename(response.headers, ct) : "";
 	const headersText = headers.map((h) => `${h.key}: ${h.value}`).join("\n");
-	const cookies = useMemo(
-		() => (response ? parseSetCookies(response.headers) : []),
-		[response],
-	);
-	const cookiesText = cookies
-		.map(
-			(c) =>
-				`${c.name}=${c.value}; ${[
-					c.domain ? `Domain=${c.domain}` : "",
-					c.path ? `Path=${c.path}` : "",
-					c.secure ? "Secure" : "",
-					c.httpOnly ? "HttpOnly" : "",
-				]
-					.filter(Boolean)
-					.join("; ")}`,
-		)
-		.join("\n");
-	const tabular = useMemo(() => (response ? isTabular(response.body, ct) : false), [response, ct]);
-	const tableData = useMemo(() => (response && view === "table" ? parseTable(response.body, ct) : null), [response, view, ct]);
-	const binaryType = useMemo(() => binaryPreviewType(ct), [ct]);
-	const jsonPathResult = useMemo(() => {
-		if (!parsed || !jsonPath.trim()) return null;
-		return queryJSONPath(parsed, jsonPath);
-	}, [parsed, jsonPath]);
-	const hexPreview = useMemo(
-		() => (response && binaryType === "hex" ? hexDump(raw) : ""),
-		[response, binaryType, raw],
-	);
-	const imageDataUrl = useMemo(
-		() =>
-			response && binaryType === "image" && raw
-				? `data:${ct.split(";")[0] || "application/octet-stream"};base64,${bytesToBase64(raw)}`
-				: "",
-		[response, binaryType, raw, ct],
-	);
+	const cookies = response ? parseSetCookies(response.headers) : [];
+	const cookiesText = cookies.map(cookieText).join("\n");
+	const tabular = response ? isTabular(response.body, ct) : false;
+	const tableData =
+		response && view === "table" ? parseTable(response.body, ct) : null;
+	const binaryType = binaryPreviewType(ct);
+	const jsonPathResult: JSONPathResult | null =
+		parsed && jsonPath.trim() ? queryJSONPath(parsed, jsonPath) : null;
+	const hexPreview =
+		response && binaryType === "hex" ? hexDump(raw) : "";
+	const imageDataUrl =
+		response && binaryType === "image" && raw
+			? `data:${ct.split(";")[0] || "application/octet-stream"};base64,${bytesToBase64(raw)}`
+			: "";
 
 	const body = loading
 		? "// Sending request…"
@@ -116,7 +392,7 @@ export function ResponseViewer() {
 					? bodyView
 					: "// Send a request to see the response";
 
-	const searchResult = useMemo(() => searchBody(bodyView, query), [bodyView, query]);
+	const searchResult = searchBody(bodyView, query);
 	const filteredHeaders =
 		view === "headers" && query.trim()
 			? headers.filter(
@@ -141,94 +417,25 @@ export function ResponseViewer() {
 				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
 					Response
 				</p>
-				{cancelled ? (
-					<p className="font-data text-xs text-muted-foreground">Request cancelled</p>
-				) : response ? (
-					<p className="flex min-w-0 items-center gap-2 font-data text-xs tabular-nums text-muted-foreground">
-						<StatusPill status={response.statusCode} />
-						<span className="truncate">
-							{response.proto ? `${response.proto} · ` : ""}
-							{response.statusText}
-						</span>
-						<span aria-hidden>·</span>
-						<span>{response.durationMs}ms</span>
-						{(response.attempts ?? 1) > 1 ? (
-							<>
-								<span aria-hidden>·</span>
-								<span title="Sends including automatic retries">
-									{response.attempts} attempts
-								</span>
-							</>
-						) : null}
-						<span aria-hidden>·</span>
-						<span>{formatBytes(response.size)}</span>
-						{ct ? (
-							<>
-								<span aria-hidden>·</span>
-								<span className="truncate">{ct.split(";")[0]}</span>
-							</>
-						) : null}
-					</p>
-				) : null}
+				<ResponseMeta response={response} cancelled={cancelled} ct={ct} />
 			</div>
 
-			{response && binaryType !== "none" ? (
-				<div className="mx-2 mb-1 shrink-0 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs">
-					{binaryType === "image" ? (
-						<div className="flex flex-col gap-1">
-							<p className="text-muted-foreground">Image preview</p>
-							<img src={imageDataUrl} alt="response" className="max-h-64 rounded" />
-						</div>
-					) : binaryType === "pdf" ? (
-						<p className="text-muted-foreground">PDF response — use Download.</p>
-					) : (
-						<div className="flex flex-col gap-1">
-							<p className="text-muted-foreground">
-								Binary ({formatBytes(response.size)}) — first 4KB + Download.
-							</p>
-							<pre className="max-h-40 overflow-auto whitespace-pre rounded bg-background p-2 font-mono text-[11px] leading-snug text-muted-foreground">
-								{hexPreview}
-							</pre>
-						</div>
-					)}
-				</div>
-			) : null}
+			<BinaryPreviewBlock
+				response={response}
+				binaryType={binaryType}
+				imageDataUrl={imageDataUrl}
+				hexPreview={hexPreview}
+			/>
 
 			{response ? (
-				<div
-					className="flex shrink-0 items-center gap-1 px-2 pb-1"
-					role="tablist"
-					aria-label="Response views"
-					onKeyDown={(e) => handleTabArrowKeys(e)}
-				>
-					{views.map((v) => (
-						<button
-							key={v.id}
-							type="button"
-							role="tab"
-							aria-selected={view === v.id}
-							tabIndex={view === v.id ? 0 : -1}
-							onClick={() => setView(v.id)}
-							disabled={v.id === "table" && !tabular}
-							title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
-							className={`${tabClass(view === v.id)} ${v.id === "table" && !tabular ? "opacity-50" : ""}`}
-						>
-							{v.label}
-						</button>
-					))}
-					<input
-						value={query}
-						onChange={(e) => setQuery(e.target.value)}
-						placeholder="Search response…"
-						aria-label="Search response"
-						className="ml-auto w-44 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
-					/>
-					{searchResult && searchResult.count > 0 ? (
-						<span className="shrink-0 font-data text-xs tabular-nums text-muted-foreground">
-							{searchResult.count} matches
-						</span>
-					) : null}
-				</div>
+				<ViewerToolbar
+					view={view}
+					setView={setView}
+					tabular={tabular}
+					query={query}
+					setQuery={setQuery}
+					searchCount={searchResult?.count ?? null}
+				/>
 			) : null}
 
 			{response ? (
@@ -337,8 +544,9 @@ export function ResponseViewer() {
 					>
 						<span className="sr-only">Sending request…</span>
 						{[100, 92, 96, 78, 88].map((w, i) => (
+							// SAFETY: static skeleton widths — positional identity is the point
 							<div
-								key={i}
+								key={w}
 								className="h-3 animate-pulse rounded bg-muted"
 								style={{ width: `${w}%`, animationDelay: `${i * 120}ms` }}
 							/>
@@ -368,129 +576,17 @@ export function ResponseViewer() {
 						/>
 					</div>
 				) : view === "table" ? (
-					<div className="flex h-full min-h-0 flex-col">
-						{!tabular ? (
-							<p className="text-xs text-muted-foreground">Not tabular — need JSON array or CSV.</p>
-						) : !tableData || tableData.columns.length === 0 ? (
-							<p className="text-xs text-muted-foreground">No tabular data.</p>
-						) : (
-							<div className="min-h-0 flex-1 overflow-auto rounded-md border border-border bg-background">
-								<table className="w-full border-separate border-spacing-0 text-left text-xs">
-									<thead>
-										<tr>
-											{tableData.columns.map((c) => (
-												<th
-													key={c}
-													className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1 font-medium"
-												>
-													{c}
-												</th>
-											))}
-										</tr>
-									</thead>
-									<tbody>
-										{tableData.rows.map((row, i) => (
-											<tr key={i}>
-												{row.map((cell, j) => (
-													<td
-														key={j}
-														className="break-all border-b border-border/50 px-2 py-1 font-mono"
-													>
-														{cell}
-													</td>
-												))}
-											</tr>
-										))}
-									</tbody>
-								</table>
-								{tableData.rows.length >= 1000 ? <p className="p-2 text-xs text-muted-foreground">Showing first 1000 rows.</p> : null}
-							</div>
-						)}
-					</div>
+					!tabular ? (
+						<p className="text-xs text-muted-foreground">Not tabular — need JSON array or CSV.</p>
+					) : !tableData || tableData.columns.length === 0 ? (
+						<p className="text-xs text-muted-foreground">No tabular data.</p>
+					) : (
+						<TableView tableData={tableData} />
+					)
 				) : view === "cookies" ? (
-					<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
-						{filteredCookies.length === 0 ? (
-							<div className="flex h-full flex-col items-start justify-center gap-2 px-4">
-								<p className="text-sm font-medium text-foreground">
-									{cookies.length === 0
-										? "No cookies set by this response."
-										: "No cookies match your search."}
-								</p>
-								{cookies.length === 0 ? (
-									<p className="max-w-sm text-xs text-muted-foreground">
-										Servers set cookies via{" "}
-										<code className="font-mono">Set-Cookie</code> response
-										headers. Send a request to an endpoint that sets a cookie to
-										see it here — persistence is a separate roadmap item.
-									</p>
-								) : null}
-							</div>
-						) : (
-							<table className="w-full text-left text-xs">
-								<tbody>
-									{filteredCookies.map((c) => (
-										<tr
-											key={`${c.name}-${c.value}-${c.domain ?? ""}`}
-											className="border-b border-border/50 last:border-0"
-										>
-											<td className="py-1 pr-3 align-top font-mono text-foreground">
-												{c.name}
-											</td>
-											<td className="py-1 pr-3 font-mono text-muted-foreground break-all">
-												{c.value}
-											</td>
-											<td className="py-1 pr-3 align-top text-muted-foreground">
-												{c.domain ?? "—"}
-											</td>
-											<td className="py-1 pr-3 align-top font-mono text-muted-foreground">
-												{c.path ?? "/"}
-											</td>
-											<td className="py-1 pr-3 align-top text-muted-foreground">
-												{cookieExpiry(c) ?? "Session"}
-											</td>
-											<td className="py-1 align-top whitespace-nowrap text-muted-foreground">
-												{[
-													c.secure ? "Secure" : "",
-													c.httpOnly ? "HttpOnly" : "",
-													c.sameSite ? `SameSite=${c.sameSite}` : "",
-												]
-													.filter(Boolean)
-													.join(" · ") || "—"}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
-						)}
-					</div>
+					<CookiesView cookies={cookies} filteredCookies={filteredCookies} />
 				) : view === "headers" ? (
-					<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
-						{filteredHeaders.length === 0 ? (
-							<p className="text-xs text-muted-foreground">
-								{query
-									? "No headers match your search."
-									: "No response headers."}
-							</p>
-						) : (
-							<table className="w-full text-left text-xs">
-								<tbody>
-									{filteredHeaders.map((h) => (
-										<tr
-											key={`${h.key}-${h.value}`}
-											className="border-b border-border/50 last:border-0"
-										>
-											<td className="py-1 pr-3 align-top font-mono text-muted-foreground">
-												{h.key}
-											</td>
-											<td className="py-1 font-mono text-foreground break-all">
-												{h.value}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
-						)}
-					</div>
+					<HeadersView headers={filteredHeaders} query={query} />
 				) : response ? (
 					<CodeMirrorEditor
 						value={body}
@@ -524,15 +620,12 @@ export function ResponseViewer() {
 }
 
 function JsonPathMatchRow({ match }: { match: JSONPathMatch }) {
-	const text = useMemo(
-		() =>
-			match.value === null
-				? "null"
-				: isRecord(match.value) || Array.isArray(match.value)
-					? JSON.stringify(match.value, null, 2)
-					: String(match.value),
-		[match.value],
-	);
+	const text =
+		match.value === null
+			? "null"
+			: isRecord(match.value) || Array.isArray(match.value)
+				? JSON.stringify(match.value, null, 2)
+				: String(match.value);
 	return (
 		<div className="flex flex-col gap-0.5 rounded-md border border-border/50 bg-background px-2 py-1">
 			<p className="font-mono text-xs text-muted-foreground">{match.path}</p>

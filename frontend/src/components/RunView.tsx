@@ -276,6 +276,9 @@ export function RunView() {
 					<div>
 						{steps.map((step, i) => (
 							<StepRow
+								// The same request may legitimately run more than once in a
+								// single collection run — position is the step's identity.
+								// react-doctor-disable-next-line react-doctor/no-array-index-as-key
 								key={`${step.requestPath}-${i}`}
 								step={step}
 								onOpenRequest={(p) => void openRequest(p)}

@@ -1,7 +1,7 @@
 import { EnvToolsPanel } from "../env-tools/EnvToolsPanel";
 import { useEffect, useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { Button } from "../../components";
+import { Button } from "../../components/ui/button";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,15 +12,32 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
-import { useWorkspaceStore } from "../../stores";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { notifySuccess } from "../../lib/notify";
 import { inputClass } from "../../lib/ui";
+import type { EnvAdapter } from "../../lib/env";
 import { EnvironmentEditor } from "./EnvironmentEditor";
 import { SecretsEditor } from "./SecretsEditor";
 
 interface CreateEnvForm {
 	name: string;
 	description: string;
+}
+
+/** Deletes an environment. Kept at module level (outside the compiled
+ * component) because React Compiler cannot handle try/catch. */
+async function deleteEnvironment(
+	envAdapter: EnvAdapter,
+	refresh: () => Promise<void>,
+	name: string,
+): Promise<string | null> {
+	try {
+		await envAdapter.delete(name);
+		await refresh();
+		return null;
+	} catch (err) {
+		return err instanceof Error ? err.message : String(err);
+	}
 }
 
 /**
@@ -81,15 +98,17 @@ export function EnvironmentsView() {
 
 	const onDelete = async (name: string) => {
 		setSetActiveError(null);
-		try {
-			await envAdapter.delete(name);
-			if (editingName === name) setEditingName(null);
-			await refreshEnvironments();
-		} catch (err) {
-			setSetActiveError(err instanceof Error ? err.message : String(err));
-		} finally {
-			setDeletingName(null);
+		const deleteError = await deleteEnvironment(
+			envAdapter,
+			refreshEnvironments,
+			name,
+		);
+		if (deleteError !== null) {
+			setSetActiveError(deleteError);
+		} else if (editingName === name) {
+			setEditingName(null);
 		}
+		setDeletingName(null);
 	};
 
 	return (

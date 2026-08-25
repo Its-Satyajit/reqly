@@ -1,12 +1,35 @@
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "../../components";
-import type { Environment } from "../../stores";
-import { useWorkspaceStore } from "../../stores";
+import { useEffect, useState } from "react";
+import { Button } from "../../components/ui/button";
+import type { Environment } from "../../stores/useWorkspaceStore";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
+import type { EnvAdapter } from "../../lib/env";
 import { inputClass } from "../../lib/ui";
 
 interface VariableRow {
 	key: string;
 	value: string;
+}
+
+/** Persists the editor draft. Kept at module level (outside the compiled
+ * component) because React Compiler cannot handle try/catch. */
+async function persistEnvironment(
+	envAdapter: EnvAdapter,
+	refresh: () => Promise<void>,
+	setSaving: (saving: boolean) => void,
+	name: string,
+	description: string,
+	variables: Record<string, string>,
+): Promise<string | null> {
+	setSaving(true);
+	try {
+		await envAdapter.update(name, description, variables);
+		await refresh();
+		return null;
+	} catch (err) {
+		return err instanceof Error ? err.message : String(err);
+	} finally {
+		setSaving(false);
+	}
 }
 
 /**
@@ -34,7 +57,7 @@ export function EnvironmentEditor({
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const dirty = useMemo(() => {
+	const dirty = (() => {
 		if (description !== env.description) return true;
 		const current = new Map(Object.entries(env.variables));
 		if (rows.length !== current.size) return true;
@@ -43,14 +66,14 @@ export function EnvironmentEditor({
 			current.delete(row.key);
 		}
 		return current.size > 0;
-	}, [description, rows, env]);
+	})();
 
 	useEffect(() => {
 		setEditorDirty(`vars:${env.name}`, dirty);
 		return () => setEditorDirty(`vars:${env.name}`, false);
 	}, [dirty, env.name, setEditorDirty]);
 
-	const duplicateKey = useMemo(() => {
+	const duplicateKey = (() => {
 		const seen = new Map<string, number>();
 		for (const row of rows) {
 			const key = row.key.trim();
@@ -60,12 +83,12 @@ export function EnvironmentEditor({
 			if (seen.get(key) === 2) return key;
 		}
 		return null;
-	}, [rows]);
+	})();
 
 	// Matches the CLI's secret-exposure heuristic (key/token/secret/password/
 	// credential): variables whose names look like secrets are a warning, not a
 	// hard error — the user may intend them as secrets or plain variables.
-	const secretLikeWarnings = useMemo(() => {
+	const secretLikeWarnings = (() => {
 		const pattern = /(key|token|secret|password|credential)/i;
 		const seen = new Set<string>();
 		const warnings: string[] = [];
@@ -76,7 +99,7 @@ export function EnvironmentEditor({
 			if (pattern.test(key)) warnings.push(key);
 		}
 		return warnings;
-	}, [rows]);
+	})();
 
 	const setRow = (index: number, patch: Partial<VariableRow>) =>
 		setRows((rs) => rs.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -91,17 +114,20 @@ export function EnvironmentEditor({
 		for (const row of rows) {
 			if (row.key.trim()) variables[row.key.trim()] = row.value;
 		}
-		setSaving(true);
-		try {
-			await envAdapter.update(env.name, description.trim(), variables);
-			await refreshEnvironments();
-			setEditorDirty(`vars:${env.name}`, false);
-			onCancel();
-		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
-		} finally {
-			setSaving(false);
+		const saveError = await persistEnvironment(
+			envAdapter,
+			refreshEnvironments,
+			setSaving,
+			env.name,
+			description.trim(),
+			variables,
+		);
+		if (saveError !== null) {
+			setError(saveError);
+			return;
 		}
+		setEditorDirty(`vars:${env.name}`, false);
+		onCancel();
 	};
 
 	return (
@@ -143,6 +169,9 @@ export function EnvironmentEditor({
 				)}
 				<div className="flex flex-col gap-1.5">
 					{rows.map((row, i) => (
+						// Rows are anonymous key/value drafts (often blank) with no stable
+						// identity — positional keys are the only correct choice.
+						// react-doctor-disable-next-line react-doctor/no-array-index-as-key
 						<div key={i} className="flex items-center gap-1.5">
 							<input
 								value={row.key}

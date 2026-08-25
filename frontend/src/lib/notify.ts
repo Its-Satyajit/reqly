@@ -1,4 +1,4 @@
-import { toast } from "#components/ui/toast";
+import { toast } from "../components/ui/toastManager";
 
 export function notifySuccess(title: string, description?: string): void {
 	toast.add({ title, description, type: "success" });

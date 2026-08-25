@@ -3,9 +3,8 @@ import { Toast as ToastPrimitive } from "@base-ui/react/toast"
 
 import { cn } from "#lib/utils"
 import { Button } from "#components/ui/button"
+import { toast } from "./toastManager"
 import { XIcon, CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
-
-const toast = ToastPrimitive.createToastManager()
 
 function ToastProvider({ ...props }: ToastPrimitive.Provider.Props) {
   return <ToastPrimitive.Provider {...props} />
@@ -93,13 +92,13 @@ function ToastDescription({
 
 function ToastAction({
   className,
-  render = <Button variant="outline" size="sm" />,
+  render,
   ...props
 }: ToastPrimitive.Action.Props) {
   return (
     <ToastPrimitive.Action
       data-slot="toast-action"
-      render={render}
+      render={render ?? <Button variant="outline" size="sm" />}
       className={cn("shrink-0", className)}
       {...props}
     />
@@ -109,14 +108,14 @@ function ToastAction({
 function ToastClose({
   className,
   children,
-  render = <Button variant="ghost" size="icon-sm" />,
+  render,
   ...props
 }: ToastPrimitive.Close.Props) {
   return (
     <ToastPrimitive.Close
       data-slot="toast-close"
       aria-label="Close toast"
-      render={render}
+      render={render ?? <Button variant="ghost" size="icon-sm" />}
       className={cn(
         "relative shrink-0 text-muted-foreground after:absolute after:-inset-2 after:content-[''] hover:text-foreground",
         className
@@ -212,7 +211,6 @@ function Toaster({
   )
 }
 
-const createToastManager = ToastPrimitive.createToastManager
 const useToastManager = ToastPrimitive.useToastManager
 
 export {
@@ -226,7 +224,5 @@ export {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-  createToastManager,
-  toast,
   useToastManager,
 }
