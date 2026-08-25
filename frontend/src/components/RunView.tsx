@@ -21,17 +21,19 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 	return (
 		<div className="border-b border-border last:border-b-0">
 			<div className="flex w-full items-center gap-2 px-3 py-1.5 text-xs">
-				<button
+				<Button
 					type="button"
+					variant="ghost"
+					size="icon-xs"
 					onClick={() => setExpanded((v) => !v)}
-					className="shrink-0 text-muted-foreground/50 hover:text-foreground"
+					className="-m-1 shrink-0 text-muted-foreground/50"
 					title="Toggle details"
 				>
 					<ChevronRight
 						className={cn("size-3 transition-transform", expanded && "rotate-90")}
 						aria-hidden
 					/>
-				</button>
+				</Button>
 				<button
 					type="button"
 					onClick={() => onOpenRequest(step.requestPath)}
@@ -221,14 +223,14 @@ export function RunView() {
 								JSON
 							</Button>
 						)}
-						<button
-							type="button"
+						<Button
+							variant="outline"
+							size="xs"
 							onClick={() => void cancelRun()}
 							disabled={!running}
-							className="rounded-md border border-border px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							Cancel
-						</button>
+						</Button>
 					</div>
 				</div>
 				{exportError && (
@@ -239,15 +241,16 @@ export function RunView() {
 							Runs execute the saved request files from disk — unsaved changes in request tabs are
 							not included.
 						</span>
-						<button
-							type="button"
+						<Button
+							variant="ghost"
+							size="icon-xs"
 							onClick={() => setDismissed(true)}
-							className="shrink-0 text-muted-foreground/60 hover:text-foreground"
+							className="shrink-0 text-muted-foreground/60"
 							title="Dismiss"
 							aria-label="Dismiss report summary"
 						>
 							<X className="size-3.5" aria-hidden />
-						</button>
+						</Button>
 					</div>
 				)}
 			</div>

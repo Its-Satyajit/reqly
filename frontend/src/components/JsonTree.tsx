@@ -49,6 +49,7 @@ function JsonNode({ data, name, depth = 0, filter }: JsonTreeProps) {
       <button
         type="button"
         aria-expanded={open}
+        aria-label={name ? `Toggle ${name}` : 'Toggle node'}
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1 rounded px-1 py-0.5 text-xs hover:bg-muted"
       >

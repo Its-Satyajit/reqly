@@ -81,7 +81,7 @@ export function DocsView() {
 						))}
 					</ul>
 				) : (
-					<p className="text-xs text-muted-foreground">No collections yet.</p>
+					<p className="py-8 text-center text-sm text-muted-foreground">No collections yet.</p>
 				)}
 			</div>
 

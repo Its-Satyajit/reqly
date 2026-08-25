@@ -4,7 +4,7 @@ import { Check, Copy, Plus, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { cn } from "../../lib/utils";
 import { notifySuccess } from "../../lib/notify";
-import { inputClass } from "../../lib/ui";
+import { idleRow, inputClass, selectedRow } from "../../lib/ui";
 import { DYNAMIC_TAGS } from "../../lib/tags";
 import type { EnvAdapter } from "../../lib/env";
 import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
@@ -252,9 +252,7 @@ export function EnvironmentsView() {
 								onClick={() => setSelectedName(env.name)}
 								className={cn(
 									"flex flex-col gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors",
-									selected?.name === env.name
-										? "border-primary/50 bg-primary/5"
-										: "border-transparent hover:bg-accent",
+									selected?.name === env.name ? selectedRow : idleRow,
 								)}
 							>
 								<span className="flex items-center gap-1.5">
@@ -300,7 +298,7 @@ export function EnvironmentsView() {
 				{selected ? (
 					<>
 						<div className="flex flex-wrap items-center gap-2">
-							<h2 className="text-lg font-semibold text-foreground">{selected.name}</h2>
+							<h2 className="text-lg font-medium text-foreground">{selected.name}</h2>
 							{isActive ? (
 								<span className="rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-2xs text-status-ok">
 									ok
@@ -333,9 +331,9 @@ export function EnvironmentsView() {
 							</div>
 						</div>
 
-						{actionError ? <p className="text-xs text-status-error">{actionError}</p> : null}
+						{actionError ? <p className="text-xs text-destructive">{actionError}</p> : null}
 						{environmentsError ? (
-							<p className="text-xs text-status-error">{environmentsError}</p>
+							<p className="text-xs text-destructive">{environmentsError}</p>
 						) : null}
 
 						<div className="flex shrink-0 items-center gap-1" role="tablist" aria-label="Environment tabs">

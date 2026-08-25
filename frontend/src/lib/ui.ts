@@ -20,6 +20,10 @@ export function formatBytes(size: number): string {
 	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Shared selected-row treatment for list/table rows across views. */
+export const selectedRow = "border-primary/50 bg-primary/5";
+export const idleRow = "border-transparent hover:bg-accent";
+
 /** Arrow-key navigation for a roving-focus tablist (G-4.3.3): ArrowLeft/
  * ArrowRight move focus and activate the neighbouring tab, Home/End jump to
  * the first/last. Attach to the element carrying role="tablist". */

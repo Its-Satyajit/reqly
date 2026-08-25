@@ -88,7 +88,7 @@ function ImportCard({ onImported }: { onImported?: () => void }) {
 
 	return (
 		<div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-			<h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+			<h2 className="flex items-center gap-2 text-lg font-medium text-foreground">
 				<FileUp className="size-4" aria-hidden />
 				Import
 			</h2>

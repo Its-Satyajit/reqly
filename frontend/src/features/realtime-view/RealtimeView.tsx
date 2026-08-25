@@ -20,7 +20,7 @@ export function RealtimeView() {
 
 	return (
 		<ViewShell label="Realtime" className="overflow-y-auto">
-			<h2 className="text-sm font-semibold">Realtime</h2>
+			<h2 className="text-lg font-medium">Realtime</h2>
 			<div className="grid max-w-xl grid-cols-2 gap-3">
 				<button
 					type="button"
