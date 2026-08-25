@@ -413,7 +413,7 @@ request:
 	draft.Query = []request.Parameter{{Key: "q", Value: "1"}}
 	draft.Body = `{"x":1}`
 
-	version, err := svc.SaveRequest("users/edit-me", draft, opened.Version)
+	version, err := svc.SaveRequest("users/edit-me", RequestSave{Draft: draft, PreRequest: `console.log("pre")`, PostRequest: `reqly.test("ok", true)`}, opened.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,7 +455,7 @@ request:
 	if reloaded.FileEnv != "staging" {
 		t.Fatalf("environment not preserved: %q", reloaded.FileEnv)
 	}
-	// Request-file-level fields (name, variables, scripts) preserved on disk.
+	// Editable scripts round-tripped; file-level fields (name, variables) preserved on disk.
 	raw, err := os.ReadFile(filepath.Join(dir, path))
 	if err != nil {
 		t.Fatal(err)
@@ -487,7 +487,7 @@ func TestWorkspaceServiceSaveRequestRejectsChangedOnDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := svc.SaveRequest("users/list-users", opened.FileRequest, opened.Version); !errors.Is(err, ErrFileChangedOnDisk) {
+	if _, err := svc.SaveRequest("users/list-users", RequestSave{Draft: opened.FileRequest}, opened.Version); !errors.Is(err, ErrFileChangedOnDisk) {
 		t.Fatalf("expected ErrFileChangedOnDisk, got %v", err)
 	}
 	// The file must be untouched after a rejected save.
@@ -505,7 +505,7 @@ func TestWorkspaceServiceSaveRequestMissingFileErrors(t *testing.T) {
 	writeResolvableWorkspace(t, dir)
 
 	svc := NewWorkspaceService(dir)
-	if _, err := svc.SaveRequest("users/nope", request.Request{}, "v"); err == nil {
+	if _, err := svc.SaveRequest("users/nope", RequestSave{Draft: request.Request{}}, "v"); err == nil {
 		t.Fatal("expected error saving an unknown request")
 	}
 }
@@ -644,7 +644,7 @@ func TestWorkspaceServiceSaveRequestAuthSemantics(t *testing.T) {
 
 			draft := opened.FileRequest
 			draft.Auth = tc.draftAuth
-			if _, err := svc.SaveRequest("users/own-auth", draft, opened.Version); err != nil {
+			if _, err := svc.SaveRequest("users/own-auth", RequestSave{Draft: draft}, opened.Version); err != nil {
 				t.Fatal(err)
 			}
 

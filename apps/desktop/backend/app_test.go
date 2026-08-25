@@ -320,7 +320,7 @@ func TestWorkspaceSaveRequestBridgePersists(t *testing.T) {
 	draft.URL = "edited"
 	draft.Method = "PUT"
 
-	version, err := svc.WorkspaceSaveRequest("users/list-users", draft, opened.Version)
+	version, err := svc.WorkspaceSaveRequest("users/list-users", core.RequestSave{Draft: draft}, opened.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +370,7 @@ func TestWorkspaceSaveRequestBridgeChangedOnDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = svc.WorkspaceSaveRequest("users/list-users", opened.FileRequest, opened.Version)
+	_, err = svc.WorkspaceSaveRequest("users/list-users", core.RequestSave{Draft: opened.FileRequest}, opened.Version)
 	if err == nil || !strings.Contains(err.Error(), "changed on disk") {
 		t.Fatalf("err = %v, want changed-on-disk error", err)
 	}
@@ -382,7 +382,7 @@ func TestWorkspaceSaveRequestBridgeMissingPathErrors(t *testing.T) {
 	t.Chdir(dir)
 
 	svc := NewAppService()
-	if _, err := svc.WorkspaceSaveRequest("users/nope", request.Request{}, "v"); err == nil {
+	if _, err := svc.WorkspaceSaveRequest("users/nope", core.RequestSave{Draft: request.Request{}}, "v"); err == nil {
 		t.Fatal("expected error saving an unknown request")
 	}
 }

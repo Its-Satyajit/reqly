@@ -93,6 +93,10 @@ type OpenedRequest struct {
 	// or auth), and its builder fields (url/method/headers/query/body) plus its
 	// own auth are editable — everything else is preserved verbatim on save.
 	FileRequest request.Request `json:"fileRequest"`
+	// PreRequest/PostRequest are the file's sandbox scripts, editable in the
+	// builder's Scripts tab and persisted verbatim on save.
+	PreRequest  string `json:"preRequest"`
+	PostRequest string `json:"postRequest"`
 	// Version fingerprints the raw file bytes at open time. A save is only
 	// accepted when the on-disk bytes still match; otherwise the request
 	// changed under the editor and SaveRequest returns ErrFileChangedOnDisk.
@@ -183,21 +187,32 @@ func openedRequestDTO(path string, entry *collections.RequestEntry, resolved *co
 		Variables:   out,
 		FileEnv:     entry.File.Environment,
 		FileRequest: entry.File.Request,
+		PreRequest:  entry.File.PreRequest,
+		PostRequest: entry.File.PostRequest,
 		Version:     version,
 	}
 }
 
+// RequestSave is the editable payload for SaveRequest: the builder's request
+// draft plus the file's sandbox scripts (Scripts tab).
+type RequestSave struct {
+	Draft       request.Request `json:"draft"`
+	PreRequest  string          `json:"preRequest"`
+	PostRequest string          `json:"postRequest"`
+}
+
 // SaveRequest persists a request file's editable builder fields
-// (url/method/headers/query/body) and its own auth back to disk, preserving
+// (url/method/headers/query/body), its own auth, and its scripts back to
+// disk, preserving
 // the file's format (JSON for .json, YAML otherwise) and every non-editable
-// field (name, environment, variables, scripts, timeout) verbatim. An unset
+// field (name, environment, variables, timeout) verbatim. An unset
 // draft auth (Inherit) removes any existing auth block; `type: none` writes
 // the explicit block. expectedVersion must match the current on-disk
 // fingerprint, taken from OpenedRequest.Version; a mismatch returns
 // ErrFileChangedOnDisk without touching the file. The returned string is the
 // new fingerprint of the saved file, to be used as the tab's next baseline
 // version.
-func (s *WorkspaceService) SaveRequest(path string, draft request.Request, expectedVersion string) (string, error) {
+func (s *WorkspaceService) SaveRequest(path string, save RequestSave, expectedVersion string) (string, error) {
 	if s == nil {
 		return "", fmt.Errorf("no workspace found: open a reqly workspace to save requests")
 	}
@@ -222,7 +237,9 @@ func (s *WorkspaceService) SaveRequest(path string, draft request.Request, expec
 	}
 
 	file := *entry.File
-	file.Request = mergeDraftRequest(entry.File.Request, draft)
+	file.Request = mergeDraftRequest(entry.File.Request, save.Draft)
+	file.PreRequest = save.PreRequest
+	file.PostRequest = save.PostRequest
 	if err := requestfile.Save(entry.Path, &file); err != nil {
 		return "", fmt.Errorf("save request file %q: %w", entry.Path, err)
 	}

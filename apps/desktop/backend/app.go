@@ -373,11 +373,11 @@ var emitRunEvent = func(name string, data any) {
 // must match the file's on-disk fingerprint from OpenedRequest.Version; a
 // mismatch surfaces as a changed-on-disk conflict instead of clobbering the
 // external edit. The returned string is the new baseline version for the tab.
-func (s *AppService) WorkspaceSaveRequest(path string, draft request.Request, expectedVersion string) (string, error) {
+func (s *AppService) WorkspaceSaveRequest(path string, save core.RequestSave, expectedVersion string) (string, error) {
 	if s == nil || s.workspace == nil {
 		return "", fmt.Errorf("no workspace found: open a reqly workspace to save requests")
 	}
-	return s.workspace.SaveRequest(path, draft, expectedVersion)
+	return s.workspace.SaveRequest(path, save, expectedVersion)
 }
 
 // HistoryList returns masked history entries.
