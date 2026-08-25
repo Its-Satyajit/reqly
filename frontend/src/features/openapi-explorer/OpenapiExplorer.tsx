@@ -12,6 +12,7 @@ import {
 	type OpenapiEndpointView,
 } from "#lib/openapi";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 
 const METHOD_FILTERS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
@@ -247,16 +248,20 @@ export function OpenapiExplorer() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="OpenAPI explorer">
-			<section className="flex w-96 shrink-0 flex-col gap-2 overflow-y-auto">
-				<div className="flex items-end gap-2">
+		<ViewShell label="OpenAPI explorer">
+			<SplitView
+				asideSide="right"
+				asideLabel="Endpoints"
+				asideWidth={{ min: 240, preferred: 0.34, max: 384 }}
+				aside={
+					<>
+					<div className="flex items-end gap-2">
 					<Input
 						value={specPath}
 						onChange={(e) => patch({ specPath: e.target.value })}
 						placeholder="specs/pets.yaml"
 						spellCheck={false}
-						aria-label="Spec path (workspace-relative)"
-						className="flex-1 font-mono text-xs"
+						aria-label="Spec path (workspace-relative)"						className="flex-1 font-mono text-xs"
 					/>
 					<Button
 						size="sm"
@@ -371,19 +376,23 @@ export function OpenapiExplorer() {
 						Point at a workspace-relative OpenAPI spec and hit Explore.
 					</p>
 				)}
-			</section>
-
-			{detail ? (
-				<EndpointDetail endpoint={detail} />
-			) : (
-				<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-card">
-					<p className="text-sm font-medium text-foreground">Select an endpoint</p>
-					<p className="max-w-xs text-center text-xs text-muted-foreground">
-						Browse the specification tree — every operation carries params and
-						schemas.
-					</p>
-				</div>
-			)}
-		</div>
+				</>
+			}
+			>
+			<div className="flex min-h-0 flex-1 flex-col gap-3">
+				{detail ? (
+					<EndpointDetail endpoint={detail} />
+				) : (
+					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-card">
+						<p className="text-sm font-medium text-foreground">Select an endpoint</p>
+						<p className="max-w-xs text-center text-xs text-muted-foreground">
+							Browse the specification tree — every operation carries params and
+							schemas.
+						</p>
+					</div>
+				)}
+			</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

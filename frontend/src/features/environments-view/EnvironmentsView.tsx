@@ -8,6 +8,7 @@ import { inputClass } from "../../lib/ui";
 import { DYNAMIC_TAGS } from "../../lib/tags";
 import type { EnvAdapter } from "../../lib/env";
 import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 import { EnvironmentEditor } from "./EnvironmentEditor";
 import { SecretsEditor } from "./SecretsEditor";
 
@@ -214,8 +215,11 @@ export function EnvironmentsView() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Environments">
-			<aside className="flex w-64 shrink-0 flex-col gap-3 overflow-y-auto">
+		<ViewShell label="Environments">
+			<SplitView
+				asideLabel="Environments list"
+				aside={
+					<>
 				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
 					<div className="flex items-center justify-between">
 						<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -289,9 +293,10 @@ export function EnvironmentsView() {
 						</div>
 					))}
 				</div>
-			</aside>
-
-			<section className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
+				</>
+			}
+			>
+				<section className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
 				{selected ? (
 					<>
 						<div className="flex flex-wrap items-center gap-2">
@@ -403,6 +408,7 @@ export function EnvironmentsView() {
 					</div>
 				)}
 			</section>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }
