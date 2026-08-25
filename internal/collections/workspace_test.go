@@ -537,3 +537,21 @@ func TestFindWorkspaceRootNone(t *testing.T) {
 		t.Fatalf("FindWorkspaceRoot = %q, want empty", got)
 	}
 }
+
+func TestCreateContainer(t *testing.T) {
+	dir := t.TempDir()
+	if err := CreateContainer(filepath.Join(dir, "payments"), "payments"); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, ok, err := loadConfig(filepath.Join(dir, "payments")); err != nil || !ok {
+		t.Fatal("descriptor missing after create")
+	}
+	if err := CreateContainer(filepath.Join(dir, "payments"), "payments"); err == nil {
+		t.Fatal("expected duplicate create to fail")
+	}
+	for _, bad := range []string{"", ".", "..", "a/b", ".hidden"} {
+		if err := CreateContainer(filepath.Join(dir, bad), bad); err == nil {
+			t.Errorf("expected invalid name %q to fail", bad)
+		}
+	}
+}

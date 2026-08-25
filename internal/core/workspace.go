@@ -40,6 +40,9 @@ var ErrFileChangedOnDisk = errors.New("request file changed on disk since it was
 type WorkspaceRequest struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
+	// Method is the request's HTTP method (from the request file), used for
+	// the sidebar's method chips. Empty for non-HTTP request kinds.
+	Method string `json:"method,omitempty"`
 }
 
 // WorkspaceFolder is a nested container (recursively) within a collection.
@@ -319,7 +322,11 @@ func folderDTOs(root string, folders []*collections.Folder) []WorkspaceFolder {
 func requestDTOs(root string, requests []*collections.RequestEntry) []WorkspaceRequest {
 	out := make([]WorkspaceRequest, 0, len(requests))
 	for _, r := range requests {
-		out = append(out, WorkspaceRequest{Name: r.Name, Path: containerPath(root, r.Path)})
+		method := ""
+		if r.File != nil {
+			method = string(r.File.Request.Method)
+		}
+		out = append(out, WorkspaceRequest{Name: r.Name, Path: containerPath(root, r.Path), Method: method})
 	}
 	return out
 }

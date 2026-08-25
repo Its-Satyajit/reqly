@@ -129,6 +129,36 @@ func (s *AppService) WorkspaceCreate(dir string, name string) (*core.WorkspaceTr
 	return s.WorkspaceOpen(abs)
 }
 
+// WorkspaceCreateCollection scaffolds collections/<name>/ with a descriptor
+// and returns the refreshed tree.
+func (s *AppService) WorkspaceCreateCollection(name string) (*core.WorkspaceTree, error) {
+	if s == nil || s.root == "" {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to create collections")
+	}
+	dir := filepath.Join(s.root, "collections", name)
+	if err := collections.CreateContainer(dir, name); err != nil {
+		return nil, err
+	}
+	return s.workspace.Load()
+}
+
+// WorkspaceCreateFolder scaffolds <parent>/<name>/ with a descriptor and
+// returns the refreshed tree. parent is a container Request Path
+// ("payments" or "payments/auth").
+func (s *AppService) WorkspaceCreateFolder(parent string, name string) (*core.WorkspaceTree, error) {
+	if s == nil || s.root == "" {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to create folders")
+	}
+	if strings.TrimSpace(parent) == "" {
+		return nil, fmt.Errorf("parent collection or folder is required")
+	}
+	dir := filepath.Join(s.root, filepath.FromSlash(parent), name)
+	if err := collections.CreateContainer(dir, name); err != nil {
+		return nil, err
+	}
+	return s.workspace.Load()
+}
+
 // WorkspaceRestoreLast reopens the persisted last workspace when it is still
 // valid, so a normally-launched app lands back where the user left off. A
 // missing or invalid stored path is a silent no-op returning current status.

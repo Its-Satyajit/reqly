@@ -323,3 +323,37 @@ func splitPath(path string) []string {
 	}
 	return parts
 }
+
+// ValidateSegment reports whether name is safe to use as a single collection
+// or folder path segment (no separators, dot files, or traversal).
+func ValidateSegment(name string) error {
+	if name == "" {
+		return fmt.Errorf("name must not be empty")
+	}
+	if name == "." || name == ".." || strings.ContainsAny(name, "/\\") ||
+		strings.HasPrefix(name, ".") || strings.Contains(name, "\x00") {
+		return fmt.Errorf("%q is not a valid collection or folder name", name)
+	}
+	return nil
+}
+
+// CreateContainer scaffolds a collection or folder: it creates dir and writes
+// a minimal descriptor naming it. Fails when a descriptor already exists.
+func CreateContainer(dir, name string) error {
+	if err := ValidateSegment(name); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", dir, err)
+	}
+	if _, ok, err := loadConfig(dir); err != nil {
+		return err
+	} else if ok {
+		return fmt.Errorf("%s already contains a %s", dir, configFileName)
+	}
+	descriptor := fmt.Sprintf("name: %s\n", name)
+	if err := os.WriteFile(filepath.Join(dir, configFileName), []byte(descriptor), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", configFileName, err)
+	}
+	return nil
+}

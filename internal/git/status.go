@@ -14,6 +14,10 @@ type FileStatus struct {
 	X, Y rune
 	// Staged reports whether the change has index-side changes.
 	Staged bool
+	// Adds/Dels are the changed-line counts from `git diff --numstat HEAD`
+	// (0 for untracked files, which have no diff against HEAD).
+	Adds int `json:"adds"`
+	Dels int `json:"dels"`
 }
 
 // StatusResult is the outcome of a repository status check.
@@ -63,7 +67,41 @@ func Status(dir string) (*StatusResult, error) {
 	res := parsePorcelain(string(out))
 	res.Branch = branch
 	res.RepoFound = true
+	applyNumstat(dir, res.Files)
 	return res, nil
+}
+
+// applyNumstat fills in per-file changed-line counts from a single
+// `git diff --numstat HEAD` call (staged + unstaged vs HEAD). Untracked
+// files never appear in the diff and keep zero counts. Best effort: on any
+// failure (e.g. unborn HEAD) counts stay zero.
+func applyNumstat(dir string, files []FileStatus) {
+	if len(files) == 0 {
+		return
+	}
+	cmd := exec.Command("git", "diff", "--numstat", "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return
+	}
+	counts := make(map[string][2]int, len(files))
+	for _, line := range strings.Split(string(out), "\n") {
+		parts := strings.Split(line, "\t")
+		if len(parts) != 3 {
+			continue
+		}
+		adds, dels := 0, 0
+		// SAFETY: numstat prints "-" for binary files; treat as zero.
+		fmt.Sscanf(parts[0], "%d", &adds)
+		fmt.Sscanf(parts[1], "%d", &dels)
+		counts[parts[2]] = [2]int{adds, dels}
+	}
+	for i := range files {
+		if c, ok := counts[files[i].Path]; ok {
+			files[i].Adds, files[i].Dels = c[0], c[1]
+		}
+	}
 }
 
 // Stage stages the given repo-relative paths (like `git add --`).
