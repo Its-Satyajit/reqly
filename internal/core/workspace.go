@@ -69,6 +69,13 @@ type WorkspaceTree struct {
 	Collections []WorkspaceCollection `json:"collections"`
 }
 
+// WorkspaceDuplicateResult pairs a refreshed workspace tree with the Request
+// Path of the newly duplicated request file.
+type WorkspaceDuplicateResult struct {
+	Tree *WorkspaceTree `json:"tree"`
+	Path string         `json:"path"`
+}
+
 // ResolvedVariable is one entry of an opened request's effective variable
 // chain, tagged with the scope that defined it.
 type ResolvedVariable struct {
@@ -202,10 +209,11 @@ type RequestSave struct {
 }
 
 // SaveRequest persists a request file's editable builder fields
-// (url/method/headers/query/body), its own auth, and its scripts back to
-// disk, preserving
-// the file's format (JSON for .json, YAML otherwise) and every non-editable
-// field (name, environment, variables, timeout) verbatim. An unset
+// (url/method/headers/query/body), its own auth, its scripts, and its
+// request settings (timeout, followRedirects) back to disk, preserving
+// the file's format (JSON for .json, YAML otherwise) and every remaining
+// non-editable
+// field (name, environment, variables) verbatim. An unset
 // draft auth (Inherit) removes any existing auth block; `type: none` writes
 // the explicit block. expectedVersion must match the current on-disk
 // fingerprint, taken from OpenedRequest.Version; a mismatch returns
@@ -252,23 +260,66 @@ func (s *WorkspaceService) SaveRequest(path string, save RequestSave, expectedVe
 }
 
 // mergeDraftRequest carries the editable fields from draft onto the
-// file's original request, preserving id, name, and timeout verbatim so a save
+// file's original request, preserving id and name verbatim so a save
 // can never alter what the editor cannot edit. Auth IS editable: the draft's
 // auth is authoritative — a typed scheme writes its block, `type: none` writes
 // the explicit block, and an unset auth (Inherit) drops any existing block so
-// the file truly declares none.
+// the file truly declares none. Timeout and FollowRedirects are editable via
+// the request-settings modal.
 func mergeDraftRequest(original, draft request.Request) request.Request {
 	return request.Request{
-		ID:      original.ID,
-		Name:    original.Name,
-		Method:  draft.Method,
-		URL:     draft.URL,
-		Headers: draft.Headers,
-		Query:   draft.Query,
-		Body:    draft.Body,
-		Auth:    draft.Auth,
-		Timeout: original.Timeout,
+		ID:              original.ID,
+		Name:            original.Name,
+		Method:          draft.Method,
+		URL:             draft.URL,
+		Headers:         draft.Headers,
+		Query:           draft.Query,
+		Body:            draft.Body,
+		Auth:            draft.Auth,
+		Timeout:         draft.Timeout,
+		FollowRedirects: draft.FollowRedirects,
 	}
+}
+
+// DuplicateRequest copies a request file within its collection/folder under
+// a "-copy" (then -copy-2, -copy-3, …) file name, renaming the copy's display
+// name to "<name> copy" and dropping its id so the file re-identifies. The
+// copy is byte-faithful otherwise. Returns the new workspace-relative path.
+func (s *WorkspaceService) DuplicateRequest(path string) (string, error) {
+	if s == nil {
+		return "", fmt.Errorf("no workspace found: open a reqly workspace to duplicate requests")
+	}
+	if s.root == "" {
+		return "", fmt.Errorf("no workspace found: open a reqly workspace to duplicate requests")
+	}
+	ws, err := collections.LoadWorkspace(s.root)
+	if err != nil {
+		return "", err
+	}
+	_, _, entry, ok := ws.FindRequest(collections.RequestPath(path))
+	if !ok {
+		return "", fmt.Errorf("request %q not found in the workspace", path)
+	}
+
+	file := *entry.File
+	file.Name = strings.TrimSpace(file.Name + " copy")
+	file.Request.ID = ""
+
+	dir := filepath.Dir(entry.Path)
+	ext := filepath.Ext(entry.Path)
+	base := strings.TrimSuffix(filepath.Base(entry.Path), ext)
+	candidate := filepath.Join(dir, base+"-copy"+ext)
+	for n := 2; ; n++ {
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			break
+		}
+		candidate = filepath.Join(dir, fmt.Sprintf("%s-copy-%d%s", base, n, ext))
+	}
+	if err := requestfile.Save(candidate, &file); err != nil {
+		return "", fmt.Errorf("save duplicated request file: %w", err)
+	}
+
+	return containerPath(s.root, candidate), nil
 }
 
 // ResolveSend re-resolves a request file with draft substituted for the file's

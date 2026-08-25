@@ -129,6 +129,9 @@ export interface CollectionsAdapter {
   /** createFolder scaffolds <parent>/<name>/ with a descriptor. parent is a
    * container Request Path ("payments" or "payments/auth"). */
   createFolder: (parent: string, name: string) => Promise<void>
+  /** duplicate copies a request file in place as "<name> copy" (file name
+   * suffixed -copy, -copy-2, …) and returns the copy's Request Path. */
+  duplicateRequest?: (path: string) => Promise<string>
 }
 
 /** ResolvedVariable is one entry of an opened request's effective variable
@@ -167,6 +170,9 @@ export interface FileRequestInput {
   auth?: RequestAuth
   /** The file's own retry policy (unset when the request retries nothing). */
   retry?: RequestRetry
+  /** The file's own request settings (unset = engine defaults). */
+  timeout?: number
+  followRedirects?: boolean
   /** The file's sandbox scripts (Scripts tab), written verbatim on save. */
   preRequest?: string
   postRequest?: string
@@ -216,5 +222,8 @@ export const fallbackCollectionsAdapter: CollectionsAdapter = {
   },
   createFolder: async () => {
     throw new Error('Creating folders requires the desktop app.')
+  },
+  duplicateRequest: async () => {
+    throw new Error('Duplicating requests requires the desktop app.')
   },
 }

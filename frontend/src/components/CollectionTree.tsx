@@ -4,6 +4,7 @@ import type { WorkspaceFolder, WorkspaceRequest } from "#lib/collections";
 import { methodTintClass } from "#lib/status";
 import { cn } from "#lib/utils";
 import { Button } from "#components/ui/button";
+import { ContextMenu } from "#components/ContextMenu";
 import { RUN_TAB_ID, useCollectionRunStore, useWorkspaceStore } from "#stores";
 
 const TREE_KEYS = new Set([
@@ -142,6 +143,8 @@ function RequestRow({
 	filter?: string;
 }) {
 	const openRequest = useWorkspaceStore((s) => s.openRequest);
+	const duplicateRequestPath = useWorkspaceStore((s) => s.duplicateRequestPath);
+	const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 	if (filter && !requestMatches(request, filter)) return null;
 	return (
 		<div style={{ paddingLeft: "1.5rem" }}>
@@ -149,6 +152,10 @@ function RequestRow({
 				type="button"
 				data-tree-row
 				onClick={() => void openRequest(request.path)}
+				onContextMenu={(e) => {
+					e.preventDefault();
+					setMenu({ x: e.clientX, y: e.clientY });
+				}}
 				title={`Open ${request.name}`}
 				className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground"
 			>
@@ -156,6 +163,19 @@ function RequestRow({
 				<MethodChip method={request.method ?? ""} />
 				<span className="truncate">{request.name}</span>
 			</button>
+			{menu && (
+				<ContextMenu
+					x={menu.x}
+					y={menu.y}
+					items={[
+						{
+							label: "Duplicate request",
+							onSelect: () => void duplicateRequestPath(request.path),
+						},
+					]}
+					onClose={() => setMenu(null)}
+				/>
+			)}
 		</div>
 	);
 }

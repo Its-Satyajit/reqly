@@ -199,8 +199,20 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 		return nil, err
 	}
 
+	// Per-request no-follow: a shallow client copy with CheckRedirect
+	// disabled returns the first response as-is (3xx included) without
+	// touching the shared client.
+	httpClient := c.http
+	if r.FollowRedirects != nil && !*r.FollowRedirects {
+		noFollow := *c.http
+		noFollow.CheckRedirect = func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+		httpClient = &noFollow
+	}
+
 	start := time.Now()
-	resp, err := c.http.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

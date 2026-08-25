@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
 )
@@ -708,5 +709,102 @@ func TestWorkspaceServiceResolveSendNoneDisablesInherited(t *testing.T) {
 	}
 	if resolved.Request.Auth.Type != "none" {
 		t.Fatalf("auth = %+v, want explicit none disabling the inherited bearer", resolved.Request.Auth)
+	}
+}
+
+func TestDuplicateRequest(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "reqly.yaml"), []byte("name: demo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := collections.CreateContainer(filepath.Join(dir, "collections", "payments"), "payments"); err != nil {
+		t.Fatal(err)
+	}
+	orig := filepath.Join(dir, "collections", "payments", "create-payment.yaml")
+	if err := os.WriteFile(orig, []byte("name: Create payment\nrequest:\n  method: POST\n  url: create\n  timeout: 1500\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewWorkspaceService(dir)
+	copied, err := svc.DuplicateRequest("payments/create-payment")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if copied != "payments/create-payment-copy" {
+		t.Fatalf("copied path = %q", copied)
+	}
+
+	reloaded, err := svc.OpenRequest(copied)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.Name != "create-payment-copy" {
+		t.Fatalf("copy name = %q", reloaded.Name)
+	}
+	if reloaded.Request.Timeout != 1500 {
+		t.Fatalf("copy timeout = %d, want 1500", reloaded.Request.Timeout)
+	}
+	// The original is untouched.
+	if _, err := os.Stat(orig); err != nil {
+		t.Fatalf("original missing after duplicate: %v", err)
+	}
+
+	// A second duplicate uniquifies the file name.
+	again, err := svc.DuplicateRequest("payments/create-payment")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again != "payments/create-payment-copy-2" {
+		t.Fatalf("second copy path = %q", again)
+	}
+
+	// Duplicating a missing request fails.
+	if _, err := svc.DuplicateRequest("payments/nope"); err == nil {
+		t.Fatal("expected an error duplicating a missing request")
+	}
+}
+
+func TestSaveRequestSettingsEditable(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "reqly.yaml"), []byte("name: demo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "collections", "users"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "collections", "users", "reqly.yaml"), []byte("name: users\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path := "users/edit-me.yaml"
+	full := "name: Edit Me\nrequest:\n  method: GET\n  url: edit\n  timeout: 2500\n"
+	if err := os.WriteFile(filepath.Join(dir, "collections", "users", "edit-me.yaml"), []byte(full), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewWorkspaceService(dir)
+	opened, err := svc.OpenRequest(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	noFollow := false
+	draft := opened.FileRequest
+	draft.URL = "edited"
+	draft.Timeout = 8000
+	draft.FollowRedirects = &noFollow
+
+	if _, err := svc.SaveRequest(path, RequestSave{Draft: draft}, opened.Version); err != nil {
+		t.Fatal(err)
+	}
+
+	reloaded, err := svc.OpenRequest(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.Request.Timeout != 8000 {
+		t.Fatalf("saved timeout = %d, want 8000", reloaded.Request.Timeout)
+	}
+	if reloaded.Request.FollowRedirects == nil || *reloaded.Request.FollowRedirects {
+		t.Fatalf("saved followRedirects = %v, want false", reloaded.Request.FollowRedirects)
 	}
 }

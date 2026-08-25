@@ -8,6 +8,7 @@ import { useRequestStore } from "#stores/useRequestStore";
 import type { RequestTab } from "#stores/useWorkspaceStore";
 import { cn } from "#lib/utils";
 import { handleTabArrowKeys } from "#lib/ui";
+import { ContextMenu } from "#components/ContextMenu";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -27,6 +28,8 @@ function TabItem({ tab }: { tab: RequestTab }) {
 		tabIsDirty(s.drafts[tab.id], s.meta[tab.id]),
 	);
 	const [confirming, setConfirming] = useState(false);
+	const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+	const duplicateTab = useWorkspaceStore((s) => s.duplicateTab);
 	const active = activeTabId === tab.id;
 
 	const requestClose = () => {
@@ -41,6 +44,10 @@ function TabItem({ tab }: { tab: RequestTab }) {
 
 	return (
 		<div
+			onContextMenu={(e) => {
+				e.preventDefault();
+				setMenu({ x: e.clientX, y: e.clientY });
+			}}
 			className={cn(
 				"group flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors",
 				active
@@ -97,6 +104,21 @@ function TabItem({ tab }: { tab: RequestTab }) {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+			{menu && (
+				<ContextMenu
+					x={menu.x}
+					y={menu.y}
+					items={[
+						{
+							label: "Duplicate request",
+							onSelect: () => {
+							if ((tab.kind ?? "request") === "request") duplicateTab(tab.id);
+						},
+						},
+					]}
+					onClose={() => setMenu(null)}
+				/>
+			)}
 		</div>
 	);
 }

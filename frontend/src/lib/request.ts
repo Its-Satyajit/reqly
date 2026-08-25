@@ -59,6 +59,9 @@ export interface RequestInput {
 	graphqlQuery?: string;
 	graphqlVariables?: string;
 	timeout?: number;
+	/** Per-request redirect override; false disables following redirects.
+	 * Absent uses the engine default (follow). */
+	followRedirects?: boolean;
 	/** Automatic retry policy; absent = no retries. */
 	retry?: RequestRetry;
 	/** Environment pill (a request file's environment: field) used at send;
@@ -146,6 +149,11 @@ export const fetchSender: RequestSender = async (req) => {
 		method,
 		headers,
 		body: requestBody,
+		redirect: req.followRedirects === false ? 'manual' : 'follow',
+		signal:
+			req.timeout && req.timeout > 0
+				? AbortSignal.timeout(req.timeout)
+				: undefined,
 	});
 
 	const body = await res.text();

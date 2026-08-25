@@ -103,6 +103,13 @@ interface WorkspaceState {
    * from its raw file request and recording its version, base URL, inherited
    * headers, variable chain, and env pill. */
   openRequest: (path: string) => Promise<void>
+  /** Duplicate an open request tab into a new unsaved scratchpad tab seeded
+   * with a deep copy of the source draft ("<title> copy"). Never writes to
+   * disk. Resolves the tab by id, falling back to the active tab. */
+  duplicateTab: (id?: string) => void
+  /** Duplicate a collection request (by Request Path) into a new unsaved
+   * scratchpad tab. Opens the file first when no tab holds it yet. */
+  duplicateRequestPath: (path: string) => Promise<void>
   /** Save a file-backed tab's editable fields back to disk. On a
    * changed-on-disk conflict the tab flags the conflict instead of
    * clobbering the external edit. */
@@ -163,6 +170,8 @@ export const draftFromFileRequest = (file: FileRequestInput): Partial<TabDraft> 
     body: file.body,
     auth: file.auth,
     retry: file.retry,
+    timeout: file.timeout,
+    followRedirects: file.followRedirects,
   }
 }
 
@@ -309,6 +318,34 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } catch (err) {
       set({ openError: err instanceof Error ? err.message : String(err) })
     }
+  },
+
+  duplicateTab: (id) => {
+    const { openTabs, activeTabId } = get()
+    const src = openTabs.find((t) => t.id === id) ?? openTabs.find((t) => t.id === activeTabId)
+    if (!src || (src.kind ?? 'request') !== 'request') return
+    const draft = useRequestStore.getState().drafts[src.id]
+    const newId = crypto.randomUUID()
+    get().openTab(
+      { id: newId, title: `${src.title} copy` },
+      draft ? structuredClone(draft) : undefined,
+    )
+  },
+
+  duplicateRequestPath: async (path) => {
+    const { workspaceAdapter } = get()
+    if (workspaceAdapter.duplicateRequest) {
+      const copyPath = await workspaceAdapter.duplicateRequest(path)
+      await get().refreshWorkspace()
+      await get().openRequest(copyPath)
+      return
+    }
+    // No on-disk duplicate support (browser dev mode): fall back to an
+    // unsaved scratchpad copy of the opened tab's draft.
+    const existing = get().openTabs.find((t) => t.requestPath === path)
+    if (!existing) await get().openRequest(path)
+    const tab = get().openTabs.find((t) => t.requestPath === path)
+    if (tab) get().duplicateTab(tab.id)
   },
 
   saveRequest: async (id) => {

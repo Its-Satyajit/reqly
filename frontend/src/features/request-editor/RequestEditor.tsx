@@ -5,7 +5,8 @@ import { CompactSelect } from '../../components/CompactSelect'
 import { methodTintClass } from '../../lib/status'
 import { cn } from '#lib/utils'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
-import { ChevronRight, Loader2, MoreHorizontal, Play } from 'lucide-react'
+import { ChevronRight, Loader2, MoreHorizontal, Play, SlidersHorizontal } from 'lucide-react'
+import { RequestSettingsDialog } from './RequestSettingsDialog'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
 import { useRequestStore } from '../../stores/useRequestStore'
@@ -165,6 +166,7 @@ export function RequestEditor() {
   const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId)
   const environments = useWorkspaceStore((s) => s.environments)
   const [tab, setTab] = useState<Tab>('params')
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -210,6 +212,8 @@ export function RequestEditor() {
       env: meta?.env,
       requestPath,
       auth: draft.auth,
+      timeout: draft.timeout,
+      followRedirects: draft.followRedirects,
     })
   }
 
@@ -278,9 +282,26 @@ export function RequestEditor() {
         <TagPicker onInsert={(tag) => patch({ url: draft.url + tag })} />
       </div>
 
-      <div className="px-2 pb-1">
+      <div className="flex items-center gap-1 px-2 pb-1">
         <RetrySection retry={draft.retry} onChange={(retry) => patch({ retry })} />
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          title="Request settings…"
+          aria-label="Request settings"
+          className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+        >
+          <SlidersHorizontal className="size-3" aria-hidden />
+          {settingsSummary(draft)}
+        </button>
       </div>
+      {settingsOpen && (
+        <RequestSettingsDialog
+          settings={{ timeout: draft.timeout, followRedirects: draft.followRedirects }}
+          onApply={(s) => patch(s)}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       <div
         className="flex items-center gap-1 px-2"
@@ -676,8 +697,17 @@ function BodyTab({
   )
 }
 
-function retrySummary(retry: RequestRetry | undefined): string {
-  if (!retry || !retry.count) return 'Off'
+/** settingsSummary renders the compact one-line state of the request's own
+ * send overrides for the collapsed settings chip ("Defaults" when unset). */
+function settingsSummary(draft: TabDraft): string {
+  const parts: string[] = []
+  if (draft.timeout) parts.push(`${draft.timeout}ms`)
+  if (draft.followRedirects === false) parts.push('no redirects')
+  else if (draft.followRedirects === true) parts.push('redirects')
+  return parts.length > 0 ? parts.join(' · ') : 'Settings'
+}
+
+function retrySummary(retry: RequestRetry | undefined): string {  if (!retry || !retry.count) return 'Off'
   const strategy = retry.strategy === 'fixed' ? 'fixed' : 'exponential'
   return `${retry.count} retries · ${strategy} · ${retry.delayMs ?? 1000}ms base`
 }

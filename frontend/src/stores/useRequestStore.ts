@@ -25,6 +25,10 @@ export interface TabDraft {
   auth?: RequestAuth
   /** The request's own retry policy (unset = no retries). */
   retry?: RequestRetry
+  /** The request's own settings (unset = engine defaults): send timeout in
+   * milliseconds and redirect-following override. */
+  timeout?: number
+  followRedirects?: boolean
   /** The file's sandbox scripts (Scripts tab). */
   preRequest?: string
   postRequest?: string
@@ -87,6 +91,8 @@ export interface FileDraftInput {
   body: string
   auth?: RequestAuth
   retry?: RequestRetry
+  timeout?: number
+  followRedirects?: boolean
   preRequest?: string
   postRequest?: string
 }
@@ -116,6 +122,8 @@ export function fileInputFromDraft(draft: TabDraft): FileDraftInput {
     body: body ?? '',
     auth: draft.auth,
     retry: draft.retry,
+    timeout: draft.timeout,
+    followRedirects: draft.followRedirects,
     preRequest: draft.preRequest,
     postRequest: draft.postRequest,
   }
