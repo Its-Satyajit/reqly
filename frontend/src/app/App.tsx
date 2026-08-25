@@ -229,10 +229,12 @@ export function App() {
 				commitStrip={<CommitStrip />}
 				statusbar={<StatusBar />}
 			>
-{activeView === "requests" ? (
-								<section className="flex h-full min-h-0 flex-col">
-									<RequestTabs />
-								{activeTab?.kind === "test" ? (
+			<section className="flex h-full min-h-0 flex-col">
+				{/* Tab bar persists across every view so open request tabs stay
+				 * reachable; selecting one returns to the REST client. */}
+				<RequestTabs />
+				{activeView === "requests" ?
+					activeTab?.kind === "test" ? (
 									<div className="min-h-0 min-w-0 flex-1">
 										<ErrorBoundary label="Test runner">
 											<TestTab tabId={activeTab.id} />
@@ -285,11 +287,10 @@ export function App() {
 												</ResizablePanel>
 											</ResizablePanelGroup>
 										</div>
-									)}
-								</section>
-							) : (
-								<SecondaryView />
-							)}
+				) : (
+					<SecondaryView />
+				)}
+			</section>
 			</AppShell>
 		</ErrorBoundary>
 	);
