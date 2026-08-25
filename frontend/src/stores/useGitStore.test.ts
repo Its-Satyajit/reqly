@@ -74,7 +74,7 @@ describe('git store', () => {
 
 	it('stage and commit refresh afterwards', async () => {
 		const adapter = adapterWith({
-			files: [{ path: 'a.json', x: 'M', y: ' ', staged: true }],
+			files: [{ path: 'a.json', x: 'M', y: ' ', staged: true, adds: 3, dels: 1 }],
 			clean: false,
 		})
 		useGitStore.getState().setAdapter(adapter)

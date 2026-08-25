@@ -232,6 +232,7 @@ const normalizeRequest = (
 ): import("@reqly/frontend").WorkspaceRequest => ({
 	name: r.name,
 	path: r.path,
+	method: r.method || undefined,
 });
 
 type WailsOpened = NonNullable<
@@ -383,6 +384,12 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 			throw new Error("core returned an empty version after save");
 		}
 		return version;
+	},
+	createCollection: async (name) => {
+		await AppService.WorkspaceCreateCollection(name);
+	},
+	createFolder: async (parent, name) => {
+		await AppService.WorkspaceCreateFolder(parent, name);
 	},
 	run: async (path, env, failFast, onEvent) => {
 		const id = await AppService.WorkspaceRunCollection(path, env ?? "", failFast);
@@ -861,6 +868,8 @@ export const wailsGitAdapter: GitAdapter = {
 				x: String.fromCharCode(f.X),
 				y: String.fromCharCode(f.Y),
 				staged: f.Staged,
+				adds: f.adds ?? 0,
+				dels: f.dels ?? 0,
 			})),
 			clean: res.Clean,
 			repoFound: res.RepoFound,

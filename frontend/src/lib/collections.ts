@@ -12,6 +12,8 @@ import type { RequestAuth, RequestRetry, ResponseData } from './request'
 export interface WorkspaceRequest {
   name: string
   path: string
+  /** HTTP method from the request file; drives the sidebar's method chip. */
+  method?: string
 }
 
 /** WorkspaceFolder is a nested container (recursively) within a collection. */
@@ -122,6 +124,11 @@ export interface CollectionsAdapter {
    * rejects the save (changed on disk) without touching the file. Resolves
    * to the new baseline version on success. */
   save: (path: string, draft: FileRequestInput, expectedVersion: string) => Promise<string>
+  /** createCollection scaffolds collections/<name>/ with a descriptor. */
+  createCollection: (name: string) => Promise<void>
+  /** createFolder scaffolds <parent>/<name>/ with a descriptor. parent is a
+   * container Request Path ("payments" or "payments/auth"). */
+  createFolder: (parent: string, name: string) => Promise<void>
 }
 
 /** ResolvedVariable is one entry of an opened request's effective variable
@@ -197,5 +204,11 @@ export const fallbackCollectionsAdapter: CollectionsAdapter = {
   },
   save: async () => {
     throw new Error('Saving request files requires the desktop app.')
+  },
+  createCollection: async () => {
+    throw new Error('Creating collections requires the desktop app.')
+  },
+  createFolder: async () => {
+    throw new Error('Creating folders requires the desktop app.')
   },
 }

@@ -144,6 +144,20 @@ export function GitPanel() {
 									{glyphOf(f)}
 								</span>
 								<span className="truncate">{f.path}</span>
+							{(f.adds > 0 || f.dels > 0) && (
+								<span className="ml-auto flex shrink-0 gap-1 font-data text-[10px] tabular-nums">
+									{f.adds > 0 && (
+										<span className="text-status-ok" title={`${f.adds} added`}>
+											+{f.adds}
+										</span>
+									)}
+									{f.dels > 0 && (
+										<span className="text-status-error" title={`${f.dels} removed`}>
+											−{f.dels}
+										</span>
+									)}
+								</span>
+							)}
 							</button>
 						</li>
 					))}
