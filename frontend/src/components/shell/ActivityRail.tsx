@@ -4,6 +4,7 @@ import {
 	Clock,
 	FileCode2,
 	GitCompare,
+	House,
 	KeyRound,
 	Network,
 	Play,
@@ -37,6 +38,9 @@ interface RailGroup {
 }
 
 const RAIL_GROUPS: RailGroup[] = [
+	{
+		items: [{ view: "overview", label: "Overview", icon: House }],
+	},
 	{
 		items: [
 			{ view: "requests", label: "REST client", icon: SquareTerminal },

@@ -1,6 +1,7 @@
 /** Canonical workspace view registry — single source for navigation surfaces
  * (sidebar, statusbar, command palette). Ids mirror `WorkspaceView`. */
 export const WORKSPACE_VIEWS = [
+	{ id: "overview", label: "Overview" },
 	{ id: "requests", label: "Requests" },
 	{ id: "environments", label: "Environments" },
 	{ id: "history", label: "History" },

@@ -50,6 +50,7 @@ export interface RequestTab {
 }
 
 export type WorkspaceView =
+	| 'overview'
 	| 'requests'
 	| 'environments'
 	| 'history'

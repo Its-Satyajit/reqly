@@ -46,6 +46,7 @@ import { useThemeStore } from "../stores/useThemeStore";
 import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { useWorkspaceStore } from "../stores/useWorkspaceStore";
 import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
+import { OverviewHome } from "../features/overview-home/OverviewHome";
 import { NEW_REQUEST_TAB_ID, tabIsDirty, useRequestStore } from "../stores/useRequestStore";
 import { useDefaultLayout } from "react-resizable-panels";
 import { armDebugCrashTrigger, installCrashReporter } from "../lib/crashReporter";
@@ -208,7 +209,13 @@ export function App() {
 				commitStrip={<CommitStrip />}
 				statusbar={<StatusBar />}
 			>
-							{activeView === "environments" ? (
+							{activeView === "overview" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Overview">
+										<OverviewHome />
+									</ErrorBoundary>
+								</section>
+							) : activeView === "environments" ? (
 								<section className="h-full min-h-0 overflow-y-auto">
 									<ErrorBoundary label="Environments">
 										<EnvironmentsView />
