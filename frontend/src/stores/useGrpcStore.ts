@@ -7,6 +7,7 @@ import {
   type GrpcService,
   type GrpcStreamMessage,
 } from "../lib/grpcclient";
+import type { KeyValueRow } from "../lib/request";
 
 const MESSAGE_BUFFER_CAP = 500;
 
@@ -20,6 +21,10 @@ export interface GrpcTabState {
   service: string;
   method: string;
   message: string;
+  /** Metadata rows sent as gRPC headers. */
+  metadata: KeyValueRow[];
+  /** Call deadline in Go duration form (e.g. "15s"); empty = none. */
+  deadline: string;
   unaryResult: GrpcResultView | null;
   streamMessages: GrpcStreamMessage[];
   status: "idle" | "connecting" | "unary-ok" | "streaming" | "done" | "error";
@@ -49,6 +54,8 @@ function emptyTab(): GrpcTabState {
     service: "",
     method: "",
     message: "{}",
+    metadata: [],
+    deadline: "",
     unaryResult: null,
     streamMessages: [],
     status: "idle",
@@ -65,11 +72,15 @@ function toRequest(tab: GrpcTabState): GrpcRequest {
   }
   return {
     url: tab.target.trim(),
-    headers: [],
+    headers: tab.metadata.reduce<{ key: string; value: string }[]>((acc, h) => {
+      if (h.enabled && h.key.trim() !== "") acc.push({ key: h.key, value: h.value });
+      return acc;
+    }, []),
     grpc: {
       service: tab.service,
       method: tab.method,
       message,
+      timeout: tab.deadline.trim() || undefined,
       protoFiles: tab.protoFiles
         .split(",")
         .map((p) => p.trim())
