@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, FileText, Globe, Radio } from "lucide-react";
+import { Menu } from "@base-ui/react/menu";
 import { useRealtimeStore } from "#stores/useRealtimeStore";
 import { useTestStore } from "#stores/useTestStore";
 import { useWorkspaceStore } from "#stores";
@@ -151,15 +152,52 @@ function TabItem({ tab }: { tab: RequestTab }) {
 	);
 }
 
+/** Tab types the + menu can create. gRPC/GraphQL are full views, not tabs,
+ * so they are intentionally absent here. */
+const NEW_TAB_ITEMS: {
+	label: string;
+	icon: typeof Plus;
+	makeTab: () => RequestTab;
+}[] = [
+	{
+		label: "New request",
+		icon: FileText,
+		makeTab: () => ({ id: NEW_REQUEST_TAB_ID, title: "New Request" }),
+	},
+	{
+		label: "New WebSocket",
+		icon: Globe,
+		makeTab: () => ({
+			id: `realtime-ws-${Date.now()}`,
+			title: "WebSocket",
+			kind: "realtime",
+		}),
+	},
+	{
+		label: "New SSE",
+		icon: Radio,
+		makeTab: () => ({
+			id: `realtime-sse-${Date.now()}`,
+			title: "SSE",
+			kind: "realtime",
+		}),
+	},
+];
+
 /**
  * The request tab bar: one tab per open request (deduplicated by id) plus a
- * "+ New request" action that focuses the persistent scratchpad tab. A dot
- * marks file-backed tabs with unsaved edits.
+ * "+" menu that asks which tab type to create. A dot marks file-backed tabs
+ * with unsaved edits.
  */
 export function RequestTabs() {
 	const openTabs = useWorkspaceStore((s) => s.openTabs);
 	const openTab = useWorkspaceStore((s) => s.openTab);
 	const setActiveView = useWorkspaceStore((s) => s.setActiveView);
+
+	const createTab = (tab: RequestTab) => {
+		setActiveView("requests");
+		openTab(tab);
+	};
 
 	return (
 		<div
@@ -171,20 +209,37 @@ export function RequestTabs() {
 			{openTabs.map((t) => (
 				<TabItem key={t.id} tab={t} />
 			))}
-			<Button
-				type="button"
-				variant="ghost"
-				size="icon-sm"
-				className="shrink-0 text-muted-foreground"
-				onClick={() => {
-					setActiveView("requests");
-					openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" });
-				}}
-				title="New request"
-			>
-				<Plus className="size-3.5" aria-hidden />
-				<span className="sr-only">New request</span>
-			</Button>
+			<Menu.Root>
+				<Menu.Trigger
+					render={
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							className="shrink-0 text-muted-foreground"
+							title="New tab"
+						>
+							<Plus className="size-3.5" aria-hidden />
+							<span className="sr-only">New tab</span>
+						</Button>
+					}
+				/>
+				<Menu.Portal>
+					<Menu.Positioner align="start" sideOffset={4} className="z-(--z-overlay)">
+						<Menu.Popup className="min-w-36 rounded-md border border-border bg-popover p-1 text-xs shadow-lg ring-1 ring-foreground/10 outline-none">
+							{NEW_TAB_ITEMS.map(({ label, icon: Icon, makeTab }) => (
+								<Menu.Item
+									key={label}
+									className="flex cursor-default items-center gap-2 rounded-sm px-2 py-1 outline-hidden select-none data-highlighted:bg-muted"
+									onClick={() => createTab(makeTab())}
+								>
+									<Icon className="size-3.5 text-muted-foreground" aria-hidden />
+									{label}
+								</Menu.Item>
+							))}
+						</Menu.Popup>
+					</Menu.Positioner>
+				</Menu.Portal>
+			</Menu.Root>
 		</div>
 	);
 }
