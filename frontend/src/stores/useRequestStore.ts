@@ -25,6 +25,9 @@ export interface TabDraft {
   auth?: RequestAuth
   /** The request's own retry policy (unset = no retries). */
   retry?: RequestRetry
+  /** The file's sandbox scripts (Scripts tab). */
+  preRequest?: string
+  postRequest?: string
 }
 
 /** Per-tab metadata for requests opened from a collection: the source request
@@ -84,6 +87,8 @@ export interface FileDraftInput {
   body: string
   auth?: RequestAuth
   retry?: RequestRetry
+  preRequest?: string
+  postRequest?: string
 }
 
 /** fileInputFromDraft serializes a tab's editable fields into the
@@ -111,6 +116,8 @@ export function fileInputFromDraft(draft: TabDraft): FileDraftInput {
     body: body ?? '',
     auth: draft.auth,
     retry: draft.retry,
+    preRequest: draft.preRequest,
+    postRequest: draft.postRequest,
   }
 }
 

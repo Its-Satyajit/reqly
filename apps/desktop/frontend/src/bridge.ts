@@ -282,6 +282,8 @@ const normalizeOpenedRequest = (
 		scope,
 	})),
 	fileEnv: o.fileEnv ?? "",
+	preRequest: o.preRequest ?? "",
+	postRequest: o.postRequest ?? "",
 	version: o.version ?? "",
 });
 
@@ -367,17 +369,21 @@ export const wailsCollectionsAdapter: CollectionsAdapter = {
 		const version = await AppService.WorkspaceSaveRequest(
 			path,
 			{
-				method: draft.method,
-				url: draft.url,
-				headers: (draft.headers ?? []).map(({ key, value }: { key: string; value: string }) => ({
-					key,
-					value,
-				})),
-				query: (draft.query ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
-				body: draft.body,
-				auth: draft.auth,
-				retry: draft.retry ?? null,
-			} as never,
+				draft: {
+					method: draft.method,
+					url: draft.url,
+					headers: (draft.headers ?? []).map(({ key, value }: { key: string; value: string }) => ({
+						key,
+						value,
+					})),
+					query: (draft.query ?? []).map(({ key, value }: { key: string; value: string }) => ({ key, value })),
+					body: draft.body,
+					auth: draft.auth,
+					retry: draft.retry ?? null,
+				} as never,
+				preRequest: draft.preRequest ?? "",
+				postRequest: draft.postRequest ?? "",
+			},
 			expectedVersion,
 		);
 		if (!version) {

@@ -278,7 +278,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     try {
       const opened = await workspaceAdapter.open(path)
       set({ openError: null })
-      const seed = draftFromFileRequest(opened.fileRequest)
+      const seed = {
+        ...draftFromFileRequest(opened.fileRequest),
+        preRequest: opened.preRequest,
+        postRequest: opened.postRequest,
+      }
       get().openTab(
         { id: opened.path, title: opened.name, requestPath: opened.path },
         seed,
@@ -362,7 +366,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     try {
       // Discard the tab's edits and reseed from the fresh file on disk.
       const opened = await workspaceAdapter.open(m.requestPath)
-      const seed = draftFromFileRequest(opened.fileRequest)
+      const seed = {
+        ...draftFromFileRequest(opened.fileRequest),
+        preRequest: opened.preRequest,
+        postRequest: opened.postRequest,
+      }
       useRequestStore.getState().updateDraft(id, { ...emptyTabDraft(), ...seed })
       useRequestStore.getState().setMeta(id, {
         ...m,

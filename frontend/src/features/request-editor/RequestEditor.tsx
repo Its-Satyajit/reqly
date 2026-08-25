@@ -5,7 +5,7 @@ import { CompactSelect } from '../../components/CompactSelect'
 import { methodTintClass } from '../../lib/status'
 import { cn } from '#lib/utils'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
-import { ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronRight, Loader2, MoreHorizontal, Play } from 'lucide-react'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
 import { useRequestStore } from '../../stores/useRequestStore'
@@ -26,13 +26,14 @@ import { handleTabArrowKeys, tabClass } from '../../lib/ui'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
 
-type Tab = 'params' | 'headers' | 'auth' | 'body' | 'variables'
+type Tab = 'params' | 'headers' | 'auth' | 'body' | 'scripts' | 'variables'
 
 const tabs: { id: Tab; label: string }[] = [
   { id: 'params', label: 'Params' },
   { id: 'headers', label: 'Headers' },
   { id: 'auth', label: 'Auth' },
   { id: 'body', label: 'Body' },
+  { id: 'scripts', label: 'Scripts' },
   { id: 'variables', label: 'Variables' },
 ]
 
@@ -242,19 +243,34 @@ export function RequestEditor() {
       >
         {tabs
           .filter((t) => showVariables || t.id !== 'variables')
-          .map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              tabIndex={tab === t.id ? 0 : -1}
-              onClick={() => setTab(t.id)}
-              className={tabClass(tab === t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
+          .map((t) => {
+            const count =
+              t.id === 'params'
+                ? draft.params.filter((p) => p.enabled).length
+                : t.id === 'headers'
+                  ? draft.headers.filter((h) => h.enabled).length
+                  : t.id === 'scripts'
+                    ? Number(Boolean(draft.preRequest)) + Number(Boolean(draft.postRequest))
+                    : null
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                tabIndex={tab === t.id ? 0 : -1}
+                onClick={() => setTab(t.id)}
+                className={tabClass(tab === t.id)}
+              >
+                {t.label}
+                {count !== null && count > 0 && (
+                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold tabular-nums text-muted-foreground">
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -302,6 +318,31 @@ export function RequestEditor() {
             onChange={(auth) => patch({ auth })}
             inherited={meta?.auth}
           />
+        ) : tab === 'scripts' ? (
+          <div className="flex h-full min-h-0 flex-col gap-2">
+            <div className="flex min-h-0 flex-1 flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Pre-request — runs before the request is sent
+              </span>
+              <CodeMirrorEditor
+                value={draft.preRequest ?? ''}
+                language="javascript"
+                onChange={(preRequest) => patch({ preRequest })}
+                className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
+              />
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Post-request — runs after the response arrives
+              </span>
+              <CodeMirrorEditor
+                value={draft.postRequest ?? ''}
+                language="javascript"
+                onChange={(postRequest) => patch({ postRequest })}
+                className="min-h-0 flex-1 overflow-hidden rounded-md border border-border"
+              />
+            </div>
+          </div>
         ) : tab === 'variables' ? (
           <VariablesView
             variables={meta?.variables ?? []}
@@ -360,7 +401,7 @@ function RequestToolbar({
   onSend: () => void
   onCancelSend: () => void
 }) {
-  const [codeLang, setCodeLang] = useState<'curl' | 'js' | 'python' | 'go'>('curl')
+  const [codeLang] = useState<'curl' | 'js' | 'python' | 'go'>('curl')
   const [copiedCode, setCopiedCode] = useState(false)
 
   return (
@@ -399,56 +440,109 @@ function RequestToolbar({
         </Button>
       )}
       {loading ? (
-        <Button size="sm" variant="destructive" onClick={onCancelSend}>
-          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+        <Button size="lg" variant="destructive" onClick={onCancelSend}>
+          <Loader2 className="size-4 animate-spin" aria-hidden />
           Stop
         </Button>
       ) : (
-        <Button size="sm" onClick={onSend}>
+        <Button
+          size="lg"
+          onClick={onSend}
+          className="rounded-full bg-primary px-6 font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90"
+        >
+          <Play className="size-4 fill-current" aria-hidden />
           Send
         </Button>
       )}
-      <CompactSelect
-        value={codeLang}
-        onChange={(v) => {
-          if (v === "curl" || v === "js" || v === "python" || v === "go") setCodeLang(v)
+      <OverflowMenu
+        draft={draft}
+        codeLang={codeLang}
+        copied={copiedCode}
+        onCopied={() => {
+          setCopiedCode(true)
+          setTimeout(() => setCopiedCode(false), 1500)
         }}
-        ariaLabel="Snippet language"
-        className="shrink-0"
-        options={[
-          { value: "curl", label: "cURL" },
-          { value: "js", label: "JS" },
-          { value: "python", label: "Python" },
-          { value: "go", label: "Go" },
-        ]}
       />
+    </div>
+  )
+}
+
+const codegenLanguages = ['curl', 'js', 'python', 'go'] as const
+type CodegenLanguage = (typeof codegenLanguages)[number]
+
+const codegenLabels: Record<CodegenLanguage, string> = {
+  curl: 'Copy as cURL',
+  js: 'Copy as JavaScript',
+  python: 'Copy as Python',
+  go: 'Copy as Go',
+}
+
+/** OverflowMenu is the toolbar's ⋯ button: code-generation copy actions. */
+function OverflowMenu({
+  draft,
+  codeLang,
+  copied,
+  onCopied,
+}: {
+  draft: RequestEditorDraft
+  codeLang: CodegenLanguage
+  copied: boolean
+  onCopied: () => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  const copyAs = (lang: CodegenLanguage) => {
+    setOpen(false)
+    const code = generateCode(
+      {
+        method: draft.method,
+        url: draft.url,
+        headers: sentRows(draft.headers).map(({ key, value }) => ({ key, value })),
+        query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
+        body: draft.body,
+        auth: draft.auth,
+      },
+      lang,
+    )
+    void copyText(code).then((ok) => {
+      if (ok) onCopied()
+      else notifyError('Copy failed', 'Clipboard access was denied — copy the snippet manually.')
+    })
+  }
+
+  return (
+    <div className="relative shrink-0">
       <Button
         size="sm"
         variant="outline"
-        onClick={() => {
-          const code = generateCode(
-            {
-              method: draft.method,
-              url: draft.url,
-              headers: sentRows(draft.headers).map(({ key, value }) => ({ key, value })),
-              query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
-              body: draft.body,
-              auth: draft.auth,
-            },
-            codeLang,
-          )
-          void copyText(code).then((ok) => {
-            if (ok) {
-              setCopiedCode(true)
-              setTimeout(() => setCopiedCode(false), 1500)
-            } else {
-              notifyError('Copy failed', 'Clipboard access was denied — copy the snippet manually.')
-            }
-          })
-        }}
+        aria-label="More actions"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
       >
-        {copiedCode ? 'Copied' : 'Copy as'}
+        {copied ? 'Copied' : <MoreHorizontal className="size-4" aria-hidden />}
       </Button>
+      {open && (
+        <div
+          role="menu"
+          aria-label="Code generation"
+          className="absolute right-0 top-full z-30 mt-1 flex min-w-44 flex-col rounded-md border border-border bg-popover p-1 shadow-lg"
+        >
+          {codegenLanguages.map((lang) => (
+            <button
+              key={lang}
+              type="button"
+              role="menuitem"
+              onClick={() => copyAs(lang)}
+              className={cn(
+                'rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-accent',
+                lang === codeLang && 'font-medium',
+              )}
+            >
+              {codegenLabels[lang]}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

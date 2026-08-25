@@ -23,6 +23,12 @@ export function KeyValueEditor({
 
   return (
     <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1 px-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="w-3.5 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1">Key</span>
+        <span className="min-w-0 flex-1">Value</span>
+        <span className="size-5 shrink-0" aria-hidden />
+      </div>
       {rows.map((row, i) => (
         // Rows are anonymous value objects (often several blank rows at once)
         // with no stable identity — positional keys are the only correct choice.

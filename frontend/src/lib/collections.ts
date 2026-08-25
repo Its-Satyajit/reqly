@@ -167,6 +167,9 @@ export interface FileRequestInput {
   auth?: RequestAuth
   /** The file's own retry policy (unset when the request retries nothing). */
   retry?: RequestRetry
+  /** The file's sandbox scripts (Scripts tab), written verbatim on save. */
+  preRequest?: string
+  postRequest?: string
 }
 
 /** OpenedRequest is a request file combined with its inherited configuration
@@ -181,6 +184,9 @@ export interface OpenedRequest {
   /** The request file's environment: field ("" when unset); the sending tab
    * uses it as its environment pill. */
   fileEnv: string
+  /** The file's sandbox scripts (Scripts tab), editable and persisted on save. */
+  preRequest?: string
+  postRequest?: string
   /** Fingerprint of the raw file bytes at open time; a save is only accepted
    * while the on-disk bytes still match. */
   version: string

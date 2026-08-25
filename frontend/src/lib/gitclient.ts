@@ -8,6 +8,9 @@ export interface GitFileStatus {
 	/** Worktree code, ' ' when unchanged. */
 	y: string;
 	staged: boolean;
+	/** Changed-line counts vs HEAD (0 for untracked files). */
+	adds: number;
+	dels: number;
 }
 
 export interface GitStatusResult {
