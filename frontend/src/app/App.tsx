@@ -46,6 +46,7 @@ import { useThemeStore } from "../stores/useThemeStore";
 import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { useWorkspaceStore } from "../stores/useWorkspaceStore";
 import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
+import { WelcomeModal } from "../features/workspace-bootstrap/WelcomeModal";
 import { OverviewHome } from "../features/overview-home/OverviewHome";
 import { TestsView } from "../features/tests-view/TestsView";
 import { RealtimeView } from "../features/realtime-view/RealtimeView";
@@ -163,6 +164,7 @@ export function App() {
 		<ErrorBoundary variant="root">
 			<Toaster />
 			<CrashOverlay />
+			<WelcomeModal />
 			<CommandPalette onSelectEnvironment={(id) => void onSelectEnvironment(id)} />
 			<AppShell
 				rail={
