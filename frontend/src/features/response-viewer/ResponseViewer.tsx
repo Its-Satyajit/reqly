@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Play, Zap } from "lucide-react";
 import { JsonTree } from "../../components/JsonTree";
 import { StatusPill } from "../../components/status";
 import { Button } from "../../components/ui/button";
@@ -6,6 +7,9 @@ import { CodeMirrorEditor } from "../../editors";
 import { formatBytes, handleTabArrowKeys, tabClass } from "../../lib/ui";
 import { type JSONPathMatch, type JSONPathResult, queryJSONPath } from "../../lib/jsonpath";
 import { isRecord, type JsonValue } from "../../lib/typeGuards";
+import { methodTintClass } from "../../lib/status";
+import { sentRows } from "../../lib/request";
+import { cn } from "../../lib/utils";
 import {
 	binaryPreviewType,
 	bytesToBase64,
@@ -23,7 +27,9 @@ import {
 } from "../../lib/response";
 import { notifyError } from "../../lib/notify";
 import { useRequestStore } from "../../stores/useRequestStore";
-import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
+import { effectiveUrlFor, useWorkspaceStore } from "../../stores/useWorkspaceStore";
+import { useHistoryStore } from "../../stores/useHistoryStore";
+import type { HistoryEntry } from "../../lib/history";
 
 type View = "raw" | "pretty" | "headers" | "tree" | "cookies" | "table";
 
@@ -343,11 +349,201 @@ function HeadersView({
 	);
 }
 
+/** recentChipLabel renders a history entry as a short chip label: the last
+ * URL path segment, falling back to the request path's file name. */
+function recentChipLabel(entry: HistoryEntry): string {
+	const withoutQuery = entry.url.split("?")[0];
+	const segments = withoutQuery.split("/").filter(Boolean);
+	const last = segments[segments.length - 1];
+	if (last) return last;
+	const file = entry.requestPath.split("/").pop() ?? entry.requestPath;
+	return file.replace(/\.(json|yaml|yml)$/i, "");
+}
+
+/** ReadyHero is the "Ready to send" empty state: a bolt icon, hint, Send
+ * CTA, and recent-request chips pulled from history. */
+function ReadyHero({
+	onSend,
+	recent,
+}: {
+	onSend: () => void;
+	recent: HistoryEntry[];
+}) {
+	const seen = new Set<string>();
+	const chips = recent
+		.filter((e) => {
+			const key = `${e.method} ${e.url}`;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		})
+		.slice(0, 4);
+	return (
+		<div className="flex h-full items-center justify-center p-4">
+			<div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-xl border border-border bg-muted/20 px-6 py-8">
+				<span
+					aria-hidden
+					className="flex size-12 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary"
+				>
+					<Zap className="size-5" />
+				</span>
+				<div className="flex flex-col items-center gap-1.5 text-center">
+					<p className="text-base font-semibold text-foreground">Ready to send</p>
+					<p className="max-w-xs text-xs text-muted-foreground">
+						Press{" "}
+						<kbd className="rounded border border-border bg-background px-1 font-data text-[10px]">
+							⌘↩
+						</kbd>{" "}
+						or hit Send — pre-request scripts run first, then the response
+						lands here.
+					</p>
+				</div>
+				<Button size="sm" variant="destructive" onClick={onSend}>
+					<Play className="size-3 fill-current" aria-hidden />
+					Send request
+				</Button>
+				{chips.length > 0 ? (
+					<div className="flex w-full flex-col items-center gap-2 border-t border-border/50 pt-3">
+						<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+							Recent
+						</p>
+						<div className="flex flex-wrap justify-center gap-1.5">
+							{chips.map((e) => (
+								<span
+									key={`${e.method}-${e.url}`}
+									className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 font-data text-[10px] text-muted-foreground"
+								>
+									<span
+										className={cn(
+											"font-semibold uppercase",
+											methodTintClass(e.method),
+										)}
+									>
+										{e.method}
+									</span>
+									<span className="max-w-32 truncate">{recentChipLabel(e)}</span>
+								</span>
+							))}
+						</div>
+					</div>
+				) : null}
+			</div>
+		</div>
+	);
+}
+
+/** ResponseActions is the Copy / Copy headers / Download / Format row plus
+ * the JSONPath input. */
+function ResponseActions({
+	view,
+	setView,
+	headersText,
+	cookiesText,
+	bodyView,
+	raw,
+	ct,
+	filename,
+	parsed,
+	jsonPath,
+	setJsonPath,
+}: {
+	view: View;
+	setView: (v: View) => void;
+	headersText: string;
+	cookiesText: string;
+	bodyView: string;
+	raw: string;
+	ct: string;
+	filename: string;
+	parsed: JsonValue | null;
+	jsonPath: string;
+	setJsonPath: (q: string) => void;
+}) {
+	const [copied, setCopied] = useState(false);
+	const flashCopied = () => {
+		setCopied(true);
+		setTimeout(() => setCopied(false), 1500);
+	};
+	const copy = (text: string) => {
+		void copyText(text).then((ok) => {
+			if (!ok) {
+				notifyError("Copy failed", "Clipboard access was denied.");
+				return;
+			}
+			flashCopied();
+		});
+	};
+	return (
+		<div className="flex shrink-0 items-center gap-1 border-t border-border/50 px-2 py-1">
+			<Button
+				size="xs"
+				variant="ghost"
+				onClick={() =>
+					copy(
+						view === "headers"
+							? headersText
+							: view === "cookies"
+								? cookiesText
+								: bodyView,
+					)
+				}
+			>
+				{copied ? "Copied" : "Copy"}
+			</Button>
+			<Button size="xs" variant="ghost" onClick={() => copy(headersText)}>
+				Copy headers
+			</Button>
+			<Button
+				size="xs"
+				variant="ghost"
+				onClick={() => {
+					const blob = new Blob([raw], {
+						type: ct || "application/octet-stream",
+					});
+					const url = URL.createObjectURL(blob);
+					const a = document.createElement("a");
+					a.href = url;
+					a.download = filename;
+					a.click();
+					URL.revokeObjectURL(url);
+				}}
+			>
+				Download
+			</Button>
+			<Button size="xs" variant="ghost" onClick={() => setView("pretty")}>
+				Format
+			</Button>
+			<span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+				<span>JSONPath</span>
+				<input
+					value={jsonPath}
+					onChange={(e) => setJsonPath(e.target.value)}
+					placeholder="$.users[*].name"
+					aria-label="JSONPath query"
+					disabled={parsed === null}
+					spellCheck={false}
+					className="w-48 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs text-foreground placeholder:text-muted-foreground disabled:opacity-50"
+				/>
+			</span>
+		</div>
+	);
+}
+
 export function ResponseViewer() {
 	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
+	const draft = useRequestStore((s) =>
+		activeTabId ? s.drafts[activeTabId] : undefined,
+	);
+	const meta = useRequestStore((s) =>
+		activeTabId ? s.meta[activeTabId] : undefined,
+	);
+	const send = useRequestStore((s) => s.send);
 	const tabState = useRequestStore((s) =>
 		activeTabId ? s.responses[activeTabId] : undefined,
 	);
+	const historyPool = useHistoryStore((s) => s.pool);
+	const poolLoaded = useHistoryStore((s) => s.poolLoaded);
+	const loadPool = useHistoryStore((s) => s.loadPool);
 	const response = tabState?.response ?? null;
 	const loading = tabState?.loading ?? false;
 	const error = tabState?.error ?? null;
@@ -355,7 +551,32 @@ export function ResponseViewer() {
 	const [view, setView] = useState<View>("pretty");
 	const [query, setQuery] = useState("");
 	const [jsonPath, setJsonPath] = useState("");
-	const [copied, setCopied] = useState(false);
+
+	useEffect(() => {
+		if (!poolLoaded) void loadPool();
+	}, [poolLoaded, loadPool]);
+
+	const resolvedUrl = draft
+		? effectiveUrlFor(draft.url, meta?.baseUrl ?? "")
+		: "";
+
+	const handleSend = () => {
+		if (!activeTabId || !draft) return;
+		void send(activeTabId, {
+			method: draft.method,
+			url: draft.url,
+			params: sentRows(draft.params),
+			headers: sentRows(draft.headers).map(({ key, value }) => ({ key, value })),
+			bodyType: draft.bodyType,
+			body: draft.body,
+			form: sentRows(draft.form),
+			graphqlQuery: draft.graphqlQuery,
+			graphqlVariables: draft.graphqlVariables,
+			env: meta?.env,
+			requestPath: meta?.requestPath,
+			auth: draft.auth,
+		});
+	};
 
 	const ct = response ? contentType(response.headers) : "";
 	const pretty = response ? prettyBody(response.body, ct) : "";
@@ -414,9 +635,16 @@ export function ResponseViewer() {
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<div className="flex items-center justify-between gap-2 px-2 pb-1 pt-2">
-				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-					Response
-				</p>
+				<div className="flex min-w-0 items-baseline gap-2">
+					<p className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+						Response
+					</p>
+					{resolvedUrl ? (
+						<p className="min-w-0 truncate font-data text-xs text-muted-foreground/70">
+							{resolvedUrl}
+						</p>
+					) : null}
+				</div>
 				<ResponseMeta response={response} cancelled={cancelled} ct={ct} />
 			</div>
 
@@ -439,76 +667,19 @@ export function ResponseViewer() {
 			) : null}
 
 			{response ? (
-				<div className="flex shrink-0 items-center gap-1 border-t border-border/50 px-2 py-1">
-					<Button
-						size="xs"
-						variant="ghost"
-						onClick={() => {
-							const text =
-								view === "headers"
-									? headersText
-									: view === "cookies"
-										? cookiesText
-										: bodyView;
-							void copyText(text).then((ok) => {
-								if (!ok) {
-									notifyError("Copy failed", "Clipboard access was denied.");
-									return;
-								}
-								setCopied(true);
-								setTimeout(() => setCopied(false), 1500);
-							});
-						}}
-					>
-						{copied ? "Copied" : "Copy"}
-					</Button>
-					<Button
-						size="xs"
-						variant="ghost"
-						onClick={() => {
-							void copyText(headersText).then((ok) => {
-								if (ok) {
-									setCopied(true);
-									setTimeout(() => setCopied(false), 1500);
-								}
-							});
-						}}
-					>
-						Copy headers
-					</Button>
-					<Button
-						size="xs"
-						variant="ghost"
-						onClick={() => {
-							const blob = new Blob([raw], {
-								type: ct || "application/octet-stream",
-							});
-							const url = URL.createObjectURL(blob);
-							const a = document.createElement("a");
-							a.href = url;
-							a.download = filename;
-							a.click();
-							URL.revokeObjectURL(url);
-						}}
-					>
-						Download
-					</Button>
-					<Button size="xs" variant="ghost" onClick={() => setView("pretty")}>
-						Format
-					</Button>
-					<span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-						<span>JSONPath</span>
-						<input
-							value={jsonPath}
-							onChange={(e) => setJsonPath(e.target.value)}
-							placeholder="$.users[*].name"
-							aria-label="JSONPath query"
-							disabled={parsed === null}
-							spellCheck={false}
-							className="w-48 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs text-foreground placeholder:text-muted-foreground disabled:opacity-50"
-						/>
-					</span>
-				</div>
+				<ResponseActions
+					view={view}
+					setView={setView}
+					headersText={headersText}
+					cookiesText={cookiesText}
+					bodyView={bodyView}
+					raw={raw}
+					ct={ct}
+					filename={filename}
+					parsed={parsed}
+					jsonPath={jsonPath}
+					setJsonPath={setJsonPath}
+				/>
 			) : null}
 
 			{parsed === null && response && jsonPath.trim() ? (
@@ -595,12 +766,7 @@ export function ResponseViewer() {
 						className="h-full overflow-hidden rounded-md border border-border"
 					/>
 				) : (
-					<CodeMirrorEditor
-						value={body}
-						language="text"
-						readOnly
-						className="h-full overflow-hidden rounded-md border border-border"
-					/>
+					<ReadyHero onSend={handleSend} recent={historyPool} />
 				)}
 			</div>
 
