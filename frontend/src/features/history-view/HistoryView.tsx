@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, RotateCcw, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, RotateCcw, Search, Star, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
 	AlertDialog,
@@ -16,10 +16,101 @@ import { CompactSelect } from "../../components/CompactSelect";
 import { CodeMirrorEditor } from "../../editors";
 import { HISTORY_PAGE_SIZE, useHistoryStore } from "../../stores/useHistoryStore";
 import { useFuseSearch } from "#hooks/useFuseSearch";
+import { useExportStore } from "#stores/useExportStore";
 import { HISTORY_FUSE_OPTIONS } from "#lib/historySearch";
 import type { HistoryEntry } from "../../lib/history";
 
 const PAGE_SIZE = HISTORY_PAGE_SIZE;
+const SAVED_SEARCHES_KEY = "reqly-history-saved-searches.v1";
+
+/** loadSavedSearches reads the persisted saved-search list. Module-level
+ * because React Compiler cannot handle try/catch. */
+function loadSavedSearches(): string[] {
+	try {
+		const raw = localStorage.getItem(SAVED_SEARCHES_KEY);
+		if (raw == null) return [];
+		// SAFETY: localStorage value parsed at the boundary; validated as an
+		// array of strings below.
+		const parsed = JSON.parse(raw) as unknown;
+		return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string") : [];
+	} catch {
+		return [];
+	}
+}
+
+function persistSavedSearches(list: string[]): void {
+	try {
+		localStorage.setItem(SAVED_SEARCHES_KEY, JSON.stringify(list));
+	} catch {
+		// storage unavailable — in-memory only
+	}
+}
+
+/** SavedSearchesPanel is the persisted-search sidebar: save the current
+ * query, apply, remove. */
+function SavedSearchesPanel({
+	currentQuery,
+	onApply,
+}: {
+	currentQuery: string;
+	onApply: (query: string) => void;
+}) {
+	const [list, setList] = useState<string[]>(loadSavedSearches);
+	const save = (): void => {
+		const q = currentQuery.trim();
+		if (q === "" || list.includes(q)) return;
+		const next = [q, ...list].slice(0, 10);
+		setList(next);
+		persistSavedSearches(next);
+	};
+	const remove = (q: string): void => {
+		const next = list.filter((s) => s !== q);
+		setList(next);
+		persistSavedSearches(next);
+	};
+	return (
+		<aside className="flex w-52 shrink-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
+			<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+				Saved searches
+			</p>
+			<button
+				type="button"
+				onClick={save}
+				disabled={currentQuery.trim() === ""}
+				className="flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+			>
+				<Star className="size-3" aria-hidden />
+				Save current search
+			</button>
+			{list.length === 0 ? (
+				<p className="text-[11px] text-muted-foreground/70">
+					Search, then save it to pin it here.
+				</p>
+			) : (
+				list.map((q) => (
+					<div key={q} className="flex items-center gap-1">
+						<button
+							type="button"
+							onClick={() => onApply(q)}
+							className="min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+							title={q}
+						>
+							{q}
+						</button>
+						<Button
+							variant="ghost"
+							size="icon-xs"
+							aria-label={`Remove saved search ${q}`}
+							onClick={() => remove(q)}
+						>
+							<Trash2 className="size-3" />
+						</Button>
+					</div>
+				))
+			)}
+		</aside>
+	);
+}
 
 function formatTime(iso: string): string {
 	if (!iso) return "—";
@@ -76,8 +167,23 @@ export function HistoryView() {
 
 	const pageFull = entries.length === PAGE_SIZE;
 
+	const applySavedSearch = (q: string): void => {
+		setQuery(q);
+		setPage(0);
+		void load({ offset: 0, status, query: q });
+	};
+
+	const exportHar = (): void => {
+		const exportStore = useExportStore.getState();
+		exportStore.setFormat("har");
+		exportStore.setCollection("");
+		void exportStore.run();
+	};
+
 	return (
-		<div className="flex h-full min-h-0 flex-col p-4">
+		<div className="flex h-full min-h-0 gap-4 p-4">
+			<SavedSearchesPanel currentQuery={query} onApply={applySavedSearch} />
+			<div className="flex min-w-0 flex-1 flex-col">
 			<div className="flex shrink-0 flex-col gap-3 pb-3">
 				<div>
 					<h2 className="text-sm font-semibold">History</h2>
@@ -139,6 +245,15 @@ export function HistoryView() {
 							aria-label="Next page"
 						>
 							<ChevronRight className="size-3.5" aria-hidden />
+						</Button>
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={exportHar}
+							title="Export history to .reqly/exports as HAR 1.2"
+						>
+							<Download className="size-3.5" aria-hidden />
+							HAR
 						</Button>
 						<Button
 							size="sm"
@@ -243,6 +358,10 @@ export function HistoryView() {
 						</tbody>
 					</table>
 				)}
+				<p className="shrink-0 px-1 pt-1 font-data text-[11px] text-muted-foreground/70">
+					{displayEntries.length} of {pool.length} entries · stored locally ·
+					FTS5 indexed
+				</p>
 			</div>
 
 			<AlertDialog open={confirmingClear} onOpenChange={setConfirmingClear}>
@@ -268,6 +387,7 @@ export function HistoryView() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+			</div>
 		</div>
 	);
 }
