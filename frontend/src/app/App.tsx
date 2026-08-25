@@ -51,6 +51,7 @@ import { OverviewHome } from "../features/overview-home/OverviewHome";
 import { TestsView } from "../features/tests-view/TestsView";
 import { RealtimeView } from "../features/realtime-view/RealtimeView";
 import { ImportExportView } from "../features/import-export-view/ImportExportView";
+import { CodegenView } from "../features/codegen-view/CodegenView";
 import { AuthPanel } from "../features/auth-panel/AuthPanel";
 import { GitPanel } from "../components/GitPanel";
 import { NEW_REQUEST_TAB_ID, tabIsDirty, useRequestStore } from "../stores/useRequestStore";
@@ -387,6 +388,12 @@ function SecondaryView() {
 								<section className="h-full min-h-0 overflow-y-auto">
 									<ErrorBoundary label="Import / Export">
 										<ImportExportView />
+									</ErrorBoundary>
+								</section>
+							) : view === "codegen" ? (
+								<section className="h-full min-h-0 overflow-y-auto">
+									<ErrorBoundary label="Code generation">
+										<CodegenView />
 									</ErrorBoundary>
 								</section>
 							) : view === "settings" ? (

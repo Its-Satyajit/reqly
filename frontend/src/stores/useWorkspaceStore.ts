@@ -57,6 +57,7 @@ export type WorkspaceView =
 	| 'oauth'
 	| 'git'
 	| 'importexport'
+	| 'codegen'
 	| 'environments'
 	| 'history'
 	| 'mocks'

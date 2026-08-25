@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import {
 	BookOpen,
 	Clock,
+	Code,
 	FileCode2,
 	GitBranch,
 	GitCompare,
@@ -58,6 +59,7 @@ const RAIL_GROUPS: RailGroup[] = [
 			{ view: "tests", label: "Tests", icon: ListChecks },
 			{ view: "git", label: "Git", icon: GitBranch },
 			{ view: "importexport", label: "Import / Export", icon: Import },
+			{ view: "codegen", label: "Code generation", icon: Code },
 			{ view: "oauth", label: "OAuth tokens", icon: KeyRound },
 			{ view: "environments", label: "Environments", icon: SlidersHorizontal },
 			{ view: "history", label: "History", icon: Clock },

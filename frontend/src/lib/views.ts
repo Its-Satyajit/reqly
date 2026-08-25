@@ -8,6 +8,7 @@ export const WORKSPACE_VIEWS = [
 	{ id: "oauth", label: "OAuth tokens" },
 	{ id: "git", label: "Git" },
 	{ id: "importexport", label: "Import / Export" },
+	{ id: "codegen", label: "Code generation" },
 	{ id: "environments", label: "Environments" },
 	{ id: "history", label: "History" },
 	{ id: "mocks", label: "Mock servers" },

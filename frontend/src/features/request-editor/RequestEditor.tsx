@@ -9,9 +9,8 @@ import { ChevronRight, Loader2, MoreHorizontal, Play } from 'lucide-react'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
 import { useRequestStore } from '../../stores/useRequestStore'
-import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
 import { tabIsDirty } from '../../stores/useRequestStore'
-import { effectiveUrlFor } from '../../stores/useWorkspaceStore'
+import { useWorkspaceStore, effectiveUrlFor } from '../../stores/useWorkspaceStore'
 import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
 import type { KeyValueRow, RequestAuth, RequestRetry } from '../../lib/request'
@@ -25,6 +24,54 @@ import { notifyError } from '../../lib/notify'
 import { handleTabArrowKeys, tabClass } from '../../lib/ui'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
+
+/** breadcrumbTrail resolves a request path against the workspace tree into a
+ * workspace › collection › folders › request trail. Module-level helper. */
+function breadcrumbTrail(requestPath: string): string[] {
+  const state = useWorkspaceStore.getState()
+  const trail = [state.currentWorkspace?.name ?? 'workspace']
+  const tree = state.workspaceTree
+  if (!tree) return trail
+  const segments = requestPath.split('/')
+  const fileName = segments[segments.length - 1]
+  // Collections and folders are structurally identical for trail purposes.
+  interface CrumbNode {
+    name: string
+    path: string
+    folders: CrumbNode[]
+  }
+  // SAFETY: collections and folders share the {name, path, folders} shape the
+  // walk needs; extra fields (requests) are ignored.
+  let nodes = tree.collections as CrumbNode[]
+  for (let i = 0; i < segments.length - 1; i++) {
+    const prefix = segments.slice(0, i + 1).join('/')
+    const hit = nodes.find((n) => n.path === prefix)
+    if (!hit) break
+    trail.push(hit.name)
+    nodes = hit.folders
+  }
+  trail.push(fileName)
+  return trail
+}
+
+/** Breadcrumb is the workspace › collection › request trail line. */
+function Breadcrumb({ trail }: { trail: string[] }) {
+  return (
+    <div className="flex items-center gap-1 px-3 pb-1 pt-2 text-[11px] text-muted-foreground">
+      {trail.map((seg, i) => (
+        // Trail segments are a fixed positional path (workspace › … › file);
+        // position IS the identity here.
+        // react-doctor-disable-next-line react-doctor/no-array-index-as-key
+        <span key={`crumb-${i}`} className="flex items-center gap-1">
+          {i > 0 && <ChevronRight className="size-3" aria-hidden />}
+          <span className={i === trail.length - 1 ? 'font-medium text-foreground' : ''}>
+            {seg}
+          </span>
+        </span>
+      ))}
+    </div>
+  )
+}
 
 type Tab = 'params' | 'headers' | 'auth' | 'body' | 'scripts' | 'variables'
 
@@ -170,8 +217,8 @@ export function RequestEditor() {
 
   return (
     <div className="flex h-full flex-col">
-      {meta?.changedOnDisk && (
-        <div className="flex items-center justify-between gap-2 border-b border-status-warn/40 bg-status-warn/10 px-3 py-1.5">
+      {requestPath && <Breadcrumb trail={breadcrumbTrail(requestPath)} />}
+      {meta?.changedOnDisk && (        <div className="flex items-center justify-between gap-2 border-b border-status-warn/40 bg-status-warn/10 px-3 py-1.5">
           <p className="text-xs text-status-warn">
             This request changed on disk since you opened it. Overwrite the
             file, or reload to keep the on-disk version.
