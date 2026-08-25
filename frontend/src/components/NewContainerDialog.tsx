@@ -23,14 +23,13 @@ export interface NewContainerDialogProps {
  * because React Compiler cannot handle try/catch, and owns the busy flag so
  * its reset sits in a finally. */
 async function runCreate(
-	create: (name: string) => Promise<unknown>,
+	create: (name: string) => Promise<string | null>,
 	name: string,
 	setBusy: (busy: boolean) => void,
 ): Promise<string | null> {
 	setBusy(true);
 	try {
-		await create(name);
-		return null;
+		return await create(name);
 	} catch (err) {
 		return err instanceof Error ? err.message : String(err);
 	} finally {

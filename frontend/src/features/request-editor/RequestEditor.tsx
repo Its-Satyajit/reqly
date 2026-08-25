@@ -470,12 +470,12 @@ function RequestToolbar({
 const codegenLanguages = ['curl', 'js', 'python', 'go'] as const
 type CodegenLanguage = (typeof codegenLanguages)[number]
 
-const codegenLabels: Record<CodegenLanguage, string> = {
+const codegenLabels = {
   curl: 'Copy as cURL',
   js: 'Copy as JavaScript',
   python: 'Copy as Python',
   go: 'Copy as Go',
-}
+} satisfies Record<CodegenLanguage, string>
 
 /** OverflowMenu is the toolbar's ⋯ button: code-generation copy actions. */
 function OverflowMenu({
