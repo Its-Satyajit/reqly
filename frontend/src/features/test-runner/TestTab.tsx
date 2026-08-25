@@ -285,7 +285,7 @@ export function TestTab({ tabId }: { tabId: string }) {
                     </span>
                     {tr.name}
                   </p>
-                  <ul className="mt-0.5 flex flex-col gap-0.5 pl-5 font-mono text-xs text-muted-foreground">
+                  <ul className="mt-0.5 flex flex-col gap-0.5 pl-4 font-mono text-xs text-muted-foreground">
                     {tr.results.map((r, i) => (
                       <li key={i} className={r.passed ? "" : "text-status-error"}>
                         {r.passed ? "✓" : "✗"} {r.message || r.assertion.kind}

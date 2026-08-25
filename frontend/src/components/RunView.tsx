@@ -148,7 +148,7 @@ export function RunView() {
 
 	if (!path) {
 		return (
-			<div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
+			<div className="flex h-full items-center justify-center px-4 py-8 text-center text-sm text-muted-foreground">
 				No run started — press the play button on a collection or folder to run it.
 			</div>
 		);
@@ -271,7 +271,7 @@ export function RunView() {
 			)}
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				{steps.length === 0 && !running && !report ? (
-					<div className="p-8 text-center text-xs text-muted-foreground">Waiting for the run to start…</div>
+					<div className="px-4 py-8 text-center text-xs text-muted-foreground">Waiting for the run to start…</div>
 				) : (
 					<div>
 						{steps.map((step, i) => (

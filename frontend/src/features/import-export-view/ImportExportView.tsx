@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { ViewShell } from "../../components/shell/ViewLayout";
 import { ArrowLeft, ArrowRight, Download, FileUp } from "lucide-react";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
@@ -334,9 +335,9 @@ function ExportCard() {
 export function ImportExportView() {
 	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Import and export">
+		<ViewShell label="Import and export">
 			<ImportCard onImported={() => void refreshWorkspace()} />
 			<ExportCard />
-		</div>
+		</ViewShell>
 	);
 }

@@ -16,6 +16,7 @@ import { THEMES } from "#lib/themes";
 import { useShellStore, useThemeStore, type ResponseMode } from "#stores";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
 import { useHistoryStore } from "#stores/useHistoryStore";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 
 type SettingsSectionId = "appearance" | "editor" | "privacy" | "storage" | "shortcuts" | "about";
 
@@ -244,39 +245,44 @@ function AboutSection() {
 export function SettingsView() {
 	const [section, setSection] = useState<SettingsSectionId>("appearance");
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Settings">
-			<nav aria-label="Settings sections" className="flex w-52 shrink-0 flex-col gap-0.5">
-				<p className="px-2 pb-1 font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
-					Settings
-				</p>
-				{SECTIONS.map((s) => (
-					<button
-						key={s.id}
-						type="button"
-						onClick={() => setSection(s.id)}
-						aria-current={section === s.id ? "page" : undefined}
-						className={cn(
-							"flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
-							section === s.id
-								? "bg-primary/10 font-medium text-primary"
-								: "text-muted-foreground hover:bg-accent hover:text-foreground",
-						)}
-					>
-						{s.id === "appearance" ? (
-							<Eye className="size-3.5" aria-hidden />
-						) : s.id === "shortcuts" ? (
-							<Keyboard className="size-3.5" aria-hidden />
-						) : s.id === "about" ? (
-							<Info className="size-3.5" aria-hidden />
-						) : (
-							<MonitorCog className="size-3.5" aria-hidden />
-						)}
-						{s.label}
-					</button>
-				))}
-			</nav>
+		<ViewShell label="Settings">
+			<SplitView
+				asideLabel="Settings sections"
+				aside={
+						<nav aria-label="Settings sections" className="flex flex-col gap-0.5">
+					<p className="px-2 pb-1 font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
+						Settings
+					</p>
+					{SECTIONS.map((s) => (
+						<button
+							key={s.id}
+							type="button"
+							onClick={() => setSection(s.id)}
+							aria-current={section === s.id ? "page" : undefined}
+							className={cn(
+								"flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
+								section === s.id
+									? "bg-primary/10 font-medium text-primary"
+									: "text-muted-foreground hover:bg-accent hover:text-foreground",
+							)}
+						>
+							{s.id === "appearance" ? (
+								<Eye className="size-3.5" aria-hidden />
+							) : s.id === "shortcuts" ? (
+								<Keyboard className="size-3.5" aria-hidden />
+							) : s.id === "about" ? (
+								<Info className="size-3.5" aria-hidden />
+							) : (
+								<MonitorCog className="size-3.5" aria-hidden />
+							)}
+							{s.label}
+						</button>
+					))}
+					</nav>
+				}
+			>
 			<div className="min-w-0 flex-1 overflow-y-auto">
-				<div className="max-w-xl rounded-xl border border-border bg-card p-5">
+				<div className="max-w-xl rounded-xl border border-border bg-card p-4">
 					{section === "appearance" ? <AppearanceSection /> : null}
 					{section === "editor" ? <EditorSection /> : null}
 					{section === "privacy" ? <PrivacySection /> : null}
@@ -285,6 +291,7 @@ export function SettingsView() {
 					{section === "about" ? <AboutSection /> : null}
 				</div>
 			</div>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

@@ -8,6 +8,7 @@ import { CodeMirrorEditor } from "../../editors/CodeMirrorEditor";
 import { KeyValueEditor } from "#components/KeyValueEditor";
 import { cn } from "#lib/utils";
 import { useGrpcStore } from "#stores/useGrpcStore";
+import { ViewShell } from "../../components/shell/ViewLayout";
 
 /** statusBadge renders the connection state pill. */
 function statusBadge(status: string) {
@@ -79,7 +80,7 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 	const tlsOn = tab.tls || tab.tlsSkipVerify;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4">
+		<ViewShell label="gRPC tab" className="overflow-y-auto">
 			<div className="flex items-center gap-2">
 				<Input
 					value={tab.target}
@@ -309,6 +310,6 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 					<dd className="text-foreground">reqly-grpc/1.4</dd>
 				</dl>
 			</div>
-		</div>
+		</ViewShell>
 	);
 }

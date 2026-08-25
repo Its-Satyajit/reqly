@@ -15,6 +15,7 @@ import {
 	type SpecDiffResult,
 } from "#lib/diff";
 import type { HistoryEntry } from "#lib/history";
+import { ViewShell } from "../../components/shell/ViewLayout";
 import { methodTintClass } from "#lib/status";
 import { useHistoryStore } from "#stores/useHistoryStore";
 
@@ -317,7 +318,7 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
 	const result = mode === "specs" ? specResult?.result ?? null : respResult?.result ?? null;
 
 	return (
-		<section className="flex h-full min-h-0 flex-col gap-3 p-4" aria-label="API diff">
+		<ViewShell label="API diff">
 			<div className="flex flex-wrap items-center gap-2">
 				<span className="text-xs text-muted-foreground">Base</span>
 				{mode === "specs" ? (
@@ -443,6 +444,6 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
 					</p>
 				</div>
 			)}
-		</section>
+		</ViewShell>
 	);
 }
