@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { Check, Copy, FileText } from "lucide-react";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Button } from "#components/ui/button";
+import { Checkbox } from "#components/ui/checkbox";
 import { Input } from "#components/ui/input";
 import { Spinner } from "#components/ui/spinner";
 import { CodeMirrorEditor } from "../../editors/CodeMirrorEditor";
 import { copyText } from "#lib/response";
-import { handleTabArrowKeys, tabClass } from "#lib/ui";
+import { tabClass } from "#lib/ui";
+import { Tabs, TabsList, TabsTrigger } from "#components/ui/tabs";
 import { useDocsStore } from "#stores/useDocsStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
 
@@ -68,12 +70,10 @@ export function DocsView() {
 						{collections.map((c) => (
 							<li key={c.name}>
 								<label className="flex items-center gap-1 text-xs text-foreground">
-									<input
-										type="checkbox"
+									<Checkbox
 										checked={selectedSet.has(c.name)}
-										onChange={() => toggleCollection(c.name)}
+										onCheckedChange={() => toggleCollection(c.name)}
 										aria-label={`Include collection ${c.name}`}
-										className="size-3.5 accent-(--primary)"
 									/>
 									{c.name}
 								</label>
@@ -112,26 +112,15 @@ export function DocsView() {
 						Saved to <span className="font-mono">{result.path}</span> ·{" "}
 						{result.requestCount} requests · {result.files.length} files
 					</p>
-					<div
-						className="flex shrink-0 items-center gap-1"
-						role="tablist"
-						aria-label="Generated doc files"
-						onKeyDown={(e) => handleTabArrowKeys(e)}
-					>
-						{result.files.map((f) => (
-							<button
-								key={f.name}
-								type="button"
-								role="tab"
-								aria-selected={activeFile === f.name}
-								tabIndex={activeFile === f.name ? 0 : -1}
-								onClick={() => setActiveFile(f.name)}
-								className={tabClass(activeFile === f.name)}
-							>
-								{f.name}
-							</button>
-						))}
-					</div>
+					<Tabs value={activeFile} onValueChange={(v) => setActiveFile(v)}>
+						<TabsList variant="line" aria-label="Generated doc files">
+							{result.files.map((f) => (
+								<TabsTrigger key={f.name} value={f.name} className={tabClass(activeFile === f.name)}>
+									{f.name}
+								</TabsTrigger>
+							))}
+						</TabsList>
+					</Tabs>
 					<div className="flex min-h-0 flex-1 flex-col rounded-md border border-border">
 						{active ? (
 							<>

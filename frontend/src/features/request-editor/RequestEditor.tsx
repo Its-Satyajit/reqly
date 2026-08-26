@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
-import { CompactSelect } from '../../components/CompactSelect'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
 import { methodTintClass } from '../../lib/status'
 import { cn } from '#lib/utils'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
@@ -22,7 +28,15 @@ import { tagWarnings } from '../../lib/tags'
 import { generateCode } from '../../lib/codegen'
 import { copyText } from '../../lib/response'
 import { notifyError } from '../../lib/notify'
-import { handleTabArrowKeys, tabClass } from '../../lib/ui'
+import { tabClass } from '../../lib/ui'
+import { Tabs, TabsList, TabsTrigger } from '#components/ui/tabs'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '#components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '#components/ui/popover'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
 
@@ -303,11 +317,13 @@ export function RequestEditor() {
         />
       )}
 
-      <div
-        className="flex items-center gap-1 px-2"
-        role="tablist"
-        aria-label="Request sections"
-        onKeyDown={(e) => handleTabArrowKeys(e)}
+      <Tabs
+        value={tab}
+        onValueChange={(v) => {
+          // SAFETY: tab ids originate from this file's `tabs` registry
+          setTab(v as Tab)
+        }}
+        className="px-2"
       >
         {tabs
           .filter((t) => showVariables || t.id !== 'variables')
@@ -474,13 +490,27 @@ function RequestToolbar({
 
   return (
     <div className="flex min-w-0 items-center gap-2 p-2">
-      <CompactSelect
+      <Select
+        items={methods.map((m) => ({ value: m, label: m }))}
         value={draft.method}
-        onChange={(method) => patch({ method })}
-        ariaLabel="HTTP method"
-        className={cn("w-24 shrink-0 font-mono font-semibold", methodTintClass(draft.method))}
-        options={methods.map((m) => ({ value: m, label: m }))}
-      />
+        onValueChange={(method) => {
+          if (method !== null) patch({ method })
+        }}
+      >
+        <SelectTrigger
+          aria-label="HTTP method"
+          className={cn("h-7 w-auto gap-1 rounded-md px-2 text-xs", "w-24 shrink-0 font-mono font-semibold", methodTintClass(draft.method))}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="max-h-72 min-w-(--anchor-width)">
+          {methods.map((m) => (
+            <SelectItem key={m} value={m} className="text-xs">
+              {m}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <input
         value={draft.url}
         onChange={(e) => patch({ url: e.target.value })}
@@ -516,7 +546,7 @@ function RequestToolbar({
         <Button
           size="lg"
           onClick={onSend}
-          className="rounded-full bg-primary px-6 font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90"
+          className=""
         >
           <Play className="size-4 fill-current" aria-hidden />
           Send
@@ -579,39 +609,33 @@ function OverflowMenu({
   }
 
   return (
-    <div className="relative shrink-0">
-      <Button
-        size="sm"
-        variant="outline"
-        aria-label="More actions"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        {copied ? 'Copied' : <MoreHorizontal className="size-4" aria-hidden />}
-      </Button>
-      {open && (
-        <div
-          role="menu"
-          aria-label="Code generation"
-          className="absolute right-0 top-full z-30 mt-1 flex min-w-44 flex-col rounded-md border border-border bg-popover p-1 shadow-lg"
-        >
-          {codegenLanguages.map((lang) => (
-            <button
-              key={lang}
-              type="button"
-              role="menuitem"
-              onClick={() => copyAs(lang)}
-              className={cn(
-                'rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-accent',
-                lang === codeLang && 'font-medium',
-              )}
-            >
-              {codegenLabels[lang]}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label="More actions"
+          >
+            {copied ? 'Copied' : <MoreHorizontal className="size-4" aria-hidden />}
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="end" className="min-w-44">
+        {codegenLanguages.map((lang) => (
+          <DropdownMenuItem
+            key={lang}
+            onClick={() => copyAs(lang)}
+            className={cn(
+              'rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-accent',
+              lang === codeLang && 'font-medium',
+            )}
+          >
+            {codegenLabels[lang]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -739,13 +763,8 @@ function RetrySection({
   }
 
   return (
-    <div>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 rounded-md py-0.5 text-left hover:bg-muted/50"
-      >
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger className="flex items-center gap-1 rounded-md py-0.5 text-left hover:bg-muted/50">
         <ChevronRight
           className={`size-3 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
           aria-hidden
@@ -784,14 +803,24 @@ function RetrySection({
           </label>
           <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Strategy
-            <CompactSelect
+            <Select
+              items={retryStrategies.map((s) => ({ ...s }))}
               value={retry?.strategy === 'fixed' ? 'fixed' : 'exponential'}
-              onChange={(strategy) => {
+              onValueChange={(strategy) => {
                 if (strategy === 'fixed' || strategy === 'exponential') patch({ strategy })
               }}
-              ariaLabel="Backoff strategy"
-              options={retryStrategies.map((s) => ({ ...s }))}
-            />
+            >
+              <SelectTrigger aria-label="Backoff strategy" className="h-7 w-auto gap-1 rounded-md px-2 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-72 min-w-(--anchor-width)">
+                {retryStrategies.map((s) => (
+                  <SelectItem key={s.value} value={s.value} className="text-xs">
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
           <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Max delay (ms)
@@ -809,9 +838,8 @@ function RetrySection({
             Retries fire on network errors and 429/502/503/504 unless a custom status set is declared
             in the request file. The server's Retry-After header wins when present.
           </p>
-        </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 

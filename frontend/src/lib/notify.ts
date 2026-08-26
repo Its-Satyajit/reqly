@@ -1,13 +1,13 @@
-import { toast } from "../components/ui/toastManager";
+import { toast } from "sonner";
 
 export function notifySuccess(title: string, description?: string): void {
-	toast.add({ title, description, type: "success" });
+	toast.success(title, { description });
 }
 
 export function notifyError(title: string, description?: string): void {
-	toast.add({ title, description, type: "error" });
+	toast.error(title, { description });
 }
 
 export function notifyWarning(title: string, description?: string): void {
-	toast.add({ title, description, type: "warning" });
+	toast.warning(title, { description });
 }

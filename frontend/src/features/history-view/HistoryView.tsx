@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, RotateCcw, Search, Star, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+} from "../../components/ui/empty";
+import {
 	AlertDialog,
 	AlertDialogAction,
 	AlertDialogCancel,
@@ -213,21 +218,37 @@ export function HistoryView() {
 					</Button>
 				</div>
 				<div className="flex items-center gap-2">
-					<CompactSelect
-						value={status}
-						onChange={(next) => {
-							setStatus(next);
-							setPage(0);
-							void load({ offset: 0, status: next, query });
-						}}
-						ariaLabel="Status filter"
-						options={[
+					<Select
+						items={[
 							{ value: "", label: "All statuses" },
 							{ value: "2xx", label: "2xx" },
 							{ value: "4xx", label: "4xx" },
 							{ value: "5xx", label: "5xx" },
 						]}
-					/>
+						value={status}
+						onValueChange={(next) => {
+							if (next === null) return;
+							setStatus(next);
+							setPage(0);
+							void load({ offset: 0, status: next, query });
+						}}
+					>
+						<SelectTrigger aria-label="Status filter" className="h-7 w-auto gap-1 rounded-md px-2 text-xs">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent className="max-h-72 min-w-(--anchor-width)">
+							{[
+								{ value: "", label: "All statuses" },
+								{ value: "2xx", label: "2xx" },
+								{ value: "4xx", label: "4xx" },
+								{ value: "5xx", label: "5xx" },
+							].map((option) => (
+								<SelectItem key={option.value} value={option.value} className="text-xs">
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 					<span className="font-data text-xs tabular-nums text-muted-foreground">
 						page {page + 1}
 					</span>
@@ -305,11 +326,15 @@ export function HistoryView() {
 
 			<div className="min-h-0 flex-1 overflow-auto rounded-md border border-border bg-background">
 				{displayEntries.length === 0 ? (
-					<p className="p-6 text-center text-xs text-muted-foreground">
-						{query.trim() === ""
-							? "No history yet — send a request and it will be recorded here."
-							: "Nothing matches this search."}
-					</p>
+					<Empty className="text-xs">
+						<EmptyHeader>
+							<EmptyDescription>
+								{query.trim() === ""
+									? "No history yet — send a request and it will be recorded here."
+									: "Nothing matches this search."}
+							</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
 				) : (
 					<table className="w-full border-separate border-spacing-0 text-left text-xs">
 						<thead>

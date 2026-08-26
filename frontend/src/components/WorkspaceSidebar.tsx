@@ -88,7 +88,9 @@ export function WorkspaceSidebar() {
 	};
 
 	return (
-		<aside className="flex h-full w-full flex-col overflow-y-auto border-r border-border p-2">
+		<aside className="h-full w-full border-r border-border">
+			<ScrollArea className="size-full">
+				<div className="flex flex-col p-2">
 			<div className="flex items-center justify-between px-2 pb-1">
 				<p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
 					Collections
@@ -186,6 +188,8 @@ export function WorkspaceSidebar() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+				</div>
+			</ScrollArea>
 		</aside>
 	);
 }

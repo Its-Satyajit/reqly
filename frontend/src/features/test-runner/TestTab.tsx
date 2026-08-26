@@ -13,6 +13,7 @@ import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
 import { Spinner } from "#components/ui/spinner";
+import { Checkbox } from "#components/ui/checkbox";
 import { CodeMirrorEditor } from "../../editors/CodeMirrorEditor";
 import {
   TEST_ASSERTION_KIND_OPTIONS,
@@ -132,20 +133,18 @@ function AssertionBuilder({
 
             {draft.kind === "json" && (
               <label className="flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={draft.exact ?? false}
-                  onChange={(e) => setDraft({ ...draft, exact: e.target.checked })}
+                  onCheckedChange={(checked) => setDraft({ ...draft, exact: checked })}
                 />
                 Compare as exact string
               </label>
             )}
 
             <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={draft.not ?? false}
-                onChange={(e) => setDraft({ ...draft, not: e.target.checked })}
+                onCheckedChange={(checked) => setDraft({ ...draft, not: checked })}
               />
               Invert (not)
             </label>

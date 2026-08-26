@@ -14,7 +14,13 @@ import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
 import { Spinner } from "#components/ui/spinner";
 import { Textarea } from "#components/ui/textarea";
-import { CompactSelect } from "#components/CompactSelect";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "#components/ui/select";
 import { cn } from "#lib/utils";
 import {
   formatLabel,
@@ -227,12 +233,24 @@ export function ImportDialog({ onImported }: { onImported?: () => void }) {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Format</span>
-                <CompactSelect
+                <Select
+                  items={IMPORT_FORMAT_OPTIONS}
                   value={formatHint}
-                  onChange={setFormatHint}
-                  options={IMPORT_FORMAT_OPTIONS}
-                  ariaLabel="Import format"
-                />
+                  onValueChange={(v) => {
+                    if (v !== null) setFormatHint(v);
+                  }}
+                >
+                  <SelectTrigger aria-label="Import format" className="h-7 w-auto gap-1 rounded-md px-2 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72 min-w-(--anchor-width)">
+                    {IMPORT_FORMAT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value} className="text-xs">
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {formatBadge(detected?.format ?? "", detected?.ok ?? false, formatHint)}
             </div>

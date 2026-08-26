@@ -12,6 +12,7 @@ import {
 	SunMoon,
 } from "lucide-react";
 import { cn } from "#lib/utils";
+import { Kbd } from "#components/ui/kbd";
 import { THEMES } from "#lib/themes";
 import { useShellStore, useThemeStore, type ResponseMode } from "#stores";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
@@ -215,7 +216,7 @@ function ShortcutsSection() {
 					<span className="text-muted-foreground">{s.label}</span>
 					<kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-data text-xs">
 						{s.keys}
-					</kbd>
+					</Kbd>
 				</li>
 			))}
 		</ul>

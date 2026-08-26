@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "#components/ui/alert";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
 import { Spinner } from "#components/ui/spinner";
+import { Tabs, TabsList, TabsTrigger } from "#components/ui/tabs";
 import { StatusPill } from "#components/status";
 import { CodeMirrorEditor } from "../../editors";
 import { KeyValueEditor } from "#components/KeyValueEditor";
@@ -454,19 +455,22 @@ export function GraphqlBrowser() {
 					</Button>
 				</div>
 
-				<div className="flex shrink-0 items-center gap-1" role="tablist" aria-label="GraphQL editor tabs">
-					{TABS.map((t) => (
-						<button
-							key={t.id}
-							type="button"
-							role="tab"
-							aria-selected={tab === t.id}
-							onClick={() => setTab(t.id)}
-							className={tabClass(tab === t.id)}
-						>
-							{t.label}
-						</button>
-					))}
+				<div className="flex shrink-0 items-center gap-1">
+					<Tabs
+						value={tab}
+						onValueChange={(v) => {
+							// SAFETY: tab ids come from the local TABS constant
+							setTab(v as EditorTab)
+						}}
+					>
+						<TabsList variant="line" aria-label="GraphQL editor tabs">
+							{TABS.map((t) => (
+								<TabsTrigger key={t.id} value={t.id} className={tabClass(tab === t.id)}>
+									{t.label}
+								</TabsTrigger>
+							))}
+						</TabsList>
+					</Tabs>
 					<button
 						type="button"
 						onClick={() => setQuery((q) => prettifyQuery(q))}

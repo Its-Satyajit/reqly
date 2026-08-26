@@ -105,10 +105,9 @@ function CommandList({
   )
 }
 
-function CommandEmpty({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Empty>) {
+function CommandEmpty(
+  props: React.ComponentProps<typeof CommandPrimitive.Empty>
+) {
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"

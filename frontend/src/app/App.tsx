@@ -5,7 +5,13 @@ import logoLight from "../assets/logo-light.svg";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { CrashOverlay } from "../components/CrashOverlay";
 import { cn } from "#lib/utils";
-import { CompactSelect } from "../components/CompactSelect";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../components/ui/select";
 import {
 	ResizableHandle,
 	ResizablePanel,
@@ -26,7 +32,7 @@ import { RunView } from "../components/RunView";
 import { WorkspaceSidebar } from "../components/WorkspaceSidebar";
 import { RealtimeTab } from "../features/realtime-view/RealtimeTab";
 import { TestTab } from "../features/test-runner/TestTab";
-import { Toaster } from "../components/ui/toast";
+import { Toaster } from "#components/ui/sonner";
 import { EnvironmentsView } from "../features/environments-view/EnvironmentsView";
 import { DiffView } from "../features/diff-view/DiffView";
 import { GraphqlBrowser } from "../features/graphql-browser/GraphqlBrowser";

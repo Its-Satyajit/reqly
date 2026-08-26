@@ -4,7 +4,11 @@ import { JsonTree } from "../../components/JsonTree";
 import { StatusPill } from "../../components/status";
 import { Button } from "../../components/ui/button";
 import { CodeMirrorEditor } from "../../editors";
-import { formatBytes, handleTabArrowKeys, tabClass } from "../../lib/ui";
+import { formatBytes, tabClass } from "../../lib/ui";
+import { Tabs, TabsList, TabsTrigger } from "#components/ui/tabs";
+import { Skeleton } from "#components/ui/skeleton";
+import { Kbd } from "#components/ui/kbd";
+import { ScrollArea } from "#components/ui/scroll-area";
 import { type JSONPathMatch, type JSONPathResult, queryJSONPath } from "../../lib/jsonpath";
 import { isRecord, type JsonValue } from "../../lib/typeGuards";
 import { methodTintClass } from "../../lib/status";
@@ -170,27 +174,28 @@ function ViewerToolbar({
 	searchCount: number | null;
 }) {
 	return (
-		<div
-			className="flex shrink-0 items-center gap-1 px-2 pb-1"
-			role="tablist"
-			aria-label="Response views"
-			onKeyDown={(e) => handleTabArrowKeys(e)}
-		>
-			{views.map((v) => (
-				<button
-					key={v.id}
-					type="button"
-					role="tab"
-					aria-selected={view === v.id}
-					tabIndex={view === v.id ? 0 : -1}
-					onClick={() => setView(v.id)}
-					disabled={v.id === "table" && !tabular}
-					title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
-					className={`${tabClass(view === v.id)} ${v.id === "table" && !tabular ? "opacity-50" : ""}`}
-				>
-					{v.label}
-				</button>
-			))}
+		<div className="flex shrink-0 items-center gap-1 px-2 pb-1">
+			<Tabs
+				value={view}
+				onValueChange={(v) => {
+					// SAFETY: view ids come from the local `views` array
+					setView(v as View)
+				}}
+			>
+				<TabsList variant="line" aria-label="Response views">
+					{views.map((v) => (
+						<TabsTrigger
+							key={v.id}
+							value={v.id}
+							disabled={v.id === "table" && !tabular}
+							title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
+							className={`${tabClass(view === v.id)} ${v.id === "table" && !tabular ? "opacity-50" : ""}`}
+						>
+							{v.label}
+						</TabsTrigger>
+					))}
+				</TabsList>
+			</Tabs>
 			<input
 				value={query}
 				onChange={(e) => setQuery(e.target.value)}
@@ -319,7 +324,7 @@ function HeadersView({
 	query: string;
 }) {
 	return (
-		<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
+		<ScrollArea className="h-full rounded-md border border-border bg-background p-2">
 			{headers.length === 0 ? (
 				<p className="text-xs text-muted-foreground">
 					{query
@@ -345,7 +350,7 @@ function HeadersView({
 					</tbody>
 				</table>
 			)}
-		</div>
+		</ScrollArea>
 	);
 }
 
@@ -393,7 +398,7 @@ function ReadyHero({
 						Press{" "}
 						<kbd className="rounded border border-border bg-background px-1 font-data text-2xs">
 							⌘↩
-						</kbd>{" "}
+						</Kbd>{" "}
 						or hit Send — pre-request scripts run first, then the response
 						lands here.
 					</p>
@@ -716,9 +721,9 @@ export function ResponseViewer() {
 						<span className="sr-only">Sending request…</span>
 						{[100, 92, 96, 78, 88].map((w, i) => (
 							// SAFETY: static skeleton widths — positional identity is the point
-							<div
+							<Skeleton
 								key={w}
-								className="h-3 animate-pulse rounded bg-muted"
+								className="h-3"
 								style={{ width: `${w}%`, animationDelay: `${i * 120}ms` }}
 							/>
 						))}
@@ -731,9 +736,9 @@ export function ResponseViewer() {
 						className="h-full overflow-hidden rounded-md border border-border"
 					/>
 				) : view === "tree" && parsed !== null ? (
-					<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
+					<ScrollArea className="h-full rounded-md border border-border bg-background p-2">
 						<JsonTree data={parsed} filter={query} />
-					</div>
+					</ScrollArea>
 				) : view === "tree" && treeFallback ? (
 					<div className="flex h-full min-h-0 flex-col rounded-md border border-border">
 						<p className="shrink-0 px-2 pt-2 text-xs text-muted-foreground">

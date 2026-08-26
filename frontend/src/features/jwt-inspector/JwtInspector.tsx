@@ -3,9 +3,14 @@ import { ClipboardPaste, ScanSearch } from "lucide-react";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "#components/ui/card";
 import { Spinner } from "#components/ui/spinner";
 import { Textarea } from "#components/ui/textarea";
-import { cn } from "#lib/utils";
 import {
   extractBearer,
   formatRemaining,
@@ -100,10 +105,11 @@ export function JwtInspector() {
     <ViewShell label="JWT inspector">
       <h2 className="text-sm font-semibold">JWT Inspector</h2>
 
-      <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-        <label htmlFor="jwt-token" className="text-xs font-medium">
-          Token (Bearer prefix optional)
-        </label>
+      <Card size="sm">
+        <CardContent className="flex flex-col gap-2">
+          <label htmlFor="jwt-token" className="text-xs font-medium">
+            Token (Bearer prefix optional)
+          </label>
         <Textarea
           id="jwt-token"
           value={token}
@@ -147,7 +153,8 @@ export function JwtInspector() {
             From last response
           </Button>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {error && (
         <Alert variant="destructive">

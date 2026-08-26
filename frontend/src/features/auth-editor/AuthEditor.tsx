@@ -69,14 +69,26 @@ export function AuthEditor({ auth, onChange, inherited }: AuthEditorProps) {
 
       <Field.Root className="flex flex-col gap-1">
         <Label>Auth type</Label>
-        <CompactSelect
+        <Select
+          items={ORDERED_AUTH_SCHEMES.map((id) => ({ value: id, label: AUTH_SCHEME_LABELS[id] }))}
           value={scheme}
-          // SAFETY: options are built from ORDERED_AUTH_SCHEMES, so the value is an AuthSchemeId
-          onChange={(v) => setScheme(v as AuthSchemeId)}
-          ariaLabel="Auth type"
-          className="w-full sm:w-48"
-          options={ORDERED_AUTH_SCHEMES.map((id) => ({ value: id, label: AUTH_SCHEME_LABELS[id] }))}
-        />
+          onValueChange={(v) => {
+            if (v !== null)
+              // SAFETY: options are built from ORDERED_AUTH_SCHEMES, so the value is an AuthSchemeId
+              setScheme(v as AuthSchemeId)
+          }}
+        >
+          <SelectTrigger aria-label="Auth type" className="h-7 w-auto gap-1 rounded-md px-2 text-xs w-full sm:w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-72 min-w-(--anchor-width)">
+            {ORDERED_AUTH_SCHEMES.map((id) => (
+              <SelectItem key={id} value={id} className="text-xs">
+                {AUTH_SCHEME_LABELS[id]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field.Root>
 
       {scheme === "inherit" ? (
@@ -126,13 +138,24 @@ function AuthFieldRow({
         {isSensitiveKey(scheme, field.key) && <SecretBadge />}
       </Label>
       {field.options ? (
-        <CompactSelect
+        <Select
+          items={field.options.map((opt) => ({ value: opt, label: opt }))}
           value={value || field.options[0]}
-          onChange={onValueChange}
-          ariaLabel={field.label}
-          className="w-full sm:w-48"
-          options={field.options.map((opt) => ({ value: opt, label: opt }))}
-        />
+          onValueChange={(v) => {
+            if (v !== null) onValueChange(v)
+          }}
+        >
+          <SelectTrigger aria-label={field.label} className="h-7 w-auto gap-1 rounded-md px-2 text-xs w-full sm:w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-72 min-w-(--anchor-width)">
+            {field.options.map((opt) => (
+              <SelectItem key={opt} value={opt} className="text-xs">
+                {opt}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       ) : (
         <Input
           value={value}
@@ -180,13 +203,24 @@ function OAuth2Fields({
     <div className="flex flex-col gap-3">
       <Field.Root className="flex flex-col gap-1">
         <Label>Grant type</Label>
-        <CompactSelect
+        <Select
+          items={OAUTH2_GRANTS.map((g) => ({ value: g.id, label: g.label }))}
           value={grant}
-          onChange={(v) => setField("grant_type", v)}
-          ariaLabel="Grant type"
-          className="w-full sm:w-56"
-          options={OAUTH2_GRANTS.map((g) => ({ value: g.id, label: g.label }))}
-        />
+          onValueChange={(v) => {
+            if (v !== null) setField("grant_type", v)
+          }}
+        >
+          <SelectTrigger aria-label="Grant type" className="h-7 w-auto gap-1 rounded-md px-2 text-xs w-full sm:w-56">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-72 min-w-(--anchor-width)">
+            {OAUTH2_GRANTS.map((g) => (
+              <SelectItem key={g.id} value={g.id} className="text-xs">
+                {g.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field.Root>
 
       {fields.map((field) => (

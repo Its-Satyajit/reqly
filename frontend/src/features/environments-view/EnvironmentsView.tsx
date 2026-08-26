@@ -11,6 +11,7 @@ import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 import { EnvironmentEditor } from "./EnvironmentEditor";
 import { SecretsEditor } from "./SecretsEditor";
+import { Tabs, TabsList, TabsTrigger } from "#components/ui/tabs";
 
 const DOT_COLORS = ["bg-status-ok", "bg-status-warn", "bg-status-error", "bg-status-info"];
 
@@ -336,36 +337,38 @@ export function EnvironmentsView() {
 							<p className="text-xs text-destructive">{environmentsError}</p>
 						) : null}
 
-						<div className="flex shrink-0 items-center gap-1" role="tablist" aria-label="Environment tabs">
-							<button
-								type="button"
-								role="tab"
-								aria-selected={tab === "variables"}
-								onClick={() => setTab("variables")}
-								className={cn(
-									"rounded-full px-3 py-1 text-xs",
-									tab === "variables"
-										? "bg-primary/15 font-medium text-primary"
-										: "text-muted-foreground hover:text-foreground",
-								)}
-							>
-								{`Variables (${Object.keys(selected.variables).length})`}
-							</button>
-							<button
-								type="button"
-								role="tab"
-								aria-selected={tab === "secrets"}
-								onClick={() => setTab("secrets")}
-								className={cn(
-									"rounded-full px-3 py-1 text-xs",
-									tab === "secrets"
-										? "bg-primary/15 font-medium text-primary"
-										: "text-muted-foreground hover:text-foreground",
-								)}
-							>
-								{`Secrets (${selected.secrets.length})`}
-							</button>
-						</div>
+						<Tabs
+							value={tab}
+							onValueChange={(v) => {
+								// SAFETY: tab ids come from the local tab list above
+								setTab(v as EnvTab)
+							}}
+						>
+							<TabsList variant="line" aria-label="Environment tabs">
+								<TabsTrigger
+									value="variables"
+									className={cn(
+										"rounded-full px-3 py-1 text-xs",
+										tab === "variables"
+											? "bg-primary/15 font-medium text-primary"
+											: "text-muted-foreground hover:text-foreground",
+									)}
+								>
+									{`Variables (${Object.keys(selected.variables).length})`}
+								</TabsTrigger>
+								<TabsTrigger
+									value="secrets"
+									className={cn(
+										"rounded-full px-3 py-1 text-xs",
+										tab === "secrets"
+											? "bg-primary/15 font-medium text-primary"
+											: "text-muted-foreground hover:text-foreground",
+									)}
+								>
+									{`Secrets (${selected.secrets.length})`}
+								</TabsTrigger>
+							</TabsList>
+						</Tabs>
 
 						{tab === "variables" ? (
 							<EnvironmentEditor key={`env-${selected.name}`} env={selected} onCancel={() => undefined} />

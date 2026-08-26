@@ -1,4 +1,9 @@
-import { useEffect, useRef } from "react";
+import {
+	ContextMenu as ContextMenuRoot,
+	ContextMenuContent,
+	ContextMenuTrigger,
+	ContextMenuItem,
+} from "#components/ui/context-menu";
 
 export interface ContextMenuItem {
 	label: string;
@@ -12,8 +17,9 @@ interface ContextMenuProps {
 	onClose: () => void;
 }
 
-/** Minimal fixed-position context menu: closes on click-away, Escape, or
- * item selection. Rendered by callers that track {x, y} in local state. */
+/** Fixed-position context menu rendered at {x, y}: closes on click-away,
+ * Escape, or item selection. Rendered by callers that track {x, y} in local
+ * state. */
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
 	const ref = useRef<HTMLDivElement>(null);
 
@@ -44,20 +50,24 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
 			style={{ left: x, top: y }}
 			className="fixed z-(--z-overlay) min-w-36 rounded-md border border-border bg-popover p-1 text-xs shadow-lg ring-1 ring-foreground/10"
 		>
-			{items.map((item) => (
-				<button
-					key={item.label}
-					type="button"
-					role="menuitem"
-					onClick={() => {
-						item.onSelect();
-						onClose();
-					}}
-					className="block w-full rounded px-2 py-1 text-left text-foreground transition-colors hover:bg-muted"
-				>
-					{item.label}
-				</button>
-			))}
-		</div>
+			<ContextMenuTrigger
+				style={{ position: "fixed", left: x, top: y, width: 0, height: 0 }}
+				aria-hidden
+				tabIndex={-1}
+			/>
+			<ContextMenuContent className="min-w-36 text-xs">
+				{items.map((item) => (
+					<ContextMenuItem
+						key={item.label}
+						onSelect={() => {
+							item.onSelect();
+							onClose();
+						}}
+					>
+						{item.label}
+					</ContextMenuItem>
+				))}
+			</ContextMenuContent>
+		</ContextMenuRoot>
 	);
 }

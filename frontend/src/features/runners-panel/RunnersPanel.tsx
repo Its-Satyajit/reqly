@@ -5,8 +5,15 @@ import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
 import { Spinner } from "#components/ui/spinner";
+import { Switch } from "#components/ui/switch";
 import { Textarea } from "#components/ui/textarea";
-import { CompactSelect } from "#components/CompactSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "#components/ui/select";
 
 /** inputInt parses numeric input text, falling back on non-numeric values. */
 function inputInt(value: string, fallback: number): number {
@@ -138,18 +145,32 @@ export function RunnersPanel() {
           <Layers className="mr-1 inline size-3.5" aria-hidden />
           Runners
         </span>
-        <CompactSelect
-          value={mode}
-          onChange={(v) => {
-            // SAFETY: options are exactly the two runner kinds.
-            patch({ mode: v as Mode });
-          }}
-          options={[
+        <Select
+          items={[
             { value: "pagination", label: "Pagination" },
             { value: "bulk", label: "Bulk" },
           ]}
-          ariaLabel="Runner mode"
-        />
+          value={mode}
+          onValueChange={(v) => {
+            if (v === null) return;
+            // SAFETY: options are exactly the two runner kinds.
+            patch({ mode: v as Mode });
+          }}
+        >
+          <SelectTrigger aria-label="Runner mode" className="h-7 w-auto gap-1 rounded-md px-2 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-72 min-w-(--anchor-width)">
+            {[
+              { value: "pagination", label: "Pagination" },
+              { value: "bulk", label: "Bulk" },
+            ].map((option) => (
+              <SelectItem key={option.value} value={option.value} className="text-xs">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {activeTabId == null && (
@@ -162,15 +183,26 @@ export function RunnersPanel() {
         <>
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-medium">Strategy</span>
-            <CompactSelect
+            <Select
+              items={STRATEGY_OPTIONS}
               value={strategy}
-              onChange={(v) => {
+              onValueChange={(v) => {
+                if (v === null) return;
                 // SAFETY: options are the four core pagination strategies.
                 patch({ strategy: v as PaginationConfigInput["strategy"] });
               }}
-              options={STRATEGY_OPTIONS}
-              ariaLabel="Pagination strategy"
-            />
+            >
+              <SelectTrigger aria-label="Pagination strategy" className="h-7 w-auto gap-1 rounded-md px-2 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-72 min-w-(--anchor-width)">
+                {STRATEGY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value} className="text-xs">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {strategy === "cursor" && (
             <div className="flex items-center gap-1.5">
@@ -214,10 +246,9 @@ export function RunnersPanel() {
           />
           <div className="flex items-center gap-3 text-xs">
             <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
+              <Switch
                 checked={parallel}
-                onChange={(e) => patch({ parallel: e.target.checked })}
+                onCheckedChange={(checked) => patch({ parallel: checked })}
               />
               Parallel
             </label>

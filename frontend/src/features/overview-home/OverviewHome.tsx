@@ -282,9 +282,13 @@ export function OverviewHome() {
 
 				<Card title="Recent activity">
 					{historyPool.length === 0 ? (
-						<p className="text-xs text-muted-foreground">
-							No requests sent yet — activity lands here.
-						</p>
+						<Empty className="p-2 text-xs">
+							<EmptyHeader>
+								<EmptyDescription className="text-xs">
+									No requests sent yet — activity lands here.
+								</EmptyDescription>
+							</EmptyHeader>
+						</Empty>
 					) : (
 						<div className="flex flex-col gap-1.5">
 							{historyPool.slice(0, 6).map((e) => (

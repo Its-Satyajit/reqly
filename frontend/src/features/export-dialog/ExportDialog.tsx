@@ -11,7 +11,13 @@ import { Alert, AlertDescription } from "#components/ui/alert";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
 import { Spinner } from "#components/ui/spinner";
-import { CompactSelect } from "#components/CompactSelect";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "#components/ui/select";
 import {
   EXPORT_FORMAT_OPTIONS,
   exportFormatLabel,
@@ -53,15 +59,26 @@ export function ExportDialog() {
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium">Format</span>
-              <CompactSelect
+              <Select
+                items={EXPORT_FORMAT_OPTIONS}
                 value={format}
-                onChange={(v) => {
+                onValueChange={(v) => {
+                  if (v === null) return;
                   // SAFETY: options come from EXPORT_FORMAT_OPTIONS, all valid ExportFormats.
                   setFormat(v as ExportFormat);
                 }}
-                options={EXPORT_FORMAT_OPTIONS}
-                ariaLabel="Export format"
-              />
+              >
+                <SelectTrigger aria-label="Export format" className="h-7 w-auto gap-1 rounded-md px-2 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-72 min-w-(--anchor-width)">
+                  {EXPORT_FORMAT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {format === "openapi" && (

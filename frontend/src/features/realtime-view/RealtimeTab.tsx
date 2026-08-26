@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "#components/ui/alert";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
 import { Spinner } from "#components/ui/spinner";
+import { Switch } from "#components/ui/switch";
 import { CodeMirrorEditor } from "../../editors/CodeMirrorEditor";
 import type { KeyValueRow } from "#lib/request";
 import { cn } from "#lib/utils";
@@ -310,12 +311,11 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 							</p>
 						) : null}
 						<label className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-							<input
-								type="checkbox"
+							<Switch
+								size="sm"
 								checked={binaryMode}
-								onChange={(e) => setBinaryMode(e.target.checked)}
+								onCheckedChange={(checked) => setBinaryMode(checked)}
 								aria-label="Send as binary frame (UTF-8 bytes)"
-								className="size-3.5 accent-(--primary)"
 							/>
 							binary frame
 						</label>
@@ -371,11 +371,10 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 							Clear
 						</Button>
 						<label className="flex items-center gap-1 text-xs text-muted-foreground">
-							<input
-								type="checkbox"
+							<Switch
+								size="sm"
 								checked={autoScroll}
-								onChange={(e) => setAutoScroll(e.target.checked)}
-								className="size-3.5 accent-(--primary)"
+								onCheckedChange={(checked) => setAutoScroll(checked)}
 							/>
 							auto-scroll
 						</label>
