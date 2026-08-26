@@ -1,25 +1,77 @@
 # Reqly — GUI Roadmap
 
-> Desktop GUI milestones (GUI-0 through GUI-16) — tracks `apps/desktop/backend/frontend` delivery.
-> Source of truth for `ROADMAP.md` Phase 1 GUI items.
+> Desktop GUI milestones — tracks `apps/desktop/backend/frontend` delivery.
+> **Source of truth:** [`docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md`](../Reqly%20Complete%20UI%20Architecture,%20Pages,%20Panels,%20and%20Navigation%20Specification.md) (full UI spec — §1–§59)
 
-## GUI-3 Shell Redesign — P0 UI Architecture (spec #369)
+## GUI-0 Shell Redesign — RESTARTING FROM SCRATCH
 
-- [x] **G-3.1** Tool rail 52px grouped (Workspace/API Tools/Realtime/System) — 2026-08-26
-- [x] **G-3.2** ContextSidebar 220–280px resizable/collapsible — 2026-08-26
-- [x] **G-3.3** TopBar (workspace switcher, global search ⌘K, import/export, env selector) — 2026-08-26
-- [x] **G-3.4** Theme registry `atlas-light`/`atlas-dark`/`system` with `resolvedTheme` — 2026-08-26
-- [x] **G-3.5** Realtime `websocket`/`sse` single-connection pages + recents — 2026-08-26
-- [x] **G-3.6** Command palette + data providers (Fuse) — 2026-08-26
-- [x] **G-3.7** Settings view + bottom utility dock (Console/Network/Tests/Variables/Cookies, ⌘J) — 2026-08-26
-- [x] **G-3.8** Spec editor tree + YAML + schema viz (§56.1–56.2) — 2026-08-26
+> **⚠️ RESTARTING** — Previous implementation (G-3.x) did not follow spec §2 four-zone architecture. All UI components will be rewritten following the spec's TopBar / ToolRail / ContextSidebar / MainWorkspace / BottomPanel model.
 
-## GUI-4 Design Quality
+### §2.1 TopBar (always visible)
 
-- [x] **G-4.0** Infinite-loop fix for palette `filtered` selector — 2026-08-26
-- [x] **G-4.1** Race-safe `emitRunEvent` for `go test -race` — 2026-08-26
+- [ ] Logo
+- [ ] Workspace Switcher
+- [ ] Global Search ⌘K
+- [ ] Import / Export buttons
+- [ ] Active Environment selector
+- [ ] Sync Status indicator
+- [ ] Notifications
+- [ ] Settings
+- [ ] User Menu
 
-## GUI-5 P1 Data Layer (spec §56.3–56.8)
+### §2.2 Tool Rail (48–56px, left-most)
+
+- [ ] Workspace group: Home, Requests, Environments, History
+- [ ] API Tools group: Mocks, Diff, JWT, GraphQL, gRPC, Runners, Explorer, Docs
+- [ ] Realtime group: WebSocket, SSE
+- [ ] System group: Settings
+- [ ] Icon-based routing (top-level navigation)
+
+### §2.3 Context Sidebar (220–280px)
+
+- [ ] Collapsible/resizable (drag handle)
+- [ ] Changes per active tool
+- [ ] Tree navigation
+- [ ] Search within tool
+- [ ] Contextual actions
+- [ ] Recent/pinned items
+- [ ] `⌘B` toggle
+
+### §2.4 Main Workspace
+
+- [ ] Tab-based content area
+- [ ] Page routing per active tool
+- [ ] Full pages vs context panels (§62 rules)
+
+### §2.5 Bottom Utility Panel
+
+- [ ] Console tab
+- [ ] Network tab
+- [ ] Tests tab
+- [ ] Variables tab
+- [ ] Cookies tab
+- [ ] `⌘J` toggle
+- [ ] Resizable height
+
+## GUI-1 Design System (spec §3)
+
+- [ ] Design tokens (spacing, radius, shadows)
+- [ ] Typography system (IBM Plex Sans/Mono)
+- [ ] Color system (terracotta accent #c93517/#ff6f52, BASE 6px radius)
+- [ ] Status indicators (Connected/Running/Valid/Success/Warning/Error)
+- [ ] Hairline borders, no shadows
+
+## GUI-2 Navigation Model (spec §4, §60–63)
+
+- [ ] Two-axis navigation: horizontal (tool rail) + vertical (sidebar)
+- [ ] 15+ full pages with sub-panels
+- [ ] Page vs panel rules (§62)
+- [ ] Shared interaction patterns (§61)
+- [ ] Final layout model (§63)
+
+## GUI-5 P1 Data Layer (spec §56.3–56.8) — PRESERVED
+
+> These data layer items (lib + stores + tests) are preserved from the previous implementation.
 
 - [x] **G-5.1** Request templates — zustand store + pure lib (search, instantiate, CRUD) + 21 tests — 2026-08-26
 - [x] **G-5.2** Proxy/TLS controls — zustand store + pure lib (validate, format, defaults) + 22 tests — 2026-08-26
