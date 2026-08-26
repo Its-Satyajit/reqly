@@ -1,8 +1,10 @@
 # Reqly — Development Roadmap
 
-> **Status:** P0 complete, P1 in progress
-> **Overall completion:** ~35%. All 27 milestones through M27 (cross-platform desktop) are shipped, plus the first few P1 items.
-> **Source of truth:** [`docs/features.md`](docs/features.md) (features), [`docs/technology-stack.md`](docs/technology-stack.md) (stack), [`docs/testing-strategy.md`](docs/testing-strategy.md) (quality), [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) (desktop GUI milestones)
+> **Status:** P0 complete, P1 data layer shipped, UI redesign starting from scratch
+> **Overall completion:** ~40%. Phase 0–1 (P0) 100%, Phase 2 (P1) data layer shipped, **UI shell redesign restarting from spec §2**, Phase 3–5 not started.
+> **Source of truth:** [`docs/features.md`](docs/features.md) (features), [`docs/technology-stack.md`](docs/technology-stack.md) (stack), [`docs/testing-strategy.md`](docs/testing-strategy.md) (quality), [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) (desktop GUI milestones), **[`docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md`](docs/Reqly%20Complete%20UI%20Architecture,%20Pages,%20Panels,%20and%20Navigation%20Specification.md)** (full UI spec — §1–§59)
+>
+> **⚠️ UI Redesign Notice:** Previous shell implementation did not follow spec architecture. All UI code in `frontend/src/` (shell components, features, stores) is being rewritten from scratch following the spec's four-zone model (TopBar / ToolRail / ContextSidebar / MainWorkspace + BottomPanel). Existing data layer (lib/, stores/) is preserved; UI components will be rebuilt.
 >
 > Checkboxes track real, working code, not scaffolding. A box gets ticked only when the feature ships end to end: core logic, UI/CLI wiring, and tests, per the Definition of Done in the Testing Strategy doc.
 
@@ -200,11 +202,19 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.13 Desktop shell redesign — P0 UI Architecture
 
-- [x] Tool rail 52px grouped (Workspace/API Tools/Realtime/System) + ContextSidebar 220–280px resizable/collapsible + TopBar (workspace switcher, global search ⌘K, import/export, env selector) — spec #369 P0 §1–55 — 2026-08-26
-- [x] Theme registry `atlas-light`/`atlas-dark`/`system` with `resolvedTheme`, persisted, `data-theme` + `.dark` mirror, rail cycle — 2026-08-26
-- [x] Realtime pages `websocket`/`sse` single-connection per kind reusing `RealtimeTab` internals + session recents capped 12 — 2026-08-26
-- [x] Command palette core + data providers (collections/environments/history FTS) with Fuse, ⌘K/⌘B/⌘W/⌘1–8/⌘⏎ — 2026-08-26
-- [x] Settings view (Appearance/Workspace/History/About) + bottom utility dock (Console/Network/Tests/Variables/Cookies, ⌘J, resizable) — 2026-08-26
+> **⚠️ RESTARTING FROM SCRATCH** — Previous implementation did not follow spec §2 four-zone architecture. All UI components will be rewritten following the spec's TopBar / ToolRail / ContextSidebar / MainWorkspace / BottomPanel model.
+
+- [ ] **§2.1** TopBar — Logo, Workspace Switcher, Global Search ⌘K, Import, Export, Active Environment, Sync Status, Settings — always visible
+- [ ] **§2.2** Tool Rail (48–56px) — 4 groups: Workspace (Home/Requests/Environments/History), API Tools (Mocks/Diff/JWT/GraphQL/gRPC/Runners/Explorer/Docs), Realtime (WebSocket/SSE), System (Settings)
+- [ ] **§2.3** Context Sidebar (220–280px) — Collapsible/resizable, changes per active tool, tree navigation, search, actions, `⌘B` toggle
+- [ ] **§2.4** Main Workspace — Tab-based content area, page/panel routing per active tool
+- [ ] **§2.5** Bottom Utility Panel — Console/Network/Tests/Variables/Cookies, `⌘J` toggle, resizable
+- [ ] **§3** Design System — Tokens, typography, color system (IBM Plex, terracotta accent, BASE 6px radius)
+- [ ] **§4** Navigation Model — Two-axis: horizontal (tool rail) + vertical (sidebar resource)
+- [ ] **§60** Navigation Map — 15+ full pages with sub-panels (Params/Headers/Body/Auth/Tests/Response)
+- [ ] **§61** Shared Patterns — Search, primary/secondary actions, status indicators, tabs, panels
+- [ ] **§62** Page vs Panel Rules — Full pages vs context panels vs request/response panels vs bottom panels vs dialogs
+- [ ] **§63** Final Layout Model — Canonical five-zone shell as single source of truth
 - [x] Infinite-loop fix for palette `filtered` selector (`useSyncExternalStore` new-array identity) — 2026-08-26
 - [x] P1 spec editor (§56.1) tree + YAML `CodeMirror` + schema viz graph (§56.2) — 2026-08-26
 
@@ -213,68 +223,143 @@ The minimum set to make Reqly a serious API client.
 ## Phase 2 — Differentiating Features (P1)
 
 Features that make Reqly more capable than a basic API client.
+**Spec:** [`docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md`](docs/Reqly%20Complete%20UI%20Architecture,%20Pages,%20Panels,%20and%20Navigation%20Specification.md) §56
 
 > **GUI milestones:** Most Phase 2 features have core/CLI shipped but no desktop GUI.
 > See [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) for GUI-specific tracking (GUI-5 through GUI-16).
 
-- [ ] OpenAPI editor (spec authoring in-app)
-- [ ] Schema validation + contract testing
-- [ ] Schema visualization (relationships between types, objects, endpoints, schemas)
+### §56.1 OpenAPI Spec Editor
+
+- [x] Spec editor tree + YAML CodeMirror editor — `features/spec-editor/SpecEditorView.tsx` + `stores/useSpecEditorStore.ts` — 2026-08-26
+- [ ] Interactive endpoint editing with validation (P1 GUI pending)
+
+### §56.2 Schema Visualization
+
+- [x] Schema graph — `lib/schemaGraph.ts` + `lib/schemaGraph.test.ts` — 2026-08-26
+- [ ] Interactive graph UI with zoom/pan/node selection (P1 GUI pending)
+
+### §56.3 Request Templates
+
+- [x] Request templates — zustand store + pure lib (search, instantiate, CRUD) + 21 tests — 2026-08-26
+- [ ] Template picker UI in request builder (P1 GUI pending)
+
+### §56.4 Proxy / TLS Controls
+
+- [x] Proxy & TLS controls — zustand store + pure lib (validate, format, defaults) + 22 tests — 2026-08-26
+- [ ] Proxy/TLS configuration panel UI (P1 GUI pending)
+
+### §56.5 Data-driven Testing
+
+- [x] Data-driven testing — CSV/JSON dataset lib + zustand store + 23 tests — 2026-08-26
+- [ ] Dataset picker + runner integration UI (P1 GUI pending)
+
+### §56.6 CI/CD Integration
+
+- [x] CI/CD support — CLI command generation + GitHub Action YAML + zustand store + 13 tests — 2026-08-26
+- [ ] CI/CD configuration panel UI (P1 GUI pending)
+
+### §56.7 Full Mock Server GUI
+
+- [~] Mock server — CLI `reqly mock` with path/method matching, schema/example generation, `--delay`, `--fail-every`; stateful mocks, scenarios, fault injection, and zustand store shipped — 2026-08-26
+- [ ] Full mock server GUI with route editor, scenario manager, logs viewer (P1 GUI pending)
+
+### §56.8 GraphQL / gRPC Documentation
+
+- [x] GraphQL/gRPC docs — zustand store + pure lib (SDL parse, search, Markdown render) + 16 tests — 2026-08-26
+- [ ] Documentation browser UI (P1 GUI pending)
+
+### Other P1 Items
+
 - [x] Code generation — `internal/exporter.Generate` (request → cURL/JS/Python/Go, header/body/auth, `[SECRET]` masked, `reqly export code` + desktop `Copy as`, golden files) — [ADR 0016](docs/adr/0016-code-generation.md)
-- [~] Mock server (from OpenAPI/examples, request matching, dynamic responses, delay/error simulation, stateful mocks) — CLI `reqly mock` with path/method matching, schema/example generation, `--delay`, `--fail-every`; stateful mocks pending
 - [x] API diff + breaking-change detection (endpoints, params, schemas, auth, response types) — `internal/diffing` (`OpenAPIFiles` structural diff + `breaking.go` severity classification), `reqly diff <file1> <file2>`, desktop Diff view
 - [x] Request/response diff (JSON structural) — `diffing.JSON` + `reqly diff`
 - [x] Environment diff — `reqly env diff` + desktop env tools panel
-- [ ] Request inheritance & templates (reusable request templates)
 - [~] HAR import/export + replay — import (`internal/importer/har.go`) + export (`internal/exporter/har.go`) shipped; HAR-specific replay pending (history replay via `HistoryReplay` shipped)
 - [~] JWT tooling (decode, claims viewer, signing) — decode/claims viewer + expiry detection (`reqly jwt decode`, ADR 0021) + per-request HS256/384/512 signing shipped; `verify`/`sign` CLI deferred to M29b
 - [~] GraphQL introspection / gRPC reflection tooling — GraphQL schema introspection + summary shipped (`internal/graphql/introspect.go`, desktop GraphQL browser); gRPC reflection not started
 - [ ] Advanced HTTP: HTTP/2, HTTP/3, streaming, chunked transfer, keep-alive
-- [ ] Proxy & TLS controls: system/HTTP/HTTPS/SOCKS5, per-env/per-request, cert inspection, mTLS, custom CAs
 - [x] Pagination runner (page/offset/cursor/link-header, stop conditions, aggregation) — `internal/pagination` + `reqly pagination run` ([ADR 0022](docs/adr/0022-pagination-runner.md)) + desktop runners panel
 - [x] Bulk request execution (CSV/JSON inputs, sequential/parallel, concurrency) — `internal/bulk` + `reqly bulk run --data` ([ADR 0023](docs/adr/0023-bulk-runner.md)) + desktop runners panel
-- [ ] Data-driven testing (same test suite against multiple datasets)
-- [x] Retry & resilience — engine-level `request.retry` block (`count`/`delayMs`/`strategy: fixed|exponential`/`maxDelayMs`/`retryOn`) inside `Client.Execute`, network errors + 429/502/503/504 default set, `Retry-After` honored + clamped, auth refresh orthogonal within one attempt, `response.Attempts` + history carry, `reqly run --retries/--retry-delay`, desktop Retry section ([ADR 0024](docs/adr/0024-retry-resilience.md))
-- [~] API documentation generation (REST + GraphQL + realtime) — REST shipped: `reqly docs generate` (index.md + per-collection Markdown with cURL snippets) + desktop Docs panel (G-15); GraphQL and realtime doc output deferred
-- [ ] CI/CD support (run collections/tests in CI, mock deployment, env validation, docs generation)
+- [x] Retry & resilience — engine-level `request.retry` block ([ADR 0024](docs/adr/0024-retry-resilience.md))
+- [~] API documentation generation (REST + GraphQL + realtime) — REST shipped: `reqly docs generate` + desktop Docs panel (G-15); GraphQL SDL parser + zustand store shipped (2026-08-26); realtime doc output deferred
 
 ---
 
 ## Phase 3 — Power-User Features (P2)
 
 Advanced functionality for experienced developers and teams.
+**Spec:** [`docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md`](docs/Reqly%20Complete%20UI%20Architecture,%20Pages,%20Panels,%20and%20Navigation%20Specification.md) §57
 
-- [ ] API monitoring (scheduled requests/collections, health checks, latency/availability, alerts)
-- [ ] Performance testing (RPS, latency, P95/P99, error rate, status distribution)
-- [ ] MQTT (publish/subscribe, topics, QoS, retained/will, auth, TLS)
-- [ ] Socket.IO (connections, events, rooms, namespaces, debugging)
-- [ ] API dependency graph
-- [ ] Request replay (exact / modified vars / other env / captured traffic)
+### §57.1 API Monitoring Dashboard
+
+- [ ] Scheduled requests/collections, health checks, latency/availability, alerts
+
+### §57.2 Performance Testing
+
+- [ ] RPS, latency, P95/P99, error rate, status distribution
+
+### §57.3 MQTT / Socket.IO
+
+- [ ] MQTT publish/subscribe, topics, QoS, retained/will, auth, TLS
+- [ ] Socket.IO connections, events, rooms, namespaces, debugging
+
+### §57.4 Dependency Graph
+
+- [ ] API dependency graph visualization
+
+### §57.5 Request Replay
+
+- [ ] Exact / modified vars / other env / captured traffic replay
+
+### §57.6 In-app Developer Tools / Debugger
+
+- [ ] Request/auth/variables/script/runtime/network inspection
+
+### §57.7 Git GUI
+
+- [ ] Init/commit/branch/diff/history/pull/push/merge/conflicts
+
+### §57.8 Network Interception / Timeline Debugging
+
+- [ ] Capture/inspect/import/modify/replay network traffic
+- [ ] Request timeline debugging (DNS/connect/TLS/request/server/response/transfer)
+
+### Other P2 Items
+
 - [ ] API changelog (from specs + Git changes)
 - [ ] Browser integrations (DevTools import, cURL copy, Chrome/Firefox/Safari)
-- [ ] In-app developer tools (app-level debugging: request/auth/variables/script/runtime/network inspection)
 - [ ] Advanced mock state (multi-scenario state machines)
 - [ ] Visual workflow builder
-- [ ] Advanced network interception (capture/inspect/import/modify/replay)
 - [ ] Self-hosted automation
-- [ ] Git GUI integration (init/commit/branch/diff/history/pull/push/merge/conflicts)
-- [ ] Request timeline debugging (DNS/connect/TLS/request/server/response/transfer)
 
 ---
 
 ## Phase 4 — Ecosystem & Enterprise (P3)
 
 Long-term ecosystem and organization features.
+**Spec:** [`docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md`](docs/Reqly%20Complete%20UI%20Architecture,%20Pages,%20Panels,%20and%20Navigation%20Specification.md) §58
 
-- [ ] Plugin marketplace (auth, template tags, request/response processing, protocols, UI)
-- [ ] Theme marketplace + custom themes + UI extensions
-- [ ] Git provider integrations (GitHub, GitLab, Bitbucket, Azure DevOps) + PATs
-- [ ] Shared workspaces / team collaboration
+### §58.1 Plugin Marketplace
+
+- [ ] Plugin system (auth, template tags, request/response processing, protocols, UI)
+
+### §58.2 Theme Marketplace
+
+- [ ] Theme sharing + custom themes + UI extensions
+
+### §58.3 Git Provider Integrations
+
+- [ ] GitHub, GitLab, Bitbucket, Azure DevOps + PATs
+
+### §58.4 Team / Shared Workspaces
+
+- [ ] Multi-user collaboration, shared workspaces
+
+### §58.5 Enterprise
+
 - [ ] Self-hosted collaboration server
-- [ ] Enterprise SSO
-- [ ] SCIM provisioning
-- [ ] Audit logs
-- [ ] Organization policies
+- [ ] Enterprise SSO, SCIM provisioning
+- [ ] Audit logs, organization policies
 - [ ] Enterprise secret management (Vault, AWS, Azure, role-based access)
 - [ ] Advanced access control / permissions
 
@@ -282,9 +367,19 @@ Long-term ecosystem and organization features.
 
 ## Phase 5 — MCP, AI & Extensibility (cross-cutting)
 
-- [ ] `internal/mcp` — MCP server (list/search/run requests & collections, inspect schemas, retrieve responses, generate docs)
-- [ ] Command palette / spotlight, keyboard shortcuts, context menus, widgets, code snippets
-- [ ] Optional AI: request generation, response explanation, test/docs generation, error analysis, schema assistance, breaking-change explanation
+**Spec:** [`docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md`](docs/Reqly%20Complete%20UI%20Architecture,%20Pages,%20Panels,%20and%20Navigation%20Specification.md) §59
+
+### §59.1 MCP Server
+
+- [ ] `internal/mcp` — list/search/run requests & collections, inspect schemas, retrieve responses, generate docs
+
+### §59.2 Command Palette
+
+- [x] Command palette + spotlight, keyboard shortcuts, context menus, widgets, code snippets — shipped (2026-08-26)
+
+### §59.3 Optional AI Assistant
+
+- [ ] Request generation, response explanation, test/docs generation, error analysis, schema assistance, breaking-change explanation
 
 ---
 
@@ -315,23 +410,26 @@ Every checked feature must pass the full checklist:
 
 ## Progress Tracker
 
-| Phase   | Scope                    | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Est. complete |
-| ------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| Phase 0 | Foundation               | 100% — repo/build infra + Wails shell + UI shell + all core primitives + CLI skeleton + release pipeline (GoReleaser + Wails OS matrix + install scripts)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | 100%          |
-| Phase 1 | Core API Client (P0)     | 100% — Request engine + response model + CLI `run`/`test` + request files + core services + desktop bridge + workspace/collection storage with inheritance + cURL/OpenAPI import + Postman export + WebSocket/SSE clients + scripting sandbox + collection runner + OpenAPI parsing + mock server + env management/validation/masking/diff + auth schemes (basic/bearer/apikey/jwt/digest/none + masking) shipped + OAuth 2.0 Client Credentials + Authorization Code/PKCE + Device flow with cached tokens, refresh-token reuse, `reqly auth login`/`status`/`logout`, auto-login, OS-keychain store, custom-scheme redirects, desktop auth panel + desktop request builder (params/headers/body tabs, response views/search/actions/JSONPath, cookies view) + desktop environments manager (list/create/edit/set-active/delete, masked secret editing, inline validation) + desktop collections browser (workspace tree, per-tab request/response state, env pill + snapshot variable layering, send) + desktop request-file editing (format-preserving atomic save, changed-on-disk Overwrite/Reload) + desktop collection-run UI (sidebar run buttons, streamed Run View) + desktop auth editing (Auth tab, scheme forms, oauth2 grant config, inherited-auth view, save warnings) + AWS SigV4 + Akamai EdgeGrid auth (per-request signing, Auth tab forms, save warnings) + binary + GraphQL body editors (file upload, multipart file rows, GraphQL query+variables) + history + cookie jar + table + binary preview (SQLite `history.db` + FTS5 + spill + replay, persistent jar + auto-attach, Table + image/PDF/hex) + dynamic values & template tags (`{{$uuid}}`/`{{$timestamp}}`/`{{$isoTimestamp}}`/`{{$randomInt}}`/`{{$randomString}}`, picker + autocomplete) + save/export workspace (bulk `SaveWorkspace` + `reqly export workspace`) + `reqly docs` (Markdown `index.md` + per-collection, `text/template` + `curl`) + cross-platform desktop (OS matrix + checksums + install.sh/ps1) — **P0 1.1-1.12 100%** | 100%          |
-| Phase 2 | Differentiating (P1)     | Code generation (cURL/JS/Python/Go) via `internal/exporter` — first P1 shipped; HAR import/export + JWT `reqly jwt decode` (`internal/jwt`) + Pagination `reqly pagination run` (`internal/pagination`) + Bulk `reqly bulk run --data` (`internal/bulk` CSV/JSON, sequential/parallel) + engine-level Retry & resilience shipped via `docs/adr/0020`+`0021`+`0022`+`0023`+`0024`; remaining P1 (API diff, OpenAPI editor, contract testing) queued | ~35%          |
-| Phase 3 | Power-User (P2)          | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | 0%            |
-| Phase 4 | Ecosystem (P3)           | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | 0%            |
-| Phase 5 | MCP / AI / Extensibility | Not started (`internal/mcp` stub only)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | 0%            |
-| Quality | DoD + release gates      | Fast + PR CI green (vet/gofmt/race/coverage/typecheck/Wails build + cross-platform release); E2E/Playwright + Vitest + full perf/security compat pending                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | ~55%          |
+| Phase   | Scope                    | Status | Est. complete |
+| ------- | ------------------------ | ------ | ------------- |
+| Phase 0 | Foundation               | 100% — repo/build infra + Wails shell + UI shell + all core primitives + CLI skeleton + release pipeline | 100% |
+| Phase 1 | Core API Client (P0)     | 100% backend + CLI; **UI shell restarting from scratch** — §2 four-zone architecture not yet implemented per spec | 100% backend, 0% UI |
+| Phase 2 | Differentiating (P1)     | ~40% — §56.1–56.8 data layer (lib + stores + tests) shipped; **UI components restarting from scratch** per spec §60–63 | ~40% |
+| Phase 3 | Power-User (P2)          | 0% — §57.1–57.8 not started | 0% |
+| Phase 4 | Ecosystem (P3)           | 0% — §58.1–58.5 not started | 0% |
+| Phase 5 | MCP / AI / Extensibility | ~5% — §59.2 command palette shipped (needs rebuild per spec); §59.1 MCP server, §59.3 AI assistant not started | ~5% |
+| Quality | DoD + release gates      | ~55% — Fast + PR CI green; E2E/Playwright + Vitest + full perf/security compat pending | ~55% |
 
-### Next milestones (suggested order)
+### Next milestones (UI redesign from scratch, following spec §2)
 
-1. ~~**Request file loading**~~ — `reqly run`/`test` from a plain-text request file (JSON/YAML request format + vars) — ✅ shipped
-2. ~~**Core → Desktop bridge**~~ — `AppService.SendRequest` → core `RequestService`; `RequestEditor` Send wired to `useRequestStore` — ✅ shipped
-3. ~~**Workspaces & collections on disk**~~ — Git-native storage + inheritance (build on `requestfile`) — ✅ shipped
-4. ~~**Import/export**~~ — cURL/OpenAPI import + Postman collection export — ✅ shipped
-5. ~~**WebSocket + SSE**~~ — realtime protocols: `internal/websocket` (connection mgmt, text/binary messages) + `internal/sse` (event stream parser) + CLI `reqly ws`/`reqly sse` — ✅ shipped
+1. **§2.1 TopBar** — Logo, Workspace Switcher, Global Search ⌘K, Import/Export, Environment selector, Settings
+2. **§2.2 Tool Rail** — 48–56px, 4 groups (Workspace/API Tools/Realtime/System), icon-based routing
+3. **§2.3 Context Sidebar** — 220–280px, collapsible/resizable, per-tool content, `⌘B` toggle
+4. **§2.4 Main Workspace** — Tab-based content area, page routing per active tool
+5. **§2.5 Bottom Panel** — Console/Network/Tests/Variables/Cookies, `⌘J` toggle, resizable
+6. **§3 Design System** — Tokens, typography (IBM Plex), color system (terracotta accent, BASE 6px)
+7. **§60 Navigation Map** — 15+ full pages with sub-panels
+8. **§61–63** — Shared patterns, page/panel rules, final layout model
 6. ~~**Collection runner + scripting**~~ — pre/post scripts (Goja `reqly` sandbox), request chaining via runtime variables, tests in the runner, CLI `reqly collection test` — ✅ shipped
 7. ~~**Mock server + OpenAPI**~~ — `internal/openapi` (kin-openapi load/validate) + `internal/mocking` (path/method matching, schema/example response generation, delay + error simulation) + CLI `reqly mock <spec>` — ✅ shipped
 8. ~~**Validate + diff**~~ — `reqly validate` (spec/project checks) and `reqly diff` (specs/requests/responses) — ✅ shipped
