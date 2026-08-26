@@ -15,3 +15,4 @@ export * from "./useWorkspaceStore";
 export * from "./useCommandPaletteStore";
 export * from "./useRealtimeRecentsStore";
 export * from "./useBottomPanelStore";
+export * from "./useSpecEditorStore";

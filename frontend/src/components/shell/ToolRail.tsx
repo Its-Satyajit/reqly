@@ -4,6 +4,7 @@ import {
 	BookText,
 	Cable,
 	Compass,
+	FileCode2,
 	Hexagon,
 	History,
 	House,
@@ -43,6 +44,7 @@ const API_TOOLS_GROUP: RailItem[] = [
 	{ view: "runners", label: "Runners", icon: Play },
 	{ view: "explorer", label: "Explorer", icon: Compass },
 	{ view: "docs", label: "Docs", icon: BookText },
+	{ view: "spec-editor", label: "Spec Editor", icon: FileCode2 },
 ];
 
 export function ToolRail({ className }: { className?: string }) {

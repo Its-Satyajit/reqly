@@ -39,6 +39,7 @@ import { HistoryView } from "../features/history-view/HistoryView";
 import { HomeView } from "../features/workspace-home/HomeView";
 import { SettingsView } from "../features/settings-view/SettingsView";
 import { WebSocketPage, SSEPage } from "../features/realtime-pages/RealtimePage";
+import { SpecEditorView } from "../features/spec-editor/SpecEditorView";
 import { CommandPalette } from "../features/command-palette/CommandPalette";
 import { BottomPanel } from "../components/shell/BottomPanel";
 import { registerDefaultPaletteProviders } from "../lib/paletteProviders";
@@ -253,6 +254,10 @@ export function App() {
 								) : activeView === "settings" ? (
 									<section className="h-full min-h-0 overflow-y-auto">
 										<ErrorBoundary label="Settings"><SettingsView /></ErrorBoundary>
+									</section>
+								) : activeView === "spec-editor" ? (
+									<section className="h-full min-h-0">
+										<ErrorBoundary label="Spec Editor"><SpecEditorView /></ErrorBoundary>
 									</section>
 								) : (
 									<section className="flex h-full min-h-0 flex-col">

@@ -169,6 +169,7 @@ const TOOL_BLURBS = {
 	runners: "Run collections, paginate through lists, or fire bulk requests.",
 	explorer: "Browse any OpenAPI document as a navigable reference.",
 	docs: "Generate REST documentation from the workspace collections.",
+	"spec-editor": "Edit the OpenAPI spec with live tree navigation.",
 } satisfies Partial<Record<WorkspaceView, string>>;
 
 function RealtimeRecents({ kind }: { kind: "ws" | "sse" }) {

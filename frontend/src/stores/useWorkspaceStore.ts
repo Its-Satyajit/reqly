@@ -65,6 +65,7 @@ export type WorkspaceView =
 	| 'websocket'
 	| 'sse'
 	| 'settings'
+	| 'spec-editor'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null
