@@ -161,7 +161,7 @@ export function TestsView() {
 		<ViewShell label="Tests">
 			<SplitView
 				asideLabel="Test suites"
-				asideClassName="gap-2 rounded-xl border border-border bg-card p-3"
+				asideClassName="gap-2 border-t border-border pt-3"
 				aside={
 					<>
 					<div className="flex items-center justify-between">

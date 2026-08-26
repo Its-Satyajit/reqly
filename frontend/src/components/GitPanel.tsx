@@ -136,7 +136,7 @@ export function GitPanel() {
 
 	return (
 		<div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row" aria-label="Source control">
-			<div className="flex w-full max-w-sm shrink-0 flex-col gap-2 rounded-xl border border-border bg-card p-3">
+			<div className="flex w-full max-w-sm shrink-0 flex-col gap-2 border-t border-border pt-3">
 				<div className="flex items-center justify-between">
 					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Working tree {files.length > 0 ? `(${files.length})` : ""}
@@ -240,7 +240,7 @@ export function GitPanel() {
 			</div>
 
 			<div className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
-				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
+				<div className="flex flex-col gap-1 border-t border-border pt-3">
 					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Recent commits — {status.branch || "HEAD"}
 					</p>
@@ -258,7 +258,7 @@ export function GitPanel() {
 					)}
 				</div>
 
-				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
+				<div className="flex flex-col gap-1 border-t border-border pt-3">
 					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Branch
 					</p>
@@ -294,7 +294,7 @@ export function GitPanel() {
 					) : null}
 				</div>
 
-				<div className="flex items-start gap-2 rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
+				<div className="flex items-start gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
 					<ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
 					Everything here reads the plain-text worktree. No network calls unless
 					you push from outside — Reqly never talks to remotes.

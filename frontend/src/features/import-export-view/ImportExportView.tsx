@@ -87,7 +87,7 @@ function ImportCard({ onImported }: { onImported?: () => void }) {
 	};
 
 	return (
-		<div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+		<div className="flex flex-col gap-3 border-t border-border pt-4">
 			<h2 className="flex items-center gap-2 text-lg font-medium text-foreground">
 				<FileUp className="size-4" aria-hidden />
 				Import
@@ -249,7 +249,7 @@ function ExportCard() {
 	const tree = useWorkspaceStore((s) => s.workspaceTree);
 
 	return (
-		<div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+		<div className="flex flex-col gap-3 border-t border-border pt-4">
 			<h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
 				<Download className="size-4" aria-hidden />
 				Export

@@ -116,7 +116,7 @@ export function CodegenView() {
 		<ViewShell label="Code generation">
 			<SplitView
 				asideLabel="Generator options"
-				asideClassName="rounded-xl border border-border bg-card p-3"
+				asideClassName="border-t border-border pt-3"
 				aside={
 						<>
 					<div className="flex flex-col gap-1">

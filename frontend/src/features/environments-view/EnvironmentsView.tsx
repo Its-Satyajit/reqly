@@ -220,7 +220,7 @@ export function EnvironmentsView() {
 				asideLabel="Environments list"
 				aside={
 					<>
-				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
+				<div className="flex flex-col gap-1 border-t border-border pt-3">
 					<div className="flex items-center justify-between">
 						<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 							Environments
@@ -280,7 +280,7 @@ export function EnvironmentsView() {
 					) : null}
 				</div>
 
-				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
+				<div className="flex flex-col gap-1 border-t border-border pt-3">
 					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Shared scopes
 					</p>

@@ -253,7 +253,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 
 			{isWS ? (
 				<div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
-					<div className="flex min-h-0 flex-col gap-2 rounded-xl border border-border bg-card p-3">
+					<div className="flex min-h-0 flex-col gap-2 border-t border-border pt-3">
 						<CardTitle>Message composer</CardTitle>
 						<div className="h-36 shrink-0 overflow-hidden rounded-lg border border-border">
 							<CodeMirrorDraft
@@ -320,7 +320,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 							binary frame
 						</label>
 					</div>
-					<div className="flex min-h-0 flex-col rounded-xl border border-border bg-card p-3">
+					<div className="flex min-h-0 flex-col border-t border-border pt-3">
 						<CardTitle
 							right={
 								<Button size="xs" variant="ghost" onClick={() => clearFrames(tabId)}>
@@ -347,7 +347,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 					</div>
 				</div>
 			) : (
-				<div className="flex min-h-0 flex-1 flex-col gap-2 rounded-xl border border-border bg-card p-3">
+				<div className="flex min-h-0 flex-1 flex-col gap-2 border-t border-border pt-3">
 					<div className="flex flex-wrap items-center gap-2">
 						<span className="text-xs text-muted-foreground">Filter event type</span>
 						<select
@@ -398,7 +398,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 			)}
 
 			{isWS ? (
-				<div className="flex shrink-0 flex-col gap-1 rounded-lg border border-border bg-card p-3">
+				<div className="flex shrink-0 flex-col gap-1 border-t border-border pt-3">
 					<p className="text-xs font-semibold text-foreground">Connection info</p>
 					<dl className="grid grid-cols-[8rem_1fr] gap-x-3 gap-y-0.5 font-data text-xs">
 						<dt className="text-muted-foreground">READYSTATE</dt>
