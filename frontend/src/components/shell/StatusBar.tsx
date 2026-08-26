@@ -1,7 +1,18 @@
-import { useEffect } from "react";
-import { GitBranch, Leaf, ShieldCheck, Terminal } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { GitBranch, Leaf, ShieldCheck, SwatchBook, Terminal } from "lucide-react";
 import { workspaceViewLabel } from "#lib/views";
 import { type WorkspaceFolder, type WorkspaceTree } from "#lib/collections";
+import {
+	DESIGNS,
+	useDesignStore,
+} from "#stores/useDesignStore";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuTrigger,
+} from "#components/ui/dropdown-menu";
 import { cn } from "#lib/utils";
 import {
 	Tooltip,
@@ -25,6 +36,52 @@ function countTreeRequests(tree: WorkspaceTree | null): number {
 	return count;
 }
 
+/** DesignSwitcher swaps the visual variant at runtime. It only flips the
+ * document's `data-design` attribute, so every store — tabs, drafts,
+ * environment selection — survives the switch untouched. */
+function DesignSwitcher() {
+	const design = useDesignStore((s) => s.design);
+	const setDesign = useDesignStore((s) => s.setDesign);
+	const active = DESIGNS.find((d) => d.id === design);
+
+	return (
+		<DropdownMenu>
+			<Tooltip>
+				<TooltipTrigger
+					render={
+						<DropdownMenuTrigger
+							className={cn(
+								"flex items-center gap-1 rounded px-1.5 py-px outline-none hover:bg-muted",
+								design === "current" ? "text-muted-foreground" : "text-foreground",
+							)}
+						>
+							<SwatchBook className="size-3" aria-hidden />
+							{active?.label ?? "Current"}
+						</DropdownMenuTrigger>
+					}
+				/>
+				<TooltipContent side="top">Switch the UI design</TooltipContent>
+			</Tooltip>
+			<DropdownMenuContent align="end" className="min-w-44">
+				<DropdownMenuRadioGroup
+					value={design}
+					onValueChange={(value) => {
+						// SAFETY: radio values come from DESIGNS itself, so the string is
+						// always one of its ids.
+						setDesign(value as (typeof DESIGNS)[number]["id"]);
+					}}
+				>
+					{DESIGNS.map((d) => (
+						<DropdownMenuRadioItem key={d.id} value={d.id} className="text-xs">
+							{d.label}
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
 /** Shell statusbar (G-17.3.5): branch / environment / request count /
  * zero-telemetry on the left, console-style slot on the right. */
 export function StatusBar() {
@@ -40,8 +97,13 @@ export function StatusBar() {
 	const toggleInspector = useShellStore((s) => s.toggleInspector);
 	const paletteOpen = usePaletteStore((s) => s.open);
 
+	// One-shot: retry loops here would spin forever against adapters that
+	// legitimately report repoFound:false (no git repo / browser demo).
+	const gitProbe = useRef(false);
 	useEffect(() => {
-		if (!gitLoading && repoFound === false) void refreshGit();
+		if (gitProbe.current || gitLoading || repoFound !== false) return;
+		gitProbe.current = true;
+		void refreshGit();
 	}, [gitLoading, repoFound, refreshGit]);
 
 	const env = environments.find((e) => e.id === activeEnvironmentId);
@@ -84,6 +146,7 @@ export function StatusBar() {
 					/>
 					<TooltipContent side="top">Toggle the console inspector</TooltipContent>
 				</Tooltip>
+				<DesignSwitcher />
 			</span>
 		</>
 	);
