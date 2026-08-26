@@ -44,7 +44,7 @@ import { BottomPanel } from "../components/shell/BottomPanel";
 import { registerDefaultPaletteProviders } from "../lib/paletteProviders";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
-import { useWorkspaceStore } from "../stores";
+import { useWorkspaceStore, useBottomPanelStore } from "../stores";
 import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
 import { NEW_REQUEST_TAB_ID } from "../stores/useRequestStore";
@@ -94,6 +94,7 @@ export function App() {
 		storage: shellStorage,
 	});
 	const sidebarPanel = usePanelRef();
+	const bottomPanelRef = usePanelRef();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const toggleSidebar = () => {
 		if (sidebarCollapsed) {
@@ -108,10 +109,19 @@ export function App() {
 		id: "reqly-shell-split",
 		storage: shellStorage,
 	});
+	const bottomLayout = useDefaultLayout({
+		id: "reqly-shell-bottom",
+		storage: shellStorage,
+	});
 
 	const pendingView = useWorkspaceStore((s) => s.pendingView);
 	const confirmPendingView = useWorkspaceStore((s) => s.confirmPendingView);
 	const cancelPendingView = useWorkspaceStore((s) => s.cancelPendingView);
+	const bottomCollapsed = useBottomPanelStore((s) => s.collapsed);
+	useEffect(() => {
+		if (bottomCollapsed) bottomPanelRef.current?.collapse();
+		else bottomPanelRef.current?.expand();
+	}, [bottomCollapsed]);
 
 	if (!bootChecked) {
 		return (
@@ -161,8 +171,13 @@ export function App() {
 							</ResizablePanel>
 							<ResizableHandle />
 							<ResizablePanel id="main" minSize="35%">
-								<div className="flex h-full flex-col">
-									<div className="min-h-0 flex-1">
+								<ResizablePanelGroup
+									orientation="vertical"
+									defaultLayout={bottomLayout.defaultLayout}
+									onLayoutChanged={bottomLayout.onLayoutChanged}
+								>
+									<ResizablePanel id="main-content" minSize="40%">
+									<div className="h-full min-h-0 overflow-hidden">
 										{activeView === "home" ? (
 									<ErrorBoundary label="Workspace home">
 										<HomeView />
@@ -296,8 +311,12 @@ export function App() {
 									</section>
 										)}
 									</div>
-									<BottomPanel />
-								</div>
+									</ResizablePanel>
+									<ResizableHandle />
+									<ResizablePanel id="bottom" panelRef={bottomPanelRef} collapsible collapsedSize={0} minSize={6} defaultSize="28%" onResize={(s) => { if (s.inPixels <= 1 && !useBottomPanelStore.getState().collapsed) useBottomPanelStore.getState().setCollapsed(true); }}>
+										<BottomPanel />
+									</ResizablePanel>
+								</ResizablePanelGroup>
 							</ResizablePanel>
 						</ResizablePanelGroup>
 					</div>
