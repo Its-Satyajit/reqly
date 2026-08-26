@@ -17,6 +17,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
+import { Button } from "#components/ui/button";
 import { ExportDialog } from "../features/export-dialog/ExportDialog";
 import { ImportDialog } from "../features/import-dialog/ImportDialog";
 import { useExportStore } from "../stores/useExportStore";
@@ -89,72 +90,36 @@ export function WorkspaceSidebar() {
 	return (
 		<aside className="flex h-full w-full flex-col overflow-y-auto border-r border-border p-2">
 			<div className="flex items-center justify-between px-2 pb-1">
-				<p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+				<p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
 					Collections
 				</p>
 				<span className="flex items-center gap-0.5">
-					<button
-						type="button"
-						onClick={() => setCreateDialog({ kind: "collection" })}
-						title="New collection"
-						aria-label="New collection"
-						className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-					>
+					<Button variant="ghost" size="icon-xs" onClick={() => setCreateDialog({ kind: "collection" })} title="New collection" aria-label="New collection">
 						<FolderPlus className="size-3.5" aria-hidden />
-					</button>
-					<button
-						type="button"
-						onClick={openNewRequest}
-						title="New request"
-						aria-label="New request"
-						className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-					>
+					</Button>
+					<Button variant="ghost" size="icon-xs" onClick={openNewRequest} title="New request" aria-label="New request">
 						<FilePlus className="size-3.5" aria-hidden />
-					</button>
+					</Button>
 					{workspaceTree && (
-						<button
-							type="button"
-							onClick={() => void switchWorkspace()}
-							title="Switch workspace"
-							aria-label="Switch workspace"
-							className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-						>
+						<Button variant="ghost" size="icon-xs" onClick={() => void switchWorkspace()} title="Switch workspace" aria-label="Switch workspace">
 							<FolderSearch className="size-3.5" aria-hidden />
-						</button>
+						</Button>
 					)}
 					{workspaceTree && (
-						<button
-							type="button"
-							onClick={() => setImportOpen(true)}
-							title="Import from cURL, OpenAPI, HAR, Postman, Insomnia, or Bruno"
-							aria-label="Import into workspace"
-							className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-						>
+						<Button variant="ghost" size="icon-xs" onClick={() => setImportOpen(true)} title="Import from cURL, OpenAPI, HAR, Postman, Insomnia, or Bruno" aria-label="Import into workspace">
 							<SquareArrowOutDownLeft className="size-3.5" aria-hidden />
-						</button>
+						</Button>
 					)}
 					{workspaceTree && (
-						<button
-							type="button"
-							onClick={() => setExportOpen(true)}
-							title="Export as Postman, OpenAPI, HAR, or a workspace copy"
-							aria-label="Export workspace"
-							className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-						>
+						<Button variant="ghost" size="icon-xs" onClick={() => setExportOpen(true)} title="Export as Postman, OpenAPI, HAR, or a workspace copy" aria-label="Export workspace">
 							<FileDown className="size-3.5" aria-hidden />
-						</button>
+						</Button>
 					)}
 					{workspaceTree && (
-					<button
-						type="button"
-						onClick={() => void refreshWorkspace()}
-						title="Reload the workspace tree from disk"
-						aria-label="Reload workspace"
-						className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-					>
-						<RefreshCw className="size-3.5" aria-hidden />
-					</button>
-				)}
+						<Button variant="ghost" size="icon-xs" onClick={() => void refreshWorkspace()} title="Reload the workspace tree from disk" aria-label="Reload workspace">
+							<RefreshCw className="size-3.5" aria-hidden />
+						</Button>
+					)}
 				</span>
 			</div>
  			<CollectionTree
@@ -164,15 +129,16 @@ export function WorkspaceSidebar() {
 				}
 			/>
 			<div className="mt-2 flex shrink-0 gap-1">
-				<button
-					type="button"
+				<Button
+					variant="outline"
+					size="xs"
+					className="flex-1"
 					onClick={openNewRequest}
-					className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
 					title="Create a new request"
 				>
 					<FilePlus className="size-3" aria-hidden />
 					Request
-				</button>
+				</Button>
 			</div>
 			<ImportDialog
 				onImported={() => void refreshWorkspace()}

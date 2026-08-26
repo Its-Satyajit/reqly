@@ -60,7 +60,7 @@ export function WorkspaceEmptyState() {
               placeholder={pendingCreate.suggestedName || "my-workspace"}
               autoFocus
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Created inside{" "}
               <span className="font-mono">{pendingCreate.dir}</span>
             </p>

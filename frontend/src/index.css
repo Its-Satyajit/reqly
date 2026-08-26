@@ -1,10 +1,10 @@
 @import "tailwindcss";
 @import "./styles/tokens.css";
-@import "@fontsource/ibm-plex-sans/400.css";
-@import "@fontsource/ibm-plex-sans/500.css";
-@import "@fontsource/ibm-plex-sans/600.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/encode-sans/400.css";
+@import "@fontsource/encode-sans/500.css";
+@import "@fontsource/encode-sans/600.css";
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/geist-mono/500.css";
 
 /* The desktop host imports this stylesheet from outside its Vite root, where
  * Tailwind's automatic content detection does not reach the shared package's
@@ -14,12 +14,34 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /* Typography system: Encode Sans carries the interface; Geist Mono speaks
+   * for the machine (code, URLs, JSON, logs, statuses). No other faces. */
   --font-sans:
-    "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "Encode Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, sans-serif;
   --font-mono:
-    "IBM Plex Mono", ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas,
+    "Geist Mono", ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas,
     monospace;
+
+  /* Type scale — a dense, four-step micro scale plus display steps. Every
+   * text size in the app resolves to one of these; arbitrary px values are
+   * not allowed. 2xs is the eyebrow step (labels/overlines) and pairs with
+   * uppercase + tracking-widest. */
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 1.4;
+  --text-2xs--letter-spacing: 0.06em;
+  --text-xs: 0.6875rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.75rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 0.8125rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 0.9375rem;
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.125rem;
+  --text-xl--line-height: 1.35;
+  --text-2xl: 1.375rem;
+  --text-2xl--line-height: 1.25;
 
   /* shadcn-compatible surface tokens (accent = neutral hover/menus surface) */
   --color-background: var(--background);
@@ -75,7 +97,7 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.45;
   background-color: var(--color-background);
   color: var(--color-foreground);

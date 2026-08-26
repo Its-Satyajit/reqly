@@ -8,6 +8,7 @@ import { useRequestStore } from "#stores/useRequestStore";
 import type { RequestTab } from "#stores/useWorkspaceStore";
 import { cn } from "#lib/utils";
 import { handleTabArrowKeys } from "#lib/ui";
+import { Button } from "#components/ui/button";
 import { ContextMenu } from "#components/ContextMenu";
 import {
 	AlertDialog,
@@ -19,6 +20,11 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "#components/ui/tooltip";
 
 function TabItem({ tab }: { tab: RequestTab }) {
 	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
@@ -73,18 +79,26 @@ function TabItem({ tab }: { tab: RequestTab }) {
 				)}
 				{tab.title}
 			</button>
-			<button
-				type="button"
-				onClick={requestClose}
-				onAuxClick={(e) => {
-					if (e.button === 1) requestClose();
-				}}
-				title="Close tab (middle-click)"
-				aria-label={`Close ${tab.title}`}
-				className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
-			>
-				<X className="size-3" aria-hidden />
-			</button>
+			<Tooltip>
+				<TooltipTrigger
+					render={
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon-xs"
+							onClick={requestClose}
+							onAuxClick={(e) => {
+								if (e.button === 1) requestClose();
+							}}
+							aria-label={`Close ${tab.title}`}
+							className="size-5 rounded-sm p-0 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
+						/>
+					}
+				>
+					<X className="size-3.5" aria-hidden />
+				</TooltipTrigger>
+				<TooltipContent>Close tab (middle-click)</TooltipContent>
+			</Tooltip>
 			<AlertDialog open={confirming} onOpenChange={setConfirming}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
@@ -115,6 +129,16 @@ function TabItem({ tab }: { tab: RequestTab }) {
 							if ((tab.kind ?? "request") === "request") duplicateTab(tab.id);
 						},
 						},
+						{ label: "Close tab", onSelect: requestClose },
+						{
+							label: "Close other tabs",
+							onSelect: () => {
+								const store = useWorkspaceStore.getState();
+								for (const t of store.openTabs) {
+									if (t.id !== tab.id) store.closeTab(t.id, { force: true });
+								}
+							},
+						},
 					]}
 					onClose={() => setMenu(null)}
 				/>
@@ -142,17 +166,19 @@ export function RequestTabs() {
 			{openTabs.map((t) => (
 				<TabItem key={t.id} tab={t} />
 			))}
-			<button
+			<Button
 				type="button"
+				variant="ghost"
+				size="icon-sm"
+				className="shrink-0 text-muted-foreground"
 				onClick={() =>
 					openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" })
 				}
 				title="New request"
-				className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
 			>
 				<Plus className="size-3.5" aria-hidden />
 				<span className="sr-only">New request</span>
-			</button>
+			</Button>
 		</div>
 	);
 }

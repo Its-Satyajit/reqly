@@ -12,6 +12,7 @@ import {
 	AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 import { MethodLabel, StatusPill } from "../../components/status";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 import { CompactSelect } from "../../components/CompactSelect";
 import { CodeMirrorEditor } from "../../editors";
 import { HISTORY_PAGE_SIZE, useHistoryStore } from "../../stores/useHistoryStore";
@@ -69,21 +70,21 @@ function SavedSearchesPanel({
 		persistSavedSearches(next);
 	};
 	return (
-		<aside className="flex w-52 shrink-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
-			<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+		<div className="flex min-w-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
+			<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 				Saved searches
 			</p>
 			<button
 				type="button"
 				onClick={save}
 				disabled={currentQuery.trim() === ""}
-				className="flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+				className="flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
 			>
-				<Star className="size-3" aria-hidden />
+				<Star className="size-3.5" aria-hidden />
 				Save current search
 			</button>
 			{list.length === 0 ? (
-				<p className="text-[11px] text-muted-foreground/70">
+				<p className="text-xs text-muted-foreground/70">
 					Search, then save it to pin it here.
 				</p>
 			) : (
@@ -103,12 +104,12 @@ function SavedSearchesPanel({
 							aria-label={`Remove saved search ${q}`}
 							onClick={() => remove(q)}
 						>
-							<Trash2 className="size-3" />
+							<Trash2 className="size-3.5" />
 						</Button>
 					</div>
 				))
 			)}
-		</aside>
+		</div>
 	);
 }
 
@@ -181,12 +182,15 @@ export function HistoryView() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4">
-			<SavedSearchesPanel currentQuery={query} onApply={applySavedSearch} />
+		<ViewShell>
+			<SplitView
+				asideLabel="Saved searches"
+				aside={<SavedSearchesPanel currentQuery={query} onApply={applySavedSearch} />}
+			>
 			<div className="flex min-w-0 flex-1 flex-col">
 			<div className="flex shrink-0 flex-col gap-3 pb-3">
 				<div>
-					<h2 className="text-sm font-semibold">History</h2>
+					<h2 className="text-lg font-medium">History</h2>
 					<p className="text-xs text-muted-foreground">
 						Local request history for this workspace — stored on disk, never
 						sent anywhere.
@@ -349,7 +353,7 @@ export function HistoryView() {
 											onClick={() => onReplay(entry)}
 											title={`Replay ${entry.method} ${entry.url}`}
 										>
-											<RotateCcw className="size-3" aria-hidden />
+											<RotateCcw className="size-3.5" aria-hidden />
 											Replay
 										</Button>
 									</td>
@@ -358,7 +362,7 @@ export function HistoryView() {
 						</tbody>
 					</table>
 				)}
-				<p className="shrink-0 px-1 pt-1 font-data text-[11px] text-muted-foreground/70">
+				<p className="shrink-0 px-1 pt-1 font-data text-xs text-muted-foreground/70">
 					{displayEntries.length} of {pool.length} entries · stored locally ·
 					FTS5 indexed
 				</p>
@@ -388,6 +392,7 @@ export function HistoryView() {
 				</AlertDialogContent>
 			</AlertDialog>
 			</div>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

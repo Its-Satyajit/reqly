@@ -24,7 +24,10 @@ export function CrashReportDialog({
 }: CrashReportDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] flex-col gap-4 sm:max-w-2xl">
+      <DialogContent
+        overlayClassName="z-(--z-crash)"
+        className="z-(--z-crash) flex max-h-[85vh] flex-col gap-4 sm:max-w-2xl"
+      >
         <DialogHeader>
           <DialogTitle>Reqly hit an unexpected error</DialogTitle>
           <DialogDescription>

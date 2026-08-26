@@ -12,6 +12,7 @@ import {
 	type OpenapiEndpointView,
 } from "#lib/openapi";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 
 const METHOD_FILTERS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
@@ -29,7 +30,7 @@ function FilterChip({
 			type="button"
 			onClick={onClick}
 			className={cn(
-				"rounded-full border px-2.5 py-0.5 text-[11px] transition-colors",
+				"rounded-full border px-2.5 py-0.5 text-xs transition-colors",
 				active
 					? "border-primary/50 bg-primary/10 font-medium text-primary"
 					: "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
@@ -72,7 +73,7 @@ function EndpointRow({
 				<span className="flex items-center gap-2">
 					<span
 						className={cn(
-							"shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px font-data text-[10px] font-semibold uppercase",
+							"shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px font-data text-2xs font-semibold uppercase",
 							methodTintClass(endpoint.method),
 						)}
 					>
@@ -81,7 +82,7 @@ function EndpointRow({
 					<span className="truncate font-mono text-xs text-foreground">{endpoint.path}</span>
 				</span>
 				{endpoint.summary ? (
-					<span className="block truncate pl-1 text-[11px] text-muted-foreground">
+					<span className="block truncate pl-1 text-xs text-muted-foreground">
 						{endpoint.summary}
 					</span>
 				) : null}
@@ -95,10 +96,10 @@ function SchemaBlock({ label, schema }: { label: string; schema: string }) {
 	if (schema === "") return null;
 	return (
 		<div className="flex flex-col gap-1">
-			<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+			<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 				{label}
 			</p>
-			<pre className="max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-background p-2 font-mono text-[11px]">
+			<pre className="max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-background p-2 font-mono text-xs">
 				{schema}
 			</pre>
 		</div>
@@ -113,7 +114,7 @@ function EndpointDetail({ endpoint }: { endpoint: OpenapiEndpointView }) {
 			<div className="flex flex-wrap items-center gap-2">
 				<span
 					className={cn(
-						"shrink-0 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-[10px] font-semibold uppercase",
+						"shrink-0 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-2xs font-semibold uppercase",
 						methodTintClass(endpoint.method),
 					)}
 				>
@@ -124,7 +125,7 @@ function EndpointDetail({ endpoint }: { endpoint: OpenapiEndpointView }) {
 				</h3>
 			</div>
 			{endpoint.operationId ? (
-				<p className="font-data text-[11px] text-muted-foreground">{endpoint.operationId}</p>
+				<p className="font-data text-xs text-muted-foreground">{endpoint.operationId}</p>
 			) : null}
 			{endpoint.summary ? <p className="text-xs text-foreground">{endpoint.summary}</p> : null}
 			<SchemaBlock label="Request body" schema={endpoint.requestSchema ?? ""} />
@@ -247,16 +248,20 @@ export function OpenapiExplorer() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="OpenAPI explorer">
-			<section className="flex w-96 shrink-0 flex-col gap-2 overflow-y-auto">
-				<div className="flex items-end gap-2">
+		<ViewShell label="OpenAPI explorer">
+			<SplitView
+				asideSide="right"
+				asideLabel="Endpoints"
+				asideWidth={{ min: 240, preferred: 0.34, max: 384 }}
+				aside={
+					<>
+					<div className="flex items-end gap-2">
 					<Input
 						value={specPath}
 						onChange={(e) => patch({ specPath: e.target.value })}
 						placeholder="specs/pets.yaml"
 						spellCheck={false}
-						aria-label="Spec path (workspace-relative)"
-						className="flex-1 font-mono text-xs"
+						aria-label="Spec path (workspace-relative)"						className="flex-1 font-mono text-xs"
 					/>
 					<Button
 						size="sm"
@@ -322,7 +327,7 @@ export function OpenapiExplorer() {
 
 						{grouped.map(([tag, eps]) => (
 							<div key={tag} className="flex flex-col gap-0.5">
-								<p className="px-1 pt-1 font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+								<p className="px-1 pt-1 font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 									{tag}
 								</p>
 								{eps.map((ep) => {
@@ -361,7 +366,7 @@ export function OpenapiExplorer() {
 							</Button>
 						</div>
 						{generated ? (
-							<p className="text-[11px] text-status-ok">
+							<p className="text-xs text-status-ok">
 								Created {generated.length} request file(s) — see the sidebar.
 							</p>
 						) : null}
@@ -371,19 +376,23 @@ export function OpenapiExplorer() {
 						Point at a workspace-relative OpenAPI spec and hit Explore.
 					</p>
 				)}
-			</section>
-
-			{detail ? (
-				<EndpointDetail endpoint={detail} />
-			) : (
-				<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-card">
-					<p className="text-sm font-medium text-foreground">Select an endpoint</p>
-					<p className="max-w-xs text-center text-xs text-muted-foreground">
-						Browse the specification tree — every operation carries params and
-						schemas.
-					</p>
-				</div>
-			)}
-		</div>
+				</>
+			}
+			>
+			<div className="flex min-h-0 flex-1 flex-col gap-3">
+				{detail ? (
+					<EndpointDetail endpoint={detail} />
+				) : (
+					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-card">
+						<p className="text-sm font-medium text-foreground">Select an endpoint</p>
+						<p className="max-w-xs text-center text-xs text-muted-foreground">
+							Browse the specification tree — every operation carries params and
+							schemas.
+						</p>
+					</div>
+				)}
+			</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

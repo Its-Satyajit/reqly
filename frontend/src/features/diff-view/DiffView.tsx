@@ -15,6 +15,7 @@ import {
 	type SpecDiffResult,
 } from "#lib/diff";
 import type { HistoryEntry } from "#lib/history";
+import { ViewShell } from "../../components/shell/ViewLayout";
 import { methodTintClass } from "#lib/status";
 import { useHistoryStore } from "#stores/useHistoryStore";
 
@@ -98,7 +99,7 @@ function CountCard({
 			<span className={cn("font-data text-xl font-semibold", tone !== "breaking" && toneClass)}>
 				{count}
 			</span>
-			<span className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</span>
+			<span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
 		</div>
 	);
 }
@@ -131,13 +132,13 @@ function ChangeRow({
 				<span className="block truncate text-xs font-semibold text-foreground">
 					{changeTitle(change)}
 				</span>
-				<span className="block truncate text-[11px] text-muted-foreground">
+				<span className="block truncate text-xs text-muted-foreground">
 					{changeSummary(change)}
 				</span>
 			</span>
 			<span
 				className={cn(
-					"shrink-0 rounded-full border px-2 py-px font-data text-[10px] lowercase",
+					"shrink-0 rounded-full border px-2 py-px font-data text-2xs lowercase",
 					KIND_PILL[kind],
 				)}
 			>
@@ -159,7 +160,7 @@ function DetailPane({ change }: { change: DiffChange }) {
 			<div className="flex items-center gap-2">
 				<span
 					className={cn(
-						"rounded-full border px-2 py-0.5 font-data text-[10px] lowercase",
+						"rounded-full border px-2 py-0.5 font-data text-2xs lowercase",
 						breaking
 							? "border-status-error/40 text-status-error"
 							: "border-border text-muted-foreground",
@@ -169,7 +170,7 @@ function DetailPane({ change }: { change: DiffChange }) {
 				</span>
 			</div>
 			<p className="text-xs text-muted-foreground">{changeSummary(change)}</p>
-			<div className="rounded-lg border border-border bg-muted/20 p-2 font-mono text-[11px]">
+			<div className="rounded-lg border border-border bg-muted/20 p-2 font-mono text-xs">
 				<p className="text-muted-foreground">~ {changeLabel(change)}</p>
 				<pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all text-foreground">
 					{`from: ${change.from === undefined ? "∅" : JSON.stringify(change.from, null, 2)}`}
@@ -317,7 +318,7 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
 	const result = mode === "specs" ? specResult?.result ?? null : respResult?.result ?? null;
 
 	return (
-		<section className="flex h-full min-h-0 flex-col gap-3 p-4" aria-label="API diff">
+		<ViewShell label="API diff">
 			<div className="flex flex-wrap items-center gap-2">
 				<span className="text-xs text-muted-foreground">Base</span>
 				{mode === "specs" ? (
@@ -412,7 +413,7 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
 			) : null}
 
 			{mode === "responses" && respResult?.metaA && respResult.metaB ? (
-				<div className="grid shrink-0 grid-cols-2 gap-2 text-[11px]">
+				<div className="grid shrink-0 grid-cols-2 gap-2 text-xs">
 					{[respResult.metaA, respResult.metaB].map((m) => (
 						<div
 							key={m.id}
@@ -443,6 +444,6 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
 					</p>
 				</div>
 			)}
-		</section>
+		</ViewShell>
 	);
 }

@@ -15,6 +15,7 @@ import {
 	type RealtimeKind,
 } from "#lib/realtime";
 import { useRealtimeStore } from "#stores/useRealtimeStore";
+import { ViewShell } from "../../components/shell/ViewLayout";
 
 /** statusPill renders the connection-state pill (CLOSED/IDLE/…). */
 function statusPill(status: string) {
@@ -28,7 +29,7 @@ function statusPill(status: string) {
 	return (
 		<span
 			className={cn(
-				"flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 font-data text-[10px] font-semibold",
+				"flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 font-data text-2xs font-semibold",
 				tone,
 			)}
 		>
@@ -52,7 +53,7 @@ function FrameRow({ frame, isWS }: { frame: RealtimeFrameView; isWS: boolean }) 
 	return (
 		<li
 			className={cn(
-				"rounded border border-border/50 px-2 py-1 font-mono text-[11px]",
+				"rounded border border-border/50 px-2 py-1 font-mono text-xs",
 				frame.direction === "out" && "bg-muted/40",
 			)}
 		>
@@ -110,7 +111,7 @@ function MessageLog({
 	const shown = paused ? pausedFrames : frames;
 	if (shown.length === 0) {
 		return (
-			<div className="flex flex-1 flex-col items-center justify-center gap-1.5 py-10">
+			<div className="flex flex-1 flex-col items-center justify-center gap-1.5 py-8">
 				{isWS ? (
 					<PlugZap className="size-8 text-muted-foreground/40" aria-hidden />
 				) : (
@@ -181,7 +182,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 	const lastEventId = visibleFrames.filter((f) => f.id).at(-1)?.id;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-3 p-4">
+		<ViewShell label="Realtime tab">
 			<div className="flex items-center gap-2">
 				{statusPill(tab.status)}
 				<select
@@ -329,7 +330,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 							}
 						>
 							Message log{" "}
-							<span className="ml-1 rounded bg-muted px-1.5 font-data text-[10px] text-muted-foreground">
+							<span className="ml-1 rounded bg-muted px-1.5 font-data text-2xs text-muted-foreground">
 								{(paused ? pausedFrames : tab.frames).length}
 							</span>
 						</CardTitle>
@@ -378,7 +379,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 							/>
 							auto-scroll
 						</label>
-						<span className="ml-auto font-data text-[11px] text-muted-foreground">
+						<span className="ml-auto font-data text-xs text-muted-foreground">
 							retry: {lastRetry != null ? `${lastRetry}ms` : "—"} · last-event-id:{" "}
 							{lastEventId ?? "—"}
 						</span>
@@ -409,7 +410,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
 					</dl>
 				</div>
 			) : null}
-		</div>
+		</ViewShell>
 	);
 }
 

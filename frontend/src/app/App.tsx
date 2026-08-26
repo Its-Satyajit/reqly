@@ -90,9 +90,21 @@ export function App() {
 
 	// ⌘/Ctrl+W closes the active tab (G-4.3.2). Dirty tabs are never silently
 	// discarded — the user closes those via the tab's explicit ✕ confirm flow.
+	// Skipped while typing in a field or when a dialog/palette owns the screen,
+	// so the shortcut never fights text entry or modal flows.
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "w") return;
+			// SAFETY: keydown targets are EventTargets; in a DOM window they are
+			// always Nodes, so closest() is valid for the focus-context check.
+			const target = e.target as HTMLElement | null;
+			if (
+				target?.closest(
+					"input, textarea, select, [contenteditable='true'], [data-slot='dialog-content'], [data-slot='command']",
+				)
+			) {
+				return;
+			}
 			e.preventDefault();
 			const { activeTabId, closeTab } = useWorkspaceStore.getState();
 			if (!activeTabId) return;
@@ -201,7 +213,7 @@ export function App() {
 							/>
 						</div>
 						{gitBranch && (
-							<span className="font-data inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground">
+							<span className="font-data inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
 								<GitBranch className="size-3" aria-hidden />
 								{gitBranch}
 							</span>
@@ -331,7 +343,7 @@ function SecondaryView() {
 									</ErrorBoundary>
 								</section>
 							) : view === "history" ? (
-								<section className="h-full min-h-0">
+								<section className="h-full min-h-0 overflow-y-auto">
 									<ErrorBoundary label="History">
 										<HistoryView />
 									</ErrorBoundary>
@@ -373,7 +385,7 @@ function SecondaryView() {
 									</ErrorBoundary>
 								</section>
 							) : view === "grpc" ? (
-								<section className="h-full min-h-0">
+								<section className="h-full min-h-0 overflow-y-auto">
 									<ErrorBoundary label="gRPC client">
 										<GrpcTab tabId="grpc" />
 									</ErrorBoundary>

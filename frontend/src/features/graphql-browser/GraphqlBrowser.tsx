@@ -21,6 +21,7 @@ import {
 	type GqlType,
 } from "#lib/graphql";
 import { useRequestStore } from "#stores/useRequestStore";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 
 type EditorTab = "query" | "variables" | "headers";
 
@@ -117,7 +118,7 @@ function SchemaFieldRow({
 			<span className="font-data text-status-info">{field.name}</span>
 			<span className="font-data text-muted-foreground">: {gqlTypeRef(field.type)}</span>
 			{field.deprecated ? (
-				<span className="ml-1 rounded border border-status-warn/40 px-1 font-data text-[10px] text-status-warn">
+				<span className="ml-1 rounded border border-status-warn/40 px-1 font-data text-2xs text-status-warn">
 					deprecated
 				</span>
 			) : null}
@@ -151,14 +152,14 @@ function TypeDetail({
 }) {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-xl border border-border bg-card">
-			<p className="shrink-0 px-3 py-2 font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+			<p className="shrink-0 px-3 py-2 font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 				{typ.name} {typ.kind}
 			</p>
 			{typ.description ? (
-				<p className="shrink-0 px-3 pb-2 text-[11px] text-muted-foreground">{typ.description}</p>
+				<p className="shrink-0 px-3 pb-2 text-xs text-muted-foreground">{typ.description}</p>
 			) : null}
 			{(typ.enumValues?.length ?? 0) > 0 ? (
-				<p className="shrink-0 px-3 pb-2 font-data text-[11px] text-foreground">
+				<p className="shrink-0 px-3 pb-2 font-data text-xs text-foreground">
 					enum: {typ.enumValues!.join(" | ")}
 				</p>
 			) : null}
@@ -191,12 +192,12 @@ function SchemaBrowser({
 	);
 	const selectedType = schema?.types?.find((t) => t.name === selected);
 	return (
-		<aside
+		<div
 			aria-label="Schema browser"
-			className="flex w-80 shrink-0 flex-col gap-2 border-l border-border p-3"
+			className="flex min-w-0 flex-col gap-2 border-l border-border p-3"
 		>
 			<div className="flex items-center justify-between">
-				<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+				<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 					Schema browser
 				</p>
 				<Button
@@ -223,7 +224,7 @@ function SchemaBrowser({
 						type="button"
 						onClick={() => onSelect(t.name)}
 						className={cn(
-							"flex items-center gap-1 rounded-full border px-2 py-0.5 font-data text-[10px]",
+							"flex items-center gap-1 rounded-full border px-2 py-0.5 font-data text-2xs",
 							selected === t.name
 								? "border-primary/50 bg-primary/10 text-primary"
 								: "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
@@ -238,14 +239,14 @@ function SchemaBrowser({
 				<TypeDetail typ={selectedType} onNavigate={onSelect} />
 			) : (
 				<div className="flex min-h-0 flex-1 items-center justify-center">
-					<p className="max-w-44 text-center text-[11px] text-muted-foreground">
+					<p className="max-w-44 text-center text-xs text-muted-foreground">
 						{schema
 							? "Pick a type to inspect its fields."
 							: "Introspect an endpoint to browse its schema."}
 					</p>
 				</div>
 			)}
-		</aside>
+		</div>
 	);
 }
 
@@ -382,7 +383,22 @@ export function GraphqlBrowser() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0">
+		<ViewShell flush>
+			<SplitView
+				className="gap-0"
+				asideSide="right"
+				asideLabel="Schema browser"
+				asideWidth={{ min: 224, preferred: 0.32, max: 320 }}
+				aside={
+					<SchemaBrowser
+						schema={schema}
+						busy={introspecting}
+						selected={selectedType}
+						onSelect={setSelectedType}
+						onIntrospect={introspect}
+					/>
+				}
+			>
 			<section
 				aria-label="GraphQL client"
 				className="flex min-w-0 flex-1 flex-col gap-2 p-4"
@@ -390,7 +406,7 @@ export function GraphqlBrowser() {
 				<div className="flex items-center gap-2">
 					<span
 						aria-hidden
-						className="shrink-0 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-[10px] font-semibold"
+						className="shrink-0 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-2xs font-semibold"
 					>
 						GQL
 					</span>
@@ -484,7 +500,7 @@ export function GraphqlBrowser() {
 								valuePlaceholder="Value"
 							/>
 							<div className="mt-2 flex items-center gap-2">
-								<span className="text-[11px] text-muted-foreground">Bearer token</span>
+								<span className="text-xs text-muted-foreground">Bearer token</span>
 								<Input
 									value={authHeader}
 									onChange={(e) => setAuthHeader(e.target.value)}
@@ -507,14 +523,7 @@ export function GraphqlBrowser() {
 
 				<ResultArea loading={running} response={response} error={runError} />
 			</section>
-
-			<SchemaBrowser
-				schema={schema}
-				busy={introspecting}
-				selected={selectedType}
-				onSelect={setSelectedType}
-				onIntrospect={introspect}
-			/>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

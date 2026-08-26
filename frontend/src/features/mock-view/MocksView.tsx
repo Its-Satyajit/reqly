@@ -3,6 +3,7 @@ import { Check, Copy, FileText, Pencil, Play, Plus, Square, Trash2 } from "lucid
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 import { Spinner } from "#components/ui/spinner";
 import { Textarea } from "#components/ui/textarea";
 import { cn } from "#lib/utils";
@@ -23,7 +24,7 @@ const numberInput =
 
 function FieldLabel({ children }: { children: string }) {
 	return (
-		<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+		<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 			{children}
 		</p>
 	);
@@ -108,7 +109,7 @@ function RouteEditor({
 				spellCheck={false}
 				aria-label={`Route ${route.path} response headers`}
 				placeholder={"Content-Type: application/json\nX-Mock: true"}
-				className="resize-y font-mono text-[11px]"
+				className="resize-y font-mono text-xs"
 			/>
 		</div>
 	);
@@ -157,8 +158,11 @@ export function MocksView() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Mock server">
-			<aside className="flex w-60 shrink-0 flex-col gap-3">
+		<ViewShell label="Mock server">
+			<SplitView
+				asideLabel="Mock servers"
+				aside={
+					<>
 				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
 					<div className="flex items-center justify-between">
 						<FieldLabel>Servers</FieldLabel>
@@ -190,7 +194,7 @@ export function MocksView() {
 							/>
 							Mock server
 						</span>
-						<span className="truncate font-data text-[11px] text-muted-foreground">
+						<span className="truncate font-data text-xs text-muted-foreground">
 							{status.running ? status.url : `localhost:${port} · stopped`}
 						</span>
 					</button>
@@ -256,11 +260,12 @@ export function MocksView() {
 						aria-label="OpenAPI spec path"
 					/>
 				</div>
-			</aside>
-
+					</>
+			}
+		>
 			<section className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
 				<div className="flex flex-wrap items-center gap-2">
-					<h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+					<h2 className="flex items-center gap-2 text-lg font-medium text-foreground">
 						<span
 							aria-hidden
 							className={cn(
@@ -271,7 +276,7 @@ export function MocksView() {
 						Mock server
 					</h2>
 					{status.running ? (
-						<span className="rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-[10px] text-status-ok">
+						<span className="rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-2xs text-status-ok">
 							running
 						</span>
 					) : null}
@@ -323,7 +328,7 @@ export function MocksView() {
 								{["Method", "Path", "Status", "Delay", ""].map((h) => (
 									<th
 										key={h}
-										className="border-b border-border px-3 py-1.5 font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground"
+										className="border-b border-border px-3 py-1.5 font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground"
 									>
 										{h}
 									</th>
@@ -343,7 +348,7 @@ export function MocksView() {
 										<td className="border-b border-border/40 px-3 py-1.5">
 											<span
 												className={cn(
-													"rounded-full border border-border bg-muted/40 px-1.5 py-px font-data text-[10px] font-semibold uppercase",
+													"rounded-full border border-border bg-muted/40 px-1.5 py-px font-data text-2xs font-semibold uppercase",
 													methodTintClass(route.method),
 												)}
 											>
@@ -389,6 +394,7 @@ export function MocksView() {
 					)}
 				</div>
 			</section>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

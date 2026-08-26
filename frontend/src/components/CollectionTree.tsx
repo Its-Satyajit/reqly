@@ -72,16 +72,18 @@ function RunControl({ path, name }: { path: string; name: string }) {
 	};
 
 	return (
-		<button
+		<Button
 			type="button"
+			variant="ghost"
+			size="icon-xs"
 			onClick={run}
 			disabled={running}
 			title={running ? "A run is already in progress" : `Run ${name}`}
 			aria-label={`Run ${name}`}
-			className="shrink-0 rounded p-1 text-muted-foreground/60 hover:bg-muted/50 hover:text-status-ok disabled:cursor-not-allowed disabled:opacity-40"
+			className="shrink-0 text-muted-foreground/60 hover:text-status-ok disabled:opacity-40"
 		>
 			<Play className="size-3 fill-current" aria-hidden />
-		</button>
+		</Button>
 	);
 }
 
@@ -92,7 +94,7 @@ function MethodChip({ method }: { method: string }) {
 	return (
 		<span
 			className={cn(
-				"font-data shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px text-[10px] font-semibold uppercase",
+				"font-data shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px text-2xs font-semibold uppercase",
 				methodTintClass(method),
 			)}
 		>
@@ -123,15 +125,17 @@ function AddFolderControl({
 }) {
 	if (!onNewFolder) return null;
 	return (
-		<button
+		<Button
 			type="button"
+			variant="ghost"
+			size="icon-xs"
 			onClick={() => onNewFolder(path, name)}
 			title={`New folder in ${name}`}
 			aria-label={`New folder in ${name}`}
-			className="shrink-0 rounded p-1 text-muted-foreground/60 hover:bg-muted/50 hover:text-foreground"
+			className="shrink-0 text-muted-foreground/60"
 		>
 			<FolderPlus className="size-3" aria-hidden />
-		</button>
+		</Button>
 	);
 }
 
@@ -202,6 +206,7 @@ function CollectionBranch({ folders, requests, filter, onNewFolder }: BranchProp
 function FolderBranch({ folder, filter, onNewFolder }: { folder: WorkspaceFolder; filter?: string; onNewFolder?: (path: string, name: string) => void }) {
 	const expanded = useWorkspaceStore((s) => s.expanded[folder.path] ?? false);
 	const toggleExpanded = useWorkspaceStore((s) => s.toggleExpanded);
+	const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
 	// While filtering, folders with matching descendants are shown expanded
 	// regardless of their saved expansion state; non-matching folders hide.
@@ -211,7 +216,14 @@ function FolderBranch({ folder, filter, onNewFolder }: { folder: WorkspaceFolder
 
 	return (
 		<div>
-			<div className="flex w-full items-center gap-1 rounded-md px-2 py-1 hover:bg-muted/50">
+			<div
+				className="flex w-full items-center gap-1 rounded-md px-2 py-1 hover:bg-muted/50"
+				onContextMenu={(e) => {
+					if (!onNewFolder) return;
+					e.preventDefault();
+					setMenu({ x: e.clientX, y: e.clientY });
+				}}
+			>
 				<button
 					type="button"
 					data-tree-row
@@ -231,6 +243,19 @@ function FolderBranch({ folder, filter, onNewFolder }: { folder: WorkspaceFolder
 				<AddFolderControl path={folder.path} name={folder.name} onNewFolder={onNewFolder} />
 				<RunControl path={folder.path} name={folder.name} />
 			</div>
+			{menu && onNewFolder && (
+				<ContextMenu
+					x={menu.x}
+					y={menu.y}
+					items={[
+						{
+							label: "New folder",
+							onSelect: () => onNewFolder(folder.path, folder.name),
+						},
+					]}
+					onClose={() => setMenu(null)}
+				/>
+			)}
 			{isOpen && (
 				<div className="ml-1 border-l border-border pl-1">
 					<CollectionBranch folders={folder.folders} requests={folder.requests} />
@@ -309,7 +334,7 @@ export function CollectionTree({
 				const showChildren = isOpen || Boolean(query);
 				return (
 					<div key={collection.path}>
-						<div className="flex w-full items-center gap-1 rounded-md px-2 py-1 hover:bg-muted/50">
+			<div className="flex w-full items-center gap-1 rounded-md px-2 py-1 hover:bg-muted/50">
 							<button
 								type="button"
 								data-tree-row

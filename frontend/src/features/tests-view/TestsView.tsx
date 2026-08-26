@@ -3,9 +3,11 @@ import { Download, FilePlus, Play, Pencil } from "lucide-react";
 import { Button } from "#components/ui/button";
 import { Spinner } from "#components/ui/spinner";
 import { cn } from "#lib/utils";
+import { idleRow, selectedRow } from "#lib/ui";
 import type { TestFileRef, TestRunOutcome } from "#lib/test";
 import { useTestStore } from "#stores/useTestStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
 
 interface SuiteRun {
 	outcome: TestRunOutcome;
@@ -156,10 +158,14 @@ export function TestsView() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 gap-4 p-4" aria-label="Tests">
-			<aside className="flex w-64 shrink-0 flex-col gap-2 rounded-xl border border-border bg-card p-3">
-				<div className="flex items-center justify-between">
-					<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+		<ViewShell label="Tests">
+			<SplitView
+				asideLabel="Test suites"
+				asideClassName="gap-2 rounded-xl border border-border bg-card p-3"
+				aside={
+					<>
+					<div className="flex items-center justify-between">
+					<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 						Test suites
 					</p>
 					<Button size="icon" variant="ghost" aria-label="New test file" onClick={newTest}>
@@ -167,8 +173,8 @@ export function TestsView() {
 					</Button>
 				</div>
 				{tests.length === 0 ? (
-					<p className="text-[11px] text-muted-foreground">
-						No *.reqly-test files found in the workspace.
+					<p className="py-8 text-center text-sm text-muted-foreground">
+						No tests yet.
 					</p>
 				) : (
 					<ul className="flex flex-col gap-1">
@@ -181,21 +187,19 @@ export function TestsView() {
 										onClick={() => setSelectedPath(t.path)}
 										className={cn(
 											"w-full rounded-lg border px-2.5 py-2 text-left transition-colors",
-											selectedPath === t.path
-												? "border-primary/50 bg-primary/5"
-												: "border-transparent hover:bg-accent",
+											selectedPath === t.path ? selectedRow : idleRow,
 										)}
 									>
 										<span className="block truncate text-xs font-medium text-foreground">
 											{t.name || t.path}
 										</span>
-										<span className="block truncate font-mono text-[10px] text-muted-foreground">
+										<span className="block truncate font-mono text-2xs text-muted-foreground">
 											{t.path}
 										</span>
 										{run ? (
 											<span
 												className={cn(
-													"mt-0.5 block font-data text-[10px]",
+													"mt-0.5 block font-data text-2xs",
 													run.outcome.passed ? "text-status-ok" : "text-status-error",
 												)}
 											>
@@ -218,20 +222,22 @@ export function TestsView() {
 					{runAll ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
 					Run all suites
 				</Button>
-			</aside>
+				</>
+			}
+			>
 
 			<section className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
-				{error ? <p className="text-xs text-status-error">{error}</p> : null}
+				{error ? <p className="text-xs text-destructive">{error}</p> : null}
 				{selected ? (
 					<>
 						<div className="flex flex-wrap items-center gap-2">
-							<h2 className="text-sm font-semibold text-foreground">
+							<h2 className="text-lg font-medium text-foreground">
 								{selected.name || selected.path}
 							</h2>
 							{lastRun ? (
 								<span
 									className={cn(
-										"rounded-full border px-2 py-0.5 font-data text-[10px]",
+										"rounded-full border px-2 py-0.5 font-data text-2xs",
 										lastRun.outcome.passed
 											? "border-status-ok/40 text-status-ok"
 											: "border-status-error/40 text-status-error",
@@ -273,7 +279,7 @@ export function TestsView() {
 							</div>
 						</div>
 
-						<p className="font-mono text-[11px] text-muted-foreground">{selected.path}</p>
+						<p className="font-mono text-xs text-muted-foreground">{selected.path}</p>
 
 						{lastRun ? (
 							<SuiteResultList outcome={lastRun.outcome} />
@@ -293,6 +299,7 @@ export function TestsView() {
 					</div>
 				)}
 			</section>
-		</div>
+			</SplitView>
+		</ViewShell>
 	);
 }

@@ -15,6 +15,7 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import { SiGraphql } from "@icons-pack/react-simple-icons";
+import { ViewShell } from "../../components/shell/ViewLayout";
 import { NEW_REQUEST_TAB_ID } from "#stores/useRequestStore";
 import { useGitStore } from "#stores/useGitStore";
 import type { HistoryEntry } from "#lib/history";
@@ -80,7 +81,7 @@ function QuickActionTile({ action }: { action: QuickAction }) {
 		<button
 			type="button"
 			onClick={action.onSelect}
-			className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/20 px-2 py-3 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+			className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/20 px-2 py-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 		>
 			<Icon className="size-4 text-primary" aria-hidden />
 			{action.label}
@@ -117,7 +118,7 @@ function RecentActivityRow({ entry }: { entry: HistoryEntry }) {
 		<div className="flex min-w-0 items-center gap-2 text-xs">
 			<span
 				className={cn(
-					"font-data shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px text-[10px] font-semibold uppercase",
+					"font-data shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-px text-2xs font-semibold uppercase",
 					methodTintClass(entry.method),
 				)}
 			>
@@ -230,8 +231,8 @@ export function OverviewHome() {
 	];
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4">
-			<section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-5">
+		<ViewShell label="Overview" className="overflow-y-auto">
+			<section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4">
 				<div className="flex min-w-0 flex-col gap-2">
 					<h2 className="text-xl font-semibold text-foreground">
 						{workspace?.name ?? "Workspace"}
@@ -242,13 +243,13 @@ export function OverviewHome() {
 						{branch ? ` · branch ${branch}` : ""}
 					</p>
 					<div className="flex flex-wrap items-center gap-1.5">
-						<span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 font-data text-[10px] text-primary">
+						<span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 font-data text-2xs text-primary">
 							{countTreeRequests(workspaceTree)} requests
 						</span>
-						<span className="rounded-full border border-border bg-muted/30 px-2 py-0.5 font-data text-[10px] text-muted-foreground">
+						<span className="rounded-full border border-border bg-muted/30 px-2 py-0.5 font-data text-2xs text-muted-foreground">
 							{environments.length} environments
 						</span>
-						<span className="flex items-center gap-1 rounded-full border border-status-ok/25 bg-status-ok/10 px-2 py-0.5 font-data text-[10px] text-status-ok">
+						<span className="flex items-center gap-1 rounded-full border border-status-ok/25 bg-status-ok/10 px-2 py-0.5 font-data text-2xs text-status-ok">
 							<ShieldCheck className="size-3" aria-hidden />
 							zero telemetry
 						</span>
@@ -364,10 +365,10 @@ export function OverviewHome() {
 				</div>
 			</Card>
 
-			<p className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
+			<p className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
 				<Clock className="size-3" aria-hidden />
 				Stats cover today's sends recorded in local history.
 			</p>
-		</div>
+		</ViewShell>
 	);
 }

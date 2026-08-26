@@ -145,7 +145,7 @@ function BinaryPreviewBlock({
 					<p className="text-muted-foreground">
 						Binary ({formatBytes(response.size)}) — first 4KB + Download.
 					</p>
-					<pre className="max-h-40 overflow-auto whitespace-pre rounded bg-background p-2 font-mono text-[11px] leading-snug text-muted-foreground">
+					<pre className="max-h-40 overflow-auto whitespace-pre rounded bg-background p-2 font-mono text-xs leading-snug text-muted-foreground">
 						{hexPreview}
 					</pre>
 				</div>
@@ -391,7 +391,7 @@ function ReadyHero({
 					<p className="text-base font-semibold text-foreground">Ready to send</p>
 					<p className="max-w-xs text-xs text-muted-foreground">
 						Press{" "}
-						<kbd className="rounded border border-border bg-background px-1 font-data text-[10px]">
+						<kbd className="rounded border border-border bg-background px-1 font-data text-2xs">
 							⌘↩
 						</kbd>{" "}
 						or hit Send — pre-request scripts run first, then the response
@@ -404,14 +404,14 @@ function ReadyHero({
 				</Button>
 				{chips.length > 0 ? (
 					<div className="flex w-full flex-col items-center gap-2 border-t border-border/50 pt-3">
-						<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+						<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground/70">
 							Recent
 						</p>
 						<div className="flex flex-wrap justify-center gap-1.5">
 							{chips.map((e) => (
 								<span
 									key={`${e.method}-${e.url}`}
-									className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 font-data text-[10px] text-muted-foreground"
+									className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 font-data text-2xs text-muted-foreground"
 								>
 									<span
 										className={cn(

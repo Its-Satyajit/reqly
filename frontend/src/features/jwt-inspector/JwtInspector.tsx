@@ -15,6 +15,7 @@ import {
 } from "#lib/jwt";
 import { useRequestStore } from "#stores/useRequestStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { ViewShell } from "../../components/shell/ViewLayout";
 
 function expiryBadge(expiry: JwtTokenView["expiry"]) {
   switch (expiry.status) {
@@ -96,7 +97,7 @@ export function JwtInspector() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4" aria-label="JWT inspector">
+    <ViewShell label="JWT inspector">
       <h2 className="text-sm font-semibold">JWT Inspector</h2>
 
       <div className="flex flex-col gap-2 rounded-md border border-border p-3">
@@ -164,7 +165,7 @@ export function JwtInspector() {
           <div className="rounded-md border border-border p-2">
             <p
               className={cn(
-                "pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground",
+                "pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground",
               )}
             >
               Header
@@ -172,7 +173,7 @@ export function JwtInspector() {
             <ClaimsTable claims={decoded.header} />
           </div>
           <div className="rounded-md border border-border p-2">
-            <p className="pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Payload (claims)
             </p>
             <ClaimsTable
@@ -182,6 +183,6 @@ export function JwtInspector() {
           </div>
         </div>
       )}
-    </div>
+    </ViewShell>
   );
 }

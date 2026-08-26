@@ -8,26 +8,27 @@ import { CodeMirrorEditor } from "../../editors/CodeMirrorEditor";
 import { KeyValueEditor } from "#components/KeyValueEditor";
 import { cn } from "#lib/utils";
 import { useGrpcStore } from "#stores/useGrpcStore";
+import { ViewShell } from "../../components/shell/ViewLayout";
 
 /** statusBadge renders the connection state pill. */
 function statusBadge(status: string) {
 	if (status === "streaming" || status === "connecting") {
 		return (
-			<span className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-[10px]">
+			<span className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-data text-2xs">
 				<Spinner className="size-2.5" /> {status}
 			</span>
 		);
 	}
 	if (status === "error") {
 		return (
-			<span className="shrink-0 rounded-full border border-status-error/40 px-2 py-0.5 font-data text-[10px] text-status-error">
+			<span className="shrink-0 rounded-full border border-status-error/40 px-2 py-0.5 font-data text-2xs text-status-error">
 				error
 			</span>
 		);
 	}
 	if (status === "unary-ok" || status === "done") {
 		return (
-			<span className="shrink-0 rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-[10px] text-status-ok">
+			<span className="shrink-0 rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-2xs text-status-ok">
 				{status}
 			</span>
 		);
@@ -37,7 +38,7 @@ function statusBadge(status: string) {
 
 function FieldLabel({ children }: { children: string }) {
 	return (
-		<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+		<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 			{children}
 		</p>
 	);
@@ -79,7 +80,7 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 	const tlsOn = tab.tls || tab.tlsSkipVerify;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4">
+		<ViewShell label="gRPC tab" className="overflow-y-auto">
 			<div className="flex items-center gap-2">
 				<Input
 					value={tab.target}
@@ -111,7 +112,7 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 							aria-checked={opt.on}
 							onClick={opt.next}
 							className={cn(
-								"rounded-full px-2.5 py-0.5 font-data text-[10px]",
+								"rounded-full px-2.5 py-0.5 font-data text-2xs",
 								opt.on
 									? "bg-primary/15 text-primary"
 									: "text-muted-foreground hover:text-foreground",
@@ -176,10 +177,10 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 
 			{method ? (
 				<div className="flex flex-wrap items-center gap-1.5">
-					<span className="rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-[10px] text-status-ok">
+					<span className="rounded-full border border-status-ok/40 px-2 py-0.5 font-data text-2xs text-status-ok">
 						{isStreaming ? "server stream" : "unary stream"}
 					</span>
-					<span className="rounded-full border border-border bg-muted/30 px-2 py-0.5 font-data text-[10px] text-muted-foreground">
+					<span className="rounded-full border border-border bg-muted/30 px-2 py-0.5 font-data text-2xs text-muted-foreground">
 						{method.inputType} → {method.outputType}
 					</span>
 				</div>
@@ -209,12 +210,12 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 							valuePlaceholder="Value"
 						/>
 						{tab.metadata.length === 0 ? (
-							<p className="pt-1 text-center text-[11px] text-muted-foreground italic">
+							<p className="pt-1 text-center text-xs text-muted-foreground italic">
 								This table is empty.
 							</p>
 						) : null}
 					</div>
-					<div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span>deadline:</span>
 						<Input
 							value={tab.deadline}
@@ -222,7 +223,7 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 							placeholder="15s"
 							aria-label="Deadline"
 							spellCheck={false}
-							className="h-6 w-20 px-1.5 font-mono text-[11px]"
+							className="h-6 w-20 px-1.5 font-mono text-xs"
 						/>
 						<span>· compression: identity</span>
 					</div>
@@ -279,7 +280,7 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 							{tab.streamMessages.map((m) => (
 								<li
 									key={m.seq}
-									className="rounded border border-border/60 px-2 py-1 font-mono text-[11px]"
+									className="rounded border border-border/60 px-2 py-1 font-mono text-xs"
 								>
 									<span className="mr-2 text-muted-foreground">#{m.seq}</span>
 									<span className="break-all whitespace-pre-wrap">{m.messageJson}</span>
@@ -309,6 +310,6 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 					<dd className="text-foreground">reqly-grpc/1.4</dd>
 				</dl>
 			</div>
-		</div>
+		</ViewShell>
 	);
 }

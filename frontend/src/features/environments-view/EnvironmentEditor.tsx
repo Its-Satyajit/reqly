@@ -139,7 +139,7 @@ export function EnvironmentEditor({
 						{env.name}
 					</span>
 				</p>
-				<span className="text-[10px] text-muted-foreground">
+				<span className="text-2xs text-muted-foreground">
 					{dirty ? "unsaved changes" : "saved"}
 				</span>
 			</div>

@@ -58,7 +58,7 @@ function breadcrumbTrail(requestPath: string): string[] {
 /** Breadcrumb is the workspace › collection › request trail line. */
 function Breadcrumb({ trail }: { trail: string[] }) {
   return (
-    <div className="flex items-center gap-1 px-3 pb-1 pt-2 text-[11px] text-muted-foreground">
+    <div className="flex items-center gap-1 px-3 pb-1 pt-2 text-xs text-muted-foreground">
       {trail.map((seg, i) => (
         // Trail segments are a fixed positional path (workspace › … › file);
         // position IS the identity here.
@@ -270,10 +270,10 @@ export function RequestEditor() {
 
       {requestPath && (
         <div className="flex items-center gap-1 px-2 pb-1">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-2xs uppercase tracking-wide text-muted-foreground">
             Effective URL
           </span>
-          <code className="min-w-0 flex-1 truncate rounded bg-muted/40 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+          <code className="min-w-0 flex-1 truncate rounded bg-muted/40 px-1.5 py-0.5 text-xs text-muted-foreground">
             {effectiveUrlFor(draft.url, meta?.baseUrl ?? '')}
           </code>
         </div>
@@ -289,7 +289,7 @@ export function RequestEditor() {
           onClick={() => setSettingsOpen(true)}
           title="Request settings…"
           aria-label="Request settings"
-          className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+          className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-2xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
         >
           <SlidersHorizontal className="size-3" aria-hidden />
           {settingsSummary(draft)}
@@ -332,7 +332,7 @@ export function RequestEditor() {
               >
                 {t.label}
                 {count !== null && count > 0 && (
-                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold tabular-nums text-muted-foreground">
+                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-px text-2xs font-semibold tabular-nums text-muted-foreground">
                     {count}
                   </span>
                 )}
@@ -359,7 +359,7 @@ export function RequestEditor() {
             />
             {(meta?.inheritedHeaders.length ?? 0) > 0 && (
               <div className="shrink-0">
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="mb-1 text-2xs font-medium uppercase tracking-wide text-muted-foreground">
                   Inherited from workspace / collection / folder — read-only
                 </p>
                 <div className="overflow-hidden rounded-md border border-border">
@@ -389,7 +389,7 @@ export function RequestEditor() {
         ) : tab === 'scripts' ? (
           <div className="flex h-full min-h-0 flex-col gap-2">
             <div className="flex min-h-0 flex-1 flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Pre-request — runs before the request is sent
               </span>
               <CodeMirrorEditor
@@ -400,7 +400,7 @@ export function RequestEditor() {
               />
             </div>
             <div className="flex min-h-0 flex-1 flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Post-request — runs after the response arrives
               </span>
               <CodeMirrorEditor
@@ -497,7 +497,7 @@ function RequestToolbar({
       />
       <span
         title={envPinned ? 'Environment pinned by the request file' : 'Environment from the app header'}
-        className="shrink-0 rounded-full border border-border bg-muted/50 px-2 py-1 text-[10px] font-medium text-muted-foreground"
+        className="shrink-0 rounded-full border border-border bg-muted/50 px-2 py-1 text-2xs font-medium text-muted-foreground"
       >
         {envPill ?? 'No environment'}
         {envPinned ? ' • file' : ''}
@@ -648,7 +648,7 @@ function BodyTab({
       ) : draft.bodyType === 'binary' ? (
         <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-md border border-border p-2">
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               File path — relative to the request file
             </span>
             <input
@@ -660,14 +660,14 @@ function BodyTab({
               className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground"
             />
           </div>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             Enter a Git-native path relative to the request file (a browser file picker cannot produce one). The core reads the bytes from disk at send time.
           </p>
         </div>
       ) : draft.bodyType === 'graphql' ? (
         <div className="flex min-h-0 flex-1 flex-col gap-2">
           <div className="flex min-h-0 flex-1 flex-col gap-1">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Query</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Query</span>
             <CodeMirrorEditor
               value={draft.graphqlQuery ?? draft.body}
               language="graphql"
@@ -676,7 +676,7 @@ function BodyTab({
             />
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-1">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Variables (JSON)</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Variables (JSON)</span>
             <CodeMirrorEditor
               value={draft.graphqlVariables ?? '{\n  \n}'}
               language="json"
@@ -751,13 +751,13 @@ function RetrySection({
           aria-hidden
         />
         <span className="text-xs font-medium text-foreground">Retry</span>
-        <span className={`text-[11px] ${enabled ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
+        <span className={`text-xs ${enabled ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
           {retrySummary(retry)}
         </span>
       </button>
       {open && (
         <div className="mt-1 flex flex-wrap items-center gap-3 rounded-md border border-border p-2">
-          <label className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Retries
             <input
               type="number"
@@ -770,7 +770,7 @@ function RetrySection({
               className={field}
             />
           </label>
-          <label className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Base delay (ms)
             <input
               type="number"
@@ -782,7 +782,7 @@ function RetrySection({
               className={field}
             />
           </label>
-          <label className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Strategy
             <CompactSelect
               value={retry?.strategy === 'fixed' ? 'fixed' : 'exponential'}
@@ -793,7 +793,7 @@ function RetrySection({
               options={retryStrategies.map((s) => ({ ...s }))}
             />
           </label>
-          <label className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Max delay (ms)
             <input
               type="number"
@@ -805,7 +805,7 @@ function RetrySection({
               className={field}
             />
           </label>
-          <p className="w-full text-[11px] leading-relaxed text-muted-foreground">
+          <p className="w-full text-xs leading-relaxed text-muted-foreground">
             Retries fire on network errors and 429/502/503/504 unless a custom status set is declared
             in the request file. The server's Retry-After header wins when present.
           </p>
@@ -843,7 +843,7 @@ function VariablesView({
                 i % 2 === 0 ? 'bg-muted/30' : ''
               }`}
             >
-              <span className="w-20 shrink-0 rounded bg-muted px-1.5 py-0.5 text-center text-[10px] font-medium text-muted-foreground">
+              <span className="w-20 shrink-0 rounded bg-muted px-1.5 py-0.5 text-center text-2xs font-medium text-muted-foreground">
                 {v.scope}
               </span>
               <span className="shrink-0 font-medium text-foreground">{v.name}</span>

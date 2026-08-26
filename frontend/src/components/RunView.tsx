@@ -21,17 +21,19 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 	return (
 		<div className="border-b border-border last:border-b-0">
 			<div className="flex w-full items-center gap-2 px-3 py-1.5 text-xs">
-				<button
+				<Button
 					type="button"
+					variant="ghost"
+					size="icon-xs"
 					onClick={() => setExpanded((v) => !v)}
-					className="shrink-0 text-muted-foreground/50 hover:text-foreground"
+					className="-m-1 shrink-0 text-muted-foreground/50"
 					title="Toggle details"
 				>
 					<ChevronRight
 						className={cn("size-3 transition-transform", expanded && "rotate-90")}
 						aria-hidden
 					/>
-				</button>
+				</Button>
 				<button
 					type="button"
 					onClick={() => onOpenRequest(step.requestPath)}
@@ -77,7 +79,7 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 						</ul>
 					)}
 					{step.logs.length > 0 && (
-						<pre className="max-h-40 overflow-auto rounded-md bg-muted/50 p-2 font-mono text-[11px] leading-relaxed">
+						<pre className="max-h-40 overflow-auto rounded-md bg-muted/50 p-2 font-mono text-xs leading-relaxed">
 							{step.logs.join("\n")}
 						</pre>
 					)}
@@ -92,7 +94,7 @@ function StepRow({ step, onOpenRequest }: { step: RunStep; onOpenRequest: (path:
 								<span>·</span>
 								<span>{formatBytes(response.size)}</span>
 							</div>
-							<pre className="mt-1 max-h-40 overflow-auto font-mono text-[11px] leading-relaxed">
+							<pre className="mt-1 max-h-40 overflow-auto font-mono text-xs leading-relaxed">
 								{previewBody(response.body)}
 							</pre>
 						</div>
@@ -148,7 +150,7 @@ export function RunView() {
 
 	if (!path) {
 		return (
-			<div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
+			<div className="flex h-full items-center justify-center px-4 py-8 text-center text-sm text-muted-foreground">
 				No run started — press the play button on a collection or folder to run it.
 			</div>
 		);
@@ -221,33 +223,34 @@ export function RunView() {
 								JSON
 							</Button>
 						)}
-						<button
-							type="button"
+						<Button
+							variant="outline"
+							size="xs"
 							onClick={() => void cancelRun()}
 							disabled={!running}
-							className="rounded-md border border-border px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							Cancel
-						</button>
+						</Button>
 					</div>
 				</div>
 				{exportError && (
-					<p className="mt-2 text-[11px] text-status-error">{exportError}</p>
+					<p className="mt-2 text-xs text-status-error">{exportError}</p>
 				)}
 				{!dismissed && (
-					<div className="mt-2 flex items-start justify-between gap-2 rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground">						<span>
+					<div className="mt-2 flex items-start justify-between gap-2 rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">						<span>
 							Runs execute the saved request files from disk — unsaved changes in request tabs are
 							not included.
 						</span>
-						<button
-							type="button"
+						<Button
+							variant="ghost"
+							size="icon-xs"
 							onClick={() => setDismissed(true)}
-							className="shrink-0 text-muted-foreground/60 hover:text-foreground"
+							className="shrink-0 text-muted-foreground/60"
 							title="Dismiss"
 							aria-label="Dismiss report summary"
 						>
 							<X className="size-3.5" aria-hidden />
-						</button>
+						</Button>
 					</div>
 				)}
 			</div>
@@ -271,7 +274,7 @@ export function RunView() {
 			)}
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				{steps.length === 0 && !running && !report ? (
-					<div className="p-8 text-center text-xs text-muted-foreground">Waiting for the run to start…</div>
+					<div className="px-4 py-8 text-center text-xs text-muted-foreground">Waiting for the run to start…</div>
 				) : (
 					<div>
 						{steps.map((step, i) => (

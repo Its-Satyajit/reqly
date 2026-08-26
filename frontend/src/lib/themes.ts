@@ -6,7 +6,7 @@ export interface ThemeDef {
   appearance: ThemeAppearance
 }
 
-/** Open registry: a new theme is a token set in index.css plus one entry here. */
+/** Open registry: a new theme is a token set in frontend/src/styles/tokens.css plus one entry here. */
 export const THEMES: readonly ThemeDef[] = [
   { id: 'atlas-light', label: 'Atlas Light', appearance: 'light' },
   { id: 'atlas-dark', label: 'Atlas Dark', appearance: 'dark' },

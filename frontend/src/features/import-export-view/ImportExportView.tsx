@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { ViewShell } from "../../components/shell/ViewLayout";
 import { ArrowLeft, ArrowRight, Download, FileUp } from "lucide-react";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
@@ -46,7 +47,7 @@ function StageChip({
 	return (
 		<span
 			className={cn(
-				"rounded-full border px-3 py-0.5 font-data text-[10px] uppercase tracking-widest",
+				"rounded-full border px-3 py-0.5 font-data text-2xs uppercase tracking-widest",
 				state === "active"
 					? "border-primary/50 bg-primary/10 text-primary"
 					: state === "done"
@@ -87,7 +88,7 @@ function ImportCard({ onImported }: { onImported?: () => void }) {
 
 	return (
 		<div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-			<h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+			<h2 className="flex items-center gap-2 text-lg font-medium text-foreground">
 				<FileUp className="size-4" aria-hidden />
 				Import
 			</h2>
@@ -132,7 +133,7 @@ function ImportCard({ onImported }: { onImported?: () => void }) {
 						<p className="text-xs text-foreground">
 							<span className="font-medium">Drop a file</span> or click to browse
 						</p>
-						<p className="text-[11px] text-muted-foreground">
+						<p className="text-xs text-muted-foreground">
 							cURL command, OpenAPI 3.x, HAR 1.2, Postman v2.1, Insomnia v4/v5,
 							Bruno collection
 						</p>
@@ -186,7 +187,7 @@ function ImportCard({ onImported }: { onImported?: () => void }) {
 							Continue
 						</Button>
 					</div>
-					<dl className="flex flex-col gap-0.5 text-[11px]">
+					<dl className="flex flex-col gap-0.5 text-xs">
 						{FORMAT_HINTS.map(([name, hint]) => (
 							<div key={name} className="flex gap-2">
 								<dt className="w-28 shrink-0 font-semibold text-foreground">{name}</dt>
@@ -259,7 +260,7 @@ function ExportCard() {
 				</Alert>
 			) : null}
 			<div className="flex flex-col gap-1">
-				<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+				<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 					What
 				</p>
 				<select
@@ -277,7 +278,7 @@ function ExportCard() {
 				</select>
 			</div>
 			<div className="flex flex-col gap-1">
-				<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+				<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 					Format
 				</p>
 				<select
@@ -297,7 +298,7 @@ function ExportCard() {
 				</select>
 			</div>
 			<div className="flex flex-col gap-1">
-				<p className="font-data text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+				<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 					Output file name (optional)
 				</p>
 				<Input
@@ -320,7 +321,7 @@ function ExportCard() {
 					Export {exportFormatLabel(format)}
 				</Button>
 				{outcome ? (
-					<span className="text-[11px] text-status-ok">
+					<span className="text-xs text-status-ok">
 						Wrote {outcome.path} — files stay local.
 					</span>
 				) : null}
@@ -334,9 +335,9 @@ function ExportCard() {
 export function ImportExportView() {
 	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Import and export">
+		<ViewShell label="Import and export">
 			<ImportCard onImported={() => void refreshWorkspace()} />
 			<ExportCard />
-		</div>
+		</ViewShell>
 	);
 }

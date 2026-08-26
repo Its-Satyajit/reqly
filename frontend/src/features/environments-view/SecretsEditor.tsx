@@ -121,7 +121,7 @@ export function SecretsEditor({
 				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
 					Secrets
 				</p>
-				<span className="text-[10px] text-muted-foreground">
+				<span className="text-2xs text-muted-foreground">
 					values are never shown — only changed ones are written
 				</span>
 			</div>

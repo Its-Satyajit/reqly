@@ -5,6 +5,11 @@ import {
 	STATUS_CLASSES,
 	statusTier,
 } from "../lib/status";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "#components/ui/tooltip";
 
 /**
  * The one status device used everywhere — response header, run steps, history
@@ -21,21 +26,35 @@ export function StatusPill({
 	const label =
 		status == null || status === 0 ? "ERR" : String(status);
 	return (
-		<span
-			className={cn(
-				"inline-flex items-center gap-1.5 rounded-full border px-2 py-px font-mono text-[11px] font-medium tabular-nums",
-				STATUS_CLASSES[tier],
-				className,
-			)}
-			title={
-				status == null || status === 0
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<span
+						className={cn(
+							"inline-flex items-center gap-1.5 rounded-full border px-2 py-px font-mono text-xs font-medium tabular-nums",
+							STATUS_CLASSES[tier],
+							className,
+						)}
+						aria-label={
+							status == null || status === 0
+								? "Request failed — no HTTP response"
+								: `HTTP ${status}`
+						}
+					/>
+				}
+			>
+				<span
+					aria-hidden
+					className={cn("size-1.5 rounded-full", DOT_CLASSES[tier])}
+				/>
+				{label}
+			</TooltipTrigger>
+			<TooltipContent>
+				{status == null || status === 0
 					? "Request failed — no HTTP response"
-					: `HTTP ${status}`
-			}
-		>
-			<span aria-hidden className={cn("size-1.5 rounded-full", DOT_CLASSES[tier])} />
-			{label}
-		</span>
+					: `HTTP ${status}`}
+			</TooltipContent>
+		</Tooltip>
 	);
 }
 
@@ -49,7 +68,7 @@ export function MethodLabel({
 	return (
 		<span
 			className={cn(
-				"font-mono text-[11px] font-semibold tracking-wide",
+				"font-mono text-xs font-semibold tracking-wide",
 				// SAFETY: unknown methods miss the lookup and fall back to muted text
 				METHOD_CLASSES[method.toUpperCase() as keyof typeof METHOD_CLASSES] ??
 					"text-muted-foreground",
