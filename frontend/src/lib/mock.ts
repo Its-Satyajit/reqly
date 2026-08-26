@@ -77,3 +77,92 @@ export const MOCK_METHOD_OPTIONS = [
   { value: "PATCH", label: "PATCH" },
   { value: "DELETE", label: "DELETE" },
 ];
+
+// --- §56.7 Extended Mock Server GUI types ---
+
+export interface MockScenario {
+  id: string;
+  name: string;
+  description?: string;
+  routes: MockRoute[];
+  variables?: { [key: string]: string };
+}
+
+export interface MockStateVariable {
+  key: string;
+  value: string;
+  /** TTL in ms. 0 = permanent. Undefined = permanent. */
+  ttl?: number;
+  updatedAt: number;
+}
+
+export interface FaultInjection {
+  enabled: boolean;
+  type: "delay" | "drop" | "error" | "corrupt";
+  probability: number;
+  delayMs?: number;
+  errorCode?: number;
+  errorMessage?: string;
+}
+
+export interface RequestMatcher {
+  id: string;
+  method?: string;
+  pathPattern: string;
+  headers?: MockHeaders;
+  bodyPattern?: string;
+  priority: number;
+}
+
+export interface MockLogEntry {
+  timestamp: number;
+  method: string;
+  path: string;
+  status: number;
+  duration: number;
+  matchedRoute?: string;
+  scenario?: string;
+  error?: string;
+}
+
+let scenarioSeq = 0;
+
+/** Create a new mock scenario with a stable id. */
+export function createMockScenario(name: string, description?: string): MockScenario {
+  return {
+    id: `scenario-${++scenarioSeq}`,
+    name,
+    description,
+    routes: [],
+    variables: {},
+  };
+}
+
+/** Match a request against a list of matchers; returns highest-priority (lowest number) match. */
+export function matchRoute(
+  method: string,
+  path: string,
+  matchers: RequestMatcher[],
+): RequestMatcher | null {
+  const sorted = [...matchers].sort((a, b) => a.priority - b.priority);
+  for (const m of sorted) {
+    if (m.method && m.method.toUpperCase() !== method.toUpperCase()) continue;
+    // Simple glob: exact match or prefix with **
+    if (m.pathPattern.endsWith("/**")) {
+      const prefix = m.pathPattern.slice(0, -3);
+      if (path.startsWith(prefix)) return m;
+    } else if (m.pathPattern === path) {
+      return m;
+    }
+  }
+  return null;
+}
+
+/** Remove state variables whose TTL has expired. */
+export function pruneExpiredState(vars: MockStateVariable[]): MockStateVariable[] {
+  const now = Date.now();
+  return vars.filter((v) => {
+    if (v.ttl === undefined || v.ttl === 0) return true;
+    return now - v.updatedAt < v.ttl;
+  });
+}

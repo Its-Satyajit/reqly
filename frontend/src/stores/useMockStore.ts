@@ -3,15 +3,25 @@ import {
   fallbackMockAdapter,
   headerLinesFrom,
   parseHeaderLines,
+  pruneExpiredState,
   type MockAdapter,
   type MockRoute,
   type MockStatus,
+  type MockScenario,
+  type MockStateVariable,
+  type FaultInjection,
+  type RequestMatcher,
+  type MockLogEntry,
 } from "../lib/mock";
 
 let routeSeq = 0;
+let scenarioSeq = 0;
+let matcherSeq = 0;
 
 /** nextRouteId gives manual routes a stable React key. */
 const nextRouteId = () => `route-${++routeSeq}`;
+const nextScenarioId = () => `scenario-${++scenarioSeq}`;
+const nextMatcherId = () => `matcher-${++matcherSeq}`;
 
 interface MockState {
   adapter: MockAdapter
@@ -23,6 +33,17 @@ interface MockState {
   status: MockStatus
   busy: boolean
   error: string | null
+  // §56.7 — Scenarios
+  scenarios: MockScenario[]
+  activeScenarioId: string | null
+  // §56.7 — State variables
+  stateVariables: MockStateVariable[]
+  // §56.7 — Fault injection
+  faultInjection: FaultInjection
+  // §56.7 — Request matching
+  requestMatchers: RequestMatcher[]
+  // §56.7 — Logs
+  logs: MockLogEntry[]
   setAdapter(adapter: MockAdapter): void
   setSpecPath(specPath: string): void
   setPort(port: number): void
@@ -34,6 +55,24 @@ interface MockState {
   start(): Promise<void>
   stop(): Promise<void>
   refreshStatus(): Promise<void>
+  // §56.7 — Scenario actions
+  setActiveScenario(id: string | null): void
+  createScenario(name: string): void
+  deleteScenario(id: string): void
+  updateScenario(id: string, patch: Partial<MockScenario>): void
+  // §56.7 — State actions
+  setMockStateVariable(key: string, value: string, ttl?: number): void
+  clearMockStateVariable(key: string): void
+  pruneExpiredState(): void
+  // §56.7 — Fault injection
+  setFaultInjection(patch: Partial<FaultInjection>): void
+  // §56.7 — Request matching
+  addRequestMatcher(matcher: Omit<RequestMatcher, "id">): void
+  removeRequestMatcher(id: string): void
+  updateRequestMatcher(id: string, patch: Partial<RequestMatcher>): void
+  // §56.7 — Logs
+  addMockLog(entry: MockLogEntry): void
+  clearMockLogs(): void
 }
 
 const emptyStatus: MockStatus = { running: false };
@@ -69,6 +108,12 @@ export const useMockStore = create<MockState>((set) => ({
   status: emptyStatus,
   busy: false,
   error: null,
+  scenarios: [],
+  activeScenarioId: null,
+  stateVariables: [],
+  faultInjection: { enabled: false, type: "delay", probability: 0 },
+  requestMatchers: [],
+  logs: [],
 
   setAdapter(adapter) {
     set({ adapter });
@@ -158,6 +203,88 @@ export const useMockStore = create<MockState>((set) => ({
     } catch {
       /* keep last known state */
     }
+  },
+
+  // §56.7 — Scenario actions
+  setActiveScenario(id) {
+    set({ activeScenarioId: id });
+  },
+
+  createScenario(name) {
+    const id = nextScenarioId();
+    const scenario: MockScenario = { id, name, routes: [], variables: {} };
+    set((s) => ({ scenarios: [...s.scenarios, scenario] }));
+  },
+
+  deleteScenario(id) {
+    set((s) => ({
+      scenarios: s.scenarios.filter((sc) => sc.id !== id),
+      activeScenarioId: s.activeScenarioId === id ? null : s.activeScenarioId,
+    }));
+  },
+
+  updateScenario(id, patch) {
+    set((s) => ({
+      scenarios: s.scenarios.map((sc) => (sc.id === id ? { ...sc, ...patch } : sc)),
+    }));
+  },
+
+  // §56.7 — State actions
+  setMockStateVariable(key, value, ttl) {
+    set((s) => {
+      const existing = s.stateVariables.findIndex((v) => v.key === key);
+      const updated: MockStateVariable = { key, value, ttl, updatedAt: Date.now() };
+      if (existing >= 0) {
+        const copy = [...s.stateVariables];
+        copy[existing] = updated;
+        return { stateVariables: copy };
+      }
+      return { stateVariables: [...s.stateVariables, updated] };
+    });
+  },
+
+  clearMockStateVariable(key) {
+    set((s) => ({
+      stateVariables: s.stateVariables.filter((v) => v.key !== key),
+    }));
+  },
+
+  pruneExpiredState() {
+    set((s) => ({ stateVariables: pruneExpiredState(s.stateVariables) }));
+  },
+
+  // §56.7 — Fault injection
+  setFaultInjection(patch) {
+    set((s) => ({ faultInjection: { ...s.faultInjection, ...patch } }));
+  },
+
+  // §56.7 — Request matching
+  addRequestMatcher(matcher) {
+    const id = nextMatcherId();
+    set((s) => ({
+      requestMatchers: [...s.requestMatchers, { ...matcher, id }],
+    }));
+  },
+
+  removeRequestMatcher(id) {
+    set((s) => ({
+      requestMatchers: s.requestMatchers.filter((m) => m.id !== id),
+    }));
+  },
+
+  updateRequestMatcher(id, patch) {
+    set((s) => ({
+      requestMatchers: s.requestMatchers.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+    }));
+  },
+
+  // §56.7 — Logs
+  addMockLog(entry) {
+    set((s) => ({ logs: [...s.logs, entry] }));
+  },
+
+  clearMockLogs() {
+    set({ logs: [] });
   },
 }));
 
