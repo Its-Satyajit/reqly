@@ -3,6 +3,7 @@ import type { KeyValueRow } from '../lib/request'
 import { cn } from '../lib/utils'
 import { inputClass } from '../lib/ui'
 import { Button } from './ui/button'
+import { Checkbox } from './ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 interface KeyValueEditorProps {

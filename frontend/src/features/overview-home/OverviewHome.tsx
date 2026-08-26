@@ -24,6 +24,7 @@ import { type WorkspaceFolder, type WorkspaceTree } from "#lib/collections";
 import { methodTintClass } from "#lib/status";
 import { StatusPill } from "#components/status";
 import { cn } from "#lib/utils";
+import { Empty, EmptyDescription, EmptyHeader } from "#components/ui/empty";
 import { useImportStore, useWorkspaceStore } from "#stores";
 
 /** countTreeRequests totals requests across every collection/folder. */

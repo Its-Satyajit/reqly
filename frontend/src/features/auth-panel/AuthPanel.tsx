@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
-import { CompactSelect } from "#components/CompactSelect";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "#components/ui/select";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { isRecord, isString, type JsonObject, type JsonValue } from "../../lib/typeGuards";
 
@@ -115,18 +121,28 @@ export function AuthPanel() {
 			>
 				<div className="flex flex-col gap-1">
 					<span className="text-xs text-muted-foreground">Flow</span>
-					<CompactSelect
-						value={flow}
-						onChange={(v) =>
-							// SAFETY: options are constrained to authorization_code | device_code
-							setFlow(v as "authorization_code" | "device_code")
-						}
-						ariaLabel="OAuth flow"
-						options={[
+					<Select
+						items={[
 							{ value: "authorization_code", label: "Browser (auth code + PKCE)" },
 							{ value: "device_code", label: "Device code" },
 						]}
-					/>
+						value={flow}
+						onValueChange={(v) => {
+							if (v === "authorization_code" || v === "device_code") setFlow(v);
+						}}
+					>
+						<SelectTrigger aria-label="OAuth flow" className="h-7 w-full text-xs">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="authorization_code" className="text-xs">
+								Browser (auth code + PKCE)
+							</SelectItem>
+							<SelectItem value="device_code" className="text-xs">
+								Device code
+							</SelectItem>
+						</SelectContent>
+					</Select>
 				</div>
 
 				<label className="flex flex-col gap-1">

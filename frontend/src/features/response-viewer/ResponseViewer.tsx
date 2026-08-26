@@ -396,7 +396,7 @@ function ReadyHero({
 					<p className="text-base font-semibold text-foreground">Ready to send</p>
 					<p className="max-w-xs text-xs text-muted-foreground">
 						Press{" "}
-						<kbd className="rounded border border-border bg-background px-1 font-data text-2xs">
+						<Kbd>
 							⌘↩
 						</Kbd>{" "}
 						or hit Send — pre-request scripts run first, then the response

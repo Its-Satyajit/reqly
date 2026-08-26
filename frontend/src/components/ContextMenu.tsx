@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import {
 	ContextMenu as ContextMenuRoot,
 	ContextMenuContent,
@@ -44,6 +45,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
 	}, [onClose]);
 
 	return (
+		<ContextMenuRoot>
 		<div
 			ref={ref}
 			role="menu"
@@ -68,6 +70,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
 					</ContextMenuItem>
 				))}
 			</ContextMenuContent>
+		</div>
 		</ContextMenuRoot>
 	);
 }
