@@ -163,7 +163,7 @@ export function MocksView() {
 				asideLabel="Mock servers"
 				aside={
 					<>
-				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
+				<div className="flex flex-col gap-1 border-t border-border pt-3">
 					<div className="flex items-center justify-between">
 						<FieldLabel>Servers</FieldLabel>
 						<Button
@@ -199,7 +199,7 @@ export function MocksView() {
 						</span>
 					</button>
 				</div>
-				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
+				<div className="flex flex-col gap-1 border-t border-border pt-3">
 					<FieldLabel>Quick templates</FieldLabel>
 					<button
 						type="button"
@@ -221,7 +221,7 @@ export function MocksView() {
 						From OpenAPI spec
 					</button>
 				</div>
-				<div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
+				<div className="flex flex-col gap-1 border-t border-border pt-3">
 					<FieldLabel>Port</FieldLabel>
 					<input
 						type="number"
@@ -321,7 +321,7 @@ export function MocksView() {
 					</Button>
 				</div>
 
-				<div className="overflow-hidden rounded-xl border border-border bg-card">
+				<div className="overflow-hidden border-t border-border">
 					<table className="w-full border-separate border-spacing-0 text-left text-xs">
 						<thead>
 							<tr>

@@ -73,8 +73,9 @@ function sortChanges(changes: DiffChange[]): DiffChange[] {
 	return [...changes].sort((a, b) => rank(a) - rank(b));
 }
 
-/** CountCard is one reference stat tile (added / removed / changed / BREAKING). */
-function CountCard({
+/** CountStat is one reference stat (added / removed / changed / BREAKING):
+ * a bare numeral with a tone-colored left rule — no card tile. */
+function CountStat({
 	count,
 	label,
 	tone,
@@ -92,8 +93,8 @@ function CountCard({
 	return (
 		<div
 			className={cn(
-				"flex min-w-20 flex-col items-center gap-0.5 rounded-xl border border-border bg-card px-3 py-2",
-				tone === "breaking" && count > 0 && toneClass,
+				"flex min-w-20 flex-col items-start gap-0.5 border-l-2 py-0.5 pl-2.5",
+				tone === "breaking" && count > 0 ? toneClass : "border-border",
 			)}
 		>
 			<span className={cn("font-data text-xl font-semibold", tone !== "breaking" && toneClass)}>
@@ -153,7 +154,7 @@ function ChangeRow({
 function DetailPane({ change }: { change: DiffChange }) {
 	const breaking = change.severity === "breaking";
 	return (
-		<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto rounded-xl border border-border bg-card p-4">
+		<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto border-t border-border pt-4">
 			<h3 className="text-sm font-semibold text-foreground">
 				Detail · {changeTitle(change)}
 			</h3>
@@ -206,12 +207,12 @@ function ChangesPane({ result }: { result: DiffResultView }) {
 		changes.find((c) => changeKey(c) === selectedKey) ?? filtered[0] ?? null;
 	return (
 		<div className="flex min-h-0 flex-1 gap-3">
-			<div className="flex min-w-0 flex-1 flex-col gap-3 rounded-xl border border-border bg-card p-3">
+			<div className="flex min-w-0 flex-1 flex-col gap-3 border-t border-border pt-3">
 				<div className="flex flex-wrap items-center gap-2">
-					<CountCard count={counts.added} label="added" tone="ok" />
-					<CountCard count={counts.removed} label="removed" tone="error" />
-					<CountCard count={counts.changed} label="changed" tone="warn" />
-					<CountCard count={counts.breaking} label="breaking" tone="breaking" />
+					<CountStat count={counts.added} label="added" tone="ok" />
+					<CountStat count={counts.removed} label="removed" tone="error" />
+					<CountStat count={counts.changed} label="changed" tone="warn" />
+					<CountStat count={counts.breaking} label="breaking" tone="breaking" />
 					<Input
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
@@ -417,7 +418,7 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
 					{[respResult.metaA, respResult.metaB].map((m) => (
 						<div
 							key={m.id}
-							className="rounded-lg border border-border bg-card px-2 py-1.5 font-mono"
+							className="rounded-lg border border-border px-2 py-1.5 font-mono"
 						>
 							<p className="flex items-center gap-1.5">
 								<span className={cn("font-semibold uppercase", methodTintClass(m.method))}>
@@ -437,7 +438,7 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
 			) : null}
 
 			{result ? <ChangesPane result={result} /> : (
-				<div className="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-border bg-card">
+				<div className="flex min-h-0 flex-1 items-center justify-center">
 					<p className="text-xs text-muted-foreground">
 						Pick a base and an updated {mode === "specs" ? "spec" : "pair of responses"}, then
 						hit Compare.

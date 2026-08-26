@@ -161,7 +161,7 @@ export function TestsView() {
 		<ViewShell label="Tests">
 			<SplitView
 				asideLabel="Test suites"
-				asideClassName="gap-2 rounded-xl border border-border bg-card p-3"
+				asideClassName="gap-2 border-t border-border pt-3"
 				aside={
 					<>
 					<div className="flex items-center justify-between">
@@ -284,7 +284,7 @@ export function TestsView() {
 						{lastRun ? (
 							<SuiteResultList outcome={lastRun.outcome} />
 						) : (
-							<div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card">
+							<div className="flex flex-1 items-center justify-center">
 								<p className="text-xs text-muted-foreground">
 									Run the suite to see assertion results here.
 								</p>
@@ -292,7 +292,7 @@ export function TestsView() {
 						)}
 					</>
 				) : (
-					<div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card">
+					<div className="flex flex-1 items-center justify-center">
 						<p className="text-xs text-muted-foreground">
 							Pick a suite to run it, or create a new *.reqly-test file.
 						</p>

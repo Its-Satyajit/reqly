@@ -44,8 +44,9 @@ function SettingsGroup({
 	)
 }
 
-/** ThemeCard is one clickable light/dark preview swatch. */
-function ThemeCard({
+/** ThemeSwatch is one clickable light/dark preview. No card chrome — the
+ * preview itself is the control; selection shows as a ring. */
+function ThemeSwatch({
 	label,
 	appearance,
 	selected,
@@ -63,8 +64,10 @@ function ThemeCard({
 			aria-checked={selected}
 			onClick={onSelect}
 			className={cn(
-				"flex w-40 flex-col overflow-hidden rounded-lg border-2 text-left transition-colors",
-				selected ? "border-primary" : "border-transparent hover:border-border",
+				"flex w-40 flex-col overflow-hidden rounded-lg text-left transition-[box-shadow,outline]",
+				selected
+					? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+					: "hover:ring-1 hover:ring-border",
 			)}
 		>
 			<span
@@ -104,7 +107,7 @@ function AppearanceSection() {
 					// both members of ThemePreference.
 					const themeId = opt.id as typeof preference;
 					return (
-						<ThemeCard
+						<ThemeSwatch
 							key={opt.id}
 							label={opt.label}
 							appearance={opt.appearance}
@@ -282,7 +285,7 @@ export function SettingsView() {
 				}
 			>
 			<div className="min-w-0 flex-1 overflow-y-auto">
-				<div className="max-w-xl rounded-xl border border-border bg-card p-4">
+				<div className="max-w-xl border-t border-border pt-4">
 					{section === "appearance" ? <AppearanceSection /> : null}
 					{section === "editor" ? <EditorSection /> : null}
 					{section === "privacy" ? <PrivacySection /> : null}

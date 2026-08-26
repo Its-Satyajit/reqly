@@ -89,8 +89,9 @@ function QuickActionTile({ action }: { action: QuickAction }) {
 	);
 }
 
-/** Card is the shared bordered section container. */
-function Card({
+/** Section is a flat content band: an eyebrow label over a hairline rule.
+ * No card chrome — structure comes from typography and dividers. */
+function Section({
 	title,
 	children,
 	className,
@@ -102,11 +103,13 @@ function Card({
 	return (
 		<section
 			className={cn(
-				"flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-card p-4",
+				"flex min-w-0 flex-col gap-3 border-t border-border pt-3",
 				className,
 			)}
 		>
-			<h3 className="text-sm font-semibold text-foreground">{title}</h3>
+			<h3 className="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
+				{title}
+			</h3>
 			{children}
 		</section>
 	);
@@ -232,7 +235,7 @@ export function OverviewHome() {
 
 	return (
 		<ViewShell label="Overview" className="overflow-y-auto">
-			<section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4">
+			<section className="flex flex-wrap items-center justify-between gap-4 pb-4">
 				<div className="flex min-w-0 flex-col gap-2">
 					<h2 className="text-xl font-semibold text-foreground">
 						{workspace?.name ?? "Workspace"}
@@ -272,15 +275,15 @@ export function OverviewHome() {
 			</section>
 
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
-				<Card title="Quick actions">
+				<Section title="Quick actions">
 					<div className="grid grid-cols-3 gap-2">
 						{quickActions.map((a) => (
 							<QuickActionTile key={a.label} action={a} />
 						))}
 					</div>
-				</Card>
+				</Section>
 
-				<Card title="Recent activity">
+				<Section title="Recent activity">
 					{historyPool.length === 0 ? (
 						<p className="text-xs text-muted-foreground">
 							No requests sent yet — activity lands here.
@@ -292,9 +295,9 @@ export function OverviewHome() {
 							))}
 						</div>
 					)}
-				</Card>
+				</Section>
 
-				<Card title="Environment">
+				<Section title="Environment">
 					<p className="text-xs text-muted-foreground">
 						Active:{" "}
 						<span className="font-medium text-foreground">
@@ -321,9 +324,9 @@ export function OverviewHome() {
 					>
 						Manage environments
 					</button>
-				</Card>
+				</Section>
 
-				<Card title="Repository snapshot">
+				<Section title="Repository snapshot">
 					{repoFound ? (
 						<div className="flex flex-col gap-1.5 text-xs">
 							<p className="flex items-center gap-1.5">
@@ -354,16 +357,16 @@ export function OverviewHome() {
 							Not a git repository — collections still save as plain files.
 						</p>
 					)}
-				</Card>
+				</Section>
 			</div>
 
-			<Card title="Protocol clients" className="max-w-xl">
+			<Section title="Protocol clients" className="max-w-xl">
 				<div className="grid grid-cols-3 gap-2">
 					{protocolClients.map((a) => (
 						<QuickActionTile key={a.label} action={a} />
 					))}
 				</div>
-			</Card>
+			</Section>
 
 			<p className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
 				<Clock className="size-3" aria-hidden />

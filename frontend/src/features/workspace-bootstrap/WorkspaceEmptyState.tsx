@@ -1,4 +1,6 @@
-import { useState } from "react";
+/* eslint-disable react/no-children-prop */
+import { useForm } from "@tanstack/react-form";
+import * as z from "zod";
 import { FolderOpen, FolderPlus } from "lucide-react";
 import logoDark from "../../assets/logo-dark.svg";
 import logoLight from "../../assets/logo-light.svg";
@@ -6,9 +8,12 @@ import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { useThemeStore } from "#stores/useThemeStore";
-import {
-  useWorkspaceBootstrapStore,
-} from "#stores/useWorkspaceBootstrap";
+import { useWorkspaceBootstrapStore } from "#stores/useWorkspaceBootstrap";
+import { Field, FieldError, FieldGroup, FieldLabel } from "#components/ui/field";
+
+const formSchema = z.object({
+  name: z.string().min(1, "Workspace name is required."),
+});
 
 export function WorkspaceEmptyState() {
   const dark = useThemeStore((s) => s.appearance === "dark");
@@ -20,7 +25,11 @@ export function WorkspaceEmptyState() {
   const cancelPendingCreate = useWorkspaceBootstrapStore(
     (s) => s.cancelPendingCreate,
   );
-  const [name, setName] = useState(pendingCreate?.suggestedName ?? "");
+  const form = useForm({
+    defaultValues: { name: pendingCreate?.suggestedName ?? "" },
+    validators: { onSubmit: formSchema },
+    onSubmit: ({ value }) => void createPending(value.name),
+  });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6 text-foreground">
@@ -49,34 +58,60 @@ export function WorkspaceEmptyState() {
           key={pendingCreate.dir}
           className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-border p-4"
         >
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="workspace-name" className="text-xs font-medium">
-              Workspace name
-            </label>
-            <Input
-              id="workspace-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={pendingCreate.suggestedName || "my-workspace"}
-              autoFocus
-            />
-            <p className="text-xs text-muted-foreground">
-              Created inside{" "}
-              <span className="font-mono">{pendingCreate.dir}</span>
-            </p>
-          </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void form.handleSubmit();
+          }}
+        >
+          <FieldGroup>
+          <form.Field
+            name="name"
+            children={(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="workspace-name">Workspace name</FieldLabel>
+                  <Input
+                    id="workspace-name"
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder={pendingCreate.suggestedName || "my-workspace"}
+                    autoFocus
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  <p className="text-xs text-muted-foreground">
+                    Created inside{" "}
+                    <span className="font-mono">{pendingCreate.dir}</span>
+                  </p>
+                </Field>
+              );
+            }}
+          />
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={cancelPendingCreate}>
               Back
             </Button>
-            <Button
-              size="sm"
-              disabled={busy}
-              onClick={() => void createPending(name)}
+            <form.Subscribe
+              selector={(s) => ({ canSubmit: s.canSubmit })}
             >
-              Create workspace
-            </Button>
+              {({ canSubmit }: { canSubmit: boolean }) => (
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={busy || !canSubmit}
+                >
+                  Create workspace
+                </Button>
+              )}
+            </form.Subscribe>
           </div>
+          </FieldGroup>
+        </form>
         </div>
       ) : (
         <div className="flex items-center gap-2">

@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
-import { Button } from "../../components/ui/button";
+/* eslint-disable react/no-children-prop */
+import { useEffect } from "react";
+import { useForm } from "@tanstack/react-form";
+import * as z from "zod";
+import { Button } from "#components/ui/button";
 import { CompactSelect } from "#components/CompactSelect";
-import { useAuthStore } from "../../stores/useAuthStore";
+import { Field, FieldError, FieldGroup, FieldLabel } from "#components/ui/field";
+import { useAuthStore } from "#stores/useAuthStore";
 import { isRecord, isString, type JsonObject, type JsonValue } from "../../lib/typeGuards";
 
 const DEFAULT_CONFIG = JSON.stringify(
@@ -34,31 +38,47 @@ function formatExpiry(expiry: string): string {
 	return new Date(expiry).toLocaleString();
 }
 
+const formSchema = z.object({
+	flow: z.enum(["authorization_code", "device_code"]),
+	configText: z.string().superRefine((v, ctx) => {
+		try {
+			parseConfig(v);
+		} catch (err) {
+			ctx.addIssue({
+				code: "custom",
+				message: err instanceof Error ? err.message : String(err),
+			});
+		}
+	}),
+});
+
+type AuthFormValues = {
+	flow: "authorization_code" | "device_code";
+	configText: string;
+};
+
 export function AuthPanel() {
 	const { status, loading, error, refresh, login, logout, clearError } =
 		useAuthStore();
-	const [flow, setFlow] = useState<"authorization_code" | "device_code">(
-		"authorization_code",
-	);
-	const [configText, setConfigText] = useState(DEFAULT_CONFIG);
-	const [configError, setConfigError] = useState<string | null>(null);
+
+	const form = useForm({
+		// SAFETY: literal matches AuthFormValues["flow"]; assertion widens the
+		// default so the form field accepts both flow options.
+		defaultValues: {
+			flow: "authorization_code",
+			configText: DEFAULT_CONFIG,
+		} as AuthFormValues,
+		validators: { onSubmit: formSchema },
+		onSubmit: async ({ value }) => {
+			const config = parseConfig(value.configText);
+			clearError();
+			await login(config, value.flow);
+		},
+	});
 
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
-
-	const onLogin = async () => {
-		setConfigError(null);
-		let config: Record<string, string>;
-		try {
-			config = parseConfig(configText);
-		} catch (err) {
-			setConfigError(err instanceof Error ? err.message : String(err));
-			return;
-		}
-		clearError();
-		await login(config, flow);
-	};
 
 	const tokens = status?.tokens ?? [];
 	const canLogout = tokens.length > 0 && !loading;
@@ -107,50 +127,106 @@ export function AuthPanel() {
 			)}
 
 			<form
-				className="flex flex-col gap-2"
 				onSubmit={(e) => {
 					e.preventDefault();
-					void onLogin();
+					void form.handleSubmit();
 				}}
 			>
-				<div className="flex flex-col gap-1">
-					<span className="text-xs text-muted-foreground">Flow</span>
-					<CompactSelect
-						value={flow}
-						onChange={(v) =>
-							// SAFETY: options are constrained to authorization_code | device_code
-							setFlow(v as "authorization_code" | "device_code")
-						}
-						ariaLabel="OAuth flow"
-						options={[
-							{ value: "authorization_code", label: "Browser (auth code + PKCE)" },
-							{ value: "device_code", label: "Device code" },
-						]}
+				<FieldGroup>
+					<form.Field
+						name="flow"
+						children={(field) => (
+							<Field>
+								<FieldLabel htmlFor="auth-flow">Flow</FieldLabel>
+								<div id="auth-flow">
+									<CompactSelect
+										value={field.state.value}
+										onChange={(v) =>
+											field.handleChange(
+												// SAFETY: options are constrained to
+												// authorization_code | device_code
+												v as typeof field.state.value,
+											)
+										}
+										ariaLabel="OAuth flow"
+										options={[
+											{
+												value: "authorization_code",
+												label: "Browser (auth code + PKCE)",
+											},
+											{ value: "device_code", label: "Device code" },
+										]}
+									/>
+								</div>
+							</Field>
+						)}
 					/>
-				</div>
 
-				<label className="flex flex-col gap-1">
-					<span className="text-xs text-muted-foreground">
-						OAuth 2.0 config (JSON)
-					</span>
-					<textarea
-						value={configText}
-						onChange={(e) => setConfigText(e.target.value)}
-						rows={9}
-						spellCheck={false}
-						className="rounded-md border border-input bg-background p-2 font-mono text-xs text-foreground"
+					<form.Field
+						name="configText"
+						validators={{
+						onChange: ({ value }) => {
+							try {
+								parseConfig(value);
+								return undefined;
+							} catch (err) {
+								return {
+									message:
+										err instanceof Error ? err.message : String(err),
+								};
+							}
+						},
+						}}
+						children={(field) => {
+							const isInvalid =
+								field.state.meta.isTouched && !field.state.meta.isValid;
+							return (
+								<Field data-invalid={isInvalid}>
+									<FieldLabel htmlFor="auth-config">
+										OAuth 2.0 config (JSON)
+									</FieldLabel>
+									<textarea
+										id="auth-config"
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										rows={9}
+										spellCheck={false}
+										aria-invalid={isInvalid}
+										className="rounded-md border border-input bg-background p-2 font-mono text-xs text-foreground aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20"
+									/>
+									{isInvalid && <FieldError errors={field.state.meta.errors} />}
+								</Field>
+							);
+						}}
 					/>
-				</label>
+				</FieldGroup>
 
-				{configError ? (
-					<p className="text-xs text-destructive">{configError}</p>
+				{error ? (
+					<p className="mt-2 text-xs text-destructive">{error}</p>
 				) : null}
-				{error ? <p className="text-xs text-destructive">{error}</p> : null}
 
-				<div className="flex gap-2">
-					<Button type="submit" disabled={loading} className="flex-1">
-						{flow === "device_code" ? "Log in with device code" : "Log in"}
-					</Button>
+				<div className="mt-3 flex gap-2">
+					<form.Subscribe
+						selector={(s) => ({
+							canSubmit: s.canSubmit,
+							isSubmitting: s.isSubmitting,
+							flow: s.values.flow,
+						})}
+					>
+						{({ canSubmit, isSubmitting, flow }: { canSubmit: boolean; isSubmitting: boolean; flow: "authorization_code" | "device_code" }) => (
+							<Button
+								type="submit"
+								disabled={loading || !canSubmit || isSubmitting}
+								className="flex-1"
+							>
+								{flow === "device_code"
+									? "Log in with device code"
+									: "Log in"}
+							</Button>
+						)}
+					</form.Subscribe>
 					<Button
 						type="button"
 						variant="outline"

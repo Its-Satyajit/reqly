@@ -10,7 +10,7 @@
 
 import { Field } from "@base-ui/react/field"
 import { Input } from "../../components/ui/input"
-import { Label } from "../../components/ui/field"
+import { Label } from "#components/ui/label"
 import { CompactSelect } from "../../components/CompactSelect"
 import {
   AUTH_SCHEMES,

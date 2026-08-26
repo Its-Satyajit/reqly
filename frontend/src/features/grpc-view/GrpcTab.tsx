@@ -266,7 +266,7 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 				<FieldLabel>Responses</FieldLabel>
 				<div
 					ref={logRef}
-					className="flex min-h-40 flex-1 flex-col overflow-y-auto rounded-lg border border-border bg-card"
+					className="flex min-h-40 flex-1 flex-col overflow-y-auto border-t border-border"
 				>
 					{tab.unaryResult?.messageJson ? (
 						<CodeMirrorEditor
@@ -299,7 +299,7 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 				</div>
 			</div>
 
-			<div className="flex shrink-0 flex-col gap-1 rounded-lg border border-border bg-card p-3">
+			<div className="flex shrink-0 flex-col gap-1 border-t border-border pt-3">
 				<FieldLabel>Channel</FieldLabel>
 				<dl className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-0.5 font-data text-xs">
 					<dt className="text-muted-foreground">ADDRESS</dt>

@@ -70,7 +70,7 @@ function SavedSearchesPanel({
 		persistSavedSearches(next);
 	};
 	return (
-		<div className="flex min-w-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
+		<div className="flex min-w-0 flex-col gap-1 border-t border-border pt-3">
 			<p className="font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 				Saved searches
 			</p>
