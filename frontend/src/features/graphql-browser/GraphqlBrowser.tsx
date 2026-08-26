@@ -151,7 +151,7 @@ function TypeDetail({
 	onNavigate: (typeName: string) => void;
 }) {
 	return (
-		<div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-xl border border-border bg-card">
+		<div className="flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-border">
 			<p className="shrink-0 px-3 py-2 font-data text-2xs font-medium uppercase tracking-widest text-muted-foreground">
 				{typ.name} {typ.kind}
 			</p>

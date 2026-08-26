@@ -284,7 +284,7 @@ export function TestsView() {
 						{lastRun ? (
 							<SuiteResultList outcome={lastRun.outcome} />
 						) : (
-							<div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card">
+							<div className="flex flex-1 items-center justify-center">
 								<p className="text-xs text-muted-foreground">
 									Run the suite to see assertion results here.
 								</p>
@@ -292,7 +292,7 @@ export function TestsView() {
 						)}
 					</>
 				) : (
-					<div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card">
+					<div className="flex flex-1 items-center justify-center">
 						<p className="text-xs text-muted-foreground">
 							Pick a suite to run it, or create a new *.reqly-test file.
 						</p>

@@ -321,7 +321,7 @@ export function MocksView() {
 					</Button>
 				</div>
 
-				<div className="overflow-hidden rounded-xl border border-border bg-card">
+				<div className="overflow-hidden border-t border-border">
 					<table className="w-full border-separate border-spacing-0 text-left text-xs">
 						<thead>
 							<tr>

@@ -399,7 +399,7 @@ export function EnvironmentsView() {
 						</div>
 					</>
 				) : (
-					<div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card">
+					<div className="flex flex-1 items-center justify-center">
 						<p className="text-xs text-muted-foreground">
 							Create or pick an environment to edit its variables and secrets.
 						</p>

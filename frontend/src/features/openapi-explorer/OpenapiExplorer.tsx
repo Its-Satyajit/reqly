@@ -383,7 +383,7 @@ export function OpenapiExplorer() {
 				{detail ? (
 					<EndpointDetail endpoint={detail} />
 				) : (
-					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-card">
+					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5">
 						<p className="text-sm font-medium text-foreground">Select an endpoint</p>
 						<p className="max-w-xs text-center text-xs text-muted-foreground">
 							Browse the specification tree — every operation carries params and

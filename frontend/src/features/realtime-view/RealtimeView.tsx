@@ -25,7 +25,7 @@ export function RealtimeView() {
 				<button
 					type="button"
 					onClick={() => openRealtimeTab("ws")}
-					className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-4 py-6 transition-colors hover:bg-accent"
+					className="flex flex-col items-center gap-2 rounded-lg px-4 py-6 transition-colors hover:bg-accent"
 				>
 					<span className="font-data text-sm font-semibold text-foreground">WS</span>
 					<span className="text-xs text-muted-foreground">
@@ -35,7 +35,7 @@ export function RealtimeView() {
 				<button
 					type="button"
 					onClick={() => openRealtimeTab("sse")}
-					className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-4 py-6 transition-colors hover:bg-accent"
+					className="flex flex-col items-center gap-2 rounded-lg px-4 py-6 transition-colors hover:bg-accent"
 				>
 					<span className="font-data text-sm font-semibold text-foreground">SSE</span>
 					<span className="text-xs text-muted-foreground">

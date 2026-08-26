@@ -418,7 +418,7 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
 					{[respResult.metaA, respResult.metaB].map((m) => (
 						<div
 							key={m.id}
-							className="rounded-lg border border-border bg-card px-2 py-1.5 font-mono"
+							className="rounded-lg border border-border px-2 py-1.5 font-mono"
 						>
 							<p className="flex items-center gap-1.5">
 								<span className={cn("font-semibold uppercase", methodTintClass(m.method))}>
@@ -438,7 +438,7 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
 			) : null}
 
 			{result ? <ChangesPane result={result} /> : (
-				<div className="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-border bg-card">
+				<div className="flex min-h-0 flex-1 items-center justify-center">
 					<p className="text-xs text-muted-foreground">
 						Pick a base and an updated {mode === "specs" ? "spec" : "pair of responses"}, then
 						hit Compare.

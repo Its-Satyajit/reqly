@@ -1,4 +1,5 @@
-import { Check, FolderOpen, History, Import, Settings, FolderPlus } from "lucide-react";
+import { useState } from "react";
+import { Check, FolderOpen, History, Import, Settings } from "lucide-react";
 import { Menu } from "@base-ui/react/menu";
 
 import { useWorkspaceBootstrapStore } from "#stores/useWorkspaceBootstrap";
@@ -6,6 +7,16 @@ import { useWorkspaceStore } from "#stores";
 import { useHistoryStore } from "#stores/useHistoryStore";
 import { notifyError, notifySuccess } from "#lib/notify";
 import { readRecents } from "#lib/workspace";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "#components/ui/alert-dialog";
 import {
 	Tooltip,
 	TooltipContent,
@@ -34,7 +45,10 @@ export function WorkspaceMenu({ children }: { children: React.ReactNode }) {
 	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
 	const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments);
 	const historyClear = useHistoryStore((s) => s.clear);
-	const recents = readRecents();
+	// Recents are read on menu open (Menu.Root remounts the popup), so a
+	// plain read here stays fresh without a store subscription.
+	const [recents, setRecents] = useState(readRecents);
+	const [confirmingClear, setConfirmingClear] = useState(false);
 	const current = status?.path ?? "";
 
 	const openRecent = async (dir: string) => {
@@ -62,7 +76,7 @@ export function WorkspaceMenu({ children }: { children: React.ReactNode }) {
 	};
 
 	return (
-		<Menu.Root>
+		<Menu.Root onOpenChange={(open) => open && setRecents(readRecents())}>
 			<Menu.Trigger render={<div>{children}</div>} />
 			<Menu.Portal>
 				<Menu.Positioner align="start" sideOffset={6} className="z-(--z-overlay)">
@@ -96,10 +110,6 @@ export function WorkspaceMenu({ children }: { children: React.ReactNode }) {
 							<FolderOpen className={iconClass} aria-hidden />
 							Open folder…
 						</Menu.Item>
-						<Menu.Item disabled={busy} className={itemClass} onClick={() => void openFolder()}>
-							<FolderPlus className={iconClass} aria-hidden />
-							Create workspace…
-						</Menu.Item>
 						<Menu.Item className={itemClass} onClick={() => setActiveView("importexport")}>
 							<Import className={iconClass} aria-hidden />
 							Import data
@@ -114,7 +124,7 @@ export function WorkspaceMenu({ children }: { children: React.ReactNode }) {
 								render={
 									<Menu.Item
 										className={itemClass}
-										onClick={() => void clearHistory()}
+										onClick={() => setConfirmingClear(true)}
 									/>
 								}
 							>
@@ -128,6 +138,29 @@ export function WorkspaceMenu({ children }: { children: React.ReactNode }) {
 					</Menu.Popup>
 				</Menu.Positioner>
 			</Menu.Portal>
+			<AlertDialog
+				open={confirmingClear}
+				onOpenChange={(open) => !open && setConfirmingClear(false)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Clear all send history?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Every recorded request and response is deleted from the local
+							database. This cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Keep history</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							onClick={() => void clearHistory()}
+						>
+							Clear history
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</Menu.Root>
 	);
 }
