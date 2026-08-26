@@ -1,0 +1,357 @@
+// Reqly - A local-first, Git-native API development environment.
+// Copyright 2026 It's Satyajit
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
+
+package core
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"strings"
+	"testing"
+
+	"github.com/Its-Satyajit/reqly/internal/grpc"
+	"github.com/Its-Satyajit/reqly/internal/grpc/testsrv"
+	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/testsupport"
+)
+
+func TestRunGRPCRequiresGrpcBlock(t *testing.T) {
+	dir := newRunWS(t)
+	svc := NewRunService(dir)
+	defer svc.Close()
+	if _, err := svc.RunGRPC(context.Background(), request.Request{URL: "127.0.0.1:1"}, RunRequestOptions{}); err == nil {
+		t.Fatal("expected error for missing grpc block")
+	}
+}
+
+func newGRPCRunWorkspace(t *testing.T) *RequestService {
+	t.Helper()
+	dir := testsupport.Workspace(t, map[string]string{
+		"reqly.yaml":            "name: ws\nenvironment: dev\n",
+		"environments/dev.yaml": "name: dev\nvariables:\n  who: from-env\ndescription: \"\"\nsecrets:\n  api_key: super-secret-token\n",
+	})
+	return NewRunService(dir)
+}
+
+func TestRunGRPCInterpolatesMessageAndMetadata(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPC(context.Background(), request.Request{
+		URL:     srv.Addr,
+		Headers: []request.Header{{Key: "authorization", Value: "Bearer {{api_key}}"}},
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "hello {{who}}"},
+		},
+	}, RunRequestOptions{})
+	if err != nil {
+		t.Fatalf("RunGRPC: %v", err)
+	}
+	if !res.Result.OK {
+		t.Fatalf("expected OK: %+v", res.Result)
+	}
+	if !strings.Contains(string(res.Result.MessageJSON), "hello from-env") {
+		t.Errorf("message not interpolated: %s", res.Result.MessageJSON)
+	}
+	// The secret must never appear in rendered output.
+	if strings.Contains(string(res.Result.MessageJSON), "super-secret-token") {
+		t.Errorf("secret leaked into response view")
+	}
+}
+
+func TestRunGRPCHistoryRowRecorded(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	if _, err := svc.RunGRPC(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "history me"},
+		},
+	}, RunRequestOptions{RequestPath: "collections/users/rpc.reqly.json"}); err != nil {
+		t.Fatalf("RunGRPC: %v", err)
+	}
+
+	entries, err := svc.History().List(context.Background(), 10, 0, nil)
+	if err != nil {
+		t.Fatalf("list history: %v", err)
+	}
+	var found bool
+	for _, e := range entries {
+		if e.Method == "GRPC" && strings.Contains(e.URL, "reqly.test.v1.EchoService") {
+			found = true
+			if e.Status != 200 {
+				t.Errorf("history status = %d, want 200", e.Status)
+			}
+			if !strings.Contains(string(e.RespBody), "history me") {
+				t.Errorf("history response body = %q", e.RespBody)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("no GRPC history row; entries = %+v", entries)
+	}
+}
+
+func TestRunGRPCNonOKStatusMaskedAndRecorded(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPC(context.Background(), request.Request{
+		URL:     srv.Addr,
+		Headers: []request.Header{{Key: "x-reqly", Value: "{{api_key}}"}},
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.FailingService",
+			Method:  "Boom",
+		},
+	}, RunRequestOptions{})
+	if err != nil {
+		t.Fatalf("RunGRPC (non-OK is a result): %v", err)
+	}
+	if res.Result.OK {
+		t.Fatal("expected non-OK result")
+	}
+	for _, d := range res.Result.StatusDetails {
+		if strings.Contains(d.Data, "super-secret-token") {
+			t.Errorf("secret leaked into status details")
+		}
+	}
+	entries, herr := svc.History().List(context.Background(), 10, 0, nil)
+	if herr != nil {
+		t.Fatalf("list history: %v", herr)
+	}
+	var found bool
+	for _, e := range entries {
+		if e.Method == "GRPC" && strings.Contains(e.URL, "FailingService") {
+			found = true
+			if e.Status != int(5) { // codes.NotFound
+				t.Errorf("history status = %d, want 5 (NotFound)", e.Status)
+			}
+		}
+	}
+	if !found {
+		t.Error("no history row for failed call")
+	}
+}
+
+func TestRunGRPCStreamedInOrder(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	var seqs []int
+	res, err := svc.RunGRPCStreamed(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "StreamEcho",
+			Message: map[string]any{"text": "s"},
+		},
+	}, RunRequestOptions{}, func(ev grpc.StreamEvent) error {
+		var msg map[string]any
+		_ = json.Unmarshal(ev.MessageJSON, &msg)
+		seqs = append(seqs, int(msg["sequence"].(float64)))
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("RunGRPCStreamed: %v", err)
+	}
+	if !res.Result.OK || len(seqs) != 3 || seqs[0] != 1 || seqs[2] != 3 {
+		t.Fatalf("stream result = %+v seqs=%v", res.Result, seqs)
+	}
+}
+
+func TestRunGRPCStreamedStopConsumptionSentinel(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	count := 0
+	res, err := svc.RunGRPCStreamed(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "StreamEcho",
+			Message: map[string]any{"text": "s"},
+		},
+	}, RunRequestOptions{}, func(_ grpc.StreamEvent) error {
+		count++
+		if count >= 1 {
+			return ErrStopConsumption
+		}
+		return nil
+	})
+	if !errors.Is(err, ErrStopConsumption) {
+		t.Fatalf("expected ErrStopConsumption sentinel, got %v", err)
+	}
+	if count != 1 {
+		t.Errorf("consumed %d messages, want 1", count)
+	}
+	if res == nil || res.Result == nil {
+		t.Fatal("expected result alongside sentinel")
+	}
+}
+
+func TestRunGRPCStreamedFallsBackToUnary(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPCStreamed(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "unary via stream"},
+		},
+	}, RunRequestOptions{}, func(ev grpc.StreamEvent) error { return nil })
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(string(res.Result.MessageJSON), "unary via stream") {
+		t.Errorf("unary fallback did not run: %+v", res.Result)
+	}
+}
+
+func TestRunGRPCStreamedHistorySummaryRow(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	_, err := svc.RunGRPCStreamed(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "StreamEcho",
+			Message: map[string]any{"text": "s"},
+		},
+	}, RunRequestOptions{RequestPath: "rpc.reqly.json"}, func(_ grpc.StreamEvent) error { return nil })
+	if err != nil {
+		t.Fatalf("RunGRPCStreamed: %v", err)
+	}
+	entries, herr := svc.History().List(context.Background(), 10, 0, nil)
+	if herr != nil {
+		t.Fatalf("list history: %v", herr)
+	}
+	var found bool
+	for _, e := range entries {
+		if e.Method == "GRPC" && strings.Contains(e.URL, "StreamEcho") {
+			found = true
+			if !strings.Contains(string(e.RespBody), "3 messages") {
+				t.Errorf("summary body = %q", e.RespBody)
+			}
+		}
+	}
+	if !found {
+		t.Error("no summary row for streamed call")
+	}
+}
+
+func TestRunGRPCScriptsAndAssertions(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPC(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "original"},
+		},
+	}, RunRequestOptions{
+		PreRequestScript:  `reqly.request.body = JSON.stringify({text: "patched by script"});`,
+		PostRequestScript: `reqly.test("echo applied", () => reqly.response.body.includes("patched by script")); reqly.setVariable("extracted", "value");`,
+	})
+	if err != nil {
+		t.Fatalf("RunGRPC with scripts: %v", err)
+	}
+	if !res.Result.OK {
+		t.Fatalf("expected OK: %+v", res.Result)
+	}
+	if !strings.Contains(string(res.Result.MessageJSON), "patched by script") {
+		t.Errorf("pre-script did not patch the message: %s", res.Result.MessageJSON)
+	}
+	if len(res.Tests) != 1 || !res.Tests[0].Passed {
+		t.Errorf("assertions = %+v, want one passing", res.Tests)
+	}
+	if !res.Passed() {
+		t.Error("Passed() should be true")
+	}
+}
+
+func TestRunGRPCFailedAssertionMarksFailure(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPC(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "x"},
+		},
+	}, RunRequestOptions{
+		PostRequestScript: `reqly.test("always fails", () => false);`,
+	})
+	if err != nil {
+		t.Fatalf("RunGRPC: %v", err)
+	}
+	if len(res.Tests) != 1 || res.Tests[0].Passed {
+		t.Fatalf("assertion should fail: %+v", res.Tests)
+	}
+	if res.Passed() {
+		t.Error("Passed() must be false when an assertion fails")
+	}
+	if res.Result.OK {
+		// Transport truth stays OK; the assertion layer marks the failure.
+		t.Log("result.OK remains transport-level true — failure carried by Tests")
+	}
+}
+
+func TestRunGRPCPostScriptErrorSurfaces(t *testing.T) {
+	srv := testsrv.Start(t)
+	svc := newGRPCRunWorkspace(t)
+	defer svc.Close()
+
+	res, err := svc.RunGRPC(context.Background(), request.Request{
+		URL: srv.Addr,
+		GRPC: &request.GRPC{
+			Service: "reqly.test.v1.EchoService",
+			Method:  "Echo",
+			Message: map[string]any{"text": "x"},
+		},
+	}, RunRequestOptions{PostRequestScript: `this is not javascript ;;;`})
+	if err != nil {
+		t.Fatalf("script errors are results, not errors: %v", err)
+	}
+	if len(res.Tests) != 1 || res.Tests[0].Passed {
+		t.Errorf("expected failing post-script marker test, got %+v", res.Tests)
+	}
+	if !strings.Contains(res.Warning, "post-request script error") {
+		t.Errorf("warning should carry script error: %q", res.Warning)
+	}
+}

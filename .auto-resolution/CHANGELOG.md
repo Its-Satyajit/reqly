@@ -1,0 +1,193 @@
+# Changelog
+
+## [1.8.0](https://github.com/Its-Satyajit/reqly/compare/v1.7.0...v1.8.0) (2026-08-24)
+
+
+### Features
+
+* **desktop:** GUI gRPC client — M43 T7 dedicated tab kind ([530fdad](https://github.com/Its-Satyajit/reqly/commit/530fdadc63589d45cfb36b6b54cd36908027b05d))
+* **desktop:** GUI gRPC client — M43 T7 dedicated tab kind ([1146102](https://github.com/Its-Satyajit/reqly/commit/114610266562a3dbf925644254f5fe9c32f91b17))
+* **grpc:** M43 T5 — server-streaming invoke ([9bf3bbd](https://github.com/Its-Satyajit/reqly/commit/9bf3bbd1aa4556a0ec9514270d6287dfb973f33b))
+* **grpc:** M43 T5 — server-streaming invoke ([e652dfb](https://github.com/Its-Satyajit/reqly/commit/e652dfbd7a6cc7f098a64570342451f9e50b3f2a))
+* **grpc:** M43 T6 — scripting & assertions parity for gRPC sends ([78315d8](https://github.com/Its-Satyajit/reqly/commit/78315d87b94be1b5cb7a100733bdb52ec0ae8ca9))
+* **grpc:** M43 T6 — scripting & assertions parity for gRPC sends ([47f4e43](https://github.com/Its-Satyajit/reqly/commit/47f4e43716c08abb7932e90df8a75f0d51f9dfdc))
+
+## [1.7.0](https://github.com/Its-Satyajit/reqly/compare/v1.6.0...v1.7.0) (2026-08-24)
+
+
+### Features
+
+* **grpc:** M43 T3 — pipeline integration for gRPC sends ([64b22b3](https://github.com/Its-Satyajit/reqly/commit/64b22b3e7f6f34b702fcbfb6b7910e4db31382ce))
+* **grpc:** M43 T3 — pipeline integration for gRPC sends ([713b964](https://github.com/Its-Satyajit/reqly/commit/713b964e2a9040564960133027a513000a2c8a4b))
+
+## [1.6.0](https://github.com/Its-Satyajit/reqly/compare/v1.5.0...v1.6.0) (2026-08-24)
+
+
+### Features
+
+* **grpc:** M43 T1 — reflection service discovery + shared test fixture ([c964469](https://github.com/Its-Satyajit/reqly/commit/c9644693f8092e66d3936515abd92b633ea6cda6))
+* **grpc:** M43 T1 — reflection service discovery + shared test fixture ([062b69b](https://github.com/Its-Satyajit/reqly/commit/062b69bc6ccd0b5dbacc777548d6b3ad3f7b6975))
+* **grpc:** M43 T2 — unary invoke end-to-end ([af907c3](https://github.com/Its-Satyajit/reqly/commit/af907c3477804937765e93c1f60353320b866f78))
+* **grpc:** M43 T2 — unary invoke end-to-end (grpc: block + CLI) ([a216452](https://github.com/Its-Satyajit/reqly/commit/a216452d99a71d6ba1667c754f2c669cc459a569))
+
+## [1.5.0](https://github.com/Its-Satyajit/reqly/compare/v1.4.1...v1.5.0) (2026-08-24)
+
+
+### Features
+
+* **desktop:** GUI-15 docs generation panel ([3ebb9ec](https://github.com/Its-Satyajit/reqly/commit/3ebb9ec5ad8c93c455ebb8f76a2df4548970f58c))
+* **desktop:** GUI-15 docs generation panel ([db774ac](https://github.com/Its-Satyajit/reqly/commit/db774ac86061295de5a2e60fab620c3def9a04c3))
+
+## [1.4.1](https://github.com/Its-Satyajit/reqly/compare/v1.4.0...v1.4.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* **desktop:** resolve G-4 design-review findings ([b876a2a](https://github.com/Its-Satyajit/reqly/commit/b876a2a895173e537824ac2b3ee984eff8ee3e9d))
+* **desktop:** resolve G-4 design-review findings ([6029b65](https://github.com/Its-Satyajit/reqly/commit/6029b65bb7440bb786e7d9c296de8d36c67f4dae))
+
+## [1.4.0](https://github.com/Its-Satyajit/reqly/compare/v1.3.0...v1.4.0) (2026-08-24)
+
+
+### Features
+
+* **desktop:** export dialog wrapping reqly export postman/har/openapi/workspace ([b196554](https://github.com/Its-Satyajit/reqly/commit/b19655401073f84759c538e1226b104695fc9ecb))
+* **desktop:** GUI-10 JWT inspector ([9917afa](https://github.com/Its-Satyajit/reqly/commit/9917afa055919b4fb3638cf7e5207de32eb40e5d))
+* **desktop:** GUI-11 GraphQL schema browser ([ffc6602](https://github.com/Its-Satyajit/reqly/commit/ffc6602a0a6e46f42001359ca400be999e214289))
+* **desktop:** GUI-11 GraphQL schema browser ([b9f4234](https://github.com/Its-Satyajit/reqly/commit/b9f42348a6da95343aa70b2ef18e1f485a940d87))
+* **desktop:** GUI-12 pagination & bulk runner panels ([2bba7f5](https://github.com/Its-Satyajit/reqly/commit/2bba7f5792a016b597ee1e517d9eed6a8c839e6b))
+* **desktop:** GUI-13 env diff & validation panel ([0c6ddb8](https://github.com/Its-Satyajit/reqly/commit/0c6ddb882cb0e24dd30bb4cb0a786979e641e90c))
+* **desktop:** GUI-13 env diff & validation panel ([6afec32](https://github.com/Its-Satyajit/reqly/commit/6afec32c5f715d8c184f729fcac5c453e877cfb2))
+* **desktop:** GUI-14 OpenAPI explorer ([6878f3c](https://github.com/Its-Satyajit/reqly/commit/6878f3c473d20b63852eb13e12953a57445f8e02))
+* **desktop:** GUI-6 test runner — editor, assertion builder, results, run ([aea427d](https://github.com/Its-Satyajit/reqly/commit/aea427d33f78cc7d861883a32d9e4453508cebbe))
+* **desktop:** GUI-7 WebSocket & SSE realtime tabs ([2f1469d](https://github.com/Its-Satyajit/reqly/commit/2f1469dc5e108a08ce4408aa413c4d81acfc9202))
+* **desktop:** GUI-7 WebSocket & SSE realtime tabs ([5628b0e](https://github.com/Its-Satyajit/reqly/commit/5628b0e324f93b0b34d4b9601c7ebdce8f4feaba))
+* **desktop:** GUI-8 mock server panel ([8b3f516](https://github.com/Its-Satyajit/reqly/commit/8b3f516c475f62546f835520afd344c2fd7d0d71))
+* **desktop:** GUI-9 API diff view ([b7c78e5](https://github.com/Its-Satyajit/reqly/commit/b7c78e5f7f19fe31544f822de2bb6305da5b38f8))
+
+
+### Bug Fixes
+
+* **desktop:** replace undefined setConcurrency with patch in RunnersPanel ([5bf8659](https://github.com/Its-Satyajit/reqly/commit/5bf8659994b31f40f40edd4b3c0d34cec11ca389))
+* **desktop:** satisfy DoD gates — lint exit 0, react-doctor no new warnings ([6b533ca](https://github.com/Its-Satyajit/reqly/commit/6b533ca6a5b50cdc27bbc7fd4a2816c32f1fe84a))
+* **desktop:** typecheck, lint, and react-doctor findings across new views ([03b2390](https://github.com/Its-Satyajit/reqly/commit/03b2390d3c77c755c2e244053bac7c828df239a0))
+
+## [1.3.0](https://github.com/Its-Satyajit/reqly/compare/v1.2.0...v1.3.0) (2026-08-24)
+
+
+### Features
+
+* add anti-slop rules and CodeMirror typing fix ([25c1b35](https://github.com/Its-Satyajit/reqly/commit/25c1b35f85ab6efe90f30479ed435ed91f15413b))
+* **auth:** add AWS SigV4 and EdgeGrid schemes (M20 T1) ([4b8bc6c](https://github.com/Its-Satyajit/reqly/commit/4b8bc6cf61b49b5697a113441ea07bc11b95840b))
+* **body:** add binary + GraphQL body types (M21 T1) ([a7fc993](https://github.com/Its-Satyajit/reqly/commit/a7fc9937a1ec15a1c7c1da81b0345ecf19e70f3d))
+* **bridge:** expose file auth and pass draft auth on save/send (M19 T2) ([7d1952a](https://github.com/Its-Satyajit/reqly/commit/7d1952a0edc03004ab76ffcfdb7a4d072311c310))
+* **bridge:** file-backed send + save for editable request tabs ([5a12b89](https://github.com/Its-Satyajit/reqly/commit/5a12b8946b0bfef86a64ebf0592620c789f5d8c0))
+* **bulk:** CSV/JSON sequential/parallel runner (M31) ([69ea911](https://github.com/Its-Satyajit/reqly/commit/69ea911d7cbf13ecbb962da2c7fecaf78e858182))
+* **ci:** add Doctor workflow and helper scripts ([8118f1d](https://github.com/Its-Satyajit/reqly/commit/8118f1d189a879a248238683296fd617bfc22782))
+* **cli:** --retries/--retry-delay flags, retry notices, attempts in history ([de12a7a](https://github.com/Its-Satyajit/reqly/commit/de12a7adc73d3d62d568ab9ebf929f02032d1bc5))
+* **cli:** collection test --report-junit/--report-json + reqly export openapi (M37 T3) ([83283f4](https://github.com/Its-Satyajit/reqly/commit/83283f421aaad3941702ee853dce21d424e79e7c))
+* **cli:** reqly graphql introspect command with headers/type/json flags (M38 T2) ([4eef1be](https://github.com/Its-Satyajit/reqly/commit/4eef1be476cf678893f5c8a572daeaad4b48697d))
+* **cli:** reqly import bruno &lt;file&gt; [--output dir] with directory guidance (M36 T3) ([e6728d3](https://github.com/Its-Satyajit/reqly/commit/e6728d3aad95edb06a94dfdb378f38947794f30a))
+* **cli:** reqly import insomnia &lt;file&gt; [--output dir], e2e tests for insomnia + postman commands (M35 T3) ([ac52704](https://github.com/Its-Satyajit/reqly/commit/ac5270476c05d70ce30a27e17ffa208de43e40ff))
+* **cli:** reqly import postman &lt;file&gt; [--output dir] (M34 T3) ([dfc83e7](https://github.com/Its-Satyajit/reqly/commit/dfc83e77f2d684296327c4c9f5fd0d3c98f9a97a))
+* **cli:** reqly import wsdl &lt;file&gt; [--output dir] (M41 T2) ([f9d6efb](https://github.com/Its-Satyajit/reqly/commit/f9d6efb3bfa6b8213d2995c224710b2ef8f39b59))
+* **cli:** reqly openapi explore|generate commands (M39 T2) ([580a229](https://github.com/Its-Satyajit/reqly/commit/580a229b6cd7d77344594f4c2bf6978d4f7a21d5))
+* **cli:** reqly schema validate|inspect|generate commands (M40 T3) ([a44977d](https://github.com/Its-Satyajit/reqly/commit/a44977d37470a37bf357a7026cead3406588be3c))
+* **core:** collection run service + RunFolder engine support (T2) ([bf28df3](https://github.com/Its-Satyajit/reqly/commit/bf28df3b61b2f82515e8f2453b9ce75af9c0f150))
+* **core:** draft auth is editable on save and send (M19 T1) ([efb54d3](https://github.com/Its-Satyajit/reqly/commit/efb54d32786346bdd118dcb2f0d17fb3de4bf3c2))
+* **core:** RequestService.Send accepts ctx, dropping last Background() send seam (M33 T1) ([ccfdc84](https://github.com/Its-Satyajit/reqly/commit/ccfdc84755e7c6ca8b81ce7671b7dc8d911c0ada))
+* **core:** RequestService.Send accepts ctx, dropping last Background() send seam (M33 T1) ([35a54ea](https://github.com/Its-Satyajit/reqly/commit/35a54eafec217f713ddf75eb5a5ff6054bc1677a))
+* **core:** Run pipeline + shared token-store seam (ADR 0025) ([35c2941](https://github.com/Its-Satyajit/reqly/commit/35c2941cc0989dc3f7c76f1ecaf5331a7d651c0a))
+* **core:** workspace save/re-resolve seams for editable request tabs ([112e659](https://github.com/Its-Satyajit/reqly/commit/112e659c3915bb955b16b8716032008a3c50024f))
+* **desktop:** cancellable sends via SendID registry + CancelSend binding; preserve error chain in maskErr (M33 T2) ([673c902](https://github.com/Its-Satyajit/reqly/commit/673c9024a0e4dd56a1bbf2f8cf171a91121eddd2))
+* **desktop:** collection-run bindings + streamed Wails events (T3) ([9f145c0](https://github.com/Its-Satyajit/reqly/commit/9f145c0c9e838c9c35252cf8265e90689bf3de0e))
+* **desktop:** cURL import opens an unsaved request tab (GUI-5 T6) ([5f7183b](https://github.com/Its-Satyajit/reqly/commit/5f7183b5d76b12188656c0b55c61b70b367df56e)), closes [#279](https://github.com/Its-Satyajit/reqly/issues/279)
+* **desktop:** empty-state onboarding + workspace switcher (GUI-2.6 T2) ([6d8850f](https://github.com/Its-Satyajit/reqly/commit/6d8850fea7353e348601272d111900291887a5fa)), closes [#283](https://github.com/Its-Satyajit/reqly/issues/283)
+* **desktop:** generic AppService.Import bridge (GUI-5 T2-T4) ([3f34f72](https://github.com/Its-Satyajit/reqly/commit/3f34f72db24ba15a203cf0b91a750933b6b62bb4))
+* **desktop:** import dialog — staged modal wired for all six formats (GUI-5 T5) ([b8dfffa](https://github.com/Its-Satyajit/reqly/commit/b8dfffa55900b4b8ac6003eba1b12ada0f2a952b)), closes [#278](https://github.com/Its-Satyajit/reqly/issues/278)
+* **desktop:** merge M17 request-file editing into main ([2a24af0](https://github.com/Its-Satyajit/reqly/commit/2a24af013386e2a9a8ef20a40db1804c5f38d3f5))
+* **desktop:** mirror backend warnings/errors into crash reports (reqly.golog) ([cc3c45d](https://github.com/Its-Satyajit/reqly/commit/cc3c45d033283fa7d7e4b7d45493e745c9ee9a95)), closes [#281](https://github.com/Its-Satyajit/reqly/issues/281)
+* **desktop:** retry policy editor section + attempts surfaced through bridge ([3aa0238](https://github.com/Its-Satyajit/reqly/commit/3aa02383002152887f62b208eb764f15445796c4))
+* **desktop:** UI rebuild on Base UI tokens + crash reporter, history wiring (M32) ([a884912](https://github.com/Its-Satyajit/reqly/commit/a884912f1a356ca8af70a4f83dee31218e5d3810))
+* **desktop:** workspace bootstrap bridge — status/pick/open/create/restore (GUI-2.6 T1) ([417fbbe](https://github.com/Its-Satyajit/reqly/commit/417fbbe76e5df160001cb3d89b5f3cdc22911955)), closes [#282](https://github.com/Its-Satyajit/reqly/issues/282)
+* **exporter:** OpenAPI 3.0 generator from requests — paths, params, bodies, security schemes (M37 T2) ([fbbd578](https://github.com/Its-Satyajit/reqly/commit/fbbd578c3874bd9d0ac3272ff9345c7be7b0a271))
+* **frontend:** collection-run adapter + run store (T4) ([9114501](https://github.com/Its-Satyajit/reqly/commit/9114501a94c2323b1e23509370030b31b6b96b4e))
+* **frontend:** configure React Compiler via reactCompilerPreset (Vite 8 / plugin-react 6) ([0fd2dc6](https://github.com/Its-Satyajit/reqly/commit/0fd2dc65a94592c70dbbe8e36d5e56b3176159ab))
+* **frontend:** editable Auth tab with scheme forms (M19 T3) ([63cf7ed](https://github.com/Its-Satyajit/reqly/commit/63cf7edfb89af5041bced2b37a0d07ad8f96d8e3))
+* **frontend:** editable request tabs with save + conflict handling ([91f87ef](https://github.com/Its-Satyajit/reqly/commit/91f87ef799eb0437c141c4e4de62bfb7003420bb))
+* **frontend:** inherited auth view, save warnings, roadmap (M19 T5) ([c74b57c](https://github.com/Its-Satyajit/reqly/commit/c74b57c2deded88d1d82164bba1137352826d6c2))
+* **frontend:** oauth2 grant form wired to Auth Panel (M19 T4) ([8b1794b](https://github.com/Its-Satyajit/reqly/commit/8b1794b2c5992d144fb49aa9b729891e706968f9))
+* **frontend:** register AWS + EdgeGrid in auth schemes (M20 T2) ([380524e](https://github.com/Its-Satyajit/reqly/commit/380524e8a70c1b5603c93a7c5af4678f24f780b1))
+* **frontend:** sidebar run buttons + Run View tab (T5) ([779ccdc](https://github.com/Its-Satyajit/reqly/commit/779ccdce6c9daeb82c144eb40c42712267b16056))
+* **frontend:** Stop button cancels in-flight send, neutral cancelled response state (M33 T3) ([ec0e9e4](https://github.com/Its-Satyajit/reqly/commit/ec0e9e48c68a6d55f8ed92c0bef88fa5ca9cc3ec))
+* **graphql:** introspection client, schema model, text summary renderer (M38 T1) ([d59546f](https://github.com/Its-Satyajit/reqly/commit/d59546f59b00cabe73609352ba6d46de426f8c18))
+* **history:** SQLite history + cookie jar, HistoryService + masking (M22 T1-T2) ([7f67b07](https://github.com/Its-Satyajit/reqly/commit/7f67b07dba68ee9bbc00638e27ffd0944f86bff4))
+* **importer:** add Detect — content-based import format sniffing (GUI-5 T1) ([bbf0be3](https://github.com/Its-Satyajit/reqly/commit/bbf0be347dedb80e95f8cf5bbb0d72bb41bdc880))
+* **importer:** Bruno collection parser — items tree, body modes, auth mapping, root defaults, secret-split environments (M36 T1+T2) ([9b38e66](https://github.com/Its-Satyajit/reqly/commit/9b38e66233f91fa7c4e22306b1e59bfe6da10529))
+* **importer:** harden Postman parser — wrapped envelope, v2 string requests/headers, numeric auth params, missing-info validation ([c701cba](https://github.com/Its-Satyajit/reqly/commit/c701cba94a5e47889ffa7a861f378124bfb24272))
+* **importer:** Insomnia v4 JSON + v5 YAML parser with folder tree, auth/body mapping, native environment export (M35 T1+T2) ([5544a90](https://github.com/Its-Satyajit/reqly/commit/5544a90b46d1de165144acc390450d7f262ea862))
+* **importer:** Postman collection variables become environments/&lt;collection&gt;.yaml (M42 T5) ([03c4f2d](https://github.com/Its-Satyajit/reqly/commit/03c4f2ddab732d16e0f16d589dd006a1792d5ca0))
+* **importer:** Postman v2.1 parser + folder-preserving workspace writer, tested against official example collections (M34 T1+T2) ([23c837c](https://github.com/Its-Satyajit/reqly/commit/23c837cf52225855f74e058e318d6c6b1ef553f5))
+* **importer:** preserve Bruno pre/post scripts; document Insomnia N/A (M42 T4) ([822f44d](https://github.com/Its-Satyajit/reqly/commit/822f44d474259ebbb005ea7c1565a92434f6ba12))
+* **importer:** preserve Postman pre/post scripts via TranslateScript (M42 T3) ([ae2a707](https://github.com/Its-Satyajit/reqly/commit/ae2a7079bda6b30cd2ef850cf3a0a144efb7dbc6))
+* **importer:** preserve pre/post scripts across Postman + Bruno importers ([01f60ad](https://github.com/Its-Satyajit/reqly/commit/01f60ad381d26c44a2b74ae3971cf947e44df009))
+* **importer:** structured ImportReport across importers (M42 T1) ([912ab93](https://github.com/Its-Satyajit/reqly/commit/912ab93806bbd11d66b4029cc85d9f48d7d3209b))
+* **importer:** structured ImportReport replaces free-text warnings across importers (M42 T1) ([a80861f](https://github.com/Its-Satyajit/reqly/commit/a80861f46cdfd6751aea7d126cd475de98b3e595))
+* **importer:** TranslateScript engine for postman/bruno/insomnia dialects ([abd6d9b](https://github.com/Its-Satyajit/reqly/commit/abd6d9bcc806093f3331c69cf93c9ad9239dc7fb))
+* **importer:** TranslateScript engine for postman/bruno/insomnia dialects (M42 T2) ([5a18460](https://github.com/Its-Satyajit/reqly/commit/5a18460dbbe359caf51c0cc3d8f5a92b4d37a793))
+* **importer:** WSDL 1.1 parser — operation discovery, envelope skeletons, workspace writer (M41 T1) ([6db3683](https://github.com/Its-Satyajit/reqly/commit/6db368321fae3c836aaed09065b005df4b131b7a))
+* **install:** bash for Linux+macOS (amd64/arm64, pacman/apt/dnf/zypper) + ps1 for Windows 64 ([aa4aedb](https://github.com/Its-Satyajit/reqly/commit/aa4aedb38c46a295c53613d734222a3f00590485))
+* **jsonschema:** schema inspector + deterministic instance generator (M40 T2) ([1529349](https://github.com/Its-Satyajit/reqly/commit/1529349c9c31ad469c00f0f66ba8c269888334e4))
+* **jsonschema:** validation core on santhosh-tekuri v6 with draft override (M40 T1) ([97899c6](https://github.com/Its-Satyajit/reqly/commit/97899c6e5b62846f2f7f926bf0a9ec963def0c0a))
+* **jwt:** decode tooling — internal/jwt Decode + reqly jwt decode CLI (M29) ([702c271](https://github.com/Its-Satyajit/reqly/commit/702c271c1ca5c05c47c69c0fe4c9115c9328a79c))
+* **jwt:** JWT decode + HAR close + alpha banner (M28/M29 + M30 spec) ([67651e6](https://github.com/Its-Satyajit/reqly/commit/67651e67a9d1fc7fa77b861fd79131118acbf310))
+* **m22:** CLI history, desktop history bridge, table + binary preview ([20c48c7](https://github.com/Its-Satyajit/reqly/commit/20c48c7e1e9aba4edec6681fb621f23959273684))
+* **m22:** history + cookie jar + table + binary preview ([4125071](https://github.com/Its-Satyajit/reqly/commit/412507176a2053bc612a06e6656a640e784b43da))
+* **m23:** dynamic values & template tags ([870bc68](https://github.com/Its-Satyajit/reqly/commit/870bc68bcf276a70571b24cf87a33b784a9c8558))
+* **m24:** code generation core + CLI/desktop ([45b06d6](https://github.com/Its-Satyajit/reqly/commit/45b06d6dbd82e78962bd7b7eaa98d05dd4e1f57c))
+* **m24:** code generation core + CLI/desktop (M24 T1-T3) ([9575b99](https://github.com/Its-Satyajit/reqly/commit/9575b99243108780e67f779b69d7936bce9be694))
+* **m25:** workspace save & export ([dd18e65](https://github.com/Its-Satyajit/reqly/commit/dd18e658e29f5b1b5aba32c2f79aa39b491468be))
+* **m25:** workspace save & export (M25 T1-T2) ([bd04b0d](https://github.com/Its-Satyajit/reqly/commit/bd04b0df7d950abd8e2fcac9598d7d26155e37d7))
+* **m26:** docs generation ([60056e4](https://github.com/Its-Satyajit/reqly/commit/60056e41a065743f91bdfa798e79a59f847a739b))
+* **m26:** docs generation core + CLI (M26 T1-T2) ([eac09d4](https://github.com/Its-Satyajit/reqly/commit/eac09d4b1be05b9c3510211729ddfff099559c66))
+* **m27:** cross-platform desktop + install scripts ([a4ae463](https://github.com/Its-Satyajit/reqly/commit/a4ae46313efaa52c7bea3b0acfaa8d476bdc2fa7))
+* **m41:** WSDL import — reqly import wsdl ([df71c34](https://github.com/Its-Satyajit/reqly/commit/df71c34127fbfc8e1abf922a1e855b5f34ef224a))
+* **openapi:** endpoint explorer + operation selection with selector validation (M39 T1) ([595d2f1](https://github.com/Its-Satyajit/reqly/commit/595d2f1be62f1eec2b0101c1faebb81fbbf2296f))
+* **pagination:** page/offset/cursor/link-header runner (M30) ([ddcab17](https://github.com/Its-Satyajit/reqly/commit/ddcab17f280e905d2c4475e7016ff23aaf8429fa))
+* **pagination:** page/offset/cursor/link-header runner (M30) ([f7e81d6](https://github.com/Its-Satyajit/reqly/commit/f7e81d6fd1e537d9030d81882023205df8b941eb))
+* **request:** engine-level retry loop with backoff and Retry-After ([8cacf62](https://github.com/Its-Satyajit/reqly/commit/8cacf626575127231458e32efa0ae815d349af4a))
+* **requestfile:** format-preserving atomic save + content fingerprint ([41dd31f](https://github.com/Its-Satyajit/reqly/commit/41dd31fd137ee7754eb9465639f01cf674add059))
+* **runner:** JSON + JUnit test report writers with masking (M37 T1) ([2be1e2e](https://github.com/Its-Satyajit/reqly/commit/2be1e2ef50ad2d6208fcb6422108adea8e622f3e))
+* **runner:** stream per-step results via OnStep callback (T1) ([039c1d2](https://github.com/Its-Satyajit/reqly/commit/039c1d22dd9019ac6e48213097ba8a91b64ee9a7))
+* **variables:** dynamic values & template tags (M23 T1-T3) ([08ede34](https://github.com/Its-Satyajit/reqly/commit/08ede34a4b5e5748dc87a9526caa5c3f4c2c14d8))
+* **variables:** dynamic values & template tags (M23 T1-T3) ([d566c4e](https://github.com/Its-Satyajit/reqly/commit/d566c4e58ae68d4704f1b603c4cb30cdcc55c4b4))
+
+
+### Bug Fixes
+
+* **bindings:** correct desktop:bindings output path ([8aacdcf](https://github.com/Its-Satyajit/reqly/commit/8aacdcf0ff511c5b00732484456cdf7496e4175d))
+* **body:** file-aware form-data, binary mime, graphql lang, RequestEditor pickers (M21 review) ([9b6404d](https://github.com/Its-Satyajit/reqly/commit/9b6404d91e435456fbf27efd762ee477a39d7c27))
+* **bridge:** allow nullable Auth config in normalizeAuth ([0769608](https://github.com/Its-Satyajit/reqly/commit/076960891c7e3599c0a54f63e03a321a6630d76c))
+* **build:** configure React Compiler via official @vitejs/plugin-react v6 pattern ([0fa8c34](https://github.com/Its-Satyajit/reqly/commit/0fa8c345b4188e1219b60787567ddaa8250ccc2b))
+* **build:** configure React Compiler via official @vitejs/plugin-react v6 pattern ([c6b84cc](https://github.com/Its-Satyajit/reqly/commit/c6b84cccc52d01ddd36d5aa5a0629021e7d4e624))
+* **ci,bridge:** correct wails bindings generation and strict type errors ([aea296c](https://github.com/Its-Satyajit/reqly/commit/aea296c1aa19b537067ae8acd228495bd5cd2e49))
+* **cli:** deflake bulk continue-on-error test counter ([c20076d](https://github.com/Its-Satyajit/reqly/commit/c20076dc0c5fda52fbe199fd1be113616bbcadd9))
+* **deps:** update github.com/dop251/goja digest to 58e940e ([a08f4c1](https://github.com/Its-Satyajit/reqly/commit/a08f4c10cc59219002216701bbfb84a4df573eb9))
+* **deps:** update github.com/dop251/goja digest to 58e940e ([81cba71](https://github.com/Its-Satyajit/reqly/commit/81cba7120dc7fa31e084e47ccc850e41ed79a265))
+* **deps:** update module github.com/santhosh-tekuri/jsonschema/v6 to v6.0.3 ([9d4da53](https://github.com/Its-Satyajit/reqly/commit/9d4da53ed1c7caafe133103ef2b80becd12c9ccb))
+* **deps:** update module github.com/santhosh-tekuri/jsonschema/v6 to v6.0.3 ([5cc7267](https://github.com/Its-Satyajit/reqly/commit/5cc7267f3831b9a64d7ca910b669f1c73f865011))
+* **deps:** update module github.com/wailsapp/wails/v3 to v3.0.0-beta.12 ([bf1dff7](https://github.com/Its-Satyajit/reqly/commit/bf1dff7a2c9b9cacb32db0e74ea0e45f8a194d1d))
+* **deps:** update module github.com/wailsapp/wails/v3 to v3.0.0-beta.12 ([cfc8c9d](https://github.com/Its-Satyajit/reqly/commit/cfc8c9d0ab20d84959a198c16bdf8abad43239bf))
+* **deps:** update module golang.org/x/text to v0.41.0 ([fe2fa79](https://github.com/Its-Satyajit/reqly/commit/fe2fa79058d428fcf080e19b6e8ee95da328d180))
+* **deps:** update module golang.org/x/text to v0.41.0 ([600af17](https://github.com/Its-Satyajit/reqly/commit/600af174ef3bac09683a1ac0f16dc2c45f143e36))
+* **deps:** update wails v3 ([06f7756](https://github.com/Its-Satyajit/reqly/commit/06f77562a78b75ab869e8db2413642159297a07e))
+* **deps:** update wails v3 ([f9fdb6a](https://github.com/Its-Satyajit/reqly/commit/f9fdb6a10198709847da4134a8726227bd6f47f6))
+* **desktop:** scan shared frontend sources for tailwind classes ([48625ae](https://github.com/Its-Satyajit/reqly/commit/48625ae770dae61dc12201165a0b7b38b04484e8))
+* **desktop:** serve frontend from relocated apps/desktop/frontend dir ([1100cc8](https://github.com/Its-Satyajit/reqly/commit/1100cc80cbf43ea84ff884a73b1faa2bc92d1548))
+* **desktop:** white screen on folder pick — bare Field.Label needs Field.Root ([ee635b9](https://github.com/Its-Satyajit/reqly/commit/ee635b9ddde7047a2e592bc6f3637581c36caf81)), closes [#283](https://github.com/Its-Satyajit/reqly/issues/283)
+* **frontend:** add missing KeyValueRow import for RequestEditor (m21 typecheck) ([3337314](https://github.com/Its-Satyajit/reqly/commit/3337314134e533f7713c6ebf9b1255e84133413a))
+* **frontend:** anti-slop lint 0/0 — typeGuards, bridge split assertions, body GraphQLVariables, response/jsonpath safety ([cf262a0](https://github.com/Its-Satyajit/reqly/commit/cf262a0db0afe42bbfbc5f7d0617d9aaeede43de))
+* **frontend:** clear react-doctor warnings in new import-dialog files ([45f78dd](https://github.com/Its-Satyajit/reqly/commit/45f78dd7f7ab7fac965bc0261da04e263f81b4d7))
+* **jwt:** review — MarshalIndent errors, remove os keep-alive, iat age via Now, IsExpired seam ([37172db](https://github.com/Its-Satyajit/reqly/commit/37172db6500964b86585d74819dd67861db2356a))
+* **m17-merge:** restore core import in app_test.go, drop circular RequestAuth import in request.ts ([0ec3d88](https://github.com/Its-Satyajit/reqly/commit/0ec3d88ead230d6e28bdd532ca082b0a7782117f))
+* **m17:** save-time warnings + structured changed-on-disk error ([c12a8ef](https://github.com/Its-Satyajit/reqly/commit/c12a8ef30816af0765683fbc9b768311b85ea1af))

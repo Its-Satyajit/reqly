@@ -1,0 +1,285 @@
+// Reqly - A local-first, Git-native API development environment.
+// Copyright 2026 It's Satyajit
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
+
+// Package runner executes collections and request chains. Requests run in
+// order with a shared variable store, so a post-request script can extract a
+// token and a later request can interpolate it. Pre/post scripts and
+// reqly.test() assertions are evaluated through the scripting sandbox.
+package runner
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"time"
+
+	"github.com/Its-Satyajit/reqly/internal/auth"
+	"github.com/Its-Satyajit/reqly/internal/collections"
+	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/response"
+	"github.com/Its-Satyajit/reqly/internal/scripting"
+	"github.com/Its-Satyajit/reqly/internal/variables"
+)
+
+// TestResult is the outcome of one reqly.test() assertion.
+type TestResult struct {
+	Name   string `json:"name"`
+	Passed bool   `json:"passed"`
+}
+
+// StepResult records the outcome of running one request.
+type StepResult struct {
+	// Name is the request file name.
+	Name string `json:"name"`
+	// Request is the request file path.
+	RequestPath string `json:"requestPath"`
+	// Passed is true when the request succeeded and every test passed.
+	Passed bool `json:"passed"`
+	// RequestError is the transport/pre-script error, if any.
+	RequestError error `json:"requestError,omitempty"`
+	// Response is the received response (nil on failure).
+	Response *response.Response `json:"response,omitempty"`
+	// Tests are the results of reqly.test() assertions.
+	Tests []TestResult `json:"tests"`
+	// Logs are console output from pre/post scripts.
+	Logs []string `json:"logs"`
+	// authValues are the resolved credential values for this step's request,
+	// used to mask output. Never serialized.
+	authValues []string
+}
+
+// AuthValues returns the resolved credential values for this step's request,
+// for output masking.
+func (s *StepResult) AuthValues() []string { return s.authValues }
+
+// Report is the aggregate result of a run.
+type Report struct {
+	// Steps in execution order.
+	Steps []StepResult `json:"steps"`
+	// Started/Finished bound the run.
+	Started  time.Time     `json:"started"`
+	Finished time.Time     `json:"finished"`
+	Total    int           `json:"total"`
+	Passed   int           `json:"passed"`
+	Failed   int           `json:"failed"`
+	Duration time.Duration `json:"duration"`
+}
+
+// OK reports whether every step passed.
+func (r *Report) OK() bool { return r.Failed == 0 }
+
+// Options configures a run.
+type Options struct {
+	// FailFast stops the run after the first failing step.
+	FailFast bool
+	// OnStep, if non-nil, is invoked once per completed step, in execution
+	// order, immediately after the step finishes.
+	OnStep func(StepResult)
+	// Client executes requests (nil uses request.NewClient()).
+	Client *request.Client
+	// ClientOptions are applied when Client is nil.
+	ClientOptions []request.Option
+}
+
+// RunCollection runs every request in the collection (and nested folders) in
+// deterministic order. Vars are the starting variable store shared across all
+// steps.
+func RunCollection(ctx context.Context, ws *collections.Workspace, coll *collections.Collection, vars *variables.Set, opts Options) (*Report, error) {
+	steps := []step{}
+	collectSteps(&steps, coll.Requests, coll.Folders, nil)
+	return run(ctx, ws, coll, vars, opts, steps), nil
+}
+
+// RunFolder runs every request in the folder (and nested folders) in
+// deterministic order, sharing the same engine, variables, and seams as
+// RunCollection.
+func RunFolder(ctx context.Context, ws *collections.Workspace, coll *collections.Collection, folder *collections.Folder, vars *variables.Set, opts Options) (*Report, error) {
+	steps := []step{}
+	collectSteps(&steps, folder.Requests, folder.Folders, []*collections.Folder{folder})
+	return run(ctx, ws, coll, vars, opts, steps), nil
+}
+
+// run executes a pre-collected step list against a shared variable store.
+func run(ctx context.Context, ws *collections.Workspace, coll *collections.Collection, vars *variables.Set, opts Options, steps []step) *Report {
+	if vars == nil {
+		vars = ws.VariablesSet()
+	}
+	r := &Runner{vars: vars, opts: opts}
+	if opts.Client != nil {
+		r.client = opts.Client
+	} else {
+		r.client = request.NewClient(opts.ClientOptions...)
+	}
+
+	report := &Report{Started: time.Now(), Total: len(steps)}
+	for _, s := range steps {
+		// A cancelled context stops scheduling further steps; the current
+		// step may finish.
+		if ctx.Err() != nil {
+			break
+		}
+		result := r.runStep(ctx, ws, coll, s.chain, s.entry)
+		report.Steps = append(report.Steps, result)
+		if opts.OnStep != nil {
+			opts.OnStep(result)
+		}
+		if result.Passed {
+			report.Passed++
+		} else {
+			report.Failed++
+			if opts.FailFast {
+				break
+			}
+		}
+	}
+	report.Finished = time.Now()
+	report.Duration = report.Finished.Sub(report.Started)
+	return report
+}
+
+// step pairs a request entry with its folder ancestor chain.
+type step struct {
+	chain []*collections.Folder
+	entry *collections.RequestEntry
+}
+
+// collectSteps gathers every request in a container (collection or folder) and
+// its subfolders in deterministic (name-sorted) order.
+func collectSteps(steps *[]step, requests []*collections.RequestEntry, folders []*collections.Folder, chain []*collections.Folder) {
+	sortedRequests := append([]*collections.RequestEntry{}, requests...)
+	sort.Slice(sortedRequests, func(i, j int) bool { return sortedRequests[i].Name < sortedRequests[j].Name })
+	for _, entry := range sortedRequests {
+		*steps = append(*steps, step{chain: chain, entry: entry})
+	}
+
+	sortedFolders := append([]*collections.Folder{}, folders...)
+	sort.Slice(sortedFolders, func(i, j int) bool { return sortedFolders[i].Name < sortedFolders[j].Name })
+	for _, folder := range sortedFolders {
+		collectSteps(steps, folder.Requests, folder.Folders, append(chain, folder))
+	}
+}
+
+// Runner executes steps against a shared variable store.
+type Runner struct {
+	vars   *variables.Set
+	client *request.Client
+	opts   Options
+}
+
+// runStep executes one request end to end: pre-script, transport, post-script.
+func (r *Runner) runStep(ctx context.Context, ws *collections.Workspace, coll *collections.Collection, chain []*collections.Folder, entry *collections.RequestEntry) StepResult {
+	result := StepResult{
+		Name:        entry.Name,
+		RequestPath: entry.Path,
+		Passed:      true,
+	}
+
+	resolved, err := ws.ResolveRequest(coll, chain, entry)
+	if err != nil {
+		result.Passed = false
+		result.RequestError = err
+		return result
+	}
+	req := resolved.Request
+
+	// The execution variable set is the full scope chain plus the shared
+	// process-env, environment, and runtime variables provided to the run or
+	// set by earlier steps (chaining).
+	execVars := resolved.Vars.Clone()
+	for _, scope := range []variables.Scope{variables.ScopeProcessEnv, variables.ScopeEnvironment, variables.ScopeRuntime} {
+		r.vars.Range(scope, func(key, value string) {
+			execVars.Set(scope, key, value)
+		})
+	}
+	r.vars = execVars
+
+	// Pre-request script mutates the request and variables.
+	if entry.File.PreRequest != "" {
+		logs, err := r.runPreScript(&req, entry.File.PreRequest)
+		result.Logs = append(result.Logs, logs...)
+		if err != nil {
+			result.Passed = false
+			result.RequestError = fmt.Errorf("pre-request script: %w", err)
+			return result
+		}
+	}
+
+	result.authValues = auth.MaskValues(req.Auth.Type, req.Auth.Config, r.vars)
+
+	resp, err := r.client.Execute(ctx, &req, r.vars)
+	if err != nil {
+		result.Passed = false
+		result.RequestError = err
+		return result
+	}
+	result.Response = resp
+	// The acquired OAuth token is masked alongside the config secrets so
+	// output echoing it (headers, body, errors) never leaks it.
+	if resp.AuthToken != "" {
+		result.authValues = append(result.authValues, resp.AuthToken)
+	}
+
+	// Post-request script inspects the response and registers tests.
+	if entry.File.PostRequest != "" {
+		logs, tests, err := r.runPostScript(&req, resp, entry.File.PostRequest)
+		result.Logs = append(result.Logs, logs...)
+		if err != nil {
+			result.Passed = false
+			result.RequestError = fmt.Errorf("post-request script: %w", err)
+			return result
+		}
+		for _, t := range tests {
+			result.Tests = append(result.Tests, TestResult{Name: t.Name, Passed: t.Fn()})
+			if !result.Tests[len(result.Tests)-1].Passed {
+				result.Passed = false
+			}
+		}
+	}
+
+	if !resp.OK() {
+		result.Passed = false
+	}
+	return result
+}
+
+// runPreScript evaluates the pre-request script with the request bound.
+func (r *Runner) runPreScript(req *request.Request, source string) ([]string, error) {
+	view := scripting.NewRequestView(req)
+	s := scripting.NewSandbox(scripting.SandboxOptions{
+		GetVariable: func(name string) (string, bool) { return r.vars.Resolve(name) },
+		SetVariable: func(name, value string) { r.vars.Set(variables.ScopeRuntime, name, value) },
+	})
+	s.BindRequest(view)
+	if err := s.Run(source); err != nil {
+		return s.Logs(), err
+	}
+	view.ApplyTo(req)
+	return s.Logs(), nil
+}
+
+// runPostScript evaluates the post-request script with the response bound.
+func (r *Runner) runPostScript(req *request.Request, resp *response.Response, source string) ([]string, []scripting.Test, error) {
+	s := scripting.NewSandbox(scripting.SandboxOptions{
+		GetVariable: func(name string) (string, bool) { return r.vars.Resolve(name) },
+		SetVariable: func(name, value string) { r.vars.Set(variables.ScopeRuntime, name, value) },
+	})
+	s.BindResponse(scripting.NewResponseView(resp))
+	if err := s.Run(source); err != nil {
+		return s.Logs(), nil, err
+	}
+	return s.Logs(), s.Tests(), nil
+}
