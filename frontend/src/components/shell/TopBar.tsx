@@ -1,12 +1,13 @@
 import {
 	FileDown,
+	FolderSearch,
 	Search,
-	Settings,
 	SquareArrowOutDownLeft,
 } from "lucide-react";
 import logoDark from "../../assets/logo-dark.svg";
 import logoLight from "../../assets/logo-light.svg";
 import { Button } from "../ui/button";
+import { CompactSelect } from "../CompactSelect";
 import { ImportDialog, ExportDialog } from "../../features";
 import {
 	useCommandPaletteStore,
@@ -16,15 +17,37 @@ import {
 	useWorkspaceStore,
 } from "../../stores";
 import { useWorkspaceBootstrapStore } from "../../stores/useWorkspaceBootstrap";
+import { addBreadcrumb } from "../../lib/crash";
+import { notifyError } from "../../lib/notify";
 
 export function TopBar() {
 	const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
 	const workspaceName = useWorkspaceStore((s) => s.workspaceTree?.name);
+	const environments = useWorkspaceStore((s) => s.environments);
+	const environmentsError = useWorkspaceStore((s) => s.environmentsError);
+	const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
 	const refreshEnvironments = useWorkspaceStore((s) => s.refreshEnvironments);
+	const setActiveEnvironment = useWorkspaceStore((s) => s.setActiveEnvironment);
 	const setImportOpen = useImportStore((s) => s.setOpen);
 	const setExportOpen = useExportStore((s) => s.setOpen);
 	const switchWorkspace = useWorkspaceBootstrapStore((s) => s.openFolder);
-	const requestView = useWorkspaceStore((s) => s.requestView);
+
+	const onSelectEnvironment = async (name: string) => {
+		addBreadcrumb("env-switch", name || "none");
+		const envAdapter = useWorkspaceStore.getState().envAdapter;
+		setActiveEnvironment(name || null);
+		try {
+			await envAdapter.setActive(name);
+		} catch (err) {
+			notifyError(
+				"Could not save the active environment",
+				err instanceof Error ? err.message : String(err),
+			);
+			await refreshEnvironments();
+			return;
+		}
+		await refreshEnvironments();
+	};
 
 	return (
 		<header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-3">
@@ -41,6 +64,7 @@ export function TopBar() {
 					className="flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-muted"
 				>
 					<span className="truncate font-semibold">{workspaceName ?? "Reqly"}</span>
+					<FolderSearch className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
 				</button>
 			</div>
 
@@ -71,15 +95,20 @@ export function TopBar() {
 			</div>
 
 			<div className="flex items-center gap-2">
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					onClick={() => requestView("settings")}
-					aria-label="Settings"
-					title="Settings"
-				>
-					<Settings className="size-4" aria-hidden />
-				</Button>
+				<CompactSelect
+					value={activeEnvironmentId ?? ""}
+					onChange={(next) => void onSelectEnvironment(next)}
+					ariaLabel={
+						environmentsError ?? "Select the active environment"
+					}
+					options={[
+						{ value: "", label: "No environment" },
+						...environments.map((env) => ({
+							value: env.id,
+							label: env.name,
+						})),
+					]}
+				/>
 			</div>
 
 			<ImportDialog onImported={() => void refreshEnvironments()} />

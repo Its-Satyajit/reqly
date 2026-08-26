@@ -7,3 +7,4 @@ export * from "./WorkspaceSidebar";
 export * from "./shell/ToolRail";
 export * from "./shell/TopBar";
 export * from "./shell/ContextSidebar";
+export * from "./shell/StatusBar";
