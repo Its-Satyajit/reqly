@@ -152,7 +152,7 @@ func (s *AppService) RunnerStart(req RunnerRunRequest) error {
 	}
 	sendFn := runnerSendFn(s, "")
 	emit := func(suffix string, payload any) {
-		emitRunEvent("reqly.runner."+runID+suffix, payload)
+		emitEvent("reqly.runner."+runID+suffix, payload)
 	}
 
 	switch req.Kind {

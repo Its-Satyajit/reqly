@@ -149,8 +149,8 @@ func TestParseBulkRowsCSVAndJSON(t *testing.T) {
 func TestPaginationAndBulkRunsStreamEvents(t *testing.T) {
 	svc, _ := newServiceInWorkspace(t)
 	events := make(chan map[string]any, 64)
-	orig := emitRunEvent
-	emitRunEvent = func(name string, data any) {
+	orig := getEmitRunEvent()
+	setEmitRunEvent(func(name string, data any) {
 		if m, ok := data.(map[string]any); ok && strings.Contains(name, ".done") {
 			select {
 			case events <- m:
@@ -162,8 +162,8 @@ func TestPaginationAndBulkRunsStreamEvents(t *testing.T) {
 			default:
 			}
 		}
-	}
-	t.Cleanup(func() { emitRunEvent = orig })
+	})
+	t.Cleanup(func() { setEmitRunEvent(orig) })
 
 	var hits atomic.Int64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

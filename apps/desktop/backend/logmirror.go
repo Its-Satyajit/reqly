@@ -57,7 +57,7 @@ func (h *logMirrorHandler) Handle(_ context.Context, record slog.Record) error {
 	}
 	appendAttrs(payload, h.attrs)
 	appendRecordAttrs(payload, record)
-	emitRunEvent(goLogEventName, payload)
+	emitEvent(goLogEventName, payload)
 	return nil
 }
 

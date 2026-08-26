@@ -822,8 +822,8 @@ func TestWorkspaceRunCollectionStreamsEvents(t *testing.T) {
 	var names []string
 	var steps []core.RunStep
 	var done *core.RunReport
-	orig := emitRunEvent
-	emitRunEvent = func(name string, data any) {
+	orig := getEmitRunEvent()
+	setEmitRunEvent(func(name string, data any) {
 		mu.Lock()
 		defer mu.Unlock()
 		names = append(names, name)
@@ -833,8 +833,8 @@ func TestWorkspaceRunCollectionStreamsEvents(t *testing.T) {
 		case *core.RunReport:
 			done = v
 		}
-	}
-	defer func() { emitRunEvent = orig }()
+	})
+	defer func() { setEmitRunEvent(orig) }()
 
 	id, err := svc.WorkspaceRunCollection("users", "dev", false)
 	if err != nil {
@@ -885,8 +885,8 @@ func TestWorkspaceRunCollectionFolderScope(t *testing.T) {
 	svc := NewAppService()
 	var mu sync.Mutex
 	var steps []core.RunStep
-	orig := emitRunEvent
-	emitRunEvent = func(name string, data any) {
+	orig := getEmitRunEvent()
+	setEmitRunEvent(func(name string, data any) {
 		if !strings.HasSuffix(name, ".step") {
 			return
 		}
@@ -895,8 +895,8 @@ func TestWorkspaceRunCollectionFolderScope(t *testing.T) {
 		if v, ok := data.(core.RunStep); ok {
 			steps = append(steps, v)
 		}
-	}
-	defer func() { emitRunEvent = orig }()
+	})
+	defer func() { setEmitRunEvent(orig) }()
 
 	id, err := svc.WorkspaceRunCollection("users/tests", "dev", false)
 	if err != nil {
@@ -933,9 +933,9 @@ func TestWorkspaceRunCollectionSingleFlight(t *testing.T) {
 	t.Chdir(dir)
 
 	svc := NewAppService()
-	orig := emitRunEvent
-	emitRunEvent = func(string, any) {}
-	defer func() { emitRunEvent = orig }()
+	orig := getEmitRunEvent()
+	setEmitRunEvent(func(string, any) {})
+	defer func() { setEmitRunEvent(orig) }()
 
 	id, err := svc.WorkspaceRunCollection("users", "dev", false)
 	if err != nil {
@@ -968,8 +968,8 @@ func TestWorkspaceRunCancelAbortsRun(t *testing.T) {
 	var mu sync.Mutex
 	var sawDone bool
 	var sawErrorEvent string
-	orig := emitRunEvent
-	emitRunEvent = func(name string, data any) {
+	orig := getEmitRunEvent()
+	setEmitRunEvent(func(name string, data any) {
 		mu.Lock()
 		defer mu.Unlock()
 		if strings.HasSuffix(name, ".done") {
@@ -980,8 +980,8 @@ func TestWorkspaceRunCancelAbortsRun(t *testing.T) {
 				sawErrorEvent = s
 			}
 		}
-	}
-	defer func() { emitRunEvent = orig }()
+	})
+	defer func() { setEmitRunEvent(orig) }()
 
 	id, err := svc.WorkspaceRunCollection("users", "dev", false)
 	if err != nil {

@@ -45,18 +45,24 @@ func (r *frameRecorder) all() []*RealtimeFrame {
 	return append([]*RealtimeFrame(nil), r.frames...)
 }
 
+func (r *frameRecorder) grpcAll() []*GrpcEvent {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]*GrpcEvent(nil), r.grpcEvents...)
+}
+
 func captureRealtimeFrames(t *testing.T) *frameRecorder {
 	t.Helper()
 	rec := &frameRecorder{}
-	orig := emitRunEvent
-	emitRunEvent = func(name string, data any) {
+	orig := getEmitRunEvent()
+	setEmitRunEvent(func(name string, data any) {
 		if f, ok := data.(*RealtimeFrame); ok {
 			rec.mu.Lock()
 			rec.frames = append(rec.frames, f)
 			rec.mu.Unlock()
 		}
-	}
-	t.Cleanup(func() { emitRunEvent = orig })
+	})
+	t.Cleanup(func() { setEmitRunEvent(orig) })
 	return rec
 }
 

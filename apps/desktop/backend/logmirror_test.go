@@ -26,14 +26,14 @@ import (
 
 func TestLogMirrorEmitsWarningsAndErrorsToFrontend(t *testing.T) {
 	var mirrored []map[string]any
-	orig := emitRunEvent
-	emitRunEvent = func(name string, data any) {
+	orig := getEmitRunEvent()
+	setEmitRunEvent(func(name string, data any) {
 		if name != goLogEventName {
 			t.Errorf("event name = %q, want %q", name, goLogEventName)
 		}
 		mirrored = append(mirrored, data.(map[string]any))
-	}
-	t.Cleanup(func() { emitRunEvent = orig })
+	})
+	t.Cleanup(func() { setEmitRunEvent(orig) })
 
 	logger := slog.New(newLogMirrorHandler(nil, slog.LevelWarn))
 	logger.Info("chatty info") // below threshold — must not mirror
@@ -59,8 +59,8 @@ func TestLogMirrorKeepsTerminalOutput(t *testing.T) {
 	inner := slog.NewTextHandler(&terminal, &slog.HandlerOptions{Level: slog.LevelDebug})
 
 	logger := slog.New(newLogMirrorHandler(inner, slog.LevelWarn))
-	emitRunEvent = func(string, any) {}
-	t.Cleanup(func() { emitRunEvent = func(string, any) {} })
+	setEmitRunEvent(func(string, any) {})
+	t.Cleanup(func() { setEmitRunEvent(func(string, any) {}) })
 
 	logger.Warn("both surfaces see this")
 	if !strings.Contains(terminal.String(), "both surfaces see this") {

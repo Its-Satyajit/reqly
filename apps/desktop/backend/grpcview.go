@@ -63,7 +63,7 @@ var (
 	grpcSessions = make(map[string]context.CancelFunc)
 )
 
-func emitGrpcEvent(e *GrpcEvent) { emitRunEvent(grpcEventName(e.SessionID), e) }
+func emitGrpcEvent(e *GrpcEvent) { emitEvent(grpcEventName(e.SessionID), e) }
 
 // GrpcServices discovers services/methods via reflection (or protoFiles).
 func (s *AppService) GrpcServices(req GrpcServicesRequest) ([]grpc.Service, error) {

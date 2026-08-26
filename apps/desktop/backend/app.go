@@ -326,14 +326,14 @@ func (s *AppService) WorkspaceRunCollection(path, env string, failFast bool) (st
 			Env:      env,
 			FailFast: failFast,
 			OnStep: func(step core.RunStep) {
-				emitRunEvent("reqly.run."+id+".step", step)
+				emitEvent("reqly.run."+id+".step", step)
 			},
 		})
 		if err != nil {
-			emitRunEvent("reqly.run."+id+".error", err.Error())
+			emitEvent("reqly.run."+id+".error", err.Error())
 			return
 		}
-		emitRunEvent("reqly.run."+id+".done", report)
+		emitEvent("reqly.run."+id+".done", report)
 	}()
 	return id, nil
 }
@@ -366,6 +366,27 @@ var emitRunEvent = func(name string, data any) {
 	if app := application.Get(); app != nil {
 		app.Event.EmitEvent(&application.CustomEvent{Name: name, Data: data})
 	}
+}
+
+var emitMu sync.RWMutex
+
+func setEmitRunEvent(fn func(string, any)) {
+	emitMu.Lock()
+	emitRunEvent = fn
+	emitMu.Unlock()
+}
+
+func getEmitRunEvent() func(string, any) {
+	emitMu.RLock()
+	defer emitMu.RUnlock()
+	return emitRunEvent
+}
+
+func emitEvent(name string, data any) {
+	emitMu.RLock()
+	fn := emitRunEvent
+	emitMu.RUnlock()
+	fn(name, data)
 }
 
 // WorkspaceSaveRequest persists a request file's editable builder fields back

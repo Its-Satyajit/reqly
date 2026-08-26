@@ -101,16 +101,16 @@ func TestGrpcInvokeNonOKStatusIsError(t *testing.T) {
 func captureGRPCEvents(t *testing.T) *frameRecorder {
 	t.Helper()
 	rec := &frameRecorder{}
-	orig := emitRunEvent
-	emitRunEvent = func(name string, data any) {
+	orig := getEmitRunEvent()
+	setEmitRunEvent(func(name string, data any) {
 		if e, ok := data.(*GrpcEvent); ok {
 			rec.mu.Lock()
 			rec.frames = append(rec.frames, &RealtimeFrame{Data: e.Type + "|" + e.Data})
 			rec.grpcEvents = append(rec.grpcEvents, e)
 			rec.mu.Unlock()
 		}
-	}
-	t.Cleanup(func() { emitRunEvent = orig })
+	})
+	t.Cleanup(func() { setEmitRunEvent(orig) })
 	return rec
 }
 
@@ -138,7 +138,7 @@ func TestGrpcStreamDeliversMessagesAndDone(t *testing.T) {
 			t.Fatal("timed out waiting for done event")
 		default:
 		}
-		for _, e := range frames.grpcEvents {
+		for _, e := range frames.grpcAll() {
 			if e.Type == "done" {
 				done = e
 			}
@@ -146,7 +146,7 @@ func TestGrpcStreamDeliversMessagesAndDone(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	msgs := 0
-	for _, e := range frames.grpcEvents {
+	for _, e := range frames.grpcAll() {
 		if e.Type == "message" && strings.Contains(e.Data, `"sequence"`) {
 			msgs++
 		}
