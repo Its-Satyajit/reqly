@@ -1,10 +1,10 @@
 export type DesignId =
   | 'current'
-  | 'modern'
-  | 'ide'
-  | 'inspector'
-  | 'minimal'
-  | 'command-center'
+  | 'ember'
+  | 'forge'
+  | 'blueprint'
+  | 'signal'
+  | 'paper'
 
 export interface DesignDef {
   id: DesignId
@@ -13,16 +13,20 @@ export interface DesignDef {
 
 /**
  * Open registry: a new design is a `[data-design='<id>']` block in
- * frontend/src/styles/designs.css plus one entry here. The axis is purely
- * presentational — application state lives in stores and survives switching.
+ * frontend/src/styles/designs/<id>.css plus one entry here. The axis is
+ * purely presentational — application state lives in stores and survives
+ * switching.
+ *
+ * Six candidates ship: the incumbent (current) plus five bold brand
+ * designs. One will be chosen and improved; the rest removed.
  */
 export const DESIGNS: readonly DesignDef[] = [
   { id: 'current', label: 'Current' },
-  { id: 'modern', label: 'Modern' },
-  { id: 'ide', label: 'IDE' },
-  { id: 'inspector', label: 'Inspector' },
-  { id: 'minimal', label: 'Minimal' },
-  { id: 'command-center', label: 'Command Center' },
+  { id: 'ember', label: 'Ember' },
+  { id: 'forge', label: 'Forge' },
+  { id: 'blueprint', label: 'Blueprint' },
+  { id: 'signal', label: 'Signal' },
+  { id: 'paper', label: 'Paper' },
 ] as const
 
 export const DEFAULT_DESIGN: DesignId = 'current'

@@ -1,0 +1,17 @@
+/* Shared design-variant contract — loaded always.
+ *
+ * A design = one CSS file in frontend/src/styles/designs/<id>.css, loaded
+ * on demand by useDesignStore, plus one entry in frontend/src/lib/designs.ts.
+ * No component changes required. `current` has no file: it IS the base
+ * token set in ../tokens.css.
+ *
+ * Density contract every design may re-declare:
+ *   --radius  corner language of every surface
+ *   --row     vertical rhythm of list/tree/table rows
+ *   --gap     default gutter between sibling controls
+ */
+
+:root {
+  --row: 30px;
+  --gap: 0.5rem;
+}

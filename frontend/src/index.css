@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "./styles/tokens.css";
-@import "./styles/designs.css";
+@import "./styles/designs/shared.css";
 @import "@fontsource/encode-sans/400.css";
 @import "@fontsource/encode-sans/500.css";
 @import "@fontsource/encode-sans/600.css";

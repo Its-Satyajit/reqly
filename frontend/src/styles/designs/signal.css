@@ -1,0 +1,68 @@
+/* Signal — status chroma as the primary language. Orange is reserved
+ * strictly for action (Send / primary buttons / focus); everything else
+ * speaks through status colors. The signature element: heavy left-edge
+ * status bars on rows and panels, making state readable from across the
+ * room without reading a single word.
+ *
+ * Note: font-size targets body because body declares its own font-size;
+ * the other custom properties resolve on <html> where [data-design] lives.
+ */
+
+[data-design='signal'],
+[data-design='signal'] body {
+  --radius: 0.25rem;
+  --row: 30px;
+  --gap: 0.5rem;
+  font-size: 14px;
+}
+
+/* De-chromed chrome: neutral hairlines; orange only where action lives. */
+[data-design='signal'] {
+  --border: color-mix(in oklab, var(--foreground) 12%, #e4e6e9);
+  --accent: var(--muted);
+  --ring: var(--primary);
+  --sel: color-mix(in oklab, var(--status-info) 16%, transparent);
+}
+[data-design='signal'].dark {
+  --border: color-mix(in oklab, var(--foreground) 12%, #252b35);
+}
+
+/* Signature: left-edge status bars on history/rows via data attributes
+ * when present, plus a universal readable rail on list-like containers. */
+[data-design='signal'] tr td:first-child,
+[data-design='signal'] [role='option'],
+[data-design='signal'] [data-slot='command-item'] {
+  box-shadow: inset 3px 0 0 0
+    color-mix(in oklab, var(--foreground) 15%, transparent);
+}
+[data-design='signal'] tr:hover td:first-child,
+[data-design='signal'] [role='option']:hover,
+[data-design='signal'] [data-slot='command-item']:hover {
+  box-shadow: inset 4px 0 0 0 var(--status-info);
+}
+
+/* Big readable status color in mono/data text. */
+[data-design='signal'] .font-data {
+  font-weight: 500;
+}
+
+/* Primary buttons are the only orange surfaces — unmistakable CTA. */
+[data-design='signal'] button[class*='bg-primary'] {
+  box-shadow: inset 0 0 0 1px
+    color-mix(in oklab, var(--primary) 70%, black);
+}
+
+/* Focus rings stay brand (action), hover states stay neutral. */
+[data-design='signal'] :focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+[data-design='signal'] ::selection {
+  background: color-mix(in oklab, var(--status-info) 25%, transparent);
+}
+[data-design='signal'] kbd,
+[data-design='signal'] [data-slot='kbd'] {
+  border-radius: 2px;
+  border-color: color-mix(in oklab, var(--foreground) 25%, transparent);
+}
