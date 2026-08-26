@@ -23,6 +23,7 @@ import {
 	TopBar,
 	ToolRail,
 } from "../components";
+import { StatusBar } from "../components/shell/StatusBar";
 import { RealtimeTab } from "../features/realtime-view/RealtimeTab";
 import { TestTab } from "../features/test-runner/TestTab";
 import { Toaster } from "../components/ui/toast";
@@ -144,12 +145,9 @@ export function App() {
 			<Toaster />
 			<CrashOverlay />
 			<div className="flex h-screen flex-col overflow-hidden">
-				<TopBar
-					sidebarCollapsed={sidebarCollapsed}
-					onToggleSidebar={toggleSidebar}
-				/>
+				<TopBar />
 				<div className="flex min-h-0 flex-1">
-					<ToolRail />
+					<ToolRail collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebar} />
 					<div className="min-w-0 flex-1">
 						<ResizablePanelGroup
 							orientation="horizontal"
@@ -326,7 +324,7 @@ export function App() {
 						</ResizablePanelGroup>
 					</div>
 				</div>
-
+				<StatusBar />
 				<CommandPalette />
 				<AlertDialog
 					open={pendingView != null}
