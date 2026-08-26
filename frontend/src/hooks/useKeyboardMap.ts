@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
 import { useCommandPaletteStore } from "#stores/useCommandPaletteStore";
 import { tabIsDirty, useRequestStore } from "#stores/useRequestStore";
+import { useBottomPanelStore } from "#stores/useBottomPanelStore";
 import { notifyWarning } from "#lib/notify";
 
 const RAIL_VIEWS = ["home", "requests", "environments", "history", "mocks", "diff", "jwt", "graphql"] as const;
@@ -62,6 +63,14 @@ export function useKeyboardMap(onToggleSidebar?: () => void) {
         const draft = rs.drafts[active];
         if (!draft) return;
         void rs.send(active, draft as unknown as never);
+        return;
+      }
+      if (key === "j") {
+        if (isTypingTarget(target)) return;
+        e.preventDefault();
+        const { active, collapsed } = useBottomPanelStore.getState();
+        if (collapsed || !active) useBottomPanelStore.getState().setActive("console");
+        else useBottomPanelStore.getState().setCollapsed(true);
         return;
       }
       if (/^[1-8]$/.test(e.key)) {

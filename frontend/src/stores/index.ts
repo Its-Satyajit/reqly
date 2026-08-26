@@ -14,3 +14,4 @@ export * from "./useWorkspaceBootstrap";
 export * from "./useWorkspaceStore";
 export * from "./useCommandPaletteStore";
 export * from "./useRealtimeRecentsStore";
+export * from "./useBottomPanelStore";

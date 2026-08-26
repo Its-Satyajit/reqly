@@ -7,6 +7,7 @@ import { useWorkspaceBootstrapStore } from "#stores/useWorkspaceBootstrap";
 const SHORTCUTS: [string, string][] = [
   ["⌘K", "Command palette"],
   ["⌘B", "Toggle sidebar"],
+  ["⌘J", "Toggle bottom panel"],
   ["⌘W", "Close tab"],
   ["⌘1–8", "Jump to tool (Home, Requests, Envs, History, then API tools in rail order)"],
   ["⌘⏎", "Send active request"],

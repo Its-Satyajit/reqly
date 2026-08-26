@@ -40,6 +40,7 @@ import { HomeView } from "../features/workspace-home/HomeView";
 import { SettingsView } from "../features/settings-view/SettingsView";
 import { WebSocketPage, SSEPage } from "../features/realtime-pages/RealtimePage";
 import { CommandPalette } from "../features/command-palette/CommandPalette";
+import { BottomPanel } from "../components/shell/BottomPanel";
 import { registerDefaultPaletteProviders } from "../lib/paletteProviders";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
@@ -160,7 +161,9 @@ export function App() {
 							</ResizablePanel>
 							<ResizableHandle />
 							<ResizablePanel id="main" minSize="35%">
-								{activeView === "home" ? (
+								<div className="flex h-full flex-col">
+									<div className="min-h-0 flex-1">
+										{activeView === "home" ? (
 									<ErrorBoundary label="Workspace home">
 										<HomeView />
 									</ErrorBoundary>
@@ -291,7 +294,10 @@ export function App() {
 											</div>
 										)}
 									</section>
-								)}
+										)}
+									</div>
+									<BottomPanel />
+								</div>
 							</ResizablePanel>
 						</ResizablePanelGroup>
 					</div>
