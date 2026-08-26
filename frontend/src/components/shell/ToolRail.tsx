@@ -20,7 +20,6 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { cn } from "#lib/utils";
 import { ThemeToggle } from "../ThemeToggle";
-import { Settings } from "lucide-react";
 import { useWorkspaceStore, type WorkspaceView } from "../../stores";
 
 interface RailItem {
@@ -120,8 +119,9 @@ export function ToolRail({ collapsed, onToggleCollapse }: ToolRailProps) {
 			<div className="flex flex-col items-center gap-1">
 				{REALTIME_GROUP.map(railButton)}
 			</div>
+			<div className="my-1.5 h-px w-6 bg-border" aria-hidden />
 			<div className="mt-auto flex flex-col items-center gap-1 pt-2">
-				{railButton({ view: "settings", label: "Settings", icon: Settings })}
+				<span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">System</span>
 				<ThemeToggle />
 				<button
 					type="button"

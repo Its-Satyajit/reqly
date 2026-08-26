@@ -13,7 +13,6 @@ import { useWorkspaceStore } from "../../stores";
 import { useWorkspaceBootstrapStore } from "../../stores/useWorkspaceBootstrap";
 import { useImportStore, useExportStore } from "../../stores";
 import { useHistoryStore } from "../../stores/useHistoryStore";
-import { useTestStore } from "../../stores/useTestStore";
 import { NEW_REQUEST_TAB_ID } from "../../stores/useRequestStore";
 
 const methodTint = {
@@ -44,7 +43,6 @@ export function HomeView() {
 	const switchWorkspace = useWorkspaceBootstrapStore((s) => s.openFolder);
 	const setImportOpen = useImportStore((s) => s.setOpen);
 	const setExportOpen = useExportStore((s) => s.setOpen);
-	const tests = useTestStore((s) => s.tests);
 	const historyPool = useHistoryStore((s) => s.pool);
 	const loadPool = useHistoryStore((s) => s.loadPool);
 	const poolLoaded = useHistoryStore((s) => s.poolLoaded);
@@ -69,7 +67,8 @@ export function HomeView() {
 
 	const collectionCount = collections?.length ?? 0;
 	const envCount = environments.length;
-	const hasData = collectionCount > 0 || envCount > 0 || historyPool.length > 0;
+	const requestCount = historyPool.length;
+	const hasData = collectionCount > 0 || envCount > 0 || requestCount > 0;
 
 	return (
 		<section className="h-full min-h-0 overflow-y-auto">
@@ -87,16 +86,30 @@ export function HomeView() {
 
 				{hasData ? (
 					<div className="flex flex-wrap items-stretch divide-x divide-border rounded-lg border border-border bg-card">
-						<Stat value={collectionCount} label="Collections" />
-						<Stat value={tests.length} label="Tests" />
+						<Stat value={requestCount} label="Requests" />
 						<Stat value={envCount} label="Environments" />
-						<Stat value={requestsToday} label="Requests today" />
+						<Stat value={collectionCount} label="Collections" />
+						<Stat value={requestsToday} label="Recent Activity" />
 					</div>
 				) : (
 					<div className="rounded-lg border border-dashed border-border p-8 text-center">
-						<p className="text-sm text-muted-foreground">
+						<p className="mb-4 text-sm text-muted-foreground">
 							Get started by creating your first request, importing an API spec, or setting up an environment.
 						</p>
+						<div className="flex flex-wrap justify-center gap-2">
+							<Button onClick={newRequest}>
+								<Plus className="size-4" aria-hidden />
+								Create your first request
+							</Button>
+							<Button variant="outline" onClick={() => setImportOpen(true)}>
+								<SquareArrowOutDownLeft className="size-4" aria-hidden />
+								Import an API spec
+							</Button>
+							<Button variant="outline" onClick={() => requestView("environments")}>
+								<Plus className="size-4" aria-hidden />
+								Set up an environment
+							</Button>
+						</div>
 					</div>
 				)}
 

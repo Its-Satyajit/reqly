@@ -6,8 +6,9 @@ export function StatusBar() {
 	const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
 	const environments = useWorkspaceStore((s) => s.environments);
 
-	// TODO: Wire to real git status via adapter
-	const gitBranch = "main";
+	// TODO: Wire to ShellAdapter for real git status (branch, ahead/behind, dirty)
+	// For now, show empty state when no git data is available
+	const gitBranch = "";
 	const gitAheadBehind = 0;
 	const gitDirty = false;
 
@@ -31,7 +32,7 @@ export function StatusBar() {
 				<Circle
 					className={cn(
 						"size-2",
-						gitDirty ? "fill-yellow-500" : "fill-muted-foreground",
+						gitDirty ? "fill-status-warn" : "fill-muted-foreground",
 					)}
 					aria-label={gitDirty ? "Dirty" : "Clean"}
 					aria-hidden
