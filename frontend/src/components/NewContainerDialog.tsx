@@ -1,4 +1,6 @@
+/* eslint-disable react/no-children-prop */
 import { useForm } from "@tanstack/react-form";
+import * as z from "zod";
 import {
 	Dialog,
 	DialogContent,
@@ -8,7 +10,12 @@ import {
 	DialogTitle,
 } from "#components/ui/dialog";
 import { Button } from "#components/ui/button";
-import { inputClass } from "#lib/ui";
+import { Field, FieldError, FieldGroup, FieldLabel } from "#components/ui/field";
+import { Input } from "#components/ui/input";
+
+const formSchema = z.object({
+	name: z.string().trim().min(1, "Name is required."),
+});
 
 export interface NewContainerDialogProps {
 	/** Dialog headline, e.g. "New collection" or "New folder in payments". */
@@ -30,12 +37,13 @@ export function NewContainerDialog({
 }: NewContainerDialogProps) {
 	const form = useForm({
 		defaultValues: { name: "" },
+		validators: { onSubmit: formSchema },
 		onSubmit: async ({ value }) => {
 			const createError = await onCreate(value.name.trim());
 			if (createError !== null) {
 				form.setFieldMeta("name", (meta) => ({
 					...meta,
-					errors: [createError],
+					errors: [{ message: createError }],
 				}));
 				return;
 			}
@@ -57,33 +65,33 @@ export function NewContainerDialog({
 					}}
 					className="flex flex-col gap-2"
 				>
-					<form.Field
-						name="name"
-						validators={{
-							onChange: ({ value }) =>
-								value.trim() ? undefined : "Name is required.",
-						}}
-					>
-						{(field) => (
-							<span className="flex flex-col gap-2">
-								<input
-									name={field.name}
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									placeholder="name (e.g. payments)"
-									aria-label="Container name"
-									spellCheck={false}
-									className={inputClass}
-								/>
-								{field.state.meta.errors.length > 0 ? (
-									<p className="text-xs text-destructive">
-										{field.state.meta.errors[0]}
-									</p>
-								) : null}
-							</span>
-						)}
-					</form.Field>
+					<FieldGroup>
+						<form.Field
+							name="name"
+							children={(field) => {
+								const isInvalid =
+									field.state.meta.isTouched && !field.state.meta.isValid;
+								return (
+									<Field data-invalid={isInvalid}>
+										<FieldLabel htmlFor="container-name">Name</FieldLabel>
+										<Input
+											id="container-name"
+											name={field.name}
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(e) => field.handleChange(e.target.value)}
+											placeholder="name (e.g. payments)"
+											spellCheck={false}
+											aria-invalid={isInvalid}
+										/>
+										{isInvalid && (
+											<FieldError errors={field.state.meta.errors} />
+										)}
+									</Field>
+								);
+							}}
+						/>
+					</FieldGroup>
 					<form.Subscribe
 						selector={(state) => ({
 							canSubmit: state.canSubmit,
