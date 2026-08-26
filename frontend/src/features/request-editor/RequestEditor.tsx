@@ -28,8 +28,7 @@ import { tagWarnings } from '../../lib/tags'
 import { generateCode } from '../../lib/codegen'
 import { copyText } from '../../lib/response'
 import { notifyError } from '../../lib/notify'
-import { tabClass } from '../../lib/ui'
-import { Tabs, TabsList, TabsTrigger } from '#components/ui/tabs'
+import { handleTabArrowKeys, tabClass } from '../../lib/ui'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -317,13 +316,11 @@ export function RequestEditor() {
         />
       )}
 
-      <Tabs
-        value={tab}
-        onValueChange={(v) => {
-          // SAFETY: tab ids originate from this file's `tabs` registry
-          setTab(v as Tab)
-        }}
-        className="px-2"
+      <div
+        className="flex items-center gap-1 px-2"
+        role="tablist"
+        aria-label="Request sections"
+        onKeyDown={(e) => handleTabArrowKeys(e)}
       >
         {tabs
           .filter((t) => showVariables || t.id !== 'variables')
@@ -773,9 +770,9 @@ function RetrySection({
         <span className={`text-xs ${enabled ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
           {retrySummary(retry)}
         </span>
-      </button>
-      {open && (
-        <div className="mt-1 flex flex-wrap items-center gap-3 rounded-md border border-border p-2">
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2">
+        <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Retries
             <input
@@ -838,6 +835,7 @@ function RetrySection({
             Retries fire on network errors and 429/502/503/504 unless a custom status set is declared
             in the request file. The server's Retry-After header wins when present.
           </p>
+        </div>
       </PopoverContent>
     </Popover>
   )

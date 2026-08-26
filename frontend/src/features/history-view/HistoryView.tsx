@@ -18,7 +18,13 @@ import {
 } from "../../components/ui/alert-dialog";
 import { MethodLabel, StatusPill } from "../../components/status";
 import { SplitView, ViewShell } from "../../components/shell/ViewLayout";
-import { CompactSelect } from "../../components/CompactSelect";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../../components/ui/select";
 import { CodeMirrorEditor } from "../../editors";
 import { HISTORY_PAGE_SIZE, useHistoryStore } from "../../stores/useHistoryStore";
 import { useFuseSearch } from "#hooks/useFuseSearch";

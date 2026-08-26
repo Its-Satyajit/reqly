@@ -10,8 +10,14 @@
 
 import { Field } from "@base-ui/react/field"
 import { Input } from "../../components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select"
 import { Label } from "../../components/ui/field"
-import { CompactSelect } from "../../components/CompactSelect"
 import {
   AUTH_SCHEMES,
   OAUTH2_GRANTS,

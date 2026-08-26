@@ -18,6 +18,7 @@ import {
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
 import { Button } from "#components/ui/button";
+import { ScrollArea } from "#components/ui/scroll-area";
 import { ExportDialog } from "../features/export-dialog/ExportDialog";
 import { ImportDialog } from "../features/import-dialog/ImportDialog";
 import { useExportStore } from "../stores/useExportStore";

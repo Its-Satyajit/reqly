@@ -8,7 +8,13 @@ import {
 	DialogTitle,
 } from "#components/ui/dialog";
 import { Button } from "#components/ui/button";
-import { CompactSelect } from "#components/CompactSelect";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "#components/ui/select";
 import { inputClass } from "#lib/ui";
 
 export interface RequestSettings {
@@ -100,14 +106,25 @@ export function RequestSettingsDialog({
 					</label>
 					<label className="flex flex-col gap-1 text-xs">
 						<span className="font-medium text-foreground">Redirects</span>
-						<CompactSelect
+						<Select
+							items={redirectOptions}
 							value={redirects}
-							// SAFETY: options are the three RedirectValue literals
-							// rendered above, so the string is always one of them.
-							onChange={(v) => setRedirects(v as RedirectValue)}
-							options={redirectOptions}
-							ariaLabel="Follow redirects"
-						/>
+							onValueChange={(v) => {
+								if (v === "default" || v === "on" || v === "off")
+									setRedirects(v);
+							}}
+						>
+							<SelectTrigger aria-label="Follow redirects" className="h-7 w-full text-xs">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{redirectOptions.map((o) => (
+									<SelectItem key={o.value} value={o.value} className="text-xs">
+										{o.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 					</label>
 					<DialogFooter>
 						<Button type="button" variant="outline" onClick={onClose}>

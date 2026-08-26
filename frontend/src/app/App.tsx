@@ -202,21 +202,37 @@ export function App() {
 							<h1 className="max-w-40 truncate text-sm font-semibold tracking-tight">
 								{workspaceName ?? "Reqly"}
 							</h1>
-							<CompactSelect
-								value={activeEnvironment?.id ?? ""}
-								onChange={(next) => void onSelectEnvironment(next)}
-								ariaLabel={
-									environmentsError ?? "Select the active environment"
-								}
-								className="h-6 rounded-full border-none bg-muted px-2 text-xs"
-								options={[
+							<Select
+								items={[
 									{ value: "", label: "No environment" },
 									...environments.map((env) => ({
 										value: env.id,
 										label: env.name,
 									})),
 								]}
-							/>
+								value={activeEnvironment?.id ?? ""}
+								onValueChange={(next) => {
+									// SAFETY: option values are environment ids or ""
+									void onSelectEnvironment(next as string)
+								}}
+							>
+								<SelectTrigger
+									aria-label={environmentsError ?? "Select the active environment"}
+									className="h-6 gap-1 rounded-full border-none bg-muted px-2 text-xs"
+								>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent className="max-h-72 min-w-(--anchor-width)">
+									<SelectItem value="" className="text-xs">
+										No environment
+									</SelectItem>
+									{environments.map((env) => (
+										<SelectItem key={env.id} value={env.id} className="text-xs">
+											{env.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 						{gitBranch && (
 							<span className="font-data inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
