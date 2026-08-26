@@ -3,6 +3,7 @@ import {
 	FolderSearch,
 	PanelLeftClose,
 	PanelLeftOpen,
+	Search,
 	SquareArrowOutDownLeft,
 } from "lucide-react";
 import logoDark from "../../assets/logo-dark.svg";
@@ -11,6 +12,7 @@ import { Button } from "../ui/button";
 import { CompactSelect } from "../CompactSelect";
 import { ImportDialog, ExportDialog } from "../../features";
 import {
+	useCommandPaletteStore,
 	useExportStore,
 	useImportStore,
 	useThemeStore,
@@ -74,6 +76,11 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
 			</div>
 
 			<div className="mx-auto flex items-center gap-1">
+				<Button variant="ghost" size="sm" onClick={() => useCommandPaletteStore.getState().setOpen(true)} title="Search commands (⌘K)" aria-label="Search">
+					<Search className="size-4" aria-hidden />
+					<span className="hidden sm:inline">Search</span>
+					<kbd className="hidden sm:inline ml-1 rounded bg-muted px-1 text-[11px]">⌘K</kbd>
+				</Button>
 				<Button
 					variant="ghost"
 					size="sm"

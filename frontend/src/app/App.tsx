@@ -37,15 +37,19 @@ import { RunnersPanel } from "../features/runners-panel/RunnersPanel";
 import { MocksView } from "../features/mock-view/MocksView";
 import { HistoryView } from "../features/history-view/HistoryView";
 import { HomeView } from "../features/workspace-home/HomeView";
+import { SettingsView } from "../features/settings-view/SettingsView";
+import { WebSocketPage, SSEPage } from "../features/realtime-pages/RealtimePage";
+import { CommandPalette } from "../features/command-palette/CommandPalette";
+import { registerDefaultPaletteProviders } from "../lib/paletteProviders";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
 import { useWorkspaceStore } from "../stores";
 import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
-import { NEW_REQUEST_TAB_ID, tabIsDirty, useRequestStore } from "../stores/useRequestStore";
+import { NEW_REQUEST_TAB_ID } from "../stores/useRequestStore";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import { armDebugCrashTrigger, installCrashReporter } from "../lib/crashReporter";
-import { notifyWarning } from "../lib/notify";
+import { useKeyboardMap } from "../hooks/useKeyboardMap";
 
 const shellStorage: Pick<Storage, "getItem" | "setItem"> = {
 	getItem: (key) => window.localStorage.getItem(key),
@@ -71,25 +75,9 @@ export function App() {
 	useEffect(() => {
 		void initBootstrap();
 	}, [initBootstrap]);
+	useEffect(() => { registerDefaultPaletteProviders(); }, []);
 
-	// ⌘/Ctrl+W closes the active tab (G-4.3.2). Dirty tabs are never silently
-	// discarded — the user closes those via the tab's explicit ✕ confirm flow.
-	useEffect(() => {
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "w") return;
-			e.preventDefault();
-			const { activeTabId, closeTab } = useWorkspaceStore.getState();
-			if (!activeTabId) return;
-			const req = useRequestStore.getState();
-			if (tabIsDirty(req.drafts[activeTabId], req.meta[activeTabId])) {
-				notifyWarning("Tab has unsaved changes", "Close it with the tab's ✕ to discard them.");
-				return;
-			}
-			closeTab(activeTabId, { force: true });
-		};
-		window.addEventListener("keydown", onKeyDown);
-		return () => window.removeEventListener("keydown", onKeyDown);
-	}, []);
+
 
 	useEffect(() => {
 		void refreshEnvironments();
@@ -113,17 +101,7 @@ export function App() {
 		}
 		sidebarPanel.current?.collapse();
 	};
-
-	// Ctrl/Cmd+B toggles the context sidebar.
-	useEffect(() => {
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "b") return;
-			e.preventDefault();
-			toggleSidebar();
-		};
-		window.addEventListener("keydown", onKeyDown);
-		return () => window.removeEventListener("keydown", onKeyDown);
-	});
+	useKeyboardMap(toggleSidebar);
 
 	const splitLayout = useDefaultLayout({
 		id: "reqly-shell-split",
@@ -246,6 +224,18 @@ export function App() {
 											<DocsView />
 										</ErrorBoundary>
 									</section>
+								) : activeView === "websocket" ? (
+									<section className="h-full min-h-0">
+										<ErrorBoundary label="WebSocket"><WebSocketPage /></ErrorBoundary>
+									</section>
+								) : activeView === "sse" ? (
+									<section className="h-full min-h-0">
+										<ErrorBoundary label="SSE"><SSEPage /></ErrorBoundary>
+									</section>
+								) : activeView === "settings" ? (
+									<section className="h-full min-h-0 overflow-y-auto">
+										<ErrorBoundary label="Settings"><SettingsView /></ErrorBoundary>
+									</section>
 								) : (
 									<section className="flex h-full min-h-0 flex-col">
 										<RequestTabs />
@@ -307,6 +297,7 @@ export function App() {
 					</div>
 				</div>
 
+				<CommandPalette />
 				<AlertDialog
 					open={pendingView != null}
 					onOpenChange={(open) => {

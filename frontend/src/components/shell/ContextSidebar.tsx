@@ -4,6 +4,8 @@ import { CollectionTree } from "../CollectionTree";
 import { useWorkspaceStore, type WorkspaceView } from "../../stores";
 import { useHistoryStore } from "../../stores/useHistoryStore";
 import { useTestStore } from "../../stores/useTestStore";
+import { useRealtimeRecentsStore } from "../../stores/useRealtimeRecentsStore";
+import { useRealtimeStore } from "../../stores/useRealtimeStore";
 
 const methodTint = {
 	GET: "text-method-get",
@@ -169,16 +171,37 @@ const TOOL_BLURBS = {
 	docs: "Generate REST documentation from the workspace collections.",
 } satisfies Partial<Record<WorkspaceView, string>>;
 
+function RealtimeRecents({ kind }: { kind: "ws" | "sse" }) {
+	const recents = useRealtimeRecentsStore((s) => s.recents.filter((r) => r.kind === kind).slice(0, 12));
+	const update = useRealtimeStore((s) => s.update);
+	const pageId = kind === "ws" ? "realtime-websocket-page" : "realtime-sse-page";
+	if (recents.length === 0) {
+		return <p className="px-3 pt-3 text-xs leading-relaxed text-muted-foreground">Connect to an endpoint and it will show up here.</p>;
+	}
+	return (
+		<div className="px-2 py-2">
+			<SectionLabel>Recent</SectionLabel>
+			<ul className="flex flex-col gap-0.5">
+				{recents.map((r) => (
+					<li key={r.url}>
+						<button type="button" onClick={() => update(pageId, { url: r.url })} className="w-full truncate rounded px-2 py-0.5 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground" title={r.url}>{r.url}</button>
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
+
 export function ContextSidebar({ className }: { className?: string }) {
 	const activeView = useWorkspaceStore((s) => s.activeView);
 
 	if (activeView === "home") return null;
-	if (activeView === "websocket" || activeView === "sse" || activeView === "settings")
-		return (
-			<aside className={cn("w-64 shrink-0 border-r border-border bg-card/20 p-3 text-xs text-muted-foreground", className)}>
-				{activeView === "settings" ? "Settings — see main pane." : activeView === "websocket" ? "WebSocket — recent endpoints will appear here." : "SSE — recent endpoints will appear here."}
-			</aside>
-		);
+	if (activeView === "websocket")
+		return <aside className={cn("flex h-full w-full flex-col overflow-y-auto border-r border-border bg-card/30", className)}><RealtimeRecents kind="ws" /></aside>;
+	if (activeView === "sse")
+		return <aside className={cn("flex h-full w-full flex-col overflow-y-auto border-r border-border bg-card/30", className)}><RealtimeRecents kind="sse" /></aside>;
+	if (activeView === "settings")
+		return <aside className={cn("flex h-full w-full flex-col overflow-y-auto border-r border-border bg-card/30", className)}><p className="px-3 pt-3 text-xs text-muted-foreground">Settings — see main pane.</p></aside>;
 
 	let content: React.ReactNode;
 	switch (activeView) {
