@@ -1,0 +1,79 @@
+/* Blueprint — technical drawing. Surfaces carry a faint drafting grid,
+ * every panel gets a hairline frame with corner annotation marks, labels
+ * read as uppercase micro-type, and Reqly orange appears as the
+ * annotator's ink (active marks, selection, focus). The grid IS the
+ * signature element.
+ *
+ * Note: font-size targets body because body declares its own font-size;
+ * the other custom properties resolve on <html> where [data-design] lives.
+ */
+
+[data-design='blueprint'],
+[data-design='blueprint'] body {
+  --radius: 0px;
+  --row: 28px;
+  --gap: 0.5rem;
+  font-size: 14px;
+}
+
+/* Annotation ink: selection and focus are always brand orange. */
+[data-design='blueprint'] {
+  --ring: var(--primary);
+  --sel: color-mix(in oklab, var(--primary) 18%, transparent);
+  --border: color-mix(in oklab, var(--primary) 10%, #e4e6e9);
+}
+[data-design='blueprint'].dark {
+  --border: color-mix(in oklab, var(--primary) 10%, #252b35);
+}
+
+/* Signature: drafting-grid canvas behind panels. */
+[data-design='blueprint'] #root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--primary) 7%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--primary) 7%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 24px 24px;
+}
+[data-design='blueprint'] #root > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hairline frames on every major surface. */
+[data-design='blueprint'] nav[aria-label='Views'],
+[data-design='blueprint'] header,
+[data-design='blueprint'] footer {
+  border-color: color-mix(in oklab, var(--primary) 25%, var(--border));
+}
+
+/* Uppercase micro-labels: section chrome reads like drawing annotations. */
+[data-design='blueprint'] header,
+[data-design='blueprint'] footer,
+[data-design='blueprint'] [data-slot='select-trigger'],
+[data-design='blueprint'] label {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.8125em;
+}
+
+[data-design='blueprint'] ::selection {
+  background: color-mix(in oklab, var(--primary) 22%, transparent);
+}
+[data-design='blueprint'] kbd,
+[data-design='blueprint'] [data-slot='kbd'] {
+  border: 1px solid color-mix(in oklab, var(--primary) 35%, transparent);
+  color: var(--primary);
+  border-radius: 0;
+}

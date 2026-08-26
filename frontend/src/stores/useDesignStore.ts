@@ -4,6 +4,42 @@ import { designById, DESIGNS, resolveDesign, type DesignId } from '#lib/designs'
 
 const STORAGE_KEY = 'reqly-design'
 
+/** Per-design stylesheets, loaded once on first use. `current` needs none:
+ * it is the base token set. Each sheet is attribute-scoped
+ * ([data-design='<id>']), so a loaded sheet is inert until its attribute is
+ * set — loading order never matters. */
+const loadedSheets = new Set<DesignId>(['current'])
+
+function loadDesignSheet(design: DesignId) {
+  if (loadedSheets.has(design)) return
+  loadedSheets.add(design)
+  // One branch per design; a new design adds a case and its CSS file.
+  switch (design) {
+    case 'ember':
+      void import('../styles/designs/ember.css')
+      break
+    case 'forge':
+      void import('../styles/designs/forge.css')
+      break
+    case 'blueprint':
+      void import('../styles/designs/blueprint.css')
+      break
+    case 'signal':
+      void import('../styles/designs/signal.css')
+      break
+    case 'paper':
+      void import('../styles/designs/paper.css')
+      break
+    case 'current':
+      break
+  }
+}
+
+export function applyDesignToDom(design: DesignId) {
+  document.documentElement.dataset.design = design
+  void loadDesignSheet(design)
+}
+
 function readStoredPreference(): string | null {
   try {
     return localStorage.getItem(STORAGE_KEY)
@@ -12,13 +48,10 @@ function readStoredPreference(): string | null {
   }
 }
 
-export function applyDesignToDom(design: DesignId) {
-  document.documentElement.dataset.design = design
-}
-
 /**
  * The design axis is purely visual: switching only swaps the `data-design`
- * attribute, so every store (tabs, drafts, environment, history) is untouched.
+ * attribute (and lazy-loads that design's stylesheet), so every store —
+ * tabs, drafts, environment, history — is untouched.
  */
 export interface DesignState {
   design: DesignId

@@ -31,10 +31,10 @@ describe('useDesignStore', () => {
   })
 
   it('restores a stored design and applies it to the DOM', async () => {
-    localStorageGet!.mockReturnValue('ide')
+    localStorageGet!.mockReturnValue('ember')
     const store = await load()
-    expect(store.getState().design).toBe('ide')
-    expect(document.documentElement.dataset.design).toBe('ide')
+    expect(store.getState().design).toBe('ember')
+    expect(document.documentElement.dataset.design).toBe('ember')
   })
 
   it('falls back to the default for unknown stored values', async () => {
@@ -46,10 +46,10 @@ describe('useDesignStore', () => {
   it('setDesign updates state, DOM attribute, and persistence', async () => {
     localStorageGet!.mockReturnValue(null)
     const store = await load()
-    store.getState().setDesign('command-center')
-    expect(store.getState().design).toBe('command-center')
-    expect(store.getState().label).toBe('Command Center')
-    expect(document.documentElement.dataset.design).toBe('command-center')
-    expect(localStorageSet).toHaveBeenCalledWith('reqly-design', 'command-center')
+    store.getState().setDesign('ember')
+    expect(store.getState().design).toBe('ember')
+    expect(store.getState().label).toBe('Ember')
+    expect(document.documentElement.dataset.design).toBe('ember')
+    expect(localStorageSet).toHaveBeenCalledWith('reqly-design', 'ember')
   })
 })
