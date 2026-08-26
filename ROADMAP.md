@@ -198,6 +198,16 @@ The minimum set to make Reqly a serious API client.
 - [x] Windows build (WebView2) — `windows:build` (amd64), unsigned `.exe`/`.zip`, `install.ps1` — ADR 0019
 - [x] Release CI — `release.yml` OS matrix + `checksums.txt` on semver tags (`v*.*.*`), Conventional Commits notes
 
+### 1.13 Desktop shell redesign — P0 UI Architecture
+
+- [x] Tool rail 52px grouped (Workspace/API Tools/Realtime/System) + ContextSidebar 220–280px resizable/collapsible + TopBar (workspace switcher, global search ⌘K, import/export, env selector) — spec #369 P0 §1–55 — 2026-08-26
+- [x] Theme registry `atlas-light`/`atlas-dark`/`system` with `resolvedTheme`, persisted, `data-theme` + `.dark` mirror, rail cycle — 2026-08-26
+- [x] Realtime pages `websocket`/`sse` single-connection per kind reusing `RealtimeTab` internals + session recents capped 12 — 2026-08-26
+- [x] Command palette core + data providers (collections/environments/history FTS) with Fuse, ⌘K/⌘B/⌘W/⌘1–8/⌘⏎ — 2026-08-26
+- [x] Settings view (Appearance/Workspace/History/About) + bottom utility dock (Console/Network/Tests/Variables/Cookies, ⌘J, resizable) — 2026-08-26
+- [x] Infinite-loop fix for palette `filtered` selector (`useSyncExternalStore` new-array identity) — 2026-08-26
+- [x] P1 spec editor (§56.1) tree + YAML `CodeMirror` + schema viz graph (§56.2) — 2026-08-26
+
 ---
 
 ## Phase 2 — Differentiating Features (P1)
