@@ -67,6 +67,10 @@ export function HomeView() {
 	).length;
 	const recent = historyPool.slice(0, 8);
 
+	const collectionCount = collections?.length ?? 0;
+	const envCount = environments.length;
+	const hasData = collectionCount > 0 || envCount > 0 || historyPool.length > 0;
+
 	return (
 		<section className="h-full min-h-0 overflow-y-auto">
 			<div className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-6 pb-16 sm:p-10">
@@ -77,16 +81,24 @@ export function HomeView() {
 						<span className="text-foreground">{workspaceName ?? "default"}</span>
 					</p>
 					<h1 className="text-2xl font-semibold tracking-tight">
-						Welcome back
+						{hasData ? "Welcome back" : "Welcome to Reqly"}
 					</h1>
 				</header>
 
-				<div className="flex flex-wrap items-stretch divide-x divide-border rounded-lg border border-border bg-card">
-					<Stat value={collections?.length ?? 0} label="Collections" />
-					<Stat value={tests.length} label="Tests" />
-					<Stat value={environments.length} label="Environments" />
-					<Stat value={requestsToday} label="Requests today" />
-				</div>
+				{hasData ? (
+					<div className="flex flex-wrap items-stretch divide-x divide-border rounded-lg border border-border bg-card">
+						<Stat value={collectionCount} label="Collections" />
+						<Stat value={tests.length} label="Tests" />
+						<Stat value={envCount} label="Environments" />
+						<Stat value={requestsToday} label="Requests today" />
+					</div>
+				) : (
+					<div className="rounded-lg border border-dashed border-border p-8 text-center">
+						<p className="text-sm text-muted-foreground">
+							Get started by creating your first request, importing an API spec, or setting up an environment.
+						</p>
+					</div>
+				)}
 
 				<nav aria-label="Quick actions" className="flex flex-wrap gap-2">
 					<Button onClick={newRequest}>
