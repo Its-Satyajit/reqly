@@ -50,6 +50,7 @@ export interface RequestTab {
 }
 
 export type WorkspaceView =
+	| 'home'
 	| 'requests'
 	| 'environments'
 	| 'history'
@@ -84,6 +85,12 @@ interface WorkspaceState {
   setCurrentWorkspace: (workspace: Workspace | null) => void
   selectCollection: (id: string | null) => void
   setActiveView: (view: WorkspaceView) => void
+  /** Switch views, holding the switch behind a confirm when environment edits are unsaved. */
+  requestView: (view: WorkspaceView) => void
+  /** The view a switch is waiting on until unsaved env changes are resolved. */
+  pendingView: WorkspaceView | null
+  confirmPendingView: () => void
+  cancelPendingView: () => void
   setEditorDirty: (key: string, dirty: boolean) => void
   openTab: (tab: RequestTab, seed?: Partial<import('./useRequestStore').TabDraft>) => void
   /** Close a tab. The caller decides the dirty-tab policy: pass force to
@@ -202,7 +209,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   selectedCollectionId: null,
   openTabs: [],
   activeTabId: null,
-  activeView: 'requests',
+  activeView: 'home',
   activeEnvironmentId: null,
   environments: [],
   environmentsError: null,
@@ -218,6 +225,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setCurrentWorkspace: (currentWorkspace) => set({ currentWorkspace }),
   selectCollection: (selectedCollectionId) => set({ selectedCollectionId }),
   setActiveView: (activeView) => set({ activeView }),
+  requestView: (view) => {
+    const { activeView, hasUnsavedEnvChanges } = get()
+    if (activeView === view) return
+    if (hasUnsavedEnvChanges) {
+      set({ pendingView: view })
+      return
+    }
+    set({ activeView: view })
+  },
+  pendingView: null,
+  confirmPendingView: () => {
+    const { pendingView } = get()
+    if (pendingView) set({ activeView: pendingView })
+    set({ pendingView: null })
+  },
+  cancelPendingView: () => set({ pendingView: null }),
   setEditorDirty: (key, dirty) =>
     set((state) => {
       const dirtyEditors = { ...state.dirtyEditors, [key]: dirty }
