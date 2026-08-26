@@ -11,7 +11,7 @@ import {
 } from "#stores/useWorkspaceBootstrap";
 
 export function WorkspaceEmptyState() {
-  const dark = useThemeStore((s) => s.theme === "dark");
+  const dark = useThemeStore((s) => s.resolvedTheme === "atlas-dark");
   const busy = useWorkspaceBootstrapStore((s) => s.busy);
   const error = useWorkspaceBootstrapStore((s) => s.error);
   const pendingCreate = useWorkspaceBootstrapStore((s) => s.pendingCreate);

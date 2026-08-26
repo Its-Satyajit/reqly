@@ -65,7 +65,8 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root {
+:root,
+[data-theme="atlas-light"] {
   --radius: 0.375rem;
   --background: #fbfbfa;
   --foreground: #191c21;
@@ -95,7 +96,8 @@
   --status-error: #cf222e;
 }
 
-.dark {
+.dark,
+[data-theme="atlas-dark"] {
   --background: #0d1015;
   --foreground: #e8eaed;
   --card: #131720;

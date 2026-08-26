@@ -17,11 +17,8 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { cn } from "#lib/utils";
 import { ThemeToggle } from "../ThemeToggle";
-import {
-	useRealtimeStore,
-	useWorkspaceStore,
-	type WorkspaceView,
-} from "../../stores";
+import { Settings } from "lucide-react";
+import { useWorkspaceStore, type WorkspaceView } from "../../stores";
 
 interface RailItem {
 	view?: WorkspaceView;
@@ -51,30 +48,10 @@ const API_TOOLS_GROUP: RailItem[] = [
 export function ToolRail({ className }: { className?: string }) {
 	const activeView = useWorkspaceStore((s) => s.activeView);
 	const requestView = useWorkspaceStore((s) => s.requestView);
-	const openTab = useWorkspaceStore((s) => s.openTab);
-	const newRealtimeTab = useRealtimeStore((s) => s.newTab);
 
 	const realtimeGroup: RailItem[] = [
-		{
-			label: "WebSocket",
-			icon: Radio,
-			action: () => {
-				const id = `realtime-ws-${Date.now()}`;
-				newRealtimeTab(id, "ws");
-				openTab({ id, title: "WebSocket", kind: "realtime" });
-				requestView("requests");
-			},
-		},
-		{
-			label: "Server-sent events",
-			icon: Rss,
-			action: () => {
-				const id = `realtime-sse-${Date.now()}`;
-				newRealtimeTab(id, "sse");
-				openTab({ id, title: "SSE", kind: "realtime" });
-				requestView("requests");
-			},
-		},
+		{ view: "websocket" as WorkspaceView, label: "WebSocket", icon: Radio },
+		{ view: "sse" as WorkspaceView, label: "Server-sent events", icon: Rss },
 	];
 
 	const railButton = (item: RailItem) => {
@@ -129,6 +106,21 @@ export function ToolRail({ className }: { className?: string }) {
 				{realtimeGroup.map(railButton)}
 			</div>
 			<div className="mt-auto flex flex-col items-center gap-1 pt-2">
+				<button
+					type="button"
+					onClick={() => requestView("settings")}
+					aria-current={activeView === "settings" ? "page" : undefined}
+					aria-label="Settings"
+					title="Settings"
+					className={cn(
+						"flex size-10 items-center justify-center rounded-md transition-colors",
+						activeView === "settings"
+							? "bg-primary/12 text-primary"
+							: "text-muted-foreground hover:bg-muted hover:text-foreground",
+					)}
+				>
+					<Settings className="size-[18px]" aria-hidden />
+				</button>
 				<ThemeToggle />
 			</div>
 		</nav>

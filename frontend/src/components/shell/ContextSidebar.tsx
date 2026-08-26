@@ -173,6 +173,12 @@ export function ContextSidebar({ className }: { className?: string }) {
 	const activeView = useWorkspaceStore((s) => s.activeView);
 
 	if (activeView === "home") return null;
+	if (activeView === "websocket" || activeView === "sse" || activeView === "settings")
+		return (
+			<aside className={cn("w-64 shrink-0 border-r border-border bg-card/20 p-3 text-xs text-muted-foreground", className)}>
+				{activeView === "settings" ? "Settings — see main pane." : activeView === "websocket" ? "WebSocket — recent endpoints will appear here." : "SSE — recent endpoints will appear here."}
+			</aside>
+		);
 
 	let content: React.ReactNode;
 	switch (activeView) {

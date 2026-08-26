@@ -26,7 +26,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
-	const theme = useThemeStore((s) => s.theme);
+	const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
 	const workspaceName = useWorkspaceStore((s) => s.workspaceTree?.name);
 	const environments = useWorkspaceStore((s) => s.environments);
 	const environmentsError = useWorkspaceStore((s) => s.environmentsError);
@@ -58,7 +58,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
 		<header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-3">
 			<div className="flex min-w-0 items-center gap-2">
 				<img
-					src={theme === "dark" ? logoDark : logoLight}
+					src={resolvedTheme === "atlas-dark" ? logoDark : logoLight}
 					alt="Reqly"
 					className="size-5 shrink-0"
 				/>

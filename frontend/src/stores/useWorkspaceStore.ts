@@ -62,6 +62,9 @@ export type WorkspaceView =
 	| 'explorer'
 	| 'docs'
 	| 'grpc'
+	| 'websocket'
+	| 'sse'
+	| 'settings'
 
 interface WorkspaceState {
   currentWorkspace: Workspace | null
