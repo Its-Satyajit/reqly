@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   CREATE_HINT,
   fallbackWorkspaceBootstrapAdapter,
+  rememberWorkspace,
   type WorkspaceBootstrapAdapter,
   type WorkspaceStatus,
 } from "../lib/workspace";
@@ -137,6 +138,7 @@ async function finishSwitch(
   const status = await useWorkspaceBootstrapStore
     .getState()
     .adapter.status();
+  if (status.path) rememberWorkspace(status.path);
   resetTabsForWorkspaceSwitch();
   await Promise.all([
     useWorkspaceStore.getState().refreshWorkspace(),

@@ -30,3 +30,35 @@ export const fallbackWorkspaceBootstrapAdapter: WorkspaceBootstrapAdapter = {
 };
 
 export const CREATE_HINT = "is not a Reqly workspace";
+
+const RECENTS_KEY = "reqly.recentWorkspaces";
+const RECENTS_MAX = 5;
+
+/** readRecents loads the remembered workspace folders, newest first. */
+export function readRecents(): string[] {
+	try {
+		const raw = localStorage.getItem(RECENTS_KEY);
+		const parsed: unknown = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed)
+			? parsed
+					.filter((p): p is string => typeof p === "string")
+					.slice(0, RECENTS_MAX)
+			: [];
+	} catch {
+		return [];
+	}
+}
+
+/** rememberWorkspace appends dir to the recents list, deduped, newest first. */
+export function rememberWorkspace(dir: string): void {
+	const next = [dir, ...readRecents().filter((p) => p !== dir)].slice(
+		0,
+		RECENTS_MAX,
+	);
+	try {
+		localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
+	} catch {
+		// Storage unavailable (e.g. restricted webview) — recents are a
+		// convenience, not a requirement.
+	}
+}

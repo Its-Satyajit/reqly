@@ -20,6 +20,7 @@ import {
 	PaletteTriggerButton,
 } from "../components/palette/CommandPalette";
 import { StatusBar } from "../components/shell/StatusBar";
+import { WorkspaceMenu } from "../components/shell/WorkspaceMenu";
 import { shellStorage } from "../components/shell/storage";
 import { RequestTabs } from "../components/RequestTabs";
 import { RunView } from "../components/RunView";
@@ -187,31 +188,33 @@ export function App() {
 				}
 				brand={
 					<>
-						<div className="flex items-center gap-2 rounded-full border border-border bg-card py-1 pr-1 pl-2">
-							<img
-								src={theme === "dark" ? logoDark : logoLight}
-								alt="Reqly"
-								className="size-5"
-							/>
-							<h1 className="max-w-40 truncate text-sm font-semibold tracking-tight">
-								{workspaceName ?? "Reqly"}
-							</h1>
-							<CompactSelect
-								value={activeEnvironment?.id ?? ""}
-								onChange={(next) => void onSelectEnvironment(next)}
-								ariaLabel={
-									environmentsError ?? "Select the active environment"
-								}
-								className="h-6 rounded-full border-none bg-muted px-2 text-xs"
-								options={[
-									{ value: "", label: "No environment" },
-									...environments.map((env) => ({
-										value: env.id,
-										label: env.name,
-									})),
-								]}
-							/>
-						</div>
+						<WorkspaceMenu>
+							<div className="flex items-center gap-2 rounded-full border border-border bg-card py-1 pr-1 pl-2 hover:bg-accent">
+								<img
+									src={theme === "dark" ? logoDark : logoLight}
+									alt="Reqly"
+									className="size-5"
+								/>
+								<h1 className="max-w-40 truncate text-sm font-semibold tracking-tight">
+									{workspaceName ?? "Reqly"}
+								</h1>
+								<CompactSelect
+									value={activeEnvironment?.id ?? ""}
+									onChange={(next) => void onSelectEnvironment(next)}
+									ariaLabel={
+										environmentsError ?? "Select the active environment"
+									}
+									className="h-6 rounded-full border-none bg-muted px-2 text-xs"
+									options={[
+										{ value: "", label: "No environment" },
+										...environments.map((env) => ({
+											value: env.id,
+											label: env.name,
+										})),
+									]}
+								/>
+							</div>
+						</WorkspaceMenu>
 						{gitBranch && (
 							<span className="font-data inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
 								<GitBranch className="size-3" aria-hidden />
