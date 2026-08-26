@@ -25,10 +25,9 @@ interface PaletteState {
   registerCommand: (c: Command) => void;
   unregisterCommand: (id: string) => void;
   registerProvider: (p: DataProvider) => void;
-  filtered: () => (Command & { kind?: string })[];
 }
 
-export const useCommandPaletteStore = create<PaletteState>((set, get) => ({
+export const useCommandPaletteStore = create<PaletteState>((set) => ({
   open: false,
   query: "",
   commands: [],
@@ -39,12 +38,21 @@ export const useCommandPaletteStore = create<PaletteState>((set, get) => ({
   unregisterCommand: (id) => set((s) => ({ commands: s.commands.filter((c) => c.id !== id) })),
   registerProvider: (p) =>
     set((s) => ({ providers: [...s.providers.filter((x) => x.id !== p.id), p] })),
-  filtered: () => {
-    const { query, commands, providers } = get();
-    const dataItems = providers.flatMap((p) => p.getItems().map((i) => ({ ...i, hint: i.kind })));
-    const all = [...commands.map((c) => ({ ...c, kind: "command" })), ...dataItems.map((d) => ({ id: d.id, title: d.title, hint: d.hint, keywords: d.kind, run: d.run, kind: d.kind }))];
-    if (!query.trim()) return all.slice(0, 20);
-    const fuse = new Fuse(all, { keys: ["title", "keywords"], threshold: 0.4 });
-    return fuse.search(query).map((r) => r.item).slice(0, 20);
-  },
 }));
+
+export function getFilteredResults(query: string, commands: Command[], providers: DataProvider[]): (Command & { kind?: string })[] {
+  const dataItems = providers.flatMap((p) => {
+    try {
+      return p.getItems().map((i) => ({ ...i, hint: i.kind }));
+    } catch {
+      return [];
+    }
+  });
+  const all = [
+    ...commands.map((c) => ({ ...c, kind: "command" })),
+    ...dataItems.map((d) => ({ id: d.id, title: d.title, hint: d.hint, keywords: d.kind, run: d.run, kind: d.kind })),
+  ];
+  if (!query.trim()) return all.slice(0, 20);
+  const fuse = new Fuse(all, { keys: ["title", "keywords"], threshold: 0.4 });
+  return fuse.search(query).map((r) => r.item).slice(0, 20);
+}

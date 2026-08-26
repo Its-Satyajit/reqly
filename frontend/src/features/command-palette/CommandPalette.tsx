@@ -1,12 +1,14 @@
-import { useEffect, useRef } from "react";
-import { useCommandPaletteStore } from "#stores/useCommandPaletteStore";
+import { useEffect, useMemo, useRef } from "react";
+import { getFilteredResults, useCommandPaletteStore } from "#stores/useCommandPaletteStore";
 
 export function CommandPalette() {
   const open = useCommandPaletteStore((s) => s.open);
   const query = useCommandPaletteStore((s) => s.query);
+  const commands = useCommandPaletteStore((s) => s.commands);
+  const providers = useCommandPaletteStore((s) => s.providers);
   const setQuery = useCommandPaletteStore((s) => s.setQuery);
   const setOpen = useCommandPaletteStore((s) => s.setOpen);
-  const filtered = useCommandPaletteStore((s) => s.filtered());
+  const filtered = useMemo(() => getFilteredResults(query, commands, providers), [query, commands, providers]);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
   if (!open) return null;

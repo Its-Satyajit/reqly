@@ -318,7 +318,7 @@ export function App() {
 									</div>
 									</ResizablePanel>
 									<ResizableHandle />
-									<ResizablePanel id="bottom" panelRef={bottomPanelRef} collapsible collapsedSize={0} minSize={6} defaultSize="28%" onResize={(s) => { if (s.inPixels <= 1 && !useBottomPanelStore.getState().collapsed) useBottomPanelStore.getState().setCollapsed(true); }}>
+									<ResizablePanel id="bottom" panelRef={bottomPanelRef} collapsible collapsedSize={0} minSize={6} defaultSize="28%" onResize={(s) => { if (s.inPixels <= 1) queueMicrotask(() => { if (!useBottomPanelStore.getState().collapsed) useBottomPanelStore.getState().setCollapsed(true); }); }}>
 										<BottomPanel />
 									</ResizablePanel>
 								</ResizablePanelGroup>
