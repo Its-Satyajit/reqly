@@ -72,5 +72,6 @@ func init() {
 		paginationCmd,
 		bulkCmd,
 		perfCmd,
+		monitorCmd,
 	)
 }
