@@ -185,3 +185,19 @@ func TestOpenAPIExploreAgainstImportSuiteFixture(t *testing.T) {
 		t.Fatalf("unexpected explore output for vendored fixture:\n%s", out.String())
 	}
 }
+
+func TestOpenAPIValidateCommand(t *testing.T) {
+	resetOpenAPIFlags()
+	specFile := writeCliSpec(t)
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"openapi", "validate", specFile})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("openapi validate failed: %v", err)
+	}
+	if !strings.Contains(out.String(), "cleanly") {
+		t.Fatalf("expected validation success message, got:\n%s", out.String())
+	}
+}

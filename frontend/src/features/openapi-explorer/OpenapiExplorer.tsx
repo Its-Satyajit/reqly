@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Compass, FolderOutput, RefreshCw } from "lucide-react";
+import { Compass, FolderOutput, RefreshCw, Send } from "lucide-react";
 import { PageHeader } from "#components/PageHeader";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
@@ -13,6 +13,7 @@ import {
   type OpenapiEndpointView,
 } from "#lib/openapi";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { useRequestStore } from "#stores/useRequestStore";
 
 const METHOD_COLOR_MAP = new Map<string, string>([
   ["GET", "text-status-ok"],
@@ -25,6 +26,12 @@ const METHOD_COLOR_MAP = new Map<string, string>([
 
 export function OpenapiExplorer() {
   const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
+  const openTab = useWorkspaceStore((s) => s.openTab);
+  const requestView = useWorkspaceStore((s) => s.requestView);
+  const ensureDraft = useRequestStore((s) => s.ensureDraft);
+
+  const [searchFilter, setSearchFilter] = useState("");
+
   // One reducer-style state object keeps the explorer's related UI fields
   // together (react-doctor/prefer-useReducer).
   type ExplorerState = {
@@ -53,7 +60,15 @@ export function OpenapiExplorer() {
   const grouped: [string, OpenapiEndpointView[]][] = [];
   {
     const byTag = new Map<string, OpenapiEndpointView[]>();
-    for (const ep of result?.endpoints ?? []) {
+    const filteredEndpoints = (result?.endpoints ?? []).filter((ep) =>
+      searchFilter.trim() === ""
+        ? true
+        : ep.path.toLowerCase().includes(searchFilter.toLowerCase()) ||
+          ep.method.toLowerCase().includes(searchFilter.toLowerCase()) ||
+          (ep.summary?.toLowerCase().includes(searchFilter.toLowerCase()) ?? false) ||
+          (ep.operationId?.toLowerCase().includes(searchFilter.toLowerCase()) ?? false),
+    );
+    for (const ep of filteredEndpoints) {
       const tag = ep.tags?.[0] ?? "untagged";
       const list = byTag.get(tag) ?? [];
       list.push(ep);
@@ -139,12 +154,20 @@ export function OpenapiExplorer() {
 
       {result && (
         <>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{result.title}</span>
-            {result.version != null && result.version !== "" && ` · v${result.version}`}
-            {" · "}
-            {result.endpoints.length} operations
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{result.title}</span>
+              {result.version != null && result.version !== "" && ` · v${result.version}`}
+              {" · "}
+              {result.endpoints.length} operations
+            </p>
+            <Input
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Filter paths, methods, tags..."
+              className="h-7 w-52 font-mono text-xs"
+            />
+          </div>
 
           {grouped.map(([tag, eps]) => (
             <div key={tag} className="rounded-md border border-border p-2">
@@ -187,6 +210,28 @@ export function OpenapiExplorer() {
                             {ep.summary}
                           </span>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[11px] text-primary"
+                          title="Try in Request Builder"
+                          onClick={() => {
+                            const id = `draft-spec-${Date.now()}`;
+                            ensureDraft(id, {
+                              method: ep.method,
+                              url: ep.path,
+                            });
+                            openTab({
+                              id,
+                              title: `${ep.method} ${ep.path}`,
+                              kind: "request",
+                            });
+                            requestView("requests");
+                          }}
+                        >
+                          <Send className="size-3" data-icon="inline-start" />
+                          Try
+                        </Button>
                       </div>
                       {(ep.requestSchema !== "" ||
                         schemaKeys.length > 0) && (
