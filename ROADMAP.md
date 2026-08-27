@@ -463,8 +463,8 @@ Every checked feature must pass the full checklist:
 | Phase   | Scope                    | Status                                                                                                                                     | Est. complete        |
 | ------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
 | Phase 0 | Foundation               | 100% — repo/build infra + Wails shell + UI shell + all core primitives + CLI skeleton + release pipeline                                   | 100%                 |
-| Phase 1 | Core API Client (P0)     | 100% backend + CLI; UI shell §2 four-zone chrome shipped (Tickets #01–#07, 2026-08-27); §56 P1 GUI panels pending                          | 100% backend, ~60% UI |
-| Phase 2 | Differentiating (P1)     | ~60% — §56.1–56.8 data layer (lib + stores + tests) shipped; UI panels (template picker, proxy/TLS, dataset, CI/CD, mock GUI, schema docs) pending | ~60%           |
+| Phase 1 | Core API Client (P0)     | 100% backend + CLI; UI shell §2 four-zone chrome shipped (Tickets #01–#12, 2026-08-27)                                                    | 100% backend, 100% UI |
+| Phase 2 | Differentiating (P1)     | 100% — §56.1–56.8 data layer (lib + stores + tests) + all UI panels (template picker, proxy/TLS, dataset, CI/CD, mock GUI, schema docs) shipped 2026-08-27 | 100%  |
 | Phase 3 | Power-User (P2)          | 0% — §57.1–57.8 not started                                                                                                                | 0%                   |
 | Phase 4 | Ecosystem (P3)           | 0% — §58.1–58.5 not started                                                                                                                | 0%                   |
 | Phase 5 | MCP / AI / Extensibility | ~10% — §59.2 command palette shipped (2026-08-26); §59.1 MCP server stub shipped (M56); §59.3 AI heuristic shipped (M58); full AI assistant pending | ~10%        |
@@ -491,8 +491,8 @@ Every checked feature must pass the full checklist:
 - [x] **§56.4 GUI** — Proxy/TLS configuration panel in Settings (`ProxyTlsPanel`) — 2026-08-27
 - [x] **§56.5 GUI** — Dataset picker in Runners panel (file loader + preview) — 2026-08-27
 - [x] **§56.6 GUI** — CI/CD configuration panel in Settings (`CicdPanel`) — 2026-08-27
-- [ ] **§56.7 GUI** — Mock server full GUI: route editor sidebar + logs viewer (data layer shipped G-5.5)
-- [ ] **§56.8 GUI** — GraphQL schema browser + gRPC service browser (data layer shipped G-5.6)
+- [x] **§56.7 GUI** — Mock server full GUI: route editor, scenarios, fault injection, logs viewer — 2026-08-27
+- [x] **§56.8 GUI** — GraphQL schema browser + gRPC service browser with live search — 2026-08-27
 
 6. ~~**Collection runner + scripting**~~ — pre/post scripts (Goja `reqly` sandbox), request chaining via runtime variables, tests in the runner, CLI `reqly collection test` — ✅ shipped
 7. ~~**Mock server + OpenAPI**~~ — `internal/openapi` (kin-openapi load/validate) + `internal/mocking` (path/method matching, schema/example response generation, delay + error simulation) + CLI `reqly mock <spec>` — ✅ shipped
