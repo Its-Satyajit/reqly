@@ -4,15 +4,17 @@
 import type { KeyValueRow } from './request'
 import type { JsonValue } from './typeGuards'
 
-export type BodyType = 'none' | 'json' | 'xml' | 'form-data' | 'urlencoded' | 'raw' | 'binary' | 'graphql'
+export type BodyType = 'none' | 'json' | 'xml' | 'form-data' | 'urlencoded' | 'raw' | 'text' | 'html' | 'binary' | 'graphql'
 
 export const bodyTypes: { id: BodyType; label: string }[] = [
   { id: 'none', label: 'None' },
   { id: 'json', label: 'JSON' },
   { id: 'xml', label: 'XML' },
+  { id: 'text', label: 'Text' },
+  { id: 'html', label: 'HTML' },
   { id: 'form-data', label: 'Form data' },
   { id: 'urlencoded', label: 'URL encoded' },
-  { id: 'raw', label: 'Raw text' },
+  { id: 'raw', label: 'Raw' },
   { id: 'binary', label: 'Binary' },
   { id: 'graphql', label: 'GraphQL' },
 ]
@@ -20,6 +22,8 @@ export const bodyTypes: { id: BodyType; label: string }[] = [
 const CONTENT_TYPES = {
   json: 'application/json',
   xml: 'application/xml',
+  text: 'text/plain',
+  html: 'text/html',
   urlencoded: 'application/x-www-form-urlencoded',
   graphql: 'application/json',
   binary: 'application/octet-stream',

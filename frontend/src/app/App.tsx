@@ -110,6 +110,8 @@ export function App() {
 	const [toolRailCollapsed, setToolRailCollapsed] = useState(false);
 	const toggleToolRail = () => setToolRailCollapsed((prev) => !prev);
 
+	const [splitOrientation, setSplitOrientation] = useState<"horizontal" | "vertical">("horizontal");
+
 	const splitLayout = useDefaultLayout({
 		id: "reqly-shell-split",
 		storage: shellStorage,
@@ -282,9 +284,19 @@ export function App() {
 												</ErrorBoundary>
 											</div>
 										) : (
-											<div className="min-h-0 min-w-0 flex-1">
+											<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+												<div className="flex shrink-0 justify-end border-b border-border px-1 py-0.5">
+													<button
+														type="button"
+														onClick={() => setSplitOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
+														className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
+														title="Toggle Request/Response split orientation"
+													>
+														{splitOrientation === "horizontal" ? "↔ Split" : "↕ Split"}
+													</button>
+												</div>
 												<ResizablePanelGroup
-													orientation="horizontal"
+													orientation={splitOrientation}
 													defaultLayout={splitLayout.defaultLayout}
 													onLayoutChanged={splitLayout.onLayoutChanged}
 												>

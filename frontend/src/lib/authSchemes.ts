@@ -20,6 +20,7 @@ export type AuthSchemeId =
 	| "oauth2"
 	| "aws"
 	| "edgegrid"
+	| "custom"
 
 export interface AuthField {
 	/** The flat config key the scheme's core Apply reads. */
@@ -186,6 +187,14 @@ export const AUTH_SCHEMES: AuthScheme[] = [
 			{ key: "host", label: "Host", placeholder: "akab-xxxx.luna.akamaiapis.net" },
 		],
 	},
+	{
+		id: "custom",
+		label: "Custom",
+		fields: [
+			{ key: "header", label: "Header", placeholder: "X-Custom-Auth" },
+			{ key: "value", label: "Value", placeholder: "custom value", secret: true },
+		],
+	},
 ]
 
 /** AUTH_SCHEME_LABELS maps every picker state (including Inherit and No Auth)
@@ -201,6 +210,7 @@ export const AUTH_SCHEME_LABELS = {
 	oauth2: "OAuth 2.0",
 	aws: "AWS SigV4",
 	edgegrid: "Akamai EdgeGrid",
+	custom: "Custom",
 } satisfies Record<AuthSchemeId, string>
 
 /** DEFAULT_OAUTH2_GRANT is used when a request's oauth2 config has not pinned
@@ -228,6 +238,7 @@ export const ORDERED_AUTH_SCHEMES: AuthSchemeId[] = [
 	"oauth2",
 	"aws",
 	"edgegrid",
+	"custom",
 ]
 
 /** schemeFor maps a request's own auth onto the picker state. */
