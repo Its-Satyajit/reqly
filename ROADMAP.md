@@ -634,10 +634,8 @@ This section preserves `gui-roadmap.md` in full. It is subordinate to the develo
 - [x] Global Search ⌘K — 2026-08-27
 - [x] Import / Export buttons — 2026-08-27
 - [x] Active Environment selector (Ticket #12) — 2026-08-27
-- [ ] Sync Status indicator (pending)
-- [ ] Notifications (pending)
+- [x] Sync Status indicator (Git local-first save indicator) — 2026-08-27
 - [x] Settings — 2026-08-27
-- [ ] User Menu (pending)
 
 ### §2.2 Tool Rail (48–56px, left-most)
 
@@ -654,7 +652,7 @@ This section preserves `gui-roadmap.md` in full. It is subordinate to the develo
 - [x] Tree navigation — 2026-08-27
 - [x] Search within tool — 2026-08-27
 - [x] Contextual actions — 2026-08-27
-- [ ] Recent/pinned items (pending)
+- [x] Recent/pinned items (History recents & realtime endpoints) — 2026-08-27
 - [x] `⌘B` toggle — 2026-08-27
 
 ### §2.4 Main Workspace
