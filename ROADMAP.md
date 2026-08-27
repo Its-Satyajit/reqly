@@ -586,6 +586,8 @@ The following ticket-level milestone history is preserved from the older develop
 36. ~~**Advanced HTTP / Proxy & TLS controls**~~ — HTTP/2, per-env/per-request proxy, cert inspection, mTLS, custom CAs (`internal/request.Client` proxy & TLS support, Desktop Proxy & TLS settings) — **shipped**
 37. ~~**Performance testing (lightweight)**~~ — RPS/latency P95/P99/error-rate/status-distribution (`internal/perf.Run`, `reqly perf run`, Desktop PerfView) — **shipped**
 38. ~~**API Monitoring Dashboard (§57.1)**~~ — scheduled health checks + availability % / avg latency + CLI runner (`internal/monitor.Run`, `reqly monitor run`, Desktop MonitorView) ([ADR 0033](docs/adr/0033-monitor-scheduler.md), `docs/spec/m49-monitor-scheduler.md`) — **shipped**
+39. ~~**Plugin Engine & Marketplace (§58.1)**~~ — Goja JS program compilation, manifest validation, CLI manager (`internal/plugin.Load`, `reqly plugin list/validate`) — **shipped**
+40. ~~**Model Context Protocol Server & AI (§59.1, §59.3)**~~ — JSON-RPC 2.0 stdio server, tool definitions (`list_requests`, `search_requests`, `get_request`, `run_request`), CLI runner (`internal/mcp.Serve`, `reqly mcp serve`, `internal/ai`) — **shipped**
 
 
 ---
