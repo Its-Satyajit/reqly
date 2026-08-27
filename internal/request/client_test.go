@@ -1070,3 +1070,56 @@ func TestExecuteOAuth2DeviceCode(t *testing.T) {
 		t.Fatalf("authorizations = %v, want Bearer tok-device on both requests", gotAuth)
 	}
 }
+
+func TestExecuteTLSInsecureSkipVerify(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("tls-ok"))
+	}))
+	defer srv.Close()
+
+	client := NewClient()
+	req := &Request{
+		Method: MethodGet,
+		URL:    srv.URL,
+		TLS: &TLSConfig{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	resp, err := client.Execute(context.Background(), req, variables.NewSet())
+	if err != nil {
+		t.Fatalf("Execute with InsecureSkipVerify failed: %v", err)
+	}
+	if string(resp.Body) != "tls-ok" {
+		t.Fatalf("expected tls-ok body, got %s", string(resp.Body))
+	}
+}
+
+func TestExecuteWithCustomProxy(t *testing.T) {
+	var proxied bool
+	proxySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = true
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("proxied-ok"))
+	}))
+	defer proxySrv.Close()
+
+	client := NewClient()
+	req := &Request{
+		Method: MethodGet,
+		URL:    "http://target.example.com/api",
+		Proxy:  proxySrv.URL,
+	}
+
+	resp, err := client.Execute(context.Background(), req, variables.NewSet())
+	if err != nil {
+		t.Fatalf("Execute with proxy failed: %v", err)
+	}
+	if !proxied {
+		t.Fatal("expected request to hit proxy server")
+	}
+	if string(resp.Body) != "proxied-ok" {
+		t.Fatalf("expected proxied-ok body, got %s", string(resp.Body))
+	}
+}
