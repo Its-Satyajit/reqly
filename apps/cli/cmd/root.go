@@ -73,5 +73,6 @@ func init() {
 		bulkCmd,
 		perfCmd,
 		monitorCmd,
+		pluginCmd,
 	)
 }
