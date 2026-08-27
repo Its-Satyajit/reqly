@@ -1,4 +1,4 @@
-export type RealtimeKind = "ws" | "sse";
+export type RealtimeKind = "ws" | "sse" | "mqtt" | "socketio";
 export type RealtimeStatus = "idle" | "connecting" | "connected" | "closed" | "error";
 
 export interface RealtimeFrameView {
