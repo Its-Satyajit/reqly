@@ -18,6 +18,8 @@ import { useRealtimeStore } from "#stores/useRealtimeStore";
 const KIND_OPTIONS = [
   { value: "ws", label: "WebSocket" },
   { value: "sse", label: "SSE" },
+  { value: "mqtt", label: "MQTT" },
+  { value: "socketio", label: "Socket.IO" },
 ];
 
 function statusBadge(status: string) {
@@ -57,7 +59,22 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
   }, [tab?.frames.length]);
 
   if (!tab) return null;
-  const isWS = tab.kind === "ws";
+  const canSend = tab.kind === "ws" || tab.kind === "mqtt" || tab.kind === "socketio";
+
+  const getPlaceholder = () => {
+    switch (tab.kind) {
+      case "ws":
+        return "wss://echo.websocket.org";
+      case "sse":
+        return "https://example.com/events";
+      case "mqtt":
+        return "mqtt://broker.emqx.io:1883 or wss://broker.emqx.io:8084/mqtt";
+      case "socketio":
+        return "https://socketio-chat-h9ox.onrender.com";
+      default:
+        return "https://example.com";
+    }
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 p-3">
@@ -66,7 +83,6 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
           value={tab.kind}
           disabled={tab.status === "connected" || tab.status === "connecting"}
           onChange={(e) => {
-            // SAFETY: options are exactly the two supported realtime kinds.
             update(tabId, { kind: e.target.value as RealtimeKind });
           }}
           aria-label="Protocol"
@@ -79,7 +95,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
         <Input
           value={tab.url}
           onChange={(e) => update(tabId, { url: e.target.value })}
-          placeholder={isWS ? "wss://echo.websocket.org" : "https://example.com/events"}
+          placeholder={getPlaceholder()}
           spellCheck={false}
           className="flex-1 font-mono text-xs"
           aria-label="Endpoint URL"
@@ -106,7 +122,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
           onClick={() => setHeadersOpen(!headersOpen)}
         >
           {headersOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-          Headers {tab.headers.length > 0 && `(${tab.headers.filter((h) => h.enabled).length})`}
+          Headers / Options {tab.headers.length > 0 && `(${tab.headers.filter((h) => h.enabled).length})`}
         </button>
         {headersOpen && (
           <div
@@ -119,7 +135,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
             <KeyValueEditor
               rows={tab.headers}
               onChange={(rows: KeyValueRow[]) => update(tabId, { headers: rows })}
-              keyPlaceholder="header name"
+              keyPlaceholder="option / header"
               valuePlaceholder="value"
             />
           </div>
@@ -139,7 +155,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
       >
         {tab.frames.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            No messages yet. Frames appear here with timestamps.
+            No messages yet. Realtime frames appear here with timestamps.
           </p>
         ) : (
           <ul className="flex flex-col gap-1">
@@ -158,7 +174,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
                     f.direction === "out" ? "text-status-info" : "text-status-ok",
                   )}
                 >
-                  {f.direction === "out" ? "↑ out" : isWS ? "↓ in" : "event"}
+                  {f.direction === "out" ? "↑ out" : tab.kind === "ws" ? "↓ in" : tab.kind}
                 </span>
                 {(f.name || f.id) && (
                   <span className="mr-2 font-sans text-muted-foreground">
@@ -184,7 +200,7 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
         )}
       </div>
 
-      {isWS && (
+      {canSend && (
         <form
           className="flex items-center gap-1.5"
           onSubmit={(e) => {
@@ -213,7 +229,9 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
             onChange={(e) => setDraft(e.target.value)}
             placeholder={
               binaryMode
-                ? 'Bytes to send as a binary frame, e.g. {"action":"ping"}'
+                ? 'Bytes to send, e.g. {"action":"ping"}'
+                : tab.kind === "mqtt"
+                ? 'MQTT payload or topic message, e.g. {"topic":"sensors/temp","msg":"22.4"}'
                 : 'Message to send, e.g. {"action":"ping"}'
             }
             spellCheck={false}
