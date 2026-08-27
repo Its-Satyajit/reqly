@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { X, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, Pin, X, Plus } from "lucide-react";
 import { useRealtimeStore } from "#stores/useRealtimeStore";
 import { useTestStore } from "#stores/useTestStore";
 import { useWorkspaceStore } from "#stores";
@@ -19,14 +19,16 @@ import {
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
 
-function TabItem({ tab }: { tab: RequestTab }) {
+function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; onReorder: (from: number, to: number) => void }) {
 	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
 	const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
 	const closeTab = useWorkspaceStore((s) => s.closeTab);
+	const openTab = useWorkspaceStore((s) => s.openTab);
 	const dirty = useRequestStore((s) =>
 		tabIsDirty(s.drafts[tab.id], s.meta[tab.id]),
 	);
 	const [confirming, setConfirming] = useState(false);
+	const [pinned, setPinned] = useState(false);
 	const active = activeTabId === tab.id;
 
 	const requestClose = () => {
@@ -39,8 +41,21 @@ function TabItem({ tab }: { tab: RequestTab }) {
 		closeTab(tab.id, { force: true });
 	};
 
+	const duplicate = () => {
+		const id = `${tab.id}--copy-${Date.now()}`;
+		openTab({ ...tab, id, title: `${tab.title} (copy)` });
+	};
+
 	return (
 		<div
+			draggable
+			onDragStart={(e) => e.dataTransfer.setData("text/plain", String(index))}
+			onDragOver={(e) => e.preventDefault()}
+			onDrop={(e) => {
+				e.preventDefault();
+				const from = Number(e.dataTransfer.getData("text/plain"));
+				if (!Number.isNaN(from) && from !== index) onReorder(from, index);
+			}}
 			className={cn(
 				"group flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors",
 				active
@@ -57,6 +72,7 @@ function TabItem({ tab }: { tab: RequestTab }) {
 				className="max-w-40 truncate"
 				title={tab.title}
 			>
+				{pinned && <Pin className="mr-1 size-3 shrink-0 text-muted-foreground" aria-label="Pinned" />}
 				{dirty && (
 					<span
 						title="Unsaved changes"
@@ -65,6 +81,24 @@ function TabItem({ tab }: { tab: RequestTab }) {
 					/>
 				)}
 				{tab.title}
+			</button>
+			<button
+				type="button"
+				onClick={() => setPinned((v) => !v)}
+				title={pinned ? "Unpin" : "Pin"}
+				aria-label={pinned ? "Unpin tab" : "Pin tab"}
+				className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
+			>
+				<Pin className="size-3" aria-hidden />
+			</button>
+			<button
+				type="button"
+				onClick={duplicate}
+				title="Duplicate tab"
+				aria-label={`Duplicate ${tab.title}`}
+				className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
+			>
+				<Copy className="size-3" aria-hidden />
 			</button>
 			<button
 				type="button"
@@ -109,6 +143,30 @@ function TabItem({ tab }: { tab: RequestTab }) {
 export function RequestTabs() {
 	const openTabs = useWorkspaceStore((s) => s.openTabs);
 	const openTab = useWorkspaceStore((s) => s.openTab);
+	const setTabs = (tabs: typeof openTabs) => useWorkspaceStore.setState({ openTabs: tabs });
+	const reorder = (from: number, to: number) => {
+		const next = [...openTabs];
+		const [moved] = next.splice(from, 1);
+		next.splice(to, 0, moved);
+		setTabs(next);
+	};
+
+	useEffect(() => {
+		try {
+			const raw = localStorage.getItem("reqly:tabs");
+			if (raw) {
+				// SAFETY: JSON parsed at I/O boundary from localStorage; shape validated via Array.isArray check below
+				const parsed = JSON.parse(raw) as { openTabs: typeof openTabs; activeTabId: string | null };
+				if (Array.isArray(parsed.openTabs) && parsed.openTabs.length) {
+					useWorkspaceStore.setState({ openTabs: parsed.openTabs, activeTabId: parsed.activeTabId });
+				}
+			}
+		} catch {}
+	}, []);
+	useEffect(() => {
+		const activeTabId = useWorkspaceStore.getState().activeTabId;
+		localStorage.setItem("reqly:tabs", JSON.stringify({ openTabs, activeTabId }));
+	}, [openTabs]);
 
 	return (
 		<div
@@ -117,8 +175,8 @@ export function RequestTabs() {
 			onKeyDown={(e) => handleTabArrowKeys(e)}
 			className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-2 py-1"
 		>
-			{openTabs.map((t) => (
-				<TabItem key={t.id} tab={t} />
+			{openTabs.map((t, i) => (
+				<TabItem key={t.id} tab={t} index={i} onReorder={reorder} />
 			))}
 			<button
 				type="button"

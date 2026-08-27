@@ -20,15 +20,22 @@ import { copyText } from '../../lib/response'
 import { notifyError } from '../../lib/notify'
 import { handleTabArrowKeys, tabClass } from '../../lib/ui'
 
-const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
+const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE'] as const
 
-type Tab = 'params' | 'headers' | 'auth' | 'body' | 'variables'
+type Tab = 'params' | 'headers' | 'auth' | 'body' | 'variables' | 'pre-request' | 'tests' | 'docs' | 'settings'
 
 const tabs: { id: Tab; label: string }[] = [
   { id: 'params', label: 'Params' },
   { id: 'headers', label: 'Headers' },
-  { id: 'auth', label: 'Auth' },
   { id: 'body', label: 'Body' },
+  { id: 'auth', label: 'Auth' },
+]
+
+const overflowTabs: { id: Tab; label: string }[] = [
+  { id: 'pre-request', label: 'Pre-request' },
+  { id: 'tests', label: 'Tests' },
+  { id: 'docs', label: 'Docs' },
+  { id: 'settings', label: 'Settings' },
   { id: 'variables', label: 'Variables' },
 ]
 
@@ -39,6 +46,8 @@ const bodyLanguage = {
   'form-data': 'text',
   urlencoded: 'text',
   raw: 'text',
+  text: 'text',
+  html: 'text',
   binary: 'text',
   graphql: 'graphql',
 } satisfies Record<BodyType, 'json' | 'xml' | 'text' | 'graphql'>
@@ -311,21 +320,50 @@ export function RequestEditor() {
         aria-label="Request sections"
         onKeyDown={(e) => handleTabArrowKeys(e)}
       >
-        {tabs
-          .filter((t) => showVariables || t.id !== 'variables')
-          .map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              tabIndex={tab === t.id ? 0 : -1}
-              onClick={() => setTab(t.id)}
-              className={tabClass(tab === t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            tabIndex={tab === t.id ? 0 : -1}
+            onClick={() => setTab(t.id)}
+            className={tabClass(tab === t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+        <div className="relative ml-1">
+          <button
+            type="button"
+            aria-label="More request sections"
+            aria-haspopup="menu"
+            onClick={() => setTab((prev) => (overflowTabs.some((o) => o.id === prev) ? prev : overflowTabs[0].id))}
+            className={tabClass(overflowTabs.some((o) => o.id === tab))}
+            title="More: Pre-request, Tests, Docs, Settings, Variables"
+          >
+            ⋮ More
+          </button>
+        </div>
+        {overflowTabs.some((o) => o.id === tab) && (
+          <div className="flex items-center gap-1">
+            {overflowTabs
+              .filter((t) => t.id !== 'variables' || showVariables)
+              .map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === t.id}
+                  tabIndex={tab === t.id ? 0 : -1}
+                  onClick={() => setTab(t.id)}
+                  className={tabClass(tab === t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+          </div>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -379,6 +417,15 @@ export function RequestEditor() {
             env={meta?.env ?? null}
             headerEnv={environments.find((e) => e.id === activeEnvironmentId)?.name ?? null}
           />
+        ) : tab === 'pre-request' || tab === 'tests' || tab === 'docs' || tab === 'settings' ? (
+          <div className="flex h-full items-center justify-center p-4">
+            <p className="text-xs text-muted-foreground">
+              {tab === 'pre-request' && 'Pre-request scripts — coming soon.'}
+              {tab === 'tests' && 'Tests — coming soon.'}
+              {tab === 'docs' && 'Docs — coming soon.'}
+              {tab === 'settings' && 'Request settings — coming soon.'}
+            </p>
+          </div>
         ) : (
           <div className="flex h-full flex-col gap-1">
             <div className="flex items-center gap-1">
@@ -403,22 +450,30 @@ export function RequestEditor() {
                 />
               </div>
             ) : draft.bodyType === 'binary' ? (
-              <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-md border border-border p-2">
+              <div
+                className="flex min-h-0 flex-1 flex-col gap-2 rounded-md border border-border p-2"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const file = e.dataTransfer.files[0]
+                  if (file) patch({ body: `./fixtures/${file.name}` })
+                }}
+              >
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    File path — relative to the request file
+                    File path — relative to the request file (drag & drop or type)
                   </span>
                   <input
                     value={draft.body}
                     onChange={(e) => patch({ body: e.target.value })}
-                    placeholder="./fixtures/payload.bin"
+                    placeholder="./fixtures/payload.bin — or drop a file"
                     aria-label="Binary file path"
                     spellCheck={false}
                     className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Enter a Git-native path relative to the request file (a browser file picker cannot produce one). The core reads the bytes from disk at send time.
+                  Enter a Git-native path relative to the request file or drop a file to set the name. The core reads the bytes from disk at send time.
                 </p>
               </div>
             ) : draft.bodyType === 'graphql' ? (

@@ -5,7 +5,7 @@
 
 ### Features
 
-* **desktop:** GUI gRPC client — M43 T7 dedicated tab kind ([530fdad](https://github.com/Its-Satyajit/reqly/commit/530fdadc63589d45cfb36b6b54cd36908027b05d))
+* **desktop:** GUI  gRPC client — M43 T7 dedicated tab kind ([530fdad](https://github.com/Its-Satyajit/reqly/commit/530fdadc63589d45cfb36b6b54cd36908027b05d))
 * **desktop:** GUI gRPC client — M43 T7 dedicated tab kind ([1146102](https://github.com/Its-Satyajit/reqly/commit/114610266562a3dbf925644254f5fe9c32f91b17))
 * **grpc:** M43 T5 — server-streaming invoke ([9bf3bbd](https://github.com/Its-Satyajit/reqly/commit/9bf3bbd1aa4556a0ec9514270d6287dfb973f33b))
 * **grpc:** M43 T5 — server-streaming invoke ([e652dfb](https://github.com/Its-Satyajit/reqly/commit/e652dfbd7a6cc7f098a64570342451f9e50b3f2a))

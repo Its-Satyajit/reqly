@@ -24,15 +24,17 @@ import {
 import { notifyError } from "../../lib/notify";
 import { useRequestStore, useWorkspaceStore } from "../../stores";
 
-type View = "raw" | "pretty" | "headers" | "tree" | "cookies" | "table";
+type View = "raw" | "pretty" | "headers" | "tree" | "cookies" | "table" | "tests" | "timeline";
 
 const views: { id: View; label: string }[] = [
+	{ id: "pretty", label: "Body" },
 	{ id: "raw", label: "Raw" },
-	{ id: "pretty", label: "Pretty" },
 	{ id: "headers", label: "Headers" },
-	{ id: "tree", label: "Tree" },
 	{ id: "cookies", label: "Cookies" },
+	{ id: "tree", label: "Tree" },
 	{ id: "table", label: "Table" },
+	{ id: "tests", label: "Test Results" },
+	{ id: "timeline", label: "Timeline" },
 ];
 
 export function ResponseViewer() {
@@ -489,6 +491,21 @@ export function ResponseViewer() {
 									))}
 								</tbody>
 							</table>
+						)}
+					</div>
+				) : view === "tests" ? (
+					<div className="flex h-full items-center justify-center p-4">
+						<p className="text-xs text-muted-foreground">No test results — run pre-request/tests scripts to see output.</p>
+					</div>
+				) : view === "timeline" ? (
+					<div className="flex h-full flex-col gap-2 p-2">
+						{response ? (
+							<div className="rounded-md border border-border bg-background p-2 text-xs">
+								<p className="text-muted-foreground">Timeline — request took {response.durationMs}ms · {formatBytes(response.size)} · {response.statusCode} {response.statusText}</p>
+								<p className="mt-1 text-muted-foreground/70">Detailed waterfall coming soon.</p>
+							</div>
+						) : (
+							<p className="text-xs text-muted-foreground">No timeline — send a request.</p>
 						)}
 					</div>
 				) : response ? (
