@@ -527,7 +527,7 @@ Every checked feature must pass the full checklist:
 33. ~~**OpenAPI editor + endpoint explorer**~~ — in-app spec authoring + generate requests from spec + JSON Schema edit/validate (`reqly openapi validate/explore/generate`, Desktop explorer with Try in Builder + schema inspection) — **shipped**
 34. ~~**API diff & breaking-change detection**~~ — endpoints/params/schemas/auth/response-types + spec/request/response/env diff polish (`reqly diff [--fail-on-breaking]`, severity classification in core + Desktop DiffView) — **shipped**
 35. ~~**Contract testing + schema validation**~~ — OpenAPI/JSON Schema response validation pipeline (`internal/testing.AssertJSONSchema`, `internal/jsonschema.Validate`, response contract checks) — **shipped**
-36. **Advanced HTTP / Proxy & TLS controls** — HTTP/2, per-env/per-request proxy, cert inspection, mTLS, custom CAs
+36. ~~**Advanced HTTP / Proxy & TLS controls**~~ — HTTP/2, per-env/per-request proxy, cert inspection, mTLS, custom CAs (`internal/request.Client` proxy & TLS support, Desktop Proxy & TLS settings) — **shipped**
 37. **Performance testing (lightweight)** — RPS/latency P95/P99/error-rate/status-distribution
 
 > **Companion:** [**reqly-test-api**](https://reqly-test-api.vercel.app) — a small ElysiaJS mock API (Vercel-hosted, hardcoded data) for exercising `reqly run`/`test`, auth, delay, and error-status flows against a real endpoint. Useful while the in-app mock server (milestone 7) is pending; see the README's "Mock API" section.
@@ -583,7 +583,7 @@ The following ticket-level milestone history is preserved from the older develop
 33. ~~**OpenAPI editor + endpoint explorer**~~ — in-app spec authoring + generate requests from spec + JSON Schema edit/validate (`reqly openapi validate/explore/generate`, Desktop explorer with Try in Builder + schema inspection) — **shipped**
 34. ~~**API diff & breaking-change detection**~~ — endpoints/params/schemas/auth/response-types + spec/request/response/env diff polish (`reqly diff [--fail-on-breaking]`, severity classification in core + Desktop DiffView) — **shipped**
 35. ~~**Contract testing + schema validation**~~ — OpenAPI/JSON Schema response validation pipeline (`internal/testing.AssertJSONSchema`, `internal/jsonschema.Validate`, response contract checks) — **shipped**
-36. **Advanced HTTP / Proxy & TLS controls** — HTTP/2, per-env/per-request proxy, cert inspection, mTLS, custom CAs
+36. ~~**Advanced HTTP / Proxy & TLS controls**~~ — HTTP/2, per-env/per-request proxy, cert inspection, mTLS, custom CAs (`internal/request.Client` proxy & TLS support, Desktop Proxy & TLS settings) — **shipped**
 37. **Performance testing (lightweight)** — RPS/latency P95/P99/error-rate/status-distribution
 
 
