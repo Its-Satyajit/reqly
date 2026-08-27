@@ -169,6 +169,8 @@ export function RequestEditor() {
       env: meta?.env,
       requestPath,
       auth: draft.auth,
+      proxy: draft.proxy,
+      tls: draft.tls,
     })
   }
 
@@ -417,14 +419,27 @@ export function RequestEditor() {
             env={meta?.env ?? null}
             headerEnv={environments.find((e) => e.id === activeEnvironmentId)?.name ?? null}
           />
-        ) : tab === 'pre-request' || tab === 'tests' || tab === 'docs' || tab === 'settings' ? (
+        ) : tab === 'pre-request' || tab === 'tests' || tab === 'docs' ? (
           <div className="flex h-full items-center justify-center p-4">
             <p className="text-xs text-muted-foreground">
               {tab === 'pre-request' && 'Pre-request scripts — coming soon.'}
               {tab === 'tests' && 'Tests — coming soon.'}
               {tab === 'docs' && 'Docs — coming soon.'}
-              {tab === 'settings' && 'Request settings — coming soon.'}
             </p>
+          </div>
+        ) : tab === 'settings' ? (
+          <div className="flex flex-col gap-3 p-2">
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Proxy URL</span>
+              <input value={draft.proxy ?? ''} onChange={(e) => patch({ proxy: e.target.value || undefined })} placeholder="http://proxy:8080" spellCheck={false} className="rounded-md border border-input bg-background px-2 py-1.5 text-xs" />
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={Boolean(draft.tls?.insecureSkipVerify)} onChange={(e) => patch({ tls: { ...draft.tls, insecureSkipVerify: e.target.checked } })} /> Insecure skip verify
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">CA file (workspace-relative PEM)</span>
+              <input value={draft.tls?.caFile ?? ''} onChange={(e) => patch({ tls: { ...draft.tls, caFile: e.target.value || undefined } })} placeholder="./certs/ca.pem" spellCheck={false} className="rounded-md border border-input bg-background px-2 py-1.5 text-xs" />
+            </label>
           </div>
         ) : (
           <div className="flex h-full flex-col gap-1">

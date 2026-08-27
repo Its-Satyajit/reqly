@@ -43,6 +43,19 @@ type Response struct {
 	// auth scheme acquired one (e.g. oauth2). It exists so callers can mask
 	// it in output; it is never serialized.
 	AuthToken string `json:"-"`
+	// Timings holds network phase durations (ms) for timeline debugging (M52).
+	Timings *Timings `json:"timings,omitempty"`
+}
+
+// Timings holds phase durations for the request timeline (DNS/connect/TLS/…).
+type Timings struct {
+	DNS      int64 `json:"dns"`
+	Connect  int64 `json:"connect"`
+	TLS      int64 `json:"tls"`
+	Request  int64 `json:"request"`
+	Server   int64 `json:"server"`
+	Response int64 `json:"response"`
+	Transfer int64 `json:"transfer"`
 }
 
 // OK reports whether the response indicates success (2xx).

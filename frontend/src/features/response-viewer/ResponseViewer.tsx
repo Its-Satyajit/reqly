@@ -502,7 +502,29 @@ export function ResponseViewer() {
 						{response ? (
 							<div className="rounded-md border border-border bg-background p-2 text-xs">
 								<p className="text-muted-foreground">Timeline — request took {response.durationMs}ms · {formatBytes(response.size)} · {response.statusCode} {response.statusText}</p>
-								<p className="mt-1 text-muted-foreground/70">Detailed waterfall coming soon.</p>
+								{response.timings ? (
+									<div className="mt-2 flex flex-col gap-1">
+										{[
+											{ label: "DNS", value: response.timings.dns, color: "bg-status-info" },
+											{ label: "Connect", value: response.timings.connect, color: "bg-status-info" },
+											{ label: "TLS", value: response.timings.tls, color: "bg-status-warn" },
+											{ label: "Request", value: response.timings.request, color: "bg-status-ok" },
+											{ label: "Server", value: response.timings.server, color: "bg-status-error" },
+											{ label: "Response", value: response.timings.response, color: "bg-primary" },
+											{ label: "Transfer", value: response.timings.transfer, color: "bg-muted-foreground" },
+										].map((p) => (
+											<div key={p.label} className="flex items-center gap-2">
+												<span className="w-16 text-muted-foreground">{p.label}</span>
+												<div className="h-2 flex-1 rounded bg-muted">
+													<div className={`h-2 rounded ${p.color}`} style={{ width: `${Math.min(100, (p.value / Math.max(1, response.durationMs)) * 100)}%` }} />
+												</div>
+												<span className="w-12 text-right tabular-nums">{p.value}ms</span>
+											</div>
+										))}
+									</div>
+								) : (
+									<p className="mt-1 text-muted-foreground/70">Detailed waterfall coming soon.</p>
+								)}
 							</div>
 						) : (
 							<p className="text-xs text-muted-foreground">No timeline — send a request.</p>

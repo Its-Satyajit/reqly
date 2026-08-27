@@ -319,6 +319,18 @@ func SendResponseFrom(rr *RunResult) *SendResponse {
 		return nil
 	}
 	resp := rr.Response
+	var timings *Timings
+	if resp.Timings != nil {
+		timings = &Timings{
+			DNS:      resp.Timings.DNS,
+			Connect:  resp.Timings.Connect,
+			TLS:      resp.Timings.TLS,
+			Request:  resp.Timings.Request,
+			Server:   resp.Timings.Server,
+			Response: resp.Timings.Response,
+			Transfer: resp.Timings.Transfer,
+		}
+	}
 	return &SendResponse{
 		StatusCode: resp.StatusCode,
 		StatusText: resp.StatusText,
@@ -329,6 +341,7 @@ func SendResponseFrom(rr *RunResult) *SendResponse {
 		Size:       resp.Size,
 		OK:         resp.OK(),
 		Attempts:   resp.Attempts,
+		Timings:    timings,
 	}
 }
 

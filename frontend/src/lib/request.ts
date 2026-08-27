@@ -59,6 +59,10 @@ export interface RequestInput {
 	graphqlQuery?: string;
 	graphqlVariables?: string;
 	timeout?: number;
+	/** Per-request proxy URL (overrides environment). */
+	proxy?: string;
+	/** Per-request TLS (M47). */
+	tls?: { insecureSkipVerify?: boolean; caFile?: string };
 	/** Automatic retry policy; absent = no retries. */
 	retry?: RequestRetry;
 	/** Environment pill (a request file's environment: field) used at send;
@@ -109,6 +113,7 @@ export interface ResponseData {
 	ok: boolean;
 	/** Sends this response took, including retries (1 or undefined = none). */
 	attempts?: number;
+	timings?: { dns: number; connect: number; tls: number; request: number; server: number; response: number; transfer: number };
 }
 
 export type RequestSender = (req: RequestInput) => Promise<ResponseData>;
