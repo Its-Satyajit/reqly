@@ -36,7 +36,7 @@ var diffCmd = &cobra.Command{
 		doc2, err2 := openapi.Load(bytes2)
 
 		var res *diffing.DiffResult
-		if err1 == nil && err2 == nil {
+		if err1 == nil && err2 == nil && doc1 != nil && doc2 != nil && (doc1.OpenAPI != "" || doc1.Paths != nil) && (doc2.OpenAPI != "" || doc2.Paths != nil) {
 			// OpenAPI semantic diffing
 			rawRes, err := diffing.OpenAPI(doc1, doc2)
 			if err != nil {
