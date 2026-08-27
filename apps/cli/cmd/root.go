@@ -75,5 +75,6 @@ func init() {
 		monitorCmd,
 		pluginCmd,
 		mcpCmd,
+		aiCmd,
 	)
 }
