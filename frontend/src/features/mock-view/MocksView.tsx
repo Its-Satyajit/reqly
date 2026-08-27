@@ -46,9 +46,15 @@ export function MocksView() {
   return (
     <section className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4" aria-label="Mock server">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Mock Server</h2>
+        <h2 className="text-sm font-semibold">Mock Servers</h2>
         <div className="flex items-center gap-2">
-          {status.running && (
+          <span
+            title={status.running ? "Running" : status.error ? "Crashed" : "Stopped"}
+            className={cn("size-2 rounded-full", status.running ? "bg-status-ok" : status.error ? "bg-destructive" : "bg-muted-foreground")}
+            aria-label={status.running ? "Running" : "Stopped"}
+          />
+          <span className="text-xs text-muted-foreground">{status.running ? "Running" : status.error ? "Crashed" : "Stopped"}</span>
+          {status.url && (
             <Badge variant="secondary" className="font-mono text-status-ok">
               {status.url}
             </Badge>
@@ -57,6 +63,11 @@ export function MocksView() {
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void stop()}>
               {busy ? <Spinner data-icon="inline-start" /> : <Square data-icon="inline-start" />}
               Stop
+            </Button>
+          ) : status.error ? (
+            <Button size="sm" disabled={busy} onClick={() => void start()}>
+              {busy ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
+              Restart
             </Button>
           ) : (
             <Button size="sm" disabled={busy} onClick={() => void start()}>
@@ -203,6 +214,30 @@ export function MocksView() {
               placeholder={"Content-Type: application/json\nX-Mock: true"}
               className="resize-y font-mono text-[11px]"
             />
+            <div className="flex gap-2">
+              <label className="flex flex-col gap-1 text-xs">
+                Latency (ms)
+                <input
+                  type="number"
+                  value={route.latencyMs ?? 0}
+                  onChange={(e) => updateRoute(i, { latencyMs: inputInt(e.target.value, 0) })}
+                  aria-label={`Route ${route.path} latency`}
+                  className={numberInput}
+                  min={0}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Scenario
+                <Input
+                  value={route.scenario ?? ""}
+                  onChange={(e) => updateRoute(i, { scenario: e.target.value })}
+                  placeholder="default"
+                  aria-label={`Route ${route.path} scenario`}
+                  className="w-32 font-mono text-xs"
+                />
+              </label>
+              <span className="self-end text-[11px] text-muted-foreground">Body file via body field (JSON/text)</span>
+            </div>
           </li>
         ))}
       </ul>

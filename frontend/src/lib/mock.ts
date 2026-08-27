@@ -8,6 +8,10 @@ export interface MockRoute {
   /** Raw header lines ("Key: value"), parsed by the bridge. */
   headerLines: string[];
   enabled: boolean;
+  /** Per-route latency in ms (optional). */
+  latencyMs?: number;
+  /** Scenario name this route belongs to (optional). */
+  scenario?: string;
 }
 
 export interface MockStatus {
