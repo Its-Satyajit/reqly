@@ -28,7 +28,6 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/perf"
-	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
 	"github.com/Its-Satyajit/reqly/internal/response"
 )
@@ -90,12 +89,9 @@ var perfRunCmd = &cobra.Command{
 			opts.Duration = 30 * time.Second
 		}
 
-		// Normalize request for perf (strip pagination etc. not needed).
-		_ = request.Request{}
-
 		result, err := perf.Run(cmd.Context(), opts, send)
 		if err != nil {
-			return err
+			return fmt.Errorf("perf run: %w", err)
 		}
 		if perfJSON {
 			enc := json.NewEncoder(cmd.OutOrStdout())

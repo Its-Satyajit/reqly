@@ -122,14 +122,7 @@ done:
 	p50 := percentile(latencies, 50)
 	p95 := percentile(latencies, 95)
 	p99 := percentile(latencies, 99)
-	errCount := statusCounts[0]
-	for code, c := range statusCounts {
-		if code >= 400 {
-			errCount += c
-		}
-	}
-	// errorRate counts 0 + 4xx/5xx as errors; already included 0 in errCount double counts 0: correct is statusCounts[0] + 4xx/5xx
-	// So recompute: errorRate = (non-2xx+3xx + 0)/total counted
+
 	nonSuccess := 0
 	for code, c := range statusCounts {
 		if code == 0 || code >= 400 {
@@ -158,15 +151,7 @@ func percentile(sorted []int64, p int) int64 {
 	if len(sorted) == 0 {
 		return 0
 	}
-	idx := (p*len(sorted) + 50) / 100
-	if idx >= len(sorted) {
-		idx = len(sorted) - 1
-	}
-	if idx < 0 {
-		idx = 0
-	}
-	// 50th percentile at 0-indexed: ceil(p/100 * n) -1
-	// Use standard: idx = ceil(p*n/100)-1
+	// Nearest rank percentile calculation
 	k := (p*len(sorted) + 99) / 100
 	if k < 1 {
 		k = 1
