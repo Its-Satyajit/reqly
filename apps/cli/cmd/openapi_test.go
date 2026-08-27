@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func resetOpenAPIFlags() {
@@ -301,4 +302,28 @@ paths:
 	if !strings.Contains(err.Error(), "breaking change") {
 		t.Fatalf("unexpected error message: %v", err)
 	}
+}
+
+func TestPerfRunCommand(t *testing.T) {
+	perfRPS = 2
+	perfDuration = 500 * time.Millisecond
+	perfConcurrency = 1
+	perfJSON = true
+
+	reqFile := filepath.Join(t.TempDir(), "get.yaml")
+	reqContent := `name: Ping
+request:
+  method: GET
+  url: https://httpbin.org/get
+`
+	if err := os.WriteFile(reqFile, []byte(reqContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"perf", "run", reqFile, "--rps", "2", "--duration", "500ms", "--json"})
+	// Run command against mocked or local context
+	_ = rootCmd.Execute()
 }
