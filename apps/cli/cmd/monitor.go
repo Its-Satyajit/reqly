@@ -66,9 +66,6 @@ var monitorRunCmd = &cobra.Command{
 			}
 		}
 		interval := monitorInterval
-		if interval == 0 {
-			interval = 5 * time.Minute
-		}
 		return monitor.Run(cmd.Context(), interval, threshold, send, onResult)
 	},
 }

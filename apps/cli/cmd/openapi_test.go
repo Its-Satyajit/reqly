@@ -340,3 +340,35 @@ request:
 		t.Fatalf("expected JSON perf summary in stdout, got: %s", out.String())
 	}
 }
+
+func TestMonitorRunCommand(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer srv.Close()
+
+	monitorInterval = 0
+	monitorJSON = true
+
+	reqFile := filepath.Join(t.TempDir(), "health.yaml")
+	reqContent := fmt.Sprintf(`name: HealthCheck
+request:
+  method: GET
+  url: %s
+`, srv.URL)
+	if err := os.WriteFile(reqFile, []byte(reqContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"monitor", "run", reqFile, "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("monitor run failed: %v", err)
+	}
+	if !strings.Contains(out.String(), `"ok":true`) || !strings.Contains(out.String(), `"status":200`) {
+		t.Fatalf("expected JSON monitor output, got: %s", out.String())
+	}
+}
