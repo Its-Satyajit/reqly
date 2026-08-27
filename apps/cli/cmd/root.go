@@ -71,5 +71,6 @@ func init() {
 		jwtCmd,
 		paginationCmd,
 		bulkCmd,
+		perfCmd,
 	)
 }
