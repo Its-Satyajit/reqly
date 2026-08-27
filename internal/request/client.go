@@ -19,12 +19,15 @@ package request
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -190,6 +193,51 @@ func (c *Client) execute(ctx context.Context, r *Request, vars auth.Interpolator
 	}
 }
 
+// transportForRequest clones the client's transport for per-request proxy/TLS (M47).
+func (c *Client) transportForRequest(r *Request, vars auth.Interpolator) (*http.Transport, error) {
+	base := http.DefaultTransport.(*http.Transport).Clone()
+	// Proxy
+	if r.Proxy != "" {
+		proxyStr, err := vars.Interpolate(r.Proxy)
+		if err != nil {
+			return nil, fmt.Errorf("proxy: %w", err)
+		}
+		if proxyStr != "" {
+			u, err := url.Parse(proxyStr)
+			if err != nil {
+				return nil, fmt.Errorf("proxy: invalid URL %q: %w", proxyStr, err)
+			}
+			base.Proxy = http.ProxyURL(u)
+		}
+	}
+	// TLS
+	if r.TLS != nil {
+		tlsCfg := &tls.Config{}
+		if r.TLS.InsecureSkipVerify {
+			tlsCfg.InsecureSkipVerify = true
+		}
+		if r.TLS.CAFile != "" {
+			caPath, err := vars.Interpolate(r.TLS.CAFile)
+			if err != nil {
+				return nil, fmt.Errorf("tls: caFile: %w", err)
+			}
+			pem, err := os.ReadFile(caPath)
+			if err != nil {
+				return nil, fmt.Errorf("tls: caFile %q: %w", caPath, err)
+			}
+			pool := x509.NewCertPool()
+			if !pool.AppendCertsFromPEM(pem) {
+				return nil, fmt.Errorf("tls: caFile %q: failed to parse PEM", caPath)
+			}
+			tlsCfg.RootCAs = pool
+		}
+		if tlsCfg.InsecureSkipVerify || tlsCfg.RootCAs != nil {
+			base.TLSClientConfig = tlsCfg
+		}
+	}
+	return base, nil
+}
+
 // sendOnce performs exactly one send of the request: build, transport,
 // challenge-based auth handling, and body read. It is the unit a retry
 // policy counts; auth re-sends inside it stay within one attempt.
@@ -199,8 +247,18 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 		return nil, err
 	}
 
+	// Per-request transport (M47) — only when proxy/TLS set to avoid alloc.
+	var httpClient *http.Client = c.http
+	if r.Proxy != "" || r.TLS != nil {
+		tr, err := c.transportForRequest(r, vars)
+		if err != nil {
+			return nil, err
+		}
+		httpClient = &http.Client{Transport: tr, Timeout: c.http.Timeout}
+	}
+
 	start := time.Now()
-	resp, err := c.http.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +285,7 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 				// explicitly not propagated.
 				_, _ = io.Copy(io.Discard, resp.Body)
 				_ = resp.Body.Close()
-				resp, err = c.http.Do(retryReq)
+				resp, err = httpClient.Do(retryReq)
 				if err != nil {
 					return nil, err
 				}
@@ -254,7 +312,7 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 				}
 				_, _ = io.Copy(io.Discard, resp.Body)
 				_ = resp.Body.Close()
-				resp, err = c.http.Do(retryReq)
+				resp, err = httpClient.Do(retryReq)
 				if err != nil {
 					return nil, err
 				}

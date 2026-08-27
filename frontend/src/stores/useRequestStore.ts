@@ -25,6 +25,10 @@ export interface TabDraft {
   auth?: RequestAuth
   /** The request's own retry policy (unset = no retries). */
   retry?: RequestRetry
+  /** Per-request proxy URL (M47). */
+  proxy?: string
+  /** Per-request TLS (M47). */
+  tls?: { insecureSkipVerify?: boolean; caFile?: string }
 }
 
 /** Per-tab metadata for requests opened from a collection: the source request

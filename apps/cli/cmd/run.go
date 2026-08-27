@@ -40,6 +40,9 @@ var (
 	runTimeout    time.Duration
 	runRetries    int
 	runRetryDelay time.Duration
+	runProxy      string
+	runInsecure   bool
+	runCAFile     string
 )
 
 var runCmd = &cobra.Command{
@@ -108,6 +111,8 @@ and --data to build requests directly on the CLI:
 				Body:    runBody,
 				Timeout: runTimeout.Milliseconds(),
 				Retry:   retryFromFlags(cmd),
+				Proxy:   runProxy,
+				TLS:     tlsFromFlags(cmd),
 			}
 			vars = variables.NewSet()
 		}
@@ -186,6 +191,9 @@ func init() {
 	runCmd.Flags().IntVar(&runRetries, "retries", 0, "automatic retries after transient failures (network errors, 429/502/503/504)")
 	runCmd.Flags().DurationVar(&runRetryDelay, "retry-delay", time.Second, "base delay between retries (exponential backoff by default)")
 	runCmd.Flags().StringVar(&envFlag, "env", "", "environment to use (falls back to the file's environment field; REQLY_ENV wins)")
+	runCmd.Flags().StringVar(&runProxy, "proxy", "", "proxy URL for this request (overrides environment proxy)")
+	runCmd.Flags().BoolVar(&runInsecure, "insecure", false, "skip TLS verification for this request")
+	runCmd.Flags().StringVar(&runCAFile, "ca-file", "", "path to PEM CA bundle for this request")
 }
 
 // applyRunOverrides copies explicitly-set CLI flags onto a request loaded from
@@ -224,7 +232,38 @@ func applyRunOverrides(cmd *cobra.Command, req *request.Request) error {
 		}
 		req.Retry = policy
 	}
+	if flags.Changed("proxy") {
+		req.Proxy = runProxy
+	}
+	if flags.Changed("insecure") || flags.Changed("ca-file") {
+		tlsCfg := req.TLS
+		if tlsCfg == nil {
+			tlsCfg = &request.TLSConfig{}
+		} else {
+			copied := *tlsCfg
+			tlsCfg = &copied
+		}
+		if flags.Changed("insecure") {
+			tlsCfg.InsecureSkipVerify = runInsecure
+		}
+		if flags.Changed("ca-file") {
+			tlsCfg.CAFile = runCAFile
+		}
+		req.TLS = tlsCfg
+	}
 	return nil
+}
+
+// tlsFromFlags builds a TLSConfig purely from CLI flags for URL-mode requests.
+func tlsFromFlags(cmd *cobra.Command) *request.TLSConfig {
+	flags := cmd.Flags()
+	if !flags.Changed("insecure") && !flags.Changed("ca-file") {
+		return nil
+	}
+	return &request.TLSConfig{
+		InsecureSkipVerify: runInsecure,
+		CAFile:             runCAFile,
+	}
 }
 
 // retryFromFlags builds a Retry policy purely from CLI flags for URL-mode
