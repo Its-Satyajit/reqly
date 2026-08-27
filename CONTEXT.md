@@ -411,3 +411,12 @@ Cross-tool interaction primitives (spec §61) reused everywhere: global Command 
 ### Final Layout Model
 Canonical five-zone shell (spec §63, `DESIGN.md` Layout) as single source of truth: **TopBar** (workspace pill, `⌘K`, env, sync) → **Tool Rail** (48–56px, 4 groups) → **Context Sidebar** (220–280px, resizable/collapsible) → **Main Workspace** (tab-based page routing) → **Bottom Utility Panel** (resizable, `⌘J`). Persisted layout (sidebar collapsed, bottom height, active tool) via localStorage; all chrome consumes Design Tokens only.
 
+### Proxy per Request
+Per-request proxy URL (`request.proxy`) overriding the environment/OS proxy for that send. Stored as a plain-text string in the request file (`proxy: http://proxy:8080`), interpolated like variables, applied to the Go transport at `Client.Execute` time. Precedence: request > env (deferred) > OS `HTTP_PROXY`. Fail-closed: invalid URL surfaces as send error.
+
+### TLS per Request
+Per-request TLS controls (`request.tls {insecureSkipVerify, caFile}`) applied to the `tls.Config` for that send. `caFile` is a workspace-relative path to a PEM CA bundle (`0644`), loaded at send time; `insecureSkipVerify` bypasses verification for that request only. Invalid CA file → send fails, no insecure fallback. mTLS `clientCert`/`clientKey` deferred to §36b.
+
+### Perf Runner
+Lightweight load generation (`reqly perf run <request-file> --rps --duration`) — constant-RPS worker pool over `internal/request.Client`, sorted latencies for P50/P95/P99, status histogram, error-rate. CLI + GUI (TanStack Charts `defineChart/lineY/mountChart` via `pnpm add @tanstack/charts`, framework-agnostic DOM host `mountChart(container,{definition,height,ariaLabel})`, `ResizeObserver` width) in one slice per §37 Q1.
+
