@@ -25,3 +25,9 @@ export function edgesForNodes(nodes: SchemaNode[]): SchemaEdge[] {
   const ids = new Set(nodes.map((n) => n.id));
   return SCHEMA_EDGES.filter((e) => ids.has(e.from) && ids.has(e.to));
 }
+
+export function nodesForOpenApiContent(content: string): SchemaNode[] {
+  if (!content || !content.includes("components:")) return SCHEMA_NODES.slice(0, 1);
+  // M53 T1: reuse static nodes for now; full YAML ref parsing deferred to follow-up
+  return SCHEMA_NODES;
+}
