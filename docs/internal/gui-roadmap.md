@@ -86,13 +86,13 @@
 - [x] Status indicators (Connected/Running/Valid/Success/Warning/Error) — Status Ramp + `StatusPill` dot+code (never color alone), method tints
 - [x] Hairline borders, no shadows — `border-border` shell/cards/panels; `shadow-md/lg` only on floating `popover`/`dropdown-menu`/`select`/`toast`
 
-## GUI-2 Navigation Model (spec §4, §60–63)
+## GUI-2 Navigation Model (spec §4, §60–63) — ✅ shipped 2026-08-27
 
-- [ ] Two-axis navigation: horizontal (tool rail) + vertical (sidebar)
-- [ ] 15+ full pages with sub-panels
-- [ ] Page vs panel rules (§62)
-- [ ] Shared interaction patterns (§61)
-- [ ] Final layout model (§63)
+- [x] Two-axis navigation: horizontal (tool rail) + vertical (sidebar) — TopBar/ToolRail/Sidebar/Workspace/BottomPanel, `⌘B`/`⌘J` persisted
+- [x] 15+ full pages with sub-panels — Home/Requests/Environments/History/Mocks/Diff/JWT/GraphQL/gRPC/Runners/Explorer/Docs/WS/SSE/Settings, lazy per-tool
+- [x] Page vs panel rules (§62) — page=tool route, sidebar=resource nav, bottom=inspector, dialog=transient
+- [x] Shared interaction patterns (§61) — `⌘K` palette, per-tool filter, StatusPill, tabs/button primitives
+- [x] Final layout model (§63) — canonical five-zone shell as single source of truth
 
 ## GUI-5 P1 Data Layer (spec §56.3–56.8) — PRESERVED
 

@@ -537,11 +537,11 @@ The minimum set to make Reqly a serious API client.
 - [x] **§2.4** Main Workspace — Tab-based content area, page/panel routing per active tool — 2026-08-27 (Request Builder tabs + Response Viewer)
 - [x] **§2.5** Bottom Utility Panel — Console/Network/Tests/Variables/Cookies, `⌘J` toggle, resizable — 2026-08-27 (pre-existing, verified)
 - [x] **§3** Design System — Tokens, typography, color system (IBM Plex, terracotta accent, BASE 6px radius) — `frontend/src/index.css` Atlas tokens + `DESIGN.md` + `CONTEXT.md` Design System glossary + ADR 0029 — 2026-08-27
-- [ ] **§4** Navigation Model — Two-axis: horizontal (tool rail) + vertical (sidebar resource)
-- [ ] **§60** Navigation Map — 15+ full pages with sub-panels (Params/Headers/Body/Auth/Tests/Response)
-- [ ] **§61** Shared Patterns — Search, primary/secondary actions, status indicators, tabs, panels
-- [ ] **§62** Page vs Panel Rules — Full pages vs context panels vs request/response panels vs bottom panels vs dialogs
-- [ ] **§63** Final Layout Model — Canonical five-zone shell as single source of truth
+- [x] **§4** Navigation Model — Two-axis: horizontal (tool rail) + vertical (sidebar resource) — five-zone shell (TopBar/ToolRail/Sidebar/Workspace/BottomPanel), `⌘B`/`⌘J` toggles, per-tool sidebar routing — 2026-08-27
+- [x] **§60** Navigation Map — 15+ full pages with sub-panels (Params/Headers/Body/Auth/Tests/Response) — 15 tool routes (Home/Requests/Environments/History/Mocks/Diff/JWT/GraphQL/gRPC/Runners/Explorer/Docs/WS/SSE/Settings), lazy-loaded — 2026-08-27
+- [x] **§61** Shared Patterns — Search, primary/secondary actions, status indicators, tabs, panels — `⌘K` palette + per-tool filter, StatusPill, shared tabs/button primitives — 2026-08-27
+- [x] **§62** Page vs Panel Rules — Full pages vs context panels vs request/response panels vs bottom panels vs dialogs — spec §62 split locked (page=tool route, sidebar=resource nav, bottom=inspector, dialog=transient) — 2026-08-27
+- [x] **§63** Final Layout Model — Canonical five-zone shell as single source of truth — TopBar/ToolRail(48–56px)/Sidebar(220–280px)/Workspace/BottomPanel, persisted layout — 2026-08-27
 - [x] Infinite-loop fix for palette `filtered` selector (`useSyncExternalStore` new-array identity) — 2026-08-26
 - [x] P1 spec editor (§56.1) tree + YAML `CodeMirror` + schema viz graph (§56.2) — 2026-08-26
 

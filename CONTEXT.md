@@ -396,3 +396,18 @@ The single memorable component (`frontend/src/components/status.tsx`) rendering 
 ### Hairline Border
 Defined-edge separation via `1px solid var(--border)` (`#e4e6e9` light / `#252b35` dark; `#8a9099` in high-contrast), not shadows. Shell, cards, and panels use hairline borders only; `shadow-md/lg` + `ring-1 ring-foreground/10` is permitted solely on floating layers (`popover`, `dropdown-menu`, `select`, `toast`) to escape the page — lint forbids `shadow-*` elsewhere.
 
+### Navigation Model
+Two-axis desktop navigation defined in spec §4: horizontal axis = Tool Rail (top-level tool selection: Workspace / API Tools / Realtime / System), vertical axis = Context Sidebar (resource tree/search/actions scoped to the active tool). Main Workspace renders the active tool's full page; Bottom Utility Panel is cross-cutting. Toggle `⌘B` collapses sidebar, `⌘J` collapses bottom panel — both persisted.
+
+### Navigation Map
+The 15+ full pages of the app (spec §60), each a top-level route in Main Workspace: Home, Requests, Environments, History, Mocks, Diff, JWT, GraphQL, gRPC, Runners, Explorer, Docs, WebSocket, SSE, Settings — each with sub-panels (e.g. Requests → Params/Headers/Body/Auth/Tests/Response). Pages are lazy-loaded (`React.lazy`) per tool; state is preserved per tab where applicable.
+
+### Page vs Panel Rules
+Spec §62 distinction governing surface choice: **Page** = full Main Workspace route per tool (e.g. Request Builder, Environments Manager); **Context Panel** = sidebar resource navigation scoped to the active tool (e.g. Collections tree, History filters); **Bottom Panel** = cross-cutting inspectors (Console/Network/Tests/Variables/Cookies, `⌘J`); **Dialog** = transient action (Import/Export/Create Collection, confirm destructive). Determines routing, persistence, and focus management.
+
+### Shared Patterns
+Cross-tool interaction primitives (spec §61) reused everywhere: global Command Palette (`⌘K`) + per-tool filter input, primary (coral) / secondary (neutral) action hierarchy, StatusPill dot+code indicators, tab primitives (`components/ui/tabs.tsx`), and panel chrome (hairline borders, header + content). Ensures consistent density and keyboard parity.
+
+### Final Layout Model
+Canonical five-zone shell (spec §63, `DESIGN.md` Layout) as single source of truth: **TopBar** (workspace pill, `⌘K`, env, sync) → **Tool Rail** (48–56px, 4 groups) → **Context Sidebar** (220–280px, resizable/collapsible) → **Main Workspace** (tab-based page routing) → **Bottom Utility Panel** (resizable, `⌘J`). Persisted layout (sidebar collapsed, bottom height, active tool) via localStorage; all chrome consumes Design Tokens only.
+
