@@ -117,15 +117,26 @@ export function GraphqlBrowser() {
       });
   };
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const navigate = (typeName: string) => setSelected(typeName);
   const selectedType: GqlType | undefined = schema?.types?.find((t) => t.name === selected);
+
+  const filteredTypes = (schema?.types ?? []).filter((t) =>
+    searchQuery.trim() === ""
+      ? true
+      : t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.fields?.some((f) =>
+          f.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        ),
+  );
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="GraphQL schema browser">
       <PageHeader
         icon={Hexagon}
         title="GraphQL Schema Browser"
-        description="Introspect a GraphQL endpoint and browse types, queries, and mutations"
+        description="Introspect a GraphQL endpoint or parse SDL schemas to browse and search types"
       />
       <div className="flex flex-col gap-3 p-4">
       <div className="flex flex-wrap items-end gap-2">
@@ -158,6 +169,22 @@ export function GraphqlBrowser() {
         </Button>
       </div>
 
+      {schema && (
+        <div className="flex items-center gap-2">
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Filter types or fields..."
+            className="h-8 font-mono text-xs max-w-xs"
+          />
+          {searchQuery && (
+            <span className="text-[11px] text-muted-foreground">
+              {filteredTypes.length} matches
+            </span>
+          )}
+        </div>
+      )}
+
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -186,12 +213,12 @@ export function GraphqlBrowser() {
             )}
           </div>
 
-          <details className="rounded-md border border-border p-2" open={selected != null}>
+          <details className="rounded-md border border-border p-2" open={selected != null || searchQuery.trim() !== ""}>
             <summary className="cursor-pointer text-xs font-medium">
-              Types ({schema.types?.length ?? 0})
+              Types ({filteredTypes.length})
             </summary>
             <ul className="flex flex-wrap gap-1 pt-2">
-              {(schema.types ?? []).map((t) => (
+              {filteredTypes.map((t) => (
                 <li key={t.name}>
                   <button
                     type="button"
