@@ -20,6 +20,9 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -305,17 +308,23 @@ paths:
 }
 
 func TestPerfRunCommand(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer srv.Close()
+
 	perfRPS = 2
-	perfDuration = 500 * time.Millisecond
+	perfDuration = 300 * time.Millisecond
 	perfConcurrency = 1
 	perfJSON = true
 
 	reqFile := filepath.Join(t.TempDir(), "get.yaml")
-	reqContent := `name: Ping
+	reqContent := fmt.Sprintf(`name: Ping
 request:
   method: GET
-  url: https://httpbin.org/get
-`
+  url: %s
+`, srv.URL)
 	if err := os.WriteFile(reqFile, []byte(reqContent), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -323,7 +332,11 @@ request:
 	var out bytes.Buffer
 	rootCmd.SetOut(&out)
 	rootCmd.SetErr(&out)
-	rootCmd.SetArgs([]string{"perf", "run", reqFile, "--rps", "2", "--duration", "500ms", "--json"})
-	// Run command against mocked or local context
-	_ = rootCmd.Execute()
+	rootCmd.SetArgs([]string{"perf", "run", reqFile, "--rps", "2", "--duration", "300ms", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("perf run failed: %v", err)
+	}
+	if !strings.Contains(out.String(), `"rps"`) || !strings.Contains(out.String(), `"statusCounts"`) {
+		t.Fatalf("expected JSON perf summary in stdout, got: %s", out.String())
+	}
 }
