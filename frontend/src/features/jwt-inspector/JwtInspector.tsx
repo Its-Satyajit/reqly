@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ClipboardPaste, ScanSearch } from "lucide-react";
+import { PageHeader } from "#components/PageHeader";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
@@ -96,9 +97,13 @@ export function JwtInspector() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4" aria-label="JWT inspector">
-      <h2 className="text-sm font-semibold">JWT Inspector</h2>
-
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="JWT inspector">
+      <PageHeader
+        icon={ScanSearch}
+        title="JWT Inspector"
+        description="Decode JWT header, claims, and expiry — paste a raw token or extract from the active tab"
+      />
+      <div className="flex flex-col gap-3 p-4">
       <div className="flex flex-col gap-2 rounded-md border border-border p-3">
         <label htmlFor="jwt-token" className="text-xs font-medium">
           Token (Bearer prefix optional)
@@ -182,6 +187,7 @@ export function JwtInspector() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

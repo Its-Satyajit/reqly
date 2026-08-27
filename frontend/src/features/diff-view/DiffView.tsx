@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { GitCompareArrows } from "lucide-react";
+import { PageHeader } from "#components/PageHeader";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
@@ -148,9 +149,13 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
     e ? `${e.method} ${e.url} · ${e.status} · ${new Date(e.createdAt).toLocaleString()}` : "";
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4" aria-label="API diff">
-      <h2 className="text-sm font-semibold">API Diff</h2>
-
+    <section className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="API diff">
+      <PageHeader
+        icon={GitCompareArrows}
+        title="API Diff"
+        description="Compare OpenAPI specs for breaking changes, or diff two history responses"
+      />
+      <div className="flex flex-col gap-3 p-4">
       <div className="flex items-center gap-2">
         <CompactSelect
           value={mode}
@@ -271,9 +276,10 @@ export function DiffView({ adapter }: { adapter?: DiffAdapter }) {
               </div>
             ))}
           </div>
-          {respResult.result && <ChangesList result={respResult.result} severity={false} />}
+        {respResult.result && <ChangesList result={respResult.result} severity={false} />}
         </div>
       )}
+      </div>
     </section>
   );
 }

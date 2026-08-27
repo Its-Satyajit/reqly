@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Play, Plus, Square, Trash2 } from "lucide-react";
+import { Antenna, Play, Plus, Square, Trash2 } from "lucide-react";
+import { PageHeader } from "#components/PageHeader";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
@@ -44,39 +45,44 @@ export function MocksView() {
   }, []);
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4" aria-label="Mock server">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Mock Servers</h2>
-        <div className="flex items-center gap-2">
-          <span
-            title={status.running ? "Running" : status.error ? "Crashed" : "Stopped"}
-            className={cn("size-2 rounded-full", status.running ? "bg-status-ok" : status.error ? "bg-destructive" : "bg-muted-foreground")}
-            aria-label={status.running ? "Running" : "Stopped"}
-          />
-          <span className="text-xs text-muted-foreground">{status.running ? "Running" : status.error ? "Crashed" : "Stopped"}</span>
-          {status.url && (
-            <Badge variant="secondary" className="font-mono text-status-ok">
-              {status.url}
-            </Badge>
-          )}
-          {status.running ? (
-            <Button variant="outline" size="sm" disabled={busy} onClick={() => void stop()}>
-              {busy ? <Spinner data-icon="inline-start" /> : <Square data-icon="inline-start" />}
-              Stop
-            </Button>
-          ) : status.error ? (
-            <Button size="sm" disabled={busy} onClick={() => void start()}>
-              {busy ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
-              Restart
-            </Button>
-          ) : (
-            <Button size="sm" disabled={busy} onClick={() => void start()}>
-              {busy ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
-              Start
-            </Button>
-          )}
-        </div>
-      </div>
+    <section className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="Mock server">
+      <PageHeader
+        icon={Antenna}
+        title="Mock Server"
+        description="Serve schema- and example-driven mock responses from an OpenAPI spec or manual routes"
+        actions={
+          <div className="flex items-center gap-2">
+            <span
+              title={status.running ? "Running" : status.error ? "Crashed" : "Stopped"}
+              className={cn("size-2 rounded-full", status.running ? "bg-status-ok" : status.error ? "bg-destructive" : "bg-muted-foreground")}
+              aria-label={status.running ? "Running" : "Stopped"}
+            />
+            <span className="text-xs text-muted-foreground">{status.running ? "Running" : status.error ? "Crashed" : "Stopped"}</span>
+            {status.url && (
+              <Badge variant="secondary" className="font-mono text-status-ok">
+                {status.url}
+              </Badge>
+            )}
+            {status.running ? (
+              <Button variant="outline" size="sm" disabled={busy} onClick={() => void stop()}>
+                {busy ? <Spinner data-icon="inline-start" /> : <Square data-icon="inline-start" />}
+                Stop
+              </Button>
+            ) : status.error ? (
+              <Button size="sm" disabled={busy} onClick={() => void start()}>
+                {busy ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
+                Restart
+              </Button>
+            ) : (
+              <Button size="sm" disabled={busy} onClick={() => void start()}>
+                {busy ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
+                Start
+              </Button>
+            )}
+          </div>
+        }
+      />
+      <div className="flex flex-col gap-3 p-4">
 
       {error && (
         <Alert variant="destructive">
@@ -241,6 +247,7 @@ export function MocksView() {
           </li>
         ))}
       </ul>
+      </div>
     </section>
   );
 }

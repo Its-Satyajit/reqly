@@ -74,7 +74,7 @@ type SendResponse struct {
 	OK         bool                `json:"ok"`
 	// Attempts reports how many sends the response took, including retries
 	// (1 = no retry).
-	Attempts int `json:"attempts"`
+	Attempts int      `json:"attempts"`
 	Timings  *Timings `json:"timings,omitempty"`
 }
 

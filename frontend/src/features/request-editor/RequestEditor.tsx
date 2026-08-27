@@ -3,7 +3,7 @@ import { CodeMirrorEditor } from '../../editors'
 import { Button } from '../../components/ui/button'
 import { CompactSelect } from '../../components/CompactSelect'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
-import { ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronRight, Loader2, Sparkles } from 'lucide-react'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
 import { useRequestStore, useWorkspaceStore } from '../../stores'
@@ -19,6 +19,7 @@ import { generateCode } from '../../lib/codegen'
 import { copyText } from '../../lib/response'
 import { notifyError } from '../../lib/notify'
 import { handleTabArrowKeys, tabClass } from '../../lib/ui'
+import { TemplatePickerSheet } from './TemplatePickerSheet'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE'] as const
 
@@ -124,6 +125,7 @@ export function RequestEditor() {
   const [tab, setTab] = useState<Tab>('params')
   const [codeLang, setCodeLang] = useState<'curl' | 'js' | 'python' | 'go'>('curl')
   const [copiedCode, setCopiedCode] = useState(false)
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -240,6 +242,17 @@ export function RequestEditor() {
           {envPill ?? 'No environment'}
           {meta?.env ? ' • file' : ''}
         </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setTemplatePickerOpen(true)}
+          title="Use Template"
+          aria-label="Use Template"
+          className="h-8 gap-1 px-2 text-xs"
+        >
+          <Sparkles className="size-3.5 text-primary" aria-hidden />
+          <span className="hidden sm:inline">Templates</span>
+        </Button>
         {requestPath && (
           <Button size="sm" variant="outline" onClick={() => void saveRequest(activeTabId)} disabled={!canSave}>
             {dirty ? 'Save' : 'Saved'}
@@ -523,6 +536,26 @@ export function RequestEditor() {
           </div>
         )}
       </div>
+
+      <TemplatePickerSheet
+        open={templatePickerOpen}
+        onOpenChange={setTemplatePickerOpen}
+        onSelect={(inst) => {
+          patch({
+            method: inst.method,
+            url: inst.path,
+            body: inst.body ?? draft.body,
+            headers: [
+              ...draft.headers,
+              ...Object.entries(inst.headers).map(([key, value]) => ({
+                key,
+                value,
+                enabled: true,
+              })),
+            ],
+          })
+        }}
+      />
     </div>
   )
 }

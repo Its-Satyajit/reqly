@@ -35,15 +35,15 @@ type Options struct {
 
 // Result is the summary after a perf run.
 type Result struct {
-	RPS         int            `json:"rps"`
-	DurationMs  int64          `json:"durationMs"`
-	Total       int            `json:"total"`
-	LatenciesMs []int64        `json:"latenciesMs,omitempty"`
-	P50Ms       int64          `json:"p50Ms"`
-	P95Ms       int64          `json:"p95Ms"`
-	P99Ms       int64          `json:"p99Ms"`
-	StatusCounts map[int]int   `json:"statusCounts"`
-	ErrorRate   float64        `json:"errorRate"`
+	RPS          int         `json:"rps"`
+	DurationMs   int64       `json:"durationMs"`
+	Total        int         `json:"total"`
+	LatenciesMs  []int64     `json:"latenciesMs,omitempty"`
+	P50Ms        int64       `json:"p50Ms"`
+	P95Ms        int64       `json:"p95Ms"`
+	P99Ms        int64       `json:"p99Ms"`
+	StatusCounts map[int]int `json:"statusCounts"`
+	ErrorRate    float64     `json:"errorRate"`
 }
 
 // SendFunc is one request send: returns latency and status code.
