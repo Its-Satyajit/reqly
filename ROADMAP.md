@@ -585,6 +585,7 @@ The following ticket-level milestone history is preserved from the older develop
 35. ~~**Contract testing + schema validation**~~ — OpenAPI/JSON Schema response validation pipeline (`internal/testing.AssertJSONSchema`, `internal/jsonschema.Validate`, response contract checks) — **shipped**
 36. ~~**Advanced HTTP / Proxy & TLS controls**~~ — HTTP/2, per-env/per-request proxy, cert inspection, mTLS, custom CAs (`internal/request.Client` proxy & TLS support, Desktop Proxy & TLS settings) — **shipped**
 37. ~~**Performance testing (lightweight)**~~ — RPS/latency P95/P99/error-rate/status-distribution (`internal/perf.Run`, `reqly perf run`, Desktop PerfView) — **shipped**
+38. ~~**API Monitoring Dashboard (§57.1)**~~ — scheduled health checks + availability % / avg latency + CLI runner (`internal/monitor.Run`, `reqly monitor run`, Desktop MonitorView) ([ADR 0033](docs/adr/0033-monitor-scheduler.md), `docs/spec/m49-monitor-scheduler.md`) — **shipped**
 
 
 ---
