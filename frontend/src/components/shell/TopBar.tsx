@@ -72,8 +72,12 @@ export function TopBar() {
 				</Button>
 			</div>
 
-			<div className="flex items-center gap-2">
+			<div className="flex items-center gap-1.5">
 				<EnvironmentSelector />
+				<div className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] text-muted-foreground" title="Local-first Git storage (all files up-to-date)">
+					<span className="size-1.5 rounded-full bg-status-ok" aria-hidden />
+					<span>Saved</span>
+				</div>
 				<Button
 					variant="ghost"
 					size="sm"
