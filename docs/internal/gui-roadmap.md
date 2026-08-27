@@ -6,7 +6,7 @@
 ## GUI-0 Shell Redesign — RESTARTING FROM SCRATCH
 
 > **⚠️ RESTARTING** — Previous implementation (G-3.x) did not follow spec §2 four-zone architecture. All UI components will be rewritten following the spec's TopBar / ToolRail / ContextSidebar / MainWorkspace / BottomPanel model.
-> **Progress 2026-08-27:** Tickets #01 Shell Foundation (`wzm`/`mny`), #02 Workspace Home (`swt`), #03 Request Builder + Response Viewer (`muu`), #04 Collections Explorer (`pvo`) shipped — spec §2 chrome + primary workspace + navigation tree complete pending review. Remaining tickets #05–#12 queued.
+> **Progress 2026-08-27:** Tickets #01 Shell Foundation (`wzm`/`mny`), #02 Workspace Home (`swt`), #03 Request Builder + Response Viewer (`muu`), #04 Collections Explorer (`pvo`), #05–06 Environments/History (`kvs`), #07 Mocks (`syw`) shipped — spec §2 chrome + workspace + history + mocks complete; #08–12 (Tools/Import-Export/Settings/Panels/Search) existent — pending polish/review.
 
 ### GUI-0.1 Shell Chrome (Tickets #01–#02)
 
