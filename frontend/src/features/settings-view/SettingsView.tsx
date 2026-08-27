@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useThemeStore } from "#stores";
 import { THEMES } from "#lib/themes";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
@@ -13,12 +14,28 @@ const SHORTCUTS: [string, string][] = [
   ["⌘⏎", "Send active request"],
 ];
 
+const RETENTION_OPTIONS = [
+  { value: "30d", label: "30 days" },
+  { value: "90d", label: "90 days (default)" },
+  { value: "1yr", label: "1 year" },
+  { value: "forever", label: "Forever" },
+] as const;
+
 export function SettingsView() {
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
   const workspace = useWorkspaceStore((s) => s.currentWorkspace);
   const pool = useHistoryStore((s) => s.pool);
   const openFolder = useWorkspaceBootstrapStore((s) => s.openFolder);
+  const [retention, setRetention] = useState("90d");
+  useEffect(() => {
+    const v = localStorage.getItem("reqly:historyRetention");
+    if (v) setRetention(v);
+  }, []);
+  const saveRetention = (v: string) => {
+    setRetention(v);
+    localStorage.setItem("reqly:historyRetention", v);
+  };
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
       <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
@@ -38,8 +55,20 @@ export function SettingsView() {
         <button onClick={() => void openFolder()} className="mt-2 text-xs underline">Switch folder</button>
       </section>
       <section className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold">History</h2>
-        <p className="mt-1 text-xs text-muted-foreground">{pool.length} recent entries (capped at 500)</p>
+        <h2 className="text-sm font-semibold">Storage — History Retention</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{pool.length} recent entries (capped at 500) — retention cleanup runs on app start.</p>
+        <div className="mt-3 flex gap-2">
+          {RETENTION_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              onClick={() => saveRetention(o.value)}
+              className={`rounded-md border px-3 py-1.5 text-xs ${retention === o.value ? "border-primary bg-primary/10 font-medium text-primary" : "border-border hover:bg-muted"}`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">Setting stored locally; history entries older than retention are cleaned up on next launch.</p>
       </section>
       <section className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-semibold">About</h2>
