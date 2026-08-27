@@ -526,7 +526,7 @@ Every checked feature must pass the full checklist:
 32. ~~**Retry & resilience**~~ — engine-level `request.retry` (`count`/`delayMs`/`strategy`/`maxDelayMs`/`retryOn`) in `Client.Execute`; network errors + 429/502/503/504 default, `Retry-After` respected + clamped, exponential/fixed backoff capped, ctx-cancel aborts mid-wait, auth refresh stays inside one attempt, `response.Attempts` + `history show` attempts line + desktop attempts badge, `--retries`/`--retry-delay` flags, desktop collapsible Retry section in the request editor ([ADR 0024](docs/adr/0024-retry-resilience.md), `docs/spec/m32-retry-resilience.md`) — **shipped**
 33. ~~**OpenAPI editor + endpoint explorer**~~ — in-app spec authoring + generate requests from spec + JSON Schema edit/validate (`reqly openapi validate/explore/generate`, Desktop explorer with Try in Builder + schema inspection) — **shipped**
 34. ~~**API diff & breaking-change detection**~~ — endpoints/params/schemas/auth/response-types + spec/request/response/env diff polish (`reqly diff [--fail-on-breaking]`, severity classification in core + Desktop DiffView) — **shipped**
-35. **Contract testing + schema validation** — OpenAPI/JSON Schema response validation pipeline
+35. ~~**Contract testing + schema validation**~~ — OpenAPI/JSON Schema response validation pipeline (`internal/testing.AssertJSONSchema`, `internal/jsonschema.Validate`, response contract checks) — **shipped**
 36. **Advanced HTTP / Proxy & TLS controls** — HTTP/2, per-env/per-request proxy, cert inspection, mTLS, custom CAs
 37. **Performance testing (lightweight)** — RPS/latency P95/P99/error-rate/status-distribution
 
@@ -582,7 +582,7 @@ The following ticket-level milestone history is preserved from the older develop
 32. ~~**Retry & resilience**~~ — engine-level `request.retry` (`count`/`delayMs`/`strategy`/`maxDelayMs`/`retryOn`) in `Client.Execute`; network errors + 429/502/503/504 default, `Retry-After` respected + clamped, exponential/fixed backoff capped, ctx-cancel aborts mid-wait, auth refresh stays inside one attempt, `response.Attempts` + `history show` attempts line + desktop attempts badge, `--retries`/`--retry-delay` flags, desktop collapsible Retry section in the request editor ([ADR 0024](docs/adr/0024-retry-resilience.md), `docs/spec/m32-retry-resilience.md`) — **shipped**
 33. ~~**OpenAPI editor + endpoint explorer**~~ — in-app spec authoring + generate requests from spec + JSON Schema edit/validate (`reqly openapi validate/explore/generate`, Desktop explorer with Try in Builder + schema inspection) — **shipped**
 34. ~~**API diff & breaking-change detection**~~ — endpoints/params/schemas/auth/response-types + spec/request/response/env diff polish (`reqly diff [--fail-on-breaking]`, severity classification in core + Desktop DiffView) — **shipped**
-35. **Contract testing + schema validation** — OpenAPI/JSON Schema response validation pipeline
+35. ~~**Contract testing + schema validation**~~ — OpenAPI/JSON Schema response validation pipeline (`internal/testing.AssertJSONSchema`, `internal/jsonschema.Validate`, response contract checks) — **shipped**
 36. **Advanced HTTP / Proxy & TLS controls** — HTTP/2, per-env/per-request proxy, cert inspection, mTLS, custom CAs
 37. **Performance testing (lightweight)** — RPS/latency P95/P99/error-rate/status-distribution
 
