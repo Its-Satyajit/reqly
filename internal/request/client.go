@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"os"
 	"strings"
@@ -258,6 +259,19 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 	}
 
 	start := time.Now()
+	var dnsStart, dnsDone, connectStart, connectDone, tlsStart, tlsDone, gotConn, wroteRequest, firstByte time.Time
+	trace := &httptrace.ClientTrace{
+		DNSStart: func(info httptrace.DNSStartInfo) { dnsStart = time.Now() },
+		DNSDone:  func(info httptrace.DNSDoneInfo) { dnsDone = time.Now() },
+		ConnectStart: func(network, addr string) { connectStart = time.Now() },
+		ConnectDone: func(network, addr string, err error) { connectDone = time.Now() },
+		TLSHandshakeStart: func() { tlsStart = time.Now() },
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) { tlsDone = time.Now() },
+		GotConn: func(info httptrace.GotConnInfo) { gotConn = time.Now() },
+		WroteRequest: func(info httptrace.WroteRequestInfo) { wroteRequest = time.Now() },
+		GotFirstResponseByte: func() { firstByte = time.Now() },
+	}
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -327,15 +341,44 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 		return nil, err
 	}
 
+	duration := time.Since(start)
+	// httptrace synthesis per exporter/har timings
+	var timings *response.Timings
+	if !dnsStart.IsZero() || !connectStart.IsZero() || !firstByte.IsZero() {
+		timings = &response.Timings{}
+		if !dnsStart.IsZero() && !dnsDone.IsZero() {
+			timings.DNS = dnsDone.Sub(dnsStart).Milliseconds()
+		}
+		if !connectStart.IsZero() && !connectDone.IsZero() {
+			timings.Connect = connectDone.Sub(connectStart).Milliseconds()
+		}
+		if !tlsStart.IsZero() && !tlsDone.IsZero() {
+			timings.TLS = tlsDone.Sub(tlsStart).Milliseconds()
+		}
+		if !gotConn.IsZero() && !wroteRequest.IsZero() {
+			timings.Request = wroteRequest.Sub(gotConn).Milliseconds()
+		}
+		if !wroteRequest.IsZero() && !firstByte.IsZero() {
+			timings.Server = firstByte.Sub(wroteRequest).Milliseconds()
+		}
+		if !firstByte.IsZero() {
+			timings.Response = duration.Milliseconds() - firstByte.Sub(start).Milliseconds()
+			timings.Transfer = duration.Milliseconds() - timings.DNS - timings.Connect - timings.TLS - timings.Request - timings.Server - timings.Response
+			if timings.Transfer < 0 {
+				timings.Transfer = 0
+			}
+		}
+	}
 	return &response.Response{
 		StatusCode: resp.StatusCode,
 		StatusText: http.StatusText(resp.StatusCode),
 		Proto:      resp.Proto,
 		Headers:    resp.Header,
 		Body:       body,
-		Duration:   time.Since(start),
+		Duration:   duration,
 		Size:       int64(len(body)),
 		AuthToken:  authToken,
+		Timings:    timings,
 	}, nil
 }
 

@@ -113,6 +113,7 @@ export interface ResponseData {
 	ok: boolean;
 	/** Sends this response took, including retries (1 or undefined = none). */
 	attempts?: number;
+	timings?: { dns: number; connect: number; tls: number; request: number; server: number; response: number; transfer: number };
 }
 
 export type RequestSender = (req: RequestInput) => Promise<ResponseData>;

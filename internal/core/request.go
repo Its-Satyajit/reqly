@@ -75,6 +75,18 @@ type SendResponse struct {
 	// Attempts reports how many sends the response took, including retries
 	// (1 = no retry).
 	Attempts int `json:"attempts"`
+	Timings  *Timings `json:"timings,omitempty"`
+}
+
+// Timings mirrors response.Timings for the bridge.
+type Timings struct {
+	DNS      int64 `json:"dns"`
+	Connect  int64 `json:"connect"`
+	TLS      int64 `json:"tls"`
+	Request  int64 `json:"request"`
+	Server   int64 `json:"server"`
+	Response int64 `json:"response"`
+	Transfer int64 `json:"transfer"`
 }
 
 // Send executes the request and returns a SendResponse, or an error when the
@@ -94,6 +106,18 @@ func (s *RequestService) Send(ctx context.Context, r request.Request, vars ...*v
 		return nil, err
 	}
 
+	var timings *Timings
+	if resp.Timings != nil {
+		timings = &Timings{
+			DNS:      resp.Timings.DNS,
+			Connect:  resp.Timings.Connect,
+			TLS:      resp.Timings.TLS,
+			Request:  resp.Timings.Request,
+			Server:   resp.Timings.Server,
+			Response: resp.Timings.Response,
+			Transfer: resp.Timings.Transfer,
+		}
+	}
 	return &SendResponse{
 		StatusCode: resp.StatusCode,
 		StatusText: resp.StatusText,
@@ -104,5 +128,6 @@ func (s *RequestService) Send(ctx context.Context, r request.Request, vars ...*v
 		Size:       resp.Size,
 		OK:         resp.OK(),
 		Attempts:   resp.Attempts,
+		Timings:    timings,
 	}, nil
 }
