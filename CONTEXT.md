@@ -374,3 +374,25 @@ A gRPC server's self-description service that lets the client discover services 
 
 ### Message
 The protobuf payload of a gRPC Call expressed as JSON in both directions (canonical protobuf-JSON mapping). The unit the editor edits, the response viewer renders, and scripting/assertions consume — never raw wire bytes.
+
+### Design System
+The desktop visual language defined in `DESIGN.md` and materialized as semantic CSS custom properties in `frontend/src/index.css` (`@theme` → Tailwind `bg-background` etc.). Covers tokens, typography, color, and status presentation; adding theme N+1 touches only `index.css` (`[data-theme="…"]` block) and the registry in `frontend/src/lib/themes.ts` — zero component changes (ADR 0029).
+
+### Design Tokens
+Semantic CSS custom properties on `:root` / `[data-theme="atlas-light|atlas-dark"]` and `.dark` appearance mirror: surfaces (`background`/`card`/`popover`/`muted`/`secondary`/`accent`), `border`/`input`/`ring`, `primary` (terracotta), `status-*` ramp, `radius` (6px base), fonts. `index.css` is the single source of truth; components consume only `var(--…)` / Tailwind `bg-*` — no hardcoded hex outside `index.css` (grep gate).
+
+### Typography System
+IBM Plex Sans (UI/body, 400/500/600) + IBM Plex Mono (data/code/numbers, 400/500 + `tabular-nums`), bundled offline via `@fontsource` (local-first, no CDN). Base `13px/1.45` on `body`; scale `xs 11 / sm 12 / base 13 / lg 15`; `.font-data` + `code/kbd/pre` force mono. Matches Atlas reference screenshots.
+
+### Color System
+Terracotta brand anchor (`--primary`) used sparingly (~10%): primary buttons, active accents, `ring`. Light `--primary: #c93517` is the AA-adjusted variant of brand `#e14b31` (4.0:1 → 4.5:1 on white with white foreground, documented in ADR 0029) — dark `--primary: #ff6f52` on `#0d1015`. Surfaces are near-neutral (`#fbfbfa` light, `#0d1015` blue-black dark). `prefers-contrast: more` bumps `--border` to `#8a9099` and `--muted-foreground` to foreground.
+
+### Status Ramp
+Semantic color scale for HTTP/method states, WCAG-checked pairs: `status-info` gray (1xx/neutral), `status-ok` green (2xx), `status-redirect` blue (3xx), `status-warn` amber (4xx/warnings), `status-error` red (5xx/failures). Method tints: GET green, POST blue, PUT/PATCH amber, DELETE red. Exposed as `--status-*` + Tailwind `bg-status-*` / `text-status-*` + `success`/`warning` aliases.
+
+### StatusPill
+The single memorable component (`frontend/src/components/status.tsx`) rendering dot + tabular-numeral code/text, never color alone — used identically in response header, run steps, and history rows. Variants `info|ok|redirect|warn|error` map to the Status Ramp; dot + literal satisfies a11y "never color alone."
+
+### Hairline Border
+Defined-edge separation via `1px solid var(--border)` (`#e4e6e9` light / `#252b35` dark; `#8a9099` in high-contrast), not shadows. Shell, cards, and panels use hairline borders only; `shadow-md/lg` + `ring-1 ring-foreground/10` is permitted solely on floating layers (`popover`, `dropdown-menu`, `select`, `toast`) to escape the page — lint forbids `shadow-*` elsewhere.
+

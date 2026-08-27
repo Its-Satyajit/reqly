@@ -78,13 +78,13 @@
 - [ ] `⌘J` toggle
 - [ ] Resizable height
 
-## GUI-1 Design System (spec §3)
+## GUI-1 Design System (spec §3) — ✅ shipped 2026-08-27
 
-- [ ] Design tokens (spacing, radius, shadows)
-- [ ] Typography system (IBM Plex Sans/Mono)
-- [ ] Color system (terracotta accent #c93517/#ff6f52, BASE 6px radius)
-- [ ] Status indicators (Connected/Running/Valid/Success/Warning/Error)
-- [ ] Hairline borders, no shadows
+- [x] Design tokens (spacing, radius, shadows) — `frontend/src/index.css` `@theme` semantic vars (`--background`/`--border`/`--primary`/`--status-*`/`--radius: 0.375rem`), grep gate for hardcoded hex
+- [x] Typography system (IBM Plex Sans/Mono) — `@fontsource` 400/500/600 + 13px/1.45 base, `.font-data` mono discipline
+- [x] Color system (terracotta accent #c93517/#ff6f52, BASE 6px radius) — AA-adjusted `#c93517` (4.5:1) + `prefers-contrast: more` bump, `DESIGN.md` Color/Tokens sections
+- [x] Status indicators (Connected/Running/Valid/Success/Warning/Error) — Status Ramp + `StatusPill` dot+code (never color alone), method tints
+- [x] Hairline borders, no shadows — `border-border` shell/cards/panels; `shadow-md/lg` only on floating `popover`/`dropdown-menu`/`select`/`toast`
 
 ## GUI-2 Navigation Model (spec §4, §60–63)
 
