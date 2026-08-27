@@ -6,6 +6,31 @@
 ## GUI-0 Shell Redesign — RESTARTING FROM SCRATCH
 
 > **⚠️ RESTARTING** — Previous implementation (G-3.x) did not follow spec §2 four-zone architecture. All UI components will be rewritten following the spec's TopBar / ToolRail / ContextSidebar / MainWorkspace / BottomPanel model.
+> **Progress 2026-08-27:** Tickets #01 Shell Foundation (`wzm`/`mny`), #02 Workspace Home (`swt`), #03 Request Builder + Response Viewer (`muu`), #04 Collections Explorer (`pvo`) shipped — spec §2 chrome + primary workspace + navigation tree complete pending review. Remaining tickets #05–#12 queued.
+
+### GUI-0.1 Shell Chrome (Tickets #01–#02)
+
+- [x] TopBar — Logo, Import/Export, Settings, Sync indicator — 2026-08-27
+- [x] ToolRail — 4 groups (Workspace/API Tools/Realtime/System), collapsed 56/40px — 2026-08-27
+- [x] StatusBar — theme tokens, empty placeholders — 2026-08-27
+- [x] Workspace Home — stat cards spec-compliant + empty-state onboarding — 2026-08-27
+
+### GUI-0.2 Request Workspace (Ticket #03)
+
+- [x] Request tabs — open/close/pin/duplicate/drag-reorder, persist via localStorage — 2026-08-27
+- [x] URL bar — methods GET…TRACE, Send/Save, theme tokens — 2026-08-27
+- [x] Builder tabs Params/Headers/Body/Auth + overflow Pre-request/Tests/Docs/Settings — 2026-08-27
+- [x] Body types None/JSON/XML/Text/HTML/Form/Binary/GraphQL — 2026-08-27
+- [x] Auth Custom + OAuth2 three flows — 2026-08-27
+- [x] Response Viewer — Body/Headers/Cookies/Test Results/Timeline, vertical/horizontal split — 2026-08-27
+
+### GUI-0.3 Collections Explorer (Ticket #04)
+
+- [x] Collections tree — expand/collapse, icons, keyboard nav — 2026-08-27
+- [x] Search/filter — 2026-08-27
+- [x] Drag-and-drop reordering — 2026-08-27
+- [x] Context menu — Rename/Move/Duplicate/Delete/Run/Import/Export/Generate — 2026-08-27
+- [x] New Collection/Folder/Request buttons — 2026-08-27
 
 ### §2.1 TopBar (always visible)
 
