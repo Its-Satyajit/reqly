@@ -132,6 +132,24 @@ variables; unmappable schemes are skipped with a warning.
 	},
 }
 
+var openapiValidateCmd = &cobra.Command{
+	Use:   "validate <spec>",
+	Short: "Validate an OpenAPI 3.x specification",
+	Long: `Validate an OpenAPI 3.0 or 3.1 specification (JSON or YAML).
+
+  reqly openapi validate api.yaml
+  reqly openapi validate spec.json`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := openapi.LoadFile(args[0])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), "Validation passed cleanly.")
+		return nil
+	},
+}
+
 func init() {
 	openapiExploreCmd.Flags().StringArrayVar(&openapiExploreTags, "tag", nil, "filter by tag, repeatable")
 	openapiExploreCmd.Flags().BoolVar(&openapiExploreJSON, "json", false, "print endpoints as JSON")
@@ -143,6 +161,6 @@ func init() {
 	openapiGenerateCmd.Flags().BoolVar(&openapiGenerateAll, "all", false, "generate every operation in the spec")
 	openapiGenerateCmd.Flags().StringVar(&openapiGenerateOut, "output", "", "output directory (default ./requests)")
 
-	openapiCmd.AddCommand(openapiExploreCmd, openapiGenerateCmd)
+	openapiCmd.AddCommand(openapiExploreCmd, openapiGenerateCmd, openapiValidateCmd)
 	rootCmd.AddCommand(openapiCmd)
 }
