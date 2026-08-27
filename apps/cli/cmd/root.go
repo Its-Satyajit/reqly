@@ -76,5 +76,6 @@ func init() {
 		pluginCmd,
 		mcpCmd,
 		aiCmd,
+		schemaCmd,
 	)
 }

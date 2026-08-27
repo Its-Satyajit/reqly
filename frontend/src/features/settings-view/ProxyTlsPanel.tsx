@@ -83,8 +83,11 @@ export function ProxyTlsPanel() {
               <span className="text-[11px] text-muted-foreground">Port</span>
               <Input
                 type="number"
-                value={proxy.port}
-                onChange={(e) => setProxy({ port: Number(e.target.value) || 0 })}
+                value={proxy.port === 0 ? "" : proxy.port}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? 0 : Number(e.target.value);
+                  setProxy({ port: Number.isNaN(val) ? 8080 : val });
+                }}
                 placeholder="8080"
                 className="h-8 font-mono text-xs"
               />
@@ -104,6 +107,36 @@ export function ProxyTlsPanel() {
                 placeholder="localhost, 127.0.0.1, *.internal"
                 className="h-8 font-mono text-xs"
               />
+            </div>
+            <div className="flex flex-col gap-1 sm:col-span-3 pt-1 border-t border-border/40">
+              <span className="text-[11px] font-medium text-muted-foreground">Proxy Authentication (optional)</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                <Input
+                  value={proxy.auth?.username ?? ""}
+                  onChange={(e) =>
+                    setProxy({
+                      auth: e.target.value || proxy.auth?.password
+                        ? { username: e.target.value, password: proxy.auth?.password ?? "" }
+                        : undefined,
+                    })
+                  }
+                  placeholder="Username"
+                  className="h-8 font-mono text-xs"
+                />
+                <Input
+                  type="password"
+                  value={proxy.auth?.password ?? ""}
+                  onChange={(e) =>
+                    setProxy({
+                      auth: e.target.value || proxy.auth?.username
+                        ? { username: proxy.auth?.username ?? "", password: e.target.value }
+                        : undefined,
+                    })
+                  }
+                  placeholder="Password"
+                  className="h-8 font-mono text-xs"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -168,8 +201,26 @@ export function ProxyTlsPanel() {
             <span className="text-[11px] text-muted-foreground">Custom CA Path (optional)</span>
             <Input
               value={tls.customCaPath ?? ""}
-              onChange={(e) => setTls({ customCaPath: e.target.value || undefined })}
+              onChange={(e) => setTls({ customCaPath: e.target.value.trim() || undefined })}
               placeholder="/path/to/ca.pem"
+              className="h-8 font-mono text-xs"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted-foreground">Client Certificate Path (mTLS)</span>
+            <Input
+              value={tls.clientCertPath ?? ""}
+              onChange={(e) => setTls({ clientCertPath: e.target.value.trim() || undefined })}
+              placeholder="/path/to/client-cert.pem"
+              className="h-8 font-mono text-xs"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted-foreground">Client Key Path (mTLS)</span>
+            <Input
+              value={tls.clientKeyPath ?? ""}
+              onChange={(e) => setTls({ clientKeyPath: e.target.value.trim() || undefined })}
+              placeholder="/path/to/client-key.pem"
               className="h-8 font-mono text-xs"
             />
           </div>

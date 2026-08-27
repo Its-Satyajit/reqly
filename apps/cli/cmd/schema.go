@@ -61,21 +61,21 @@ stdin; omitting it reads stdin.
 		}
 		sch, err := jsonschema.Compile(schemaData, schemaValidateDraft)
 		if err != nil {
-			return err
+			return fmt.Errorf("compile schema: %w", err)
 		}
 		instanceData, err := readInstance(args)
 		if err != nil {
-			return err
+			return fmt.Errorf("read instance: %w", err)
 		}
 		violations, err := jsonschema.Validate(sch, instanceData)
 		if err != nil {
-			return err
+			return fmt.Errorf("validate instance: %w", err)
 		}
 		if schemaValidateJSON {
 			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
 			if err := enc.Encode(violations); err != nil {
-				return err
+				return fmt.Errorf("encode json: %w", err)
 			}
 		} else {
 			for _, v := range violations {
@@ -91,12 +91,13 @@ stdin; omitting it reads stdin.
 }
 
 var schemaInspectCmd = &cobra.Command{
-	Use:   "inspect <schema>",
-	Short: "Print a readable summary of a JSON Schema",
-	Long: `Walk the schema tree and print one line per node: type, required
-marker (!), and inline constraints. $refs resolve with their target shown.
+	Use:   "inspect <schema> [--json]",
+	Short: "Inspect the structure and keywords of a JSON Schema",
+	Long: `Display a human-readable outline of a JSON Schema, or dump the parsed
+keyword map as JSON with --json.
 
-  reqly schema inspect pet.schema.yaml`,
+  reqly schema inspect user.schema.json
+  reqly schema inspect user.schema.yaml --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		data, err := os.ReadFile(args[0])
@@ -104,11 +105,9 @@ marker (!), and inline constraints. $refs resolve with their target shown.
 			return fmt.Errorf("read schema: %w", err)
 		}
 		if schemaInspectJSON {
-			var doc map[string]any
-			if err := json.Unmarshal(data, &doc); err != nil {
-				if err := yaml.Unmarshal(data, &doc); err != nil {
-					return fmt.Errorf("parse schema: %w", err)
-				}
+			var doc any
+			if err := yaml.Unmarshal(data, &doc); err != nil {
+				return fmt.Errorf("parse schema: %w", err)
 			}
 			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
@@ -116,7 +115,7 @@ marker (!), and inline constraints. $refs resolve with their target shown.
 		}
 		out, err := jsonschema.Inspect(data)
 		if err != nil {
-			return err
+			return fmt.Errorf("inspect schema: %w", err)
 		}
 		fmt.Fprint(cmd.OutOrStdout(), out)
 		return nil
@@ -143,7 +142,7 @@ properties. Unresolvable constraints produce warnings on stderr.
 			IncludeOptional: schemaGenerateOptIncl,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("generate sample: %w", err)
 		}
 		for _, w := range warnings {
 			fmt.Fprintln(cmd.ErrOrStderr(), "warning:", w)
@@ -173,5 +172,4 @@ func init() {
 	schemaGenerateCmd.Flags().BoolVar(&schemaGenerateOptIncl, "optional", false, "include optional properties")
 
 	schemaCmd.AddCommand(schemaValidateCmd, schemaInspectCmd, schemaGenerateCmd)
-	rootCmd.AddCommand(schemaCmd)
 }

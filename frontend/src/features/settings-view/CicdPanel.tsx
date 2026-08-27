@@ -22,7 +22,7 @@ export function CicdPanel() {
   const handleAddSecret = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSecret.trim()) return;
-    addSecret(newSecret.trim().toUpperCase());
+    addSecret(newSecret.trim());
     setNewSecret("");
   };
 

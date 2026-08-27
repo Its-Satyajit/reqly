@@ -40,14 +40,14 @@ var diffCmd = &cobra.Command{
 			// OpenAPI semantic diffing
 			rawRes, err := diffing.OpenAPI(doc1, doc2)
 			if err != nil {
-				return err
+				return fmt.Errorf("diff openapi: %w", err)
 			}
 			res = diffing.WithSeverity(rawRes)
 		} else {
 			// Generic JSON/YAML structural diffing
 			res, err = diffing.JSON(bytes1, bytes2)
 			if err != nil {
-				return err
+				return fmt.Errorf("diff json: %w", err)
 			}
 		}
 

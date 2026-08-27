@@ -67,15 +67,11 @@ func (s *AppService) PerfRun(specPath string, rps int, durationMs int64, concurr
 		Duration:    time.Duration(durationMs) * time.Millisecond,
 		Concurrency: concurrency,
 	}
-	if opts.RPS == 0 {
-		opts.RPS = 10
-	}
-	if opts.Duration == 0 {
-		opts.Duration = 10 * time.Second
-	}
-	res, err := perf.Run(context.Background(), opts, send)
+	ctx, cancel := context.WithTimeout(context.Background(), opts.Duration+5*time.Second)
+	defer cancel()
+	res, err := perf.Run(ctx, opts, send)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("perf run: %w", err)
 	}
 	return &PerfRunResult{Result: res}, nil
 }
