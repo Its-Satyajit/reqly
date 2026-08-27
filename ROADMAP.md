@@ -2,6 +2,19 @@
 
 > **Status:** Canonical development roadmap. P0/core + CLI are shipped; P1 includes shipped backend/data-layer work plus ongoing desktop/UI completion; P2–P5 remain future work.
 > **Overall completion:** Do not treat a single percentage as authoritative. Use the phase/milestone checkboxes and this document's status ledger.
+> **Detailed Milestone Specs:** Full grouped milestone references are available under **[`./Milestones/`](Milestones/)**:
+> - [`01-phase-0-foundation.md`](Milestones/01-phase-0-foundation.md) — Foundation (Wails shell, build infra)
+> - [`02-phase-1-core-api-client.md`](Milestones/02-phase-1-core-api-client.md) — Core API Client (P0)
+> - [`03-phase-2-differentiating-features.md`](Milestones/03-phase-2-differentiating-features.md) — Differentiating Features (P1)
+> - [`04-phase-3-power-user-features.md`](Milestones/04-phase-3-power-user-features.md) — Power-User Features (P2)
+> - [`05-phase-4-ecosystem-and-enterprise.md`](Milestones/05-phase-4-ecosystem-and-enterprise.md) — Ecosystem & Enterprise (P3)
+> - [`06-phase-5-mcp-ai-extensibility.md`](Milestones/06-phase-5-mcp-ai-extensibility.md) — MCP, AI & Extensibility
+> - [`07-historical-milestones-ledger.md`](Milestones/07-historical-milestones-ledger.md) — Historical Milestones Ledger (M01–M40)
+> - [`08-gui-roadmap-and-execution.md`](Milestones/08-gui-roadmap-and-execution.md) — Desktop GUI Roadmap & Execution
+> - [`09-ui-architecture-shell-and-requests.md`](Milestones/09-ui-architecture-shell-and-requests.md) — UI Architecture (§1–§25)
+> - [`10-ui-architecture-tools-and-pages.md`](Milestones/10-ui-architecture-tools-and-pages.md) — UI Architecture (§26–§55)
+> - [`11-ui-architecture-phase-panels-and-navigation.md`](Milestones/11-ui-architecture-phase-panels-and-navigation.md) — UI Architecture (§56–§63)
+>
 > **Source of truth:** [`docs/features.md`](docs/features.md) (features), [`docs/technology-stack.md`](docs/technology-stack.md) (stack), [`docs/testing-strategy.md`](docs/testing-strategy.md) (quality), [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) (desktop GUI milestones), **[`docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md`](docs/Reqly%20Complete%20UI%20Architecture,%20Pages,%20Panels,%20and%20Navigation%20Specification.md)** (full UI spec — §1–§59)
 >
 > **⚠️ UI Redesign Notice:** Previous shell implementation did not follow spec architecture. All UI code in `frontend/src/` (shell components, features, stores) is being rewritten from scratch following the spec's four-zone model (TopBar / ToolRail / ContextSidebar / MainWorkspace + BottomPanel). Existing data layer (lib/, stores/) is preserved; UI components will be rebuilt.
