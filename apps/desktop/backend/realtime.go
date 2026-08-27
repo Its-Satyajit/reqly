@@ -86,7 +86,7 @@ var (
 
 // emitFrame is indirected so tests can capture frames without Wails.
 var emitRealtimeFrame = func(frame *RealtimeFrame) {
- 	emitEvent(realtimeEventName(frame.SessionID), frame)
+	emitEvent(realtimeEventName(frame.SessionID), frame)
 }
 
 func (s *realtimeSession) emit(f *RealtimeFrame) {

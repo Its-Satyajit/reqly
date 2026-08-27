@@ -1,7 +1,7 @@
 # Reqly — Development Roadmap
 
-> **Status:** P0 complete, P1 data layer shipped, UI redesign starting from scratch
-> **Overall completion:** ~40%. Phase 0–1 (P0) 100%, Phase 2 (P1) data layer shipped, **UI shell redesign restarting from spec §2**, Phase 3–5 not started.
+> **Status:** P0 complete, P1 data layer shipped, UI redesign in progress (§2 chrome + workspace + collections)
+> **Overall completion:** ~45%. Phase 0–1 (P0) 100%, Phase 2 (P1) data layer shipped, **UI shell redesign Tickets #01–#04 shipped 2026-08-27**, Phase 3–5 not started.
 > **Source of truth:** [`docs/features.md`](docs/features.md) (features), [`docs/technology-stack.md`](docs/technology-stack.md) (stack), [`docs/testing-strategy.md`](docs/testing-strategy.md) (quality), [`docs/internal/gui-roadmap.md`](docs/internal/gui-roadmap.md) (desktop GUI milestones), **[`docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md`](docs/Reqly%20Complete%20UI%20Architecture,%20Pages,%20Panels,%20and%20Navigation%20Specification.md)** (full UI spec — §1–§59)
 >
 > **⚠️ UI Redesign Notice:** Previous shell implementation did not follow spec architecture. All UI code in `frontend/src/` (shell components, features, stores) is being rewritten from scratch following the spec's four-zone model (TopBar / ToolRail / ContextSidebar / MainWorkspace + BottomPanel). Existing data layer (lib/, stores/) is preserved; UI components will be rebuilt.
@@ -202,13 +202,13 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.13 Desktop shell redesign — P0 UI Architecture
 
-> **⚠️ RESTARTING FROM SCRATCH** — Previous implementation did not follow spec §2 four-zone architecture. All UI components will be rewritten following the spec's TopBar / ToolRail / ContextSidebar / MainWorkspace / BottomPanel model.
+> **⚠️ RESTARTING FROM SCRATCH** — Previous implementation did not follow spec §2 four-zone architecture. All UI components will be rewritten following the spec's TopBar / ToolRail / ContextSidebar / MainWorkspace / BottomPanel model. **Progress 2026-08-27: Tickets #01–#04 shipped — shell chrome, Home, Request Builder, Collections Explorer — see `docs/internal/gui-roadmap.md` GUI-0.1–0.3.**
 
-- [ ] **§2.1** TopBar — Logo, Workspace Switcher, Global Search ⌘K, Import, Export, Active Environment, Sync Status, Settings — always visible
-- [ ] **§2.2** Tool Rail (48–56px) — 4 groups: Workspace (Home/Requests/Environments/History), API Tools (Mocks/Diff/JWT/GraphQL/gRPC/Runners/Explorer/Docs), Realtime (WebSocket/SSE), System (Settings)
-- [ ] **§2.3** Context Sidebar (220–280px) — Collapsible/resizable, changes per active tool, tree navigation, search, actions, `⌘B` toggle
-- [ ] **§2.4** Main Workspace — Tab-based content area, page/panel routing per active tool
-- [ ] **§2.5** Bottom Utility Panel — Console/Network/Tests/Variables/Cookies, `⌘J` toggle, resizable
+- [x] **§2.1** TopBar — Logo, Workspace Switcher, Global Search ⌘K, Import, Export, Active Environment, Sync Status, Settings — always visible — 2026-08-27
+- [x] **§2.2** Tool Rail (48–56px) — 4 groups: Workspace (Home/Requests/Environments/History), API Tools (Mocks/Diff/JWT/GraphQL/gRPC/Runners/Explorer/Docs), Realtime (WebSocket/SSE), System (Settings) — 2026-08-27
+- [x] **§2.3** Context Sidebar (220–280px) — Collapsible/resizable, changes per active tool, tree navigation, search, actions, `⌘B` toggle — 2026-08-27 (Collections Explorer + search/drag/context-menu)
+- [x] **§2.4** Main Workspace — Tab-based content area, page/panel routing per active tool — 2026-08-27 (Request Builder tabs + Response Viewer)
+- [x] **§2.5** Bottom Utility Panel — Console/Network/Tests/Variables/Cookies, `⌘J` toggle, resizable — 2026-08-27 (pre-existing, verified)
 - [ ] **§3** Design System — Tokens, typography, color system (IBM Plex, terracotta accent, BASE 6px radius)
 - [ ] **§4** Navigation Model — Two-axis: horizontal (tool rail) + vertical (sidebar resource)
 - [ ] **§60** Navigation Map — 15+ full pages with sub-panels (Params/Headers/Body/Auth/Tests/Response)
