@@ -21,6 +21,9 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -230,5 +233,60 @@ func TestSuiteRunAgainstRealHTTP(t *testing.T) {
 	if !suite.Passed(resp) {
 		results := suite.Run(resp)
 		t.Fatalf("expected suite to pass, got %+v", results)
+	}
+}
+
+func TestJSONSchemaAssertion(t *testing.T) {
+	tmp := t.TempDir()
+	schemaFile := filepath.Join(tmp, "user-schema.json")
+	schemaContent := `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["user", "tags"],
+		"properties": {
+			"user": {
+				"type": "object",
+				"required": ["name", "age"],
+				"properties": {
+					"name": { "type": "string" },
+					"age": { "type": "integer" }
+				}
+			},
+			"tags": {
+				"type": "array",
+				"items": { "type": "string" }
+			}
+		}
+	}`
+	if err := os.WriteFile(schemaFile, []byte(schemaContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := sampleResponse()
+	res := evaluate(Assertion{Kind: AssertJSONSchema, Path: schemaFile}, resp)
+	if !res.Passed {
+		t.Fatalf("expected valid JSON schema assertion to pass, got: %s", res.Message)
+	}
+}
+
+func TestJSONSchemaAssertionViolations(t *testing.T) {
+	tmp := t.TempDir()
+	schemaFile := filepath.Join(tmp, "strict-schema.json")
+	schemaContent := `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["email"]
+	}`
+	if err := os.WriteFile(schemaFile, []byte(schemaContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := sampleResponse()
+	res := evaluate(Assertion{Kind: AssertJSONSchema, Path: schemaFile}, resp)
+	if res.Passed {
+		t.Fatal("expected schema validation to fail on missing email property")
+	}
+	if !strings.Contains(res.Message, "missing") && !strings.Contains(res.Message, "required") && !strings.Contains(res.Message, "email") {
+		t.Fatalf("expected violation details in message, got: %s", res.Message)
 	}
 }
