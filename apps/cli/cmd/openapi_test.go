@@ -201,3 +201,104 @@ func TestOpenAPIValidateCommand(t *testing.T) {
 		t.Fatalf("expected validation success message, got:\n%s", out.String())
 	}
 }
+
+func TestDiffCommandNoChanges(t *testing.T) {
+	diffFailOnBreaking = false
+	tmp := t.TempDir()
+	f1 := filepath.Join(tmp, "a.json")
+	f2 := filepath.Join(tmp, "b.json")
+	_ = os.WriteFile(f1, []byte(`{"hello": "world"}`), 0644)
+	_ = os.WriteFile(f2, []byte(`{"hello": "world"}`), 0644)
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"diff", f1, f2})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("diff execution failed: %v", err)
+	}
+	if !strings.Contains(out.String(), "No structural changes found.") {
+		t.Fatalf("expected no structural changes, got: %s", out.String())
+	}
+}
+
+func TestDiffCommandOpenAPIBreakingChange(t *testing.T) {
+	diffFailOnBreaking = false
+	tmp := t.TempDir()
+	specA := `openapi: 3.0.3
+info: {title: API, version: "1"}
+paths:
+  /pets:
+    get:
+      responses:
+        "200": {description: ok}
+  /users:
+    get:
+      responses:
+        "200": {description: ok}
+`
+	specB := `openapi: 3.0.3
+info: {title: API, version: "1"}
+paths:
+  /pets:
+    get:
+      responses:
+        "200": {description: ok}
+`
+	f1 := filepath.Join(tmp, "specA.yaml")
+	f2 := filepath.Join(tmp, "specB.yaml")
+	_ = os.WriteFile(f1, []byte(specA), 0644)
+	_ = os.WriteFile(f2, []byte(specB), 0644)
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"diff", f1, f2})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("diff execution failed: %v", err)
+	}
+	if !strings.Contains(out.String(), "breaking") {
+		t.Fatalf("expected breaking change classification in output, got: %s", out.String())
+	}
+}
+
+func TestDiffCommandFailOnBreakingFlag(t *testing.T) {
+	diffFailOnBreaking = false
+	tmp := t.TempDir()
+	specA := `openapi: 3.0.3
+info: {title: API, version: "1"}
+paths:
+  /pets:
+    get:
+      responses:
+        "200": {description: ok}
+  /users:
+    get:
+      responses:
+        "200": {description: ok}
+`
+	specB := `openapi: 3.0.3
+info: {title: API, version: "1"}
+paths:
+  /pets:
+    get:
+      responses:
+        "200": {description: ok}
+`
+	f1 := filepath.Join(tmp, "specA.yaml")
+	f2 := filepath.Join(tmp, "specB.yaml")
+	_ = os.WriteFile(f1, []byte(specA), 0644)
+	_ = os.WriteFile(f2, []byte(specB), 0644)
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"diff", f1, f2, "--fail-on-breaking"})
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected non-zero exit error when breaking changes exist with --fail-on-breaking")
+	}
+	if !strings.Contains(err.Error(), "breaking change") {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+}
