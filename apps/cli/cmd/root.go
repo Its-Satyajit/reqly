@@ -74,5 +74,6 @@ func init() {
 		perfCmd,
 		monitorCmd,
 		pluginCmd,
+		mcpCmd,
 	)
 }
