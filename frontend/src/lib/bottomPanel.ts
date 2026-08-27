@@ -1,4 +1,4 @@
-export const BOTTOM_PANELS = ["console", "network", "tests", "variables", "cookies"] as const;
+export const BOTTOM_PANELS = ["console", "network", "tests", "variables", "cookies", "devtools"] as const;
 export type BottomPanelId = (typeof BOTTOM_PANELS)[number];
 
 export function isBottomPanelId(v: string): v is BottomPanelId {

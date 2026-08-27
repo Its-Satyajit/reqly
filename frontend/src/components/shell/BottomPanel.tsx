@@ -10,6 +10,7 @@ const LABELS: Record<BottomPanelId, string> = {
   tests: "Tests",
   variables: "Variables",
   cookies: "Cookies",
+  devtools: "DevTools",
 };
 
 function PanelContent({ active }: { active: BottomPanelId }) {
@@ -69,7 +70,19 @@ function PanelContent({ active }: { active: BottomPanelId }) {
   if (active === "tests") {
     return <p className="p-3 text-xs text-muted-foreground">No test runs yet — run a collection to see results here.</p>;
   }
-  return <p className="p-3 text-xs text-muted-foreground">No cookies in this workspace.</p>;
+  if (active === "cookies") {
+    return <p className="p-3 text-xs text-muted-foreground">No cookies in this workspace.</p>;
+  }
+  // DevTools — read-only request/auth/variables/console/network per spec m54
+  return (
+    <div className="grid grid-cols-2 gap-2 p-2 text-xs">
+      <div className="rounded border border-border p-2"><p className="font-medium">Request</p><p className="text-muted-foreground">Open a request tab to inspect.</p></div>
+      <div className="rounded border border-border p-2"><p className="font-medium">Auth</p><p className="text-muted-foreground">Inherited auth applied silently.</p></div>
+      <div className="rounded border border-border p-2"><p className="font-medium">Variables</p><p className="text-muted-foreground">Effective variables per tab.</p></div>
+      <div className="rounded border border-border p-2"><p className="font-medium">Console</p><p className="text-muted-foreground">Goja console per run.</p></div>
+      <div className="col-span-2 rounded border border-border p-2"><p className="font-medium">Network</p><p className="text-muted-foreground">Timings waterfall via ResponseViewer Timeline.</p></div>
+    </div>
+  );
 }
 
 export function BottomPanel() {

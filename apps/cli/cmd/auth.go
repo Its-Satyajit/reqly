@@ -172,6 +172,8 @@ var authLoginTimeoutSeconds = 300
 // authorization_code | device_code.
 var authLoginFlow = "auto"
 
+var authProvider = ""
+
 // authLoginCmd performs an OAuth 2.0 interactive grant on demand and caches
 // the token: the Authorization Code + PKCE flow opens the system browser,
 // and the Device flow (RFC 8628) prints a verification URI + code to approve
@@ -199,8 +201,35 @@ default when the config only has a device_authorization_url), a verification
 URI and code are printed to approve on any device, and Reqly polls until you
 authorize. The token is cached in <workspace>/.reqly/tokens.json; the client
 secret and tokens never print.`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.RangeArgs(0, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if authProvider == "github" {
+			root := findWorkspaceRoot(".")
+			if root == "" {
+				return fmt.Errorf("no workspace found: run reqly auth login --provider github inside a workspace")
+			}
+			store, _, err := openTokenStore(root)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(cmd.OutOrStdout(), "GitHub PAT: ")
+			var token string
+			if _, err := fmt.Fscanln(os.Stdin, &token); err != nil {
+				token = ""
+			}
+			token = strings.TrimSpace(token)
+			if token == "" {
+				return fmt.Errorf("PAT required")
+			}
+			if err := store.Set("github", token); err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "GitHub PAT saved")
+			return nil
+		}
+		if len(args) == 0 {
+			return fmt.Errorf("config file required (or use --provider github)")
+		}
 		cfg, err := loadAuthConfig(args[0])
 		if err != nil {
 			return err
@@ -382,6 +411,7 @@ func yesNo(b bool) string {
 func init() {
 	authLoginCmd.Flags().IntVar(&authLoginTimeoutSeconds, "timeout", 300, "seconds to wait for the browser callback or device-flow approval")
 	authLoginCmd.Flags().StringVar(&authLoginFlow, "flow", "auto", "grant to run: authorization_code, device_code, or auto (infer from the config)")
+	authLoginCmd.Flags().StringVar(&authProvider, "provider", "", "git provider: github (PAT via REQLY_GITHUB_TOKEN or secrets.Store)")
 	authCmd.PersistentFlags().StringVar(&authStoreFlag, "store", "", "token store backend: file or keychain (default REQLY_TOKEN_STORE or file)")
 	authCmd.AddCommand(authLoginCmd, authStatusCmd, authLogoutCmd)
 	rootCmd.AddCommand(authCmd)

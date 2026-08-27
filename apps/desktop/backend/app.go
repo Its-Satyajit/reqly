@@ -484,6 +484,50 @@ func (s *AppService) HistoryReplay(id string) (*core.SendResponse, error) {
 	return core.SendResponseFrom(res), nil
 }
 
+// HistoryReplayWithVars replays a stored entry with variable overrides layered via variables.Set.
+// Vars are interpolated into URL/headers/body at build time; history entry itself is not mutated.
+func (s *AppService) HistoryReplayWithVars(id string, vars map[string]string) (*core.SendResponse, error) {
+	if s == nil || s.requests == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to replay history")
+	}
+	h := s.hist()
+	if h == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to view history")
+	}
+	e, err := h.ShowRaw(context.Background(), id)
+	if err != nil {
+		return nil, err
+	}
+	// Build variable set from overrides (runtime scope).
+	vs := variables.NewSet()
+	for k, v := range vars {
+		if k == "" {
+			continue
+		}
+		vs.Set(variables.ScopeRuntime, k, v)
+	}
+	// Interpolate URL/headers/body via variables before Run (faithful otherwise).
+	req := request.Request{Method: request.Method(e.Method), URL: e.URL, Headers: headersFromMapHistory(e.ReqHeaders), Body: string(e.ReqBody)}
+	// Interpolate via variables.Set — manualUrl/header interpolation mirrors request.Client.build but keeps body text verbatim for Run's own interpolation.
+	if interpolated, err := vs.Interpolate(req.URL); err == nil {
+		req.URL = interpolated
+	}
+	for i := range req.Headers {
+		if v, err := vs.Interpolate(req.Headers[i].Value); err == nil {
+			req.Headers[i].Value = v
+		}
+	}
+	if interpolated, err := vs.Interpolate(req.Body); err == nil {
+		req.Body = interpolated
+	}
+	noAttach := false
+	res, err := s.requests.Run(context.Background(), req, core.RunRequestOptions{AttachCookies: &noAttach})
+	if err != nil {
+		return nil, err
+	}
+	return core.SendResponseFrom(res), nil
+}
+
 // CookieList lists cookies for env.
 func (s *AppService) CookieList(env string) ([]history.Cookie, error) {
 	h := s.hist()

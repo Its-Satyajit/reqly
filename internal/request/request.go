@@ -38,6 +38,12 @@ type Request struct {
 	Retry      *Retry      `json:"retry,omitempty" yaml:"retry,omitempty"`
 	Timeout    int64       `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
 
+	// Proxy is an optional per-request proxy URL (http://proxy:8080). When set it
+	// overrides ProxyFromEnvironment for this send; empty means environment proxy.
+	Proxy string `json:"proxy,omitempty" yaml:"proxy,omitempty"`
+	// TLS configures per-request TLS (M47). When nil, system roots are used.
+	TLS *TLSConfig `json:"tls,omitempty" yaml:"tls,omitempty"`
+
 	// GRPC configures a gRPC call (M43). When set, url carries host:port,
 	// headers act as metadata, and body is ignored in favor of Message.
 	GRPC *GRPC `json:"grpc,omitempty" yaml:"grpc,omitempty"`
@@ -109,6 +115,12 @@ type Header struct {
 type Parameter struct {
 	Key   string `json:"key" yaml:"key,omitempty"`
 	Value string `json:"value" yaml:"value,omitempty"`
+}
+
+// TLSConfig configures per-request TLS (M47).
+type TLSConfig struct {
+	InsecureSkipVerify bool   `json:"insecureSkipVerify,omitempty" yaml:"insecureSkipVerify,omitempty"`
+	CAFile             string `json:"caFile,omitempty" yaml:"caFile,omitempty"`
 }
 
 // Auth describes the authentication configuration attached to a request.

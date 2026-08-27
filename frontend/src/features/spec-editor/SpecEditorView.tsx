@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CodeMirrorEditor } from "../../editors/CodeMirrorEditor";
 import { Button } from "#components/ui/button";
-import { SPEC_SECTIONS } from "#lib/specTree";
+import { nodesForContent } from "#lib/specTree";
 import { nodesForSpec, edgesForNodes } from "#lib/schemaGraph";
 import { cn } from "#lib/utils";
 import { useSpecEditorStore } from "#stores/useSpecEditorStore";
@@ -42,17 +42,55 @@ export function SpecEditorView() {
   const content = useSpecEditorStore((s) => s.content);
   const selectedId = useSpecEditorStore((s) => s.selectedId);
   const dirty = useSpecEditorStore((s) => s.dirty);
+  const filePath = useSpecEditorStore((s) => s.filePath);
+  const diagnostics = useSpecEditorStore((s) => s.diagnostics);
   const setContent = useSpecEditorStore((s) => s.setContent);
   const setSelected = useSpecEditorStore((s) => s.setSelected);
   const markSaved = useSpecEditorStore((s) => s.markSaved);
+  const loadContent = useSpecEditorStore((s) => s.loadContent);
   const [tab, setTab] = useState<"editor" | "viz">("editor");
+  const selectedOps = useSpecEditorStore((s) => s.selectedOps);
+  const generateWarnings = useSpecEditorStore((s) => s.generateWarnings);
+  const toggleOp = useSpecEditorStore((s) => s.toggleOp);
+  const setGenerateWarnings = useSpecEditorStore((s) => s.setGenerateWarnings);
+  const sections = useMemo(() => nodesForContent(content), [content]);
+
+  const handleGenerate = async () => {
+    const ops = Array.from(selectedOps);
+    if (ops.length === 0) {
+      setGenerateWarnings(["select at least one operation"]);
+      return;
+    }
+    // Try Wails bridge when available, else surface as warning (browser dev)
+    const wails = (window as unknown as { go?: { main?: { AppService?: { OpenapiGenerateRequests?: (a: string, b: unknown, c: string) => Promise<unknown> } } } }).go;
+    const fn = wails?.main?.AppService?.OpenapiGenerateRequests;
+    if (!fn) {
+      setGenerateWarnings([`selected ${ops.length} operation(s) — bridge unavailable in browser dev`]);
+      return;
+    }
+    try {
+      const sels = ops.map((id) => {
+        const p = id.replace(/^paths:/, "");
+        return { method: "GET", path: p };
+      });
+      const res = (await fn(filePath, sels, "generated")) as { warnings?: string[]; created?: string[] };
+      setGenerateWarnings(res.warnings ?? (res.created ? [`created ${res.created.length} file(s)`] : []));
+    } catch (e) {
+      setGenerateWarnings([String((e as Error).message ?? e)]);
+    }
+  };
 
   return (
     <div className="flex h-full min-h-0">
       <aside className="w-[220px] shrink-0 border-r border-border bg-card/30 p-3">
-        <p className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Spec Tree</p>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Spec Tree</p>
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={handleGenerate} disabled={selectedOps.size === 0}>
+            Generate {selectedOps.size > 0 ? `(${selectedOps.size})` : ""}
+          </Button>
+        </div>
         <ul className="space-y-0.5">
-          {SPEC_SECTIONS.map((n) => (
+          {sections.map((n) => (
             <li key={n.id}>
               <button
                 type="button"
@@ -62,14 +100,17 @@ export function SpecEditorView() {
                 {n.label}
               </button>
               {n.children?.map((c) => (
-                <button
+                <label
                   key={c.id}
-                  type="button"
-                  onClick={() => setSelected(c.id)}
-                  className={cn("ml-4 mt-0.5 flex w-[calc(100%-1rem)] rounded px-2 py-1 text-left text-xs", selectedId === c.id ? "bg-primary/12 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+                  className={cn("ml-4 mt-0.5 flex w-[calc(100%-1rem)] items-center gap-1.5 rounded px-2 py-1 text-left text-xs", selectedId === c.id ? "bg-primary/12 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
                 >
-                  {c.label}
-                </button>
+                  {c.id.startsWith("paths:") && (
+                    <input type="checkbox" checked={selectedOps.has(c.id)} onChange={() => toggleOp(c.id)} className="size-3" aria-label={`select ${c.label}`} />
+                  )}
+                  <button type="button" onClick={() => setSelected(c.id)} className="flex-1 text-left">
+                    {c.label}
+                  </button>
+                </label>
               ))}
             </li>
           ))}
@@ -78,10 +119,37 @@ export function SpecEditorView() {
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center justify-between border-b border-border px-3 py-2">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-muted-foreground">openapi.yaml</span>
+            <span className="font-mono text-xs text-muted-foreground">{filePath}</span>
             {dirty && <span className="size-2 rounded-full bg-warning" aria-label="unsaved" />}
+            {diagnostics.length > 0 && (
+              <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] text-destructive">
+                {diagnostics.length} issue{diagnostics.length > 1 ? "s" : ""}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
+            <input
+              aria-label="spec file path"
+              value={filePath}
+              onChange={(e) => useSpecEditorStore.getState().setFilePath(e.target.value)}
+              className="mr-2 hidden h-7 w-36 rounded border border-border bg-background px-2 font-mono text-xs sm:block"
+              placeholder="openapi.yaml"
+            />
+            <label className="mr-1 cursor-pointer rounded border border-border px-2 py-1 text-xs hover:bg-muted">
+              Open
+              <input
+                type="file"
+                accept=".yaml,.yml,.json"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const text = await f.text();
+                  loadContent(text, f.name);
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <div className="mr-2 flex rounded-md border border-border p-0.5">
               <button type="button" onClick={() => setTab("editor")} className={cn("rounded px-2 py-0.5 text-xs", tab === "editor" ? "bg-muted font-medium" : "text-muted-foreground")}>
                 Editor
@@ -96,6 +164,23 @@ export function SpecEditorView() {
           </div>
         </div>
         <div className="min-h-0 flex-1">{tab === "editor" ? <CodeMirrorEditor value={content} language="yaml" onChange={setContent} className="h-full" /> : <SchemaViz selectedId={selectedId} />}</div>
+        {(diagnostics.length > 0 || generateWarnings.length > 0) && (
+          <div className="max-h-28 shrink-0 overflow-auto border-t border-border bg-card/40">
+            <p className="px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Problems</p>
+            <ul className="px-3 pb-2">
+              {diagnostics.map((d, i) => (
+                <li key={i} className={cn("font-mono text-xs", d.severity === "error" ? "text-destructive" : "text-warning")}>
+                  {d.severity}: {d.message}
+                </li>
+              ))}
+              {generateWarnings.map((w, i) => (
+                <li key={`gw-${i}`} className="font-mono text-xs text-muted-foreground">
+                  generate: {w}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

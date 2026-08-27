@@ -21,9 +21,11 @@ package testing
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/Its-Satyajit/reqly/internal/jsonschema"
 	"github.com/Its-Satyajit/reqly/internal/response"
 )
 
@@ -43,6 +45,8 @@ const (
 	AssertJSONPath AssertionKind = "json"
 	// AssertResponseTime checks the request duration against a threshold (ms).
 	AssertResponseTime AssertionKind = "response_time"
+	// AssertJSONSchema validates the response body against a JSON Schema file.
+	AssertJSONSchema AssertionKind = "json_schema"
 )
 
 // Assertion is a single check evaluated against a response.
@@ -183,6 +187,42 @@ func evaluate(a Assertion, resp *response.Response) Result {
 		limit := time.Duration(a.Expected) * time.Millisecond
 		passed = resp.Duration <= limit
 		message = fmt.Sprintf("response time %s <= %s", resp.Duration.Round(time.Millisecond), limit)
+
+	case AssertJSONSchema:
+		if strings.TrimSpace(a.Path) == "" {
+			passed = false
+			message = "json_schema: missing schema path"
+			break
+		}
+		data, err := os.ReadFile(a.Path)
+		if err != nil {
+			passed = false
+			message = fmt.Sprintf("json_schema: read %q: %v", a.Path, err)
+			break
+		}
+		sch, err := jsonschema.Compile(data, a.Value)
+		if err != nil {
+			passed = false
+			message = fmt.Sprintf("json_schema: compile %q: %v", a.Path, err)
+			break
+		}
+		violations, err := jsonschema.Validate(sch, resp.Body)
+		if err != nil {
+			passed = false
+			message = fmt.Sprintf("json_schema: validate: %v", err)
+			break
+		}
+		if len(violations) == 0 {
+			passed = true
+			message = fmt.Sprintf("json_schema %q valid", a.Path)
+		} else {
+			passed = false
+			parts := make([]string, 0, len(violations))
+			for _, v := range violations {
+				parts = append(parts, v.String())
+			}
+			message = fmt.Sprintf("json_schema %q: %s", a.Path, strings.Join(parts, "; "))
+		}
 
 	default:
 		passed = false

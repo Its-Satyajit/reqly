@@ -14,6 +14,8 @@ import {
 import { MethodLabel, StatusPill } from "../../components/status";
 import { CompactSelect } from "../../components/CompactSelect";
 import { CodeMirrorEditor } from "../../editors";
+import { KeyValueEditor } from "../../components/KeyValueEditor";
+import type { KeyValueRow } from "../../lib/request";
 import { HISTORY_PAGE_SIZE, useHistoryStore } from "../../stores/useHistoryStore";
 import { useFuseSearch } from "#hooks/useFuseSearch";
 import { HISTORY_FUSE_OPTIONS } from "#lib/historySearch";
@@ -48,6 +50,8 @@ export function HistoryView() {
 	const [status, setStatus] = useState("");
 	const [page, setPage] = useState(0);
 	const [confirmingClear, setConfirmingClear] = useState(false);
+	const [replayVarsId, setReplayVarsId] = useState<string | null>(null);
+	const [replayVars, setReplayVars] = useState<KeyValueRow[]>([{ key: "", value: "", enabled: true }]);
 
 	useEffect(() => {
 		void load({ offset: 0, status: "", query: "" });
@@ -72,6 +76,15 @@ export function HistoryView() {
 
 	const onReplay = (entry: HistoryEntry) => {
 		void replay(entry.id);
+	};
+	const onReplayWithVars = () => {
+		if (!replayVarsId) return;
+		const vars: Record<string, string> = {};
+		for (const r of replayVars) {
+			if (r.enabled && r.key.trim() !== "") vars[r.key] = r.value;
+		}
+		void useHistoryStore.getState().replayWithVars(replayVarsId, vars);
+		setReplayVarsId(null);
 	};
 
 	const pageFull = entries.length === PAGE_SIZE;
@@ -228,15 +241,15 @@ export function HistoryView() {
 										{entry.env || "—"}
 									</td>
 									<td className="border-b border-border/50 px-2 py-1.5 text-right">
-										<Button
-											size="xs"
-											variant="ghost"
-											onClick={() => onReplay(entry)}
-											title={`Replay ${entry.method} ${entry.url}`}
-										>
-											<RotateCcw className="size-3" aria-hidden />
-											Replay
-										</Button>
+										<div className="flex justify-end gap-1">
+											<Button size="xs" variant="ghost" onClick={() => onReplay(entry)} title={`Replay ${entry.method} ${entry.url}`}>
+												<RotateCcw className="size-3" aria-hidden />
+												Replay
+											</Button>
+											<Button size="xs" variant="ghost" onClick={() => { setReplayVarsId(entry.id); setReplayVars([{ key: "", value: "", enabled: true }]); }} title="Replay with vars">
+												Vars
+											</Button>
+										</div>
 									</td>
 								</tr>
 							))}
@@ -245,6 +258,21 @@ export function HistoryView() {
 				)}
 			</div>
 
+			<AlertDialog open={!!replayVarsId} onOpenChange={(open) => { if (!open) setReplayVarsId(null); }}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Replay with vars</AlertDialogTitle>
+						<AlertDialogDescription>Override request variables for this replay (e.g. token, id). Empty keys are dropped.</AlertDialogDescription>
+					</AlertDialogHeader>
+					<div className="max-h-64 overflow-auto">
+						<KeyValueEditor rows={replayVars} onChange={setReplayVars} keyPlaceholder="var" valuePlaceholder="value" />
+					</div>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction onClick={onReplayWithVars}>Replay</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 			<AlertDialog open={confirmingClear} onOpenChange={setConfirmingClear}>
 				<AlertDialogContent>
 					<AlertDialogHeader>

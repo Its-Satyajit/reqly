@@ -71,5 +71,10 @@ func init() {
 		jwtCmd,
 		paginationCmd,
 		bulkCmd,
+		perfCmd,
+		monitorCmd,
+		pluginCmd,
+		mcpCmd,
+		aiCmd,
 	)
 }
