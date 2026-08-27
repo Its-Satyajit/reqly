@@ -257,3 +257,49 @@ func TestDecode_NonJSONHeader(t *testing.T) {
 		t.Fatalf("non-json header: got %v", err)
 	}
 }
+
+func TestSignAndVerify_HMAC(t *testing.T) {
+	secret := []byte("reqly-super-secret-key-123456789")
+	payload := map[string]any{"sub": "user_42", "role": "admin"}
+
+	for _, alg := range []string{"HS256", "HS384", "HS512"} {
+		header := map[string]any{"alg": alg}
+		tokStr, err := Sign(header, payload, secret)
+		if err != nil {
+			t.Fatalf("Sign %s failed: %v", alg, err)
+		}
+
+		valid, err := Verify(tokStr, secret)
+		if err != nil {
+			t.Fatalf("Verify %s failed: %v", alg, err)
+		}
+		if !valid {
+			t.Fatalf("expected valid signature for %s", alg)
+		}
+
+		// Tampered secret
+		invalidSecret, err := Verify(tokStr, []byte("wrong-secret"))
+		if err != nil {
+			t.Fatalf("Verify with wrong secret failed: %v", err)
+		}
+		if invalidSecret {
+			t.Fatalf("expected invalid signature with wrong secret for %s", alg)
+		}
+	}
+}
+
+func TestSignAndVerify_None(t *testing.T) {
+	header := map[string]any{"alg": "none"}
+	payload := map[string]any{"sub": "unsecured"}
+	tokStr, err := Sign(header, payload, nil)
+	if err != nil {
+		t.Fatalf("Sign none failed: %v", err)
+	}
+	valid, err := Verify(tokStr, nil)
+	if err != nil {
+		t.Fatalf("Verify none failed: %v", err)
+	}
+	if !valid {
+		t.Fatalf("expected valid for alg none")
+	}
+}
