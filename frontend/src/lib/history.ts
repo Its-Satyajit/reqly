@@ -36,6 +36,7 @@ export interface HistoryAdapter {
   search(query: string, limit: number): Promise<HistoryEntry[]>
   clear(env: string | null): Promise<void>
   replay(id: string): Promise<ReplayedResponse | null>
+  replayWithVars?(id: string, vars: Record<string, string>): Promise<ReplayedResponse | null>
   listCookies(env: string): Promise<{ name: string; value: string; domain: string; path: string; env: string }[]>
   deleteCookie(name: string, domain: string, path: string, env: string): Promise<void>
   clearCookies(env: string | null): Promise<void>

@@ -33,6 +33,7 @@ interface HistoryState {
   refresh(): Promise<void>
   clear(env: string | null): Promise<void>
   replay(id: string): Promise<void>
+  replayWithVars(id: string, vars: Record<string, string>): Promise<void>
   dismissReplay(): void
 }
 
@@ -93,6 +94,24 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   async replay(id) {
     try {
       const response = await get().adapter.replay(id)
+      if (!response) {
+        set({ error: "Replay returned no response." })
+        return
+      }
+      set({ replayed: response, error: null })
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : String(err) })
+    }
+  },
+
+  async replayWithVars(id, vars) {
+    try {
+      let response: ReplayedResponse | null
+      if (get().adapter.replayWithVars) {
+        response = (await get().adapter.replayWithVars!(id, vars)) ?? null
+      } else {
+        response = await get().adapter.replay(id)
+      }
       if (!response) {
         set({ error: "Replay returned no response." })
         return
