@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Search, Send, Square } from "lucide-react";
+import { Cable, Search, Send, Square } from "lucide-react";
+import { PageHeader } from "#components/PageHeader";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
@@ -61,7 +62,13 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 	const busy = tab.status === "connecting" || tab.status === "streaming";
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-2 p-3">
+		<div className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="gRPC Client">
+			<PageHeader
+				icon={Cable}
+				title="gRPC Client"
+				description="Server reflection, unary RPCs, and client/server streaming inspections"
+			/>
+			<div className="flex flex-col gap-2 p-3">
 			<div className="flex items-center gap-1.5">
 				<Input
 					value={tab.target}
@@ -179,6 +186,7 @@ export function GrpcTab({ tabId }: { tabId: string }) {
 						))}
 					</ul>
 				)}
+			</div>
 			</div>
 		</div>
 	);

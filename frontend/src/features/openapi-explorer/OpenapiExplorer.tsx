@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FolderOutput, RefreshCw } from "lucide-react";
+import { Compass, FolderOutput, RefreshCw } from "lucide-react";
+import { PageHeader } from "#components/PageHeader";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
@@ -103,9 +104,13 @@ export function OpenapiExplorer() {
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4" aria-label="OpenAPI explorer">
-      <h2 className="text-sm font-semibold">OpenAPI Explorer</h2>
-
+    <section className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="OpenAPI explorer">
+      <PageHeader
+        icon={Compass}
+        title="OpenAPI Explorer"
+        description="Browse operations in an OpenAPI spec and generate workspace request files"
+      />
+      <div className="flex flex-col gap-3 p-4">
       <div className="flex items-end gap-2">
         <div className="flex min-w-64 flex-1 flex-col gap-1">
           <label htmlFor="openapi-spec" className="text-xs font-medium">
@@ -248,6 +253,7 @@ export function OpenapiExplorer() {
           )}
         </>
       )}
+      </div>
     </section>
   );
 }

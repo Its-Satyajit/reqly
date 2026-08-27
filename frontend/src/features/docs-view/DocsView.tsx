@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, FileText } from "lucide-react";
+import { PageHeader } from "#components/PageHeader";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
@@ -41,13 +42,13 @@ export function DocsView() {
 	const active = result?.files.find((f) => f.name === activeFile) ?? null;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-2 p-3">
-			<div className="flex items-center gap-2">
-				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-					Docs
-				</p>
-			</div>
-
+		<div className="flex h-full min-h-0 flex-col overflow-y-auto">
+			<PageHeader
+				icon={FileText}
+				title="API Docs"
+				description="Generate Markdown documentation from workspace collections with cURL snippets"
+			/>
+			<div className="flex flex-col gap-2 p-3">
 			<div className="flex flex-col gap-1">
 				<div className="flex items-center justify-between">
 					<p className="text-xs text-muted-foreground">
@@ -170,6 +171,7 @@ export function DocsView() {
 					URLs, headers, bodies, and ready-to-run cURL snippets.
 				</p>
 			)}
+			</div>
 		</div>
 	);
 }

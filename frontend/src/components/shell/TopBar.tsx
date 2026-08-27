@@ -17,6 +17,7 @@ import {
 	useWorkspaceStore,
 } from "../../stores";
 import { useWorkspaceBootstrapStore } from "../../stores/useWorkspaceBootstrap";
+import { EnvironmentSelector } from "./EnvironmentSelector";
 
 export function TopBar() {
 	const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
@@ -72,6 +73,7 @@ export function TopBar() {
 			</div>
 
 			<div className="flex items-center gap-2">
+				<EnvironmentSelector />
 				<Button
 					variant="ghost"
 					size="sm"

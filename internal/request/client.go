@@ -261,14 +261,14 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 	start := time.Now()
 	var dnsStart, dnsDone, connectStart, connectDone, tlsStart, tlsDone, gotConn, wroteRequest, firstByte time.Time
 	trace := &httptrace.ClientTrace{
-		DNSStart: func(info httptrace.DNSStartInfo) { dnsStart = time.Now() },
-		DNSDone:  func(info httptrace.DNSDoneInfo) { dnsDone = time.Now() },
-		ConnectStart: func(network, addr string) { connectStart = time.Now() },
-		ConnectDone: func(network, addr string, err error) { connectDone = time.Now() },
-		TLSHandshakeStart: func() { tlsStart = time.Now() },
-		TLSHandshakeDone: func(state tls.ConnectionState, err error) { tlsDone = time.Now() },
-		GotConn: func(info httptrace.GotConnInfo) { gotConn = time.Now() },
-		WroteRequest: func(info httptrace.WroteRequestInfo) { wroteRequest = time.Now() },
+		DNSStart:             func(info httptrace.DNSStartInfo) { dnsStart = time.Now() },
+		DNSDone:              func(info httptrace.DNSDoneInfo) { dnsDone = time.Now() },
+		ConnectStart:         func(network, addr string) { connectStart = time.Now() },
+		ConnectDone:          func(network, addr string, err error) { connectDone = time.Now() },
+		TLSHandshakeStart:    func() { tlsStart = time.Now() },
+		TLSHandshakeDone:     func(state tls.ConnectionState, err error) { tlsDone = time.Now() },
+		GotConn:              func(info httptrace.GotConnInfo) { gotConn = time.Now() },
+		WroteRequest:         func(info httptrace.WroteRequestInfo) { wroteRequest = time.Now() },
 		GotFirstResponseByte: func() { firstByte = time.Now() },
 	}
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Layers, Play, Square } from "lucide-react";
+import { PageHeader } from "#components/PageHeader";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
@@ -132,26 +133,27 @@ export function RunnersPanel() {
   };
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border pt-3" aria-label="Pagination and bulk runners">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <Layers className="mr-1 inline size-3.5" aria-hidden />
-          Runners
-        </span>
-        <CompactSelect
-          value={mode}
-          onChange={(v) => {
-            // SAFETY: options are exactly the two runner kinds.
-            patch({ mode: v as Mode });
-          }}
-          options={[
-            { value: "pagination", label: "Pagination" },
-            { value: "bulk", label: "Bulk" },
-          ]}
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="Pagination and bulk runners">
+      <PageHeader
+        icon={Layers}
+        title="Runners"
+        description="Paginate through multi-page endpoints or bulk-execute requests from a CSV/JSON dataset"
+        actions={
+          <CompactSelect
+            value={mode}
+            onChange={(v) => {
+              // SAFETY: options are exactly the two runner kinds.
+              patch({ mode: v as Mode });
+            }}
+            options={[
+              { value: "pagination", label: "Pagination" },
+              { value: "bulk", label: "Bulk" },
+            ]}
           ariaLabel="Runner mode"
-        />
-      </div>
-
+          />
+        }
+      />
+      <div className="flex flex-col gap-3 p-3">
       {activeTabId == null && (
         <p className="text-[11px] text-muted-foreground">
           Open a request tab to configure a run against it.
@@ -203,15 +205,35 @@ export function RunnersPanel() {
         </>
       ) : (
         <>
-          <Textarea
-            value={data}
-            onChange={(e) => patch({ data: e.target.value })}
-            rows={3}
-            spellCheck={false}
-            aria-label="Bulk data rows (CSV or JSON array)"
-            placeholder={"id,name\n1,ada"}
-            className="resize-y font-mono text-[11px]"
-          />
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium">Dataset (CSV or JSON Array)</span>
+              <label className="cursor-pointer rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground">
+                Load File
+                <input
+                  type="file"
+                  accept=".csv,.json"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    const text = await f.text();
+                    patch({ data: text });
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            <Textarea
+              value={data}
+              onChange={(e) => patch({ data: e.target.value })}
+              rows={3}
+              spellCheck={false}
+              aria-label="Bulk data rows (CSV or JSON array)"
+              placeholder={"id,name\n1,ada\n2,grace"}
+              className="resize-y font-mono text-[11px]"
+            />
+          </div>
           <div className="flex items-center gap-3 text-xs">
             <label className="flex items-center gap-1.5">
               <input
@@ -297,6 +319,7 @@ export function RunnersPanel() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }

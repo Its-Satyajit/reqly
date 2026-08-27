@@ -460,26 +460,40 @@ Every checked feature must pass the full checklist:
 
 ## Progress Tracker
 
-| Phase   | Scope                    | Status                                                                                                                 | Est. complete       |
-| ------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| Phase 0 | Foundation               | 100% — repo/build infra + Wails shell + UI shell + all core primitives + CLI skeleton + release pipeline               | 100%                |
-| Phase 1 | Core API Client (P0)     | 100% backend + CLI; **UI shell restarting from scratch** — §2 four-zone architecture not yet implemented per spec      | 100% backend, 0% UI |
-| Phase 2 | Differentiating (P1)     | ~40% — §56.1–56.8 data layer (lib + stores + tests) shipped; **UI components restarting from scratch** per spec §60–63 | ~40%                |
-| Phase 3 | Power-User (P2)          | 0% — §57.1–57.8 not started                                                                                            | 0%                  |
-| Phase 4 | Ecosystem (P3)           | 0% — §58.1–58.5 not started                                                                                            | 0%                  |
-| Phase 5 | MCP / AI / Extensibility | ~5% — §59.2 command palette shipped (needs rebuild per spec); §59.1 MCP server, §59.3 AI assistant not started         | ~5%                 |
-| Quality | DoD + release gates      | ~55% — Fast + PR CI green; E2E/Playwright + Vitest + full perf/security compat pending                                 | ~55%                |
+| Phase   | Scope                    | Status                                                                                                                                     | Est. complete        |
+| ------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| Phase 0 | Foundation               | 100% — repo/build infra + Wails shell + UI shell + all core primitives + CLI skeleton + release pipeline                                   | 100%                 |
+| Phase 1 | Core API Client (P0)     | 100% backend + CLI; UI shell §2 four-zone chrome shipped (Tickets #01–#07, 2026-08-27); §56 P1 GUI panels pending                          | 100% backend, ~60% UI |
+| Phase 2 | Differentiating (P1)     | ~60% — §56.1–56.8 data layer (lib + stores + tests) shipped; UI panels (template picker, proxy/TLS, dataset, CI/CD, mock GUI, schema docs) pending | ~60%           |
+| Phase 3 | Power-User (P2)          | 0% — §57.1–57.8 not started                                                                                                                | 0%                   |
+| Phase 4 | Ecosystem (P3)           | 0% — §58.1–58.5 not started                                                                                                                | 0%                   |
+| Phase 5 | MCP / AI / Extensibility | ~10% — §59.2 command palette shipped (2026-08-26); §59.1 MCP server stub shipped (M56); §59.3 AI heuristic shipped (M58); full AI assistant pending | ~10%        |
+| Quality | DoD + release gates      | ~55% — Fast + PR CI green; E2E/Playwright + Vitest + full perf/security compat pending                                                     | ~55%                 |
 
-### Next milestones (UI redesign from scratch, following spec §2)
+### Next milestones (UI redesign — spec §2 status)
 
-1. **§2.1 TopBar** — Logo, Workspace Switcher, Global Search ⌘K, Import/Export, Environment selector, Settings
-2. **§2.2 Tool Rail** — 48–56px, 4 groups (Workspace/API Tools/Realtime/System), icon-based routing
-3. **§2.3 Context Sidebar** — 220–280px, collapsible/resizable, per-tool content, `⌘B` toggle
-4. **§2.4 Main Workspace** — Tab-based content area, page routing per active tool
-5. **§2.5 Bottom Panel** — Console/Network/Tests/Variables/Cookies, `⌘J` toggle, resizable
-6. **§3 Design System** — Tokens, typography (IBM Plex), color system (terracotta accent, BASE 6px)
-7. **§60 Navigation Map** — 15+ full pages with sub-panels
-8. **§61–63** — Shared patterns, page/panel rules, final layout model
+1. ~~**§2.1 TopBar** — Logo, Workspace Switcher, Global Search ⌘K, Import/Export, Settings~~ ✅ shipped 2026-08-27 (Active Env selector pending — Ticket #12)
+2. ~~**§2.2 Tool Rail** — 48–56px, 4 groups (Workspace/API Tools/Realtime/System), icon-based routing~~ ✅ shipped 2026-08-27
+3. ~~**§2.3 Context Sidebar** — 220–280px, collapsible/resizable, per-tool content, `⌘B` toggle~~ ✅ shipped 2026-08-27 (Recent/pinned pending)
+4. ~~**§2.4 Main Workspace** — Tab-based content area, page routing per active tool~~ ✅ shipped 2026-08-27
+5. ~~**§2.5 Bottom Panel** — Console/Network/Tests/Variables/Cookies, `⌘J` toggle, resizable~~ ✅ shipped 2026-08-27
+6. ~~**§3 Design System** — Tokens, typography (IBM Plex), color system (terracotta accent, BASE 6px)~~ ✅ shipped 2026-08-27
+7. ~~**§60 Navigation Map** — 15+ full pages with sub-panels~~ ✅ shipped 2026-08-27
+8. ~~**§61–63** — Shared patterns, page/panel rules, final layout model~~ ✅ shipped 2026-08-27
+
+### Next milestones (Tickets #08–#12 + P1 GUI panels)
+
+- [x] **Ticket #08** — API Tools polish: consistent PageHeader across Diff/JWT/GraphQL/gRPC/Runners/Explorer/Docs/Mocks/Settings views — 2026-08-27
+- [x] **Ticket #10** — Settings view polish: Proxy/TLS section (`ProxyTlsPanel`), CI/CD section (`CicdPanel`), shortcuts — 2026-08-27
+- [x] **Ticket #11** — Bottom Panel tab content wiring: Variables tab (active + chain), Cookies tab (parsed), Network, Tests — 2026-08-27
+- [x] **Ticket #12** — TopBar Active Environment selector: `EnvironmentSelector` dropdown in TopBar — 2026-08-27
+- [x] **§56.3 GUI** — Template picker sheet in Request Builder (`TemplatePickerSheet`) — 2026-08-27
+- [x] **§56.4 GUI** — Proxy/TLS configuration panel in Settings (`ProxyTlsPanel`) — 2026-08-27
+- [x] **§56.5 GUI** — Dataset picker in Runners panel (file loader + preview) — 2026-08-27
+- [x] **§56.6 GUI** — CI/CD configuration panel in Settings (`CicdPanel`) — 2026-08-27
+- [ ] **§56.7 GUI** — Mock server full GUI: route editor sidebar + logs viewer (data layer shipped G-5.5)
+- [ ] **§56.8 GUI** — GraphQL schema browser + gRPC service browser (data layer shipped G-5.6)
+
 6. ~~**Collection runner + scripting**~~ — pre/post scripts (Goja `reqly` sandbox), request chaining via runtime variables, tests in the runner, CLI `reqly collection test` — ✅ shipped
 7. ~~**Mock server + OpenAPI**~~ — `internal/openapi` (kin-openapi load/validate) + `internal/mocking` (path/method matching, schema/example response generation, delay + error simulation) + CLI `reqly mock <spec>` — ✅ shipped
 8. ~~**Validate + diff**~~ — `reqly validate` (spec/project checks) and `reqly diff` (specs/requests/responses) — ✅ shipped
@@ -615,49 +629,49 @@ This section preserves `gui-roadmap.md` in full. It is subordinate to the develo
 
 ### §2.1 TopBar (always visible)
 
-- [ ] Logo
-- [ ] Workspace Switcher
-- [ ] Global Search ⌘K
-- [ ] Import / Export buttons
-- [ ] Active Environment selector
-- [ ] Sync Status indicator
-- [ ] Notifications
-- [ ] Settings
-- [ ] User Menu
+- [x] Logo — 2026-08-27
+- [x] Workspace Switcher (folder open) — 2026-08-27
+- [x] Global Search ⌘K — 2026-08-27
+- [x] Import / Export buttons — 2026-08-27
+- [x] Active Environment selector (Ticket #12) — 2026-08-27
+- [ ] Sync Status indicator (pending)
+- [ ] Notifications (pending)
+- [x] Settings — 2026-08-27
+- [ ] User Menu (pending)
 
 ### §2.2 Tool Rail (48–56px, left-most)
 
-- [ ] Workspace group: Home, Requests, Environments, History
-- [ ] API Tools group: Mocks, Diff, JWT, GraphQL, gRPC, Runners, Explorer, Docs
-- [ ] Realtime group: WebSocket, SSE
-- [ ] System group: Settings
-- [ ] Icon-based routing (top-level navigation)
+- [x] Workspace group: Home, Requests, Environments, History — 2026-08-27
+- [x] API Tools group: Mocks, Diff, JWT, GraphQL, gRPC, Runners, Explorer, Docs — 2026-08-27
+- [x] Realtime group: WebSocket, SSE — 2026-08-27
+- [x] System group: Settings — 2026-08-27
+- [x] Icon-based routing (top-level navigation) — 2026-08-27
 
 ### §2.3 Context Sidebar (220–280px)
 
-- [ ] Collapsible/resizable (drag handle)
-- [ ] Changes per active tool
-- [ ] Tree navigation
-- [ ] Search within tool
-- [ ] Contextual actions
-- [ ] Recent/pinned items
-- [ ] `⌘B` toggle
+- [x] Collapsible/resizable (drag handle) — 2026-08-27
+- [x] Changes per active tool — 2026-08-27
+- [x] Tree navigation — 2026-08-27
+- [x] Search within tool — 2026-08-27
+- [x] Contextual actions — 2026-08-27
+- [ ] Recent/pinned items (pending)
+- [x] `⌘B` toggle — 2026-08-27
 
 ### §2.4 Main Workspace
 
-- [ ] Tab-based content area
-- [ ] Page routing per active tool
-- [ ] Full pages vs context panels (§62 rules)
+- [x] Tab-based content area — 2026-08-27
+- [x] Page routing per active tool — 2026-08-27
+- [x] Full pages vs context panels (§62 rules) — 2026-08-27
 
 ### §2.5 Bottom Utility Panel
 
-- [ ] Console tab
-- [ ] Network tab
-- [ ] Tests tab
-- [ ] Variables tab
-- [ ] Cookies tab
-- [ ] `⌘J` toggle
-- [ ] Resizable height
+- [x] Console tab — 2026-08-27
+- [x] Network tab — 2026-08-27
+- [x] Tests tab — 2026-08-27
+- [x] Variables tab — 2026-08-27
+- [x] Cookies tab — 2026-08-27
+- [x] `⌘J` toggle — 2026-08-27
+- [x] Resizable height — 2026-08-27
 
 ## GUI-1 Design System (spec §3) — ✅ shipped 2026-08-27
 

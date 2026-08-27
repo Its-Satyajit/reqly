@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
+import { Settings } from "lucide-react";
 import { useThemeStore } from "#stores";
 import { THEMES } from "#lib/themes";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
 import { useHistoryStore } from "#stores/useHistoryStore";
 import { useWorkspaceBootstrapStore } from "#stores/useWorkspaceBootstrap";
+import { PageHeader } from "#components/PageHeader";
+import { ProxyTlsPanel } from "./ProxyTlsPanel";
+import { CicdPanel } from "./CicdPanel";
 
 const SHORTCUTS: [string, string][] = [
   ["⌘K", "Command palette"],
@@ -37,8 +41,13 @@ export function SettingsView() {
     localStorage.setItem("reqly:historyRetention", v);
   };
   return (
-    <div className="mx-auto max-w-3xl p-6 space-y-6">
-      <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="Settings">
+      <PageHeader
+        icon={Settings}
+        title="Settings"
+        description="Preferences, workspace configurations, proxy/TLS rules, and CI/CD generators"
+      />
+      <div className="mx-auto max-w-3xl w-full p-6 space-y-6">
       <section className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-semibold">Appearance</h2>
         <p className="mt-1 text-xs text-muted-foreground">Atlas themes are pure CSS-variable sets; adding a theme is one stylesheet.</p>
@@ -49,6 +58,9 @@ export function SettingsView() {
           <button onClick={() => setTheme("system")} className={`rounded-md border px-3 py-1.5 text-xs ${theme === "system" ? "border-primary bg-primary/10 font-medium text-primary" : "border-border hover:bg-muted"}`}>System</button>
         </div>
       </section>
+
+      <ProxyTlsPanel />
+      <CicdPanel />
       <section className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-semibold">Workspace</h2>
         <p className="mt-1 text-xs text-muted-foreground">{workspace?.name ?? "No workspace"} — {workspace?.path ?? "—"}</p>
@@ -82,6 +94,7 @@ export function SettingsView() {
           </ul>
         </div>
       </section>
+      </div>
     </div>
   );
 }

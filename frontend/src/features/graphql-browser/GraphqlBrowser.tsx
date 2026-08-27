@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Hexagon, RefreshCw } from "lucide-react";
+import { PageHeader } from "#components/PageHeader";
 import { Alert, AlertDescription } from "#components/ui/alert";
 import { Badge } from "#components/ui/badge";
 import { Button } from "#components/ui/button";
@@ -120,9 +121,13 @@ export function GraphqlBrowser() {
   const selectedType: GqlType | undefined = schema?.types?.find((t) => t.name === selected);
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4" aria-label="GraphQL schema browser">
-      <h2 className="text-sm font-semibold">GraphQL Schema Browser</h2>
-
+    <section className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="GraphQL schema browser">
+      <PageHeader
+        icon={Hexagon}
+        title="GraphQL Schema Browser"
+        description="Introspect a GraphQL endpoint and browse types, queries, and mutations"
+      />
+      <div className="flex flex-col gap-3 p-4">
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex min-w-64 flex-1 flex-col gap-1">
           <label htmlFor="gql-endpoint" className="text-xs font-medium">Endpoint</label>
@@ -233,6 +238,7 @@ export function GraphqlBrowser() {
           )}
         </div>
       )}
+      </div>
     </section>
   );
 }

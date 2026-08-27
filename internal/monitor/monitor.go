@@ -14,11 +14,11 @@ type Threshold struct {
 
 // Result is one tick's health check.
 type Result struct {
-	OK        bool          `json:"ok"`
-	Status    int           `json:"status"`
-	LatencyMs int64         `json:"latencyMs"`
-	Threshold Threshold     `json:"threshold"`
-	At        time.Time     `json:"at"`
+	OK        bool      `json:"ok"`
+	Status    int       `json:"status"`
+	LatencyMs int64     `json:"latencyMs"`
+	Threshold Threshold `json:"threshold"`
+	At        time.Time `json:"at"`
 }
 
 // SendFunc sends one request; returns latency and status.
