@@ -152,5 +152,71 @@ func formatJWTExpiry(e jwtpkg.ExpiryStatus) string {
 
 func init() {
 	jwtDecodeCmd.Flags().BoolVar(&jwtDecodeJSON, "json", false, "output machine JSON")
-	jwtCmd.AddCommand(jwtDecodeCmd)
+	jwtVerifyCmd.Flags().StringVarP(&jwtVerifySecret, "secret", "s", "", "HMAC secret key")
+	jwtSignCmd.Flags().StringVarP(&jwtSignSecret, "secret", "s", "", "HMAC secret key")
+	jwtSignCmd.Flags().StringVarP(&jwtSignAlg, "alg", "a", "HS256", "signing algorithm (HS256, HS384, HS512, none)")
+
+	jwtCmd.AddCommand(jwtDecodeCmd, jwtVerifyCmd, jwtSignCmd)
+}
+
+var (
+	jwtVerifySecret string
+	jwtSignSecret   string
+	jwtSignAlg      string
+)
+
+var jwtVerifyCmd = &cobra.Command{
+	Use:   "verify <token> --secret <secret>",
+	Short: "Verify a JWT signature using HMAC",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		raw := args[0]
+		if raw == "-" {
+			b, err := io.ReadAll(cmd.InOrStdin())
+			if err != nil {
+				return fmt.Errorf("read stdin: %w", err)
+			}
+			raw = strings.TrimSpace(string(b))
+		}
+		if jwtVerifySecret == "" {
+			return fmt.Errorf("secret is required (use --secret <secret>)")
+		}
+		valid, err := jwtpkg.Verify(raw, []byte(jwtVerifySecret))
+		if err != nil {
+			return fmt.Errorf("verify failed: %w", err)
+		}
+		if !valid {
+			fmt.Fprintln(cmd.OutOrStdout(), "Signature: INVALID")
+			return fmt.Errorf("invalid signature")
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), "Signature: VALID")
+		return nil
+	},
+}
+
+var jwtSignCmd = &cobra.Command{
+	Use:   "sign <payload-json> --secret <secret> [--alg HS256]",
+	Short: "Sign a JSON payload into a JWT",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		rawPayload := args[0]
+		if rawPayload == "-" {
+			b, err := io.ReadAll(cmd.InOrStdin())
+			if err != nil {
+				return fmt.Errorf("read stdin: %w", err)
+			}
+			rawPayload = strings.TrimSpace(string(b))
+		}
+		var payload map[string]any
+		if err := json.Unmarshal([]byte(rawPayload), &payload); err != nil {
+			return fmt.Errorf("parse payload JSON: %w", err)
+		}
+		header := map[string]any{"alg": jwtSignAlg, "typ": "JWT"}
+		token, err := jwtpkg.Sign(header, payload, []byte(jwtSignSecret))
+		if err != nil {
+			return fmt.Errorf("sign failed: %w", err)
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), token)
+		return nil
+	},
 }

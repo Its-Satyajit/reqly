@@ -18,9 +18,13 @@
 package jwt
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"strings"
 	"time"
 )
@@ -182,4 +186,86 @@ func computeExpiry(payload map[string]any) (ExpiryStatus, error) {
 	st.Status = "valid"
 	st.Remaining = 0
 	return st, fieldErr
+}
+
+// Sign creates a signed JWT using HMAC-SHA256/384/512 or "none".
+func Sign(header, payload map[string]any, secret []byte) (string, error) {
+	alg, _ := header["alg"].(string)
+	if alg == "" {
+		alg = "HS256"
+		header["alg"] = "HS256"
+	}
+	if header["typ"] == nil {
+		header["typ"] = "JWT"
+	}
+
+	headerJSON, err := json.Marshal(header)
+	if err != nil {
+		return "", fmt.Errorf("encode header: %w", err)
+	}
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("encode payload: %w", err)
+	}
+
+	headerEnc := base64.RawURLEncoding.EncodeToString(headerJSON)
+	payloadEnc := base64.RawURLEncoding.EncodeToString(payloadJSON)
+	signingInput := headerEnc + "." + payloadEnc
+
+	if alg == "none" {
+		return signingInput + ".", nil
+	}
+
+	var hashFunc func() hash.Hash
+	switch strings.ToUpper(alg) {
+	case "HS256":
+		hashFunc = sha256.New
+	case "HS384":
+		hashFunc = sha512.New384
+	case "HS512":
+		hashFunc = sha512.New
+	default:
+		return "", fmt.Errorf("unsupported signing algorithm %q (supports HS256, HS384, HS512, none)", alg)
+	}
+
+	mac := hmac.New(hashFunc, secret)
+	mac.Write([]byte(signingInput))
+	sigEnc := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+
+	return signingInput + "." + sigEnc, nil
+}
+
+// Verify validates the HMAC signature of a JWT.
+func Verify(token string, secret []byte) (bool, error) {
+	tok, err := Decode(token)
+	if err != nil {
+		return false, err
+	}
+	if strings.ToLower(tok.Alg) == "none" {
+		return tok.Signature == "", nil
+	}
+
+	var hashFunc func() hash.Hash
+	switch strings.ToUpper(tok.Alg) {
+	case "HS256":
+		hashFunc = sha256.New
+	case "HS384":
+		hashFunc = sha512.New384
+	case "HS512":
+		hashFunc = sha512.New
+	default:
+		return false, fmt.Errorf("unsupported verification algorithm %q", tok.Alg)
+	}
+
+	signingInput := tok.RawHeader + "." + tok.RawPayload
+	mac := hmac.New(hashFunc, secret)
+	mac.Write([]byte(signingInput))
+	expectedSig := mac.Sum(nil)
+
+	actualSig, err := base64.RawURLEncoding.DecodeString(tok.Signature)
+	if err != nil {
+		return false, fmt.Errorf("invalid signature encoding: %w", err)
+	}
+
+	return hmac.Equal(actualSig, expectedSig), nil
 }
