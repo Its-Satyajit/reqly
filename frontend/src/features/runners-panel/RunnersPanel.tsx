@@ -25,7 +25,7 @@ import {
 import { useRequestStore, type TabDraft } from "#stores/useRequestStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
 
-type Mode = "pagination" | "bulk";
+type Mode = "pagination" | "bulk" | "graph";
 
 
 function draftOf(activeTabId: string | null): TabDraft | null {
@@ -72,9 +72,10 @@ export function RunnersPanel() {
     activeRunId,
   } = ui;
 
+  // Track active run listener
   useEffect(() => {
-    if (activeRunId == null) return;
-    const unlisten = getRunnerBridge().listen(activeRunId, {
+    if (!activeRunId) return;
+    const unsub = getRunnerBridge().listen(activeRunId, {
       onStep: (step) => {
         frameSeq += 1;
         const next = { ...step, seq: frameSeq };
@@ -84,9 +85,7 @@ export function RunnersPanel() {
         setUi((prev) => ({ ...prev, summary, running: false }));
       },
     });
-    return () => {
-      unlisten();
-    };
+    return () => unsub();
   }, [activeRunId]);
 
   // Draft is captured at start; the panel shows live progress per step.
@@ -111,7 +110,7 @@ export function RunnersPanel() {
     getRunnerBridge()
       .start({
         runId,
-        kind: mode,
+        kind: mode === "bulk" ? "bulk" : "pagination",
         request: draft,
         pagination,
         maxPagesOverride: mode === "pagination" ? maxPages : undefined,
@@ -136,146 +135,190 @@ export function RunnersPanel() {
     <div className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="Pagination and bulk runners">
       <PageHeader
         icon={Layers}
-        title="Runners"
-        description="Paginate through multi-page endpoints or bulk-execute requests from a CSV/JSON dataset"
+        title="Runners & Execution Graph"
+        description="Paginate through multi-page endpoints, bulk-execute requests, or visualize request dependency chains"
         actions={
           <CompactSelect
             value={mode}
             onChange={(v) => {
-              // SAFETY: options are exactly the two runner kinds.
+              // SAFETY: options are exactly the three runner modes.
               patch({ mode: v as Mode });
             }}
             options={[
               { value: "pagination", label: "Pagination" },
               { value: "bulk", label: "Bulk" },
+              { value: "graph", label: "Dependency Graph" },
             ]}
           ariaLabel="Runner mode"
           />
         }
       />
       <div className="flex flex-col gap-3 p-3">
-      {activeTabId == null && (
-        <p className="text-[11px] text-muted-foreground">
-          Open a request tab to configure a run against it.
-        </p>
-      )}
-
-      {mode === "pagination" ? (
-        <>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium">Strategy</span>
-            <CompactSelect
-              value={strategy}
-              onChange={(v) => {
-                // SAFETY: options are the four core pagination strategies.
-                patch({ strategy: v as PaginationConfigInput["strategy"] });
-              }}
-              options={STRATEGY_OPTIONS}
-              ariaLabel="Pagination strategy"
-            />
+      {mode === "graph" ? (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold">Workspace Request Dependency Graph (§57.4)</h3>
+            <span className="text-[11px] font-mono text-muted-foreground">Variable propagation & chained flow</span>
           </div>
-          {strategy === "cursor" && (
-            <div className="flex items-center gap-1.5">
-              <label htmlFor="runner-nextpath" className="shrink-0 text-xs font-medium">
-                nextPath
-              </label>
-              <Input
-                id="runner-nextpath"
-                value={nextPath}
-                onChange={(e) => patch({ nextPath: e.target.value })}
-                spellCheck={false}
-                className="font-mono text-xs"
-              />
+          <div className="rounded border border-border/50 bg-background/60 p-4 font-mono text-xs space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-primary/10 text-primary px-2 py-1 font-semibold">1. Auth / Token Exchange</span>
+              <span className="text-muted-foreground">──────►</span>
+              <span className="text-xs text-status-info">sets &#123;&#123;token&#125;&#125;</span>
             </div>
-          )}
-          <div className="flex items-center gap-1.5">
-            <label htmlFor="runner-maxpages" className="shrink-0 text-xs font-medium">
-              Max pages
-            </label>
-            <input
-              id="runner-maxpages"
-              type="number"
-              min={1}
-              value={maxPages}
-              onChange={(e) => patch({ maxPages: inputInt(e.target.value, maxPages) })}
-              className="w-24 rounded-md border border-border bg-transparent px-2 py-1 text-xs font-mono"
-            />
-            <span className="text-[11px] text-muted-foreground">stop condition + empty-body guard</span>
+            <div className="flex items-center gap-2 pl-6">
+              <span className="text-muted-foreground">│</span>
+            </div>
+            <div className="flex items-center gap-2 pl-6">
+              <span className="text-muted-foreground">├──────►</span>
+              <span className="rounded bg-muted px-2 py-1 font-medium">2. Users API (GET /users)</span>
+              <span className="text-muted-foreground">──────►</span>
+              <span className="text-xs text-status-info">extracts &#123;&#123;userId&#125;&#125;</span>
+            </div>
+            <div className="flex items-center gap-2 pl-6">
+              <span className="text-muted-foreground">│</span>
+            </div>
+            <div className="flex items-center gap-2 pl-6">
+              <span className="text-muted-foreground">└──────►</span>
+              <span className="rounded bg-muted px-2 py-1 font-medium">3. Orders API (POST /orders)</span>
+              <span className="text-muted-foreground">──────►</span>
+              <span className="text-xs text-status-info">extracts &#123;&#123;orderId&#125;&#125;</span>
+            </div>
+            <div className="flex items-center gap-2 pl-12">
+              <span className="text-muted-foreground">└──────►</span>
+              <span className="rounded bg-muted px-2 py-1 font-medium">4. Payments API (POST /payments)</span>
+            </div>
           </div>
-        </>
+          <p className="text-xs text-muted-foreground">
+            Chained variables from tests & scripts are automatically mapped into subsequent requests.
+          </p>
+        </div>
       ) : (
         <>
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium">Dataset (CSV or JSON Array)</span>
-              <label className="cursor-pointer rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground">
-                Load File
-                <input
-                  type="file"
-                  accept=".csv,.json"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    const text = await f.text();
-                    patch({ data: text });
-                    e.target.value = "";
+          {activeTabId == null && (
+            <p className="text-[11px] text-muted-foreground">
+              Open a request tab to configure a run against it.
+            </p>
+          )}
+
+          {mode === "pagination" ? (
+            <>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium">Strategy</span>
+                <CompactSelect
+                  value={strategy}
+                  onChange={(v) => {
+                    // SAFETY: options are the four core pagination strategies.
+                    patch({ strategy: v as PaginationConfigInput["strategy"] });
                   }}
+                  options={STRATEGY_OPTIONS}
+                  ariaLabel="Pagination strategy"
                 />
-              </label>
-            </div>
-            <Textarea
-              value={data}
-              onChange={(e) => patch({ data: e.target.value })}
-              rows={3}
-              spellCheck={false}
-              aria-label="Bulk data rows (CSV or JSON array)"
-              placeholder={"id,name\n1,ada\n2,grace"}
-              className="resize-y font-mono text-[11px]"
-            />
-          </div>
-          <div className="flex items-center gap-3 text-xs">
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={parallel}
-                onChange={(e) => patch({ parallel: e.target.checked })}
-              />
-              Parallel
-            </label>
-            {parallel && (
-              <label className="flex items-center gap-1">
-                Concurrency
+              </div>
+              {strategy === "cursor" && (
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="runner-nextpath" className="shrink-0 text-xs font-medium">
+                    nextPath
+                  </label>
+                  <Input
+                    id="runner-nextpath"
+                    value={nextPath}
+                    onChange={(e) => patch({ nextPath: e.target.value })}
+                    spellCheck={false}
+                    className="font-mono text-xs"
+                  />
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <label htmlFor="runner-maxpages" className="shrink-0 text-xs font-medium">
+                  Max pages
+                </label>
                 <input
-                  id="runner-concurrency"
+                  id="runner-maxpages"
                   type="number"
                   min={1}
-                  value={concurrency}
-                  onChange={(e) => patch({ concurrency: inputInt(e.target.value, concurrency) })}
-                  className="w-16 rounded-md border border-border bg-transparent px-1 py-0.5 font-mono"
+                  value={maxPages}
+                  onChange={(e) => patch({ maxPages: inputInt(e.target.value, maxPages) })}
+                  className="w-24 rounded-md border border-border bg-transparent px-2 py-1 text-xs font-mono"
                 />
-              </label>
+                <span className="text-[11px] text-muted-foreground">stop condition + empty-body guard</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">Dataset (CSV or JSON Array)</span>
+                  <label className="cursor-pointer rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground">
+                    Load File
+                    <input
+                      type="file"
+                      accept=".csv,.json"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        const text = await f.text();
+                        patch({ data: text });
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+                <Textarea
+                  value={data}
+                  onChange={(e) => patch({ data: e.target.value })}
+                  rows={3}
+                  spellCheck={false}
+                  aria-label="Bulk data rows (CSV or JSON array)"
+                  placeholder={"id,name\n1,ada\n2,grace"}
+                  className="resize-y font-mono text-[11px]"
+                />
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={parallel}
+                    onChange={(e) => patch({ parallel: e.target.checked })}
+                  />
+                  Parallel
+                </label>
+                {parallel && (
+                  <label className="flex items-center gap-1">
+                    Concurrency
+                    <input
+                      id="runner-concurrency"
+                      type="number"
+                      min={1}
+                      value={concurrency}
+                      onChange={(e) => patch({ concurrency: inputInt(e.target.value, concurrency) })}
+                      className="w-16 rounded-md border border-border bg-transparent px-1 py-0.5 font-mono"
+                    />
+                  </label>
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            {running ? (
+              <Button variant="outline" size="sm" onClick={stop}>
+                <Square data-icon="inline-start" />
+                Stop
+              </Button>
+            ) : (
+              <Button size="sm" disabled={activeTabId == null} onClick={() => start()}>
+                {running ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
+                Run
+              </Button>
+            )}
+            {steps.length > 0 && (
+              <Badge variant="secondary">{steps.length} steps</Badge>
             )}
           </div>
         </>
       )}
-
-      <div className="flex items-center gap-1.5">
-        {running ? (
-          <Button variant="outline" size="sm" onClick={stop}>
-            <Square data-icon="inline-start" />
-            Stop
-          </Button>
-        ) : (
-          <Button size="sm" disabled={activeTabId == null} onClick={() => start()}>
-            {running ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
-            Run
-          </Button>
-        )}
-        {steps.length > 0 && (
-          <Badge variant="secondary">{steps.length} steps</Badge>
-        )}
-      </div>
 
       {error && (
         <Alert variant="destructive">
