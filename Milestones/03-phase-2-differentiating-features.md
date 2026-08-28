@@ -54,7 +54,7 @@ Features that make Reqly more capable than a basic API client.
 - [x] API diff + breaking-change detection (endpoints, params, schemas, auth, response types) — `internal/diffing` (`OpenAPIFiles` structural diff + `breaking.go` severity classification), `reqly diff <file1> <file2>`, desktop Diff view
 - [x] Request/response diff (JSON structural) — `diffing.JSON` + `reqly diff`
 - [x] Environment diff — `reqly env diff` + desktop env tools panel
-- [~] HAR import/export + replay — import (`internal/importer/har.go`) + export (`internal/exporter/har.go`) shipped; HAR-specific replay pending (history replay via `HistoryReplay` shipped)
+- [x] HAR import/export + replay — import (`internal/importer/har.go`) + export (`internal/exporter/har.go`) + live HAR archive replay engine (`internal/importer/har_replay.go`, `reqly history replay --har archive.har`, Goja binding `reqly.replayHAR()`, [M55](docs/spec/m55-har-replay-engine.md), [ADR 0039](docs/adr/0039-har-replay-engine.md)) shipped
 - [x] JWT tooling (decode, claims viewer, signing, verification) — decode/claims viewer (`reqly jwt decode`, ADR 0021), HMAC/RSA verification (`internal/jwt.VerifyToken`, `reqly jwt verify`, ADR 0037), and Goja sandbox assertion `reqly.verifyJWT()` shipped ([M53](docs/spec/m53-jwt-signature-verification.md))
 - [x] GraphQL introspection / gRPC reflection tooling — GraphQL schema introspection (`internal/graphql/introspect.go`, `reqly graphql introspect`) and gRPC server reflection (`internal/grpc.Discover`, `reqly grpc reflect`, Goja binding `reqly.reflectGRPC()`, [M54](docs/spec/m54-grpc-server-reflection.md), [ADR 0038](docs/adr/0038-grpc-server-reflection.md)) shipped
 - [ ] Advanced HTTP: HTTP/2, HTTP/3, streaming, chunked transfer, keep-alive

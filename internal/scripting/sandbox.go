@@ -26,6 +26,7 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/graphql"
 	grpcpkg "github.com/Its-Satyajit/reqly/internal/grpc"
+	"github.com/Its-Satyajit/reqly/internal/importer"
 	"github.com/Its-Satyajit/reqly/internal/jsonschema"
 	"github.com/Its-Satyajit/reqly/internal/jwt"
 	"github.com/Its-Satyajit/reqly/internal/request"
@@ -342,6 +343,18 @@ func (s *Sandbox) bindReqly() {
 			return goja.Undefined()
 		}
 		return s.vm.ToValue(services)
+	})
+
+	r.Set("replayHAR", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return goja.Undefined()
+		}
+		harPath := toString(call, 0)
+		res, err := importer.ReplayHAR(context.Background(), harPath, importer.HARReplayOptions{})
+		if err != nil || res == nil {
+			return goja.Undefined()
+		}
+		return s.vm.ToValue(res)
 	})
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
