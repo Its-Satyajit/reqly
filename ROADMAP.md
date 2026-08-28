@@ -251,6 +251,7 @@ Features that make Reqly more capable than a basic API client.
 - [x] **§57.4 Request Dependency Graph** — request execution chaining and variable propagation graph
 - [x] **§57.5 Request Replay Engine** — timeline replay and multi-environment variable substitution
 - [x] **§57.8 Timeline Debugging** — request execution waterfall breakdown, timing metrics, and CLI `--timeline` flag
+- [x] **M60 API Changelog & SemVer Classifier** — automated spec diff changelog generator, Markdown/JSON export, SemVer major/minor/patch bump classification, CLI `reqly changelog`, and Goja binding `reqly.generateChangelog`
 
 ---
 

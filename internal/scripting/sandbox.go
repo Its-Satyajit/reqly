@@ -24,6 +24,7 @@ import (
 
 	"github.com/dop251/goja"
 
+	"github.com/Its-Satyajit/reqly/internal/diffing"
 	"github.com/Its-Satyajit/reqly/internal/graphql"
 	grpcpkg "github.com/Its-Satyajit/reqly/internal/grpc"
 	"github.com/Its-Satyajit/reqly/internal/importer"
@@ -384,6 +385,25 @@ func (s *Sandbox) bindReqly() {
 		return s.vm.ToValue(err == nil)
 	})
 	r.Set("socketio", sioObj)
+
+	r.Set("generateChangelog", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 2 {
+			return goja.Undefined()
+		}
+		oldSpec := toString(call, 0)
+		newSpec := toString(call, 1)
+		cl, err := diffing.GenerateChangelog([]byte(oldSpec), []byte(newSpec))
+		if err != nil {
+			return goja.Undefined()
+		}
+		outObj := s.vm.NewObject()
+		outObj.Set("suggested_semver", cl.SuggestedSemver)
+		outObj.Set("breaking", cl.Breaking)
+		outObj.Set("additions", cl.Additions)
+		outObj.Set("info", cl.Info)
+		outObj.Set("markdown", cl.ToMarkdown())
+		return outObj
+	})
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
