@@ -44,6 +44,11 @@ type Request struct {
 	// TLS configures per-request TLS (M47). When nil, system roots are used.
 	TLS *TLSConfig `json:"tls,omitempty" yaml:"tls,omitempty"`
 
+	// HTTPVersion configures protocol negotiation ("auto", "http1.1", "http2", "http3") (M56).
+	HTTPVersion string `json:"httpVersion,omitempty" yaml:"httpVersion,omitempty"`
+	// DisableKeepAlives disables HTTP connection pooling per-request (M56).
+	DisableKeepAlives bool `json:"disableKeepAlives,omitempty" yaml:"disableKeepAlives,omitempty"`
+
 	// GRPC configures a gRPC call (M43). When set, url carries host:port,
 	// headers act as metadata, and body is ignored in favor of Message.
 	GRPC *GRPC `json:"grpc,omitempty" yaml:"grpc,omitempty"`
