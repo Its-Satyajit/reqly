@@ -259,17 +259,54 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 	}
 
 	start := time.Now()
+	var traceMu sync.Mutex
 	var dnsStart, dnsDone, connectStart, connectDone, tlsStart, tlsDone, gotConn, wroteRequest, firstByte time.Time
 	trace := &httptrace.ClientTrace{
-		DNSStart:             func(info httptrace.DNSStartInfo) { dnsStart = time.Now() },
-		DNSDone:              func(info httptrace.DNSDoneInfo) { dnsDone = time.Now() },
-		ConnectStart:         func(network, addr string) { connectStart = time.Now() },
-		ConnectDone:          func(network, addr string, err error) { connectDone = time.Now() },
-		TLSHandshakeStart:    func() { tlsStart = time.Now() },
-		TLSHandshakeDone:     func(state tls.ConnectionState, err error) { tlsDone = time.Now() },
-		GotConn:              func(info httptrace.GotConnInfo) { gotConn = time.Now() },
-		WroteRequest:         func(info httptrace.WroteRequestInfo) { wroteRequest = time.Now() },
-		GotFirstResponseByte: func() { firstByte = time.Now() },
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			traceMu.Lock()
+			dnsStart = time.Now()
+			traceMu.Unlock()
+		},
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			traceMu.Lock()
+			dnsDone = time.Now()
+			traceMu.Unlock()
+		},
+		ConnectStart: func(network, addr string) {
+			traceMu.Lock()
+			connectStart = time.Now()
+			traceMu.Unlock()
+		},
+		ConnectDone: func(network, addr string, err error) {
+			traceMu.Lock()
+			connectDone = time.Now()
+			traceMu.Unlock()
+		},
+		TLSHandshakeStart: func() {
+			traceMu.Lock()
+			tlsStart = time.Now()
+			traceMu.Unlock()
+		},
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
+			traceMu.Lock()
+			tlsDone = time.Now()
+			traceMu.Unlock()
+		},
+		GotConn: func(info httptrace.GotConnInfo) {
+			traceMu.Lock()
+			gotConn = time.Now()
+			traceMu.Unlock()
+		},
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			traceMu.Lock()
+			wroteRequest = time.Now()
+			traceMu.Unlock()
+		},
+		GotFirstResponseByte: func() {
+			traceMu.Lock()
+			firstByte = time.Now()
+			traceMu.Unlock()
+		},
 	}
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 	resp, err := httpClient.Do(req)
@@ -344,6 +381,7 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 	duration := time.Since(start)
 	// httptrace synthesis per exporter/har timings
 	var timings *response.Timings
+	traceMu.Lock()
 	if !dnsStart.IsZero() || !connectStart.IsZero() || !firstByte.IsZero() {
 		timings = &response.Timings{}
 		if !dnsStart.IsZero() && !dnsDone.IsZero() {
@@ -369,6 +407,7 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 			}
 		}
 	}
+	traceMu.Unlock()
 	return &response.Response{
 		StatusCode: resp.StatusCode,
 		StatusText: http.StatusText(resp.StatusCode),

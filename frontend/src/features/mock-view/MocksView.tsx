@@ -9,8 +9,12 @@ import { Spinner } from "#components/ui/spinner";
 import { Textarea } from "#components/ui/textarea";
 import { CompactSelect } from "#components/CompactSelect";
 import { cn } from "#lib/utils";
-import { MOCK_METHOD_OPTIONS } from "#lib/mock";
+import { MOCK_METHOD_OPTIONS, type FaultType } from "#lib/mock";
 import { useMockStore } from "#stores/useMockStore";
+
+function isFaultType(v: string): v is FaultType {
+  return v === "delay" || v === "drop" || v === "error" || v === "corrupt";
+}
 
 /** Parses a numeric input value, falling back when the text isn't a number. */
 function inputInt(value: string, fallback: number): number {
@@ -414,11 +418,11 @@ export function MocksView() {
               <span className="text-[11px] text-muted-foreground">Fault Type</span>
               <CompactSelect
                 value={faultInjection.type}
-                onChange={(v) =>
-                  setFaultInjection({
-                    type: v as "delay" | "drop" | "error" | "corrupt",
-                  })
-                }
+                onChange={(v) => {
+                  if (isFaultType(v)) {
+                    setFaultInjection({ type: v });
+                  }
+                }}
                 options={[
                   { value: "delay", label: "Artificial Latency" },
                   { value: "error", label: "HTTP Error Code" },

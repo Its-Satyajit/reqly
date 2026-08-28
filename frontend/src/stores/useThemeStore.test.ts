@@ -1,8 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { STORAGE_KEY } from "#lib/themes";
 
-function mockMatchMedia(dark: boolean) {
-  const mql = {
+interface MockMediaQueryList {
+  matches: boolean;
+  media: string;
+  addEventListener: ReturnType<typeof vi.fn>;
+  removeEventListener: ReturnType<typeof vi.fn>;
+  addListener: ReturnType<typeof vi.fn>;
+  removeListener: ReturnType<typeof vi.fn>;
+  dispatchEvent: ReturnType<typeof vi.fn>;
+}
+
+function mockMatchMedia(dark: boolean): MockMediaQueryList {
+  const mql: MockMediaQueryList = {
     matches: dark,
     media: "(prefers-color-scheme: dark)",
     addEventListener: vi.fn(),
@@ -10,12 +20,12 @@ function mockMatchMedia(dark: boolean) {
     addListener: vi.fn(),
     removeListener: vi.fn(),
     dispatchEvent: vi.fn(),
-  } as unknown as MediaQueryList;
+  };
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: vi.fn().mockReturnValue(mql),
   });
-  return mql as MediaQueryList & { addEventListener: ReturnType<typeof vi.fn> };
+  return mql;
 }
 
 describe("useThemeStore", () => {

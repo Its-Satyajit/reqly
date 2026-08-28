@@ -22,6 +22,12 @@ export function isObject(cause: unknown): cause is JsonObject {
   return typeof cause === "object" && cause !== null && !Array.isArray(cause)
 }
 
-export function isDefinedString(value: string | undefined): value is string {
-  return typeof value === "string"
+export function isDefinedString(cause: string | undefined): cause is string {
+  return typeof cause === "string"
+}
+
+export type AnyFunction = (...args: never[]) => void;
+
+export function isFunction(cause: unknown): cause is AnyFunction {
+  return typeof cause === "function"
 }

@@ -21,6 +21,10 @@ tester.run("anti-slop/no-runtime-typeof", noRuntimeTypeofRule, {
 			code: 'function assertString(value: unknown): asserts value is string { if (typeof value !== "string") throw new Error(); }',
 			options: allowInTypeGuards,
 		},
+		{
+			code: 'if (typeof window !== "undefined") { init(); }',
+			options: allowInTypeGuards,
+		},
 	],
 	invalid: [
 		{ code: 'if (typeof input === "string") use(input);', errors: [error] },

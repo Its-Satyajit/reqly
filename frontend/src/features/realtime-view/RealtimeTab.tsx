@@ -11,7 +11,7 @@ import { bytesToBase64 } from "#lib/response";
 import { KeyValueEditor } from "#components/KeyValueEditor";
 import {
   formatFrameTime,
-  type RealtimeKind,
+  isRealtimeKind,
 } from "#lib/realtime";
 import { useRealtimeStore } from "#stores/useRealtimeStore";
 
@@ -83,7 +83,9 @@ export function RealtimeTab({ tabId }: { tabId: string }) {
           value={tab.kind}
           disabled={tab.status === "connected" || tab.status === "connecting"}
           onChange={(e) => {
-            update(tabId, { kind: e.target.value as RealtimeKind });
+            if (isRealtimeKind(e.target.value)) {
+              update(tabId, { kind: e.target.value });
+            }
           }}
           aria-label="Protocol"
           className="rounded-md border border-border bg-transparent px-2 py-1 text-xs"

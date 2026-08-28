@@ -100,9 +100,11 @@ export interface MockStateVariable {
   updatedAt: number;
 }
 
+export type FaultType = "delay" | "drop" | "error" | "corrupt";
+
 export interface FaultInjection {
   enabled: boolean;
-  type: "delay" | "drop" | "error" | "corrupt";
+  type: FaultType;
   probability: number;
   delayMs?: number;
   errorCode?: number;

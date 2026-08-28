@@ -55,8 +55,16 @@ export const noRuntimeTypeofRule = defineRule({
 					option !== null &&
 					!Array.isArray(option) &&
 					option.allowInTypeGuards === true;
+				const isGlobalCheck =
+					node.argument.type === "Identifier" &&
+					(node.argument.name === "window" ||
+						node.argument.name === "document" ||
+						node.argument.name === "global" ||
+						node.argument.name === "globalThis");
+
 				if (
 					node.operator === "typeof" &&
+					!isGlobalCheck &&
 					(!allowInTypeGuards || !isInsideTypeGuard(node))
 				) {
 					context.report({ node, messageId: "runtimeTypeof" });

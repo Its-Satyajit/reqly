@@ -1,4 +1,5 @@
 import { useProxyTlsStore } from "#stores/useProxyTlsStore";
+import { isProxyType, isTlsVersion } from "#lib/proxyTls";
 import { Input } from "#components/ui/input";
 import { CompactSelect } from "#components/CompactSelect";
 import { Alert, AlertDescription } from "#components/ui/alert";
@@ -65,7 +66,11 @@ export function ProxyTlsPanel() {
               <span className="text-[11px] text-muted-foreground">Type</span>
               <CompactSelect
                 value={proxy.type}
-                onChange={(v) => setProxy({ type: v as "http" | "https" | "socks5" })}
+                onChange={(v) => {
+                  if (isProxyType(v)) {
+                    setProxy({ type: v });
+                  }
+                }}
                 options={PROXY_TYPE_OPTIONS}
                 ariaLabel="Proxy type"
               />
@@ -190,9 +195,11 @@ export function ProxyTlsPanel() {
             <span className="text-[11px] text-muted-foreground">Min TLS Version</span>
             <CompactSelect
               value={tls.minVersion}
-              onChange={(v) =>
-                setTls({ minVersion: v as "1.0" | "1.1" | "1.2" | "1.3" })
-              }
+              onChange={(v) => {
+                if (isTlsVersion(v)) {
+                  setTls({ minVersion: v });
+                }
+              }}
               options={TLS_VERSION_OPTIONS}
               ariaLabel="Minimum TLS Version"
             />

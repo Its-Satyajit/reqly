@@ -169,7 +169,10 @@ func TestGrpcStreamRejectsDuplicateSession(t *testing.T) {
 	if err := svc.GrpcStream(req); err != nil {
 		t.Fatalf("first stream: %v", err)
 	}
-	defer func() { _ = svc.GrpcCancel("dup") }()
+	defer func() {
+		_ = svc.GrpcCancel("dup")
+		time.Sleep(50 * time.Millisecond)
+	}()
 	time.Sleep(50 * time.Millisecond) // let the goroutine register
 	if err := svc.GrpcStream(req); err == nil {
 		t.Fatal("expected duplicate-session error")

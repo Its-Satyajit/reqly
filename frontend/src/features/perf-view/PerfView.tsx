@@ -1,89 +1,37 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-
-type PerfResult = {
-  rps: number;
-  total: number;
-  p50Ms: number;
-  p95Ms: number;
-  p99Ms: number;
-  errorRate: number;
-  statusCounts: Record<string, number>;
-  latenciesMs?: number[];
-};
+import { getPerfBridge, type PerfResultView } from "#lib/perf";
 
 export function PerfView() {
   const [file, setFile] = useState("collections/users/list.yaml");
   const [rps, setRps] = useState(10);
   const [duration, setDuration] = useState(10);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<PerfResult | null>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
-  const histRef = useRef<HTMLDivElement>(null);
+  const [result, setResult] = useState<PerfResultView | null>(null);
 
   const run = async () => {
     setLoading(true);
     try {
-      const wails = (window as unknown as { go?: { main?: { AppService?: { PerfRun?: (a: string, b: number, c: number, d: number) => Promise<{ result: PerfResult }> } } } }).go;
-      const fn = wails?.main?.AppService?.PerfRun;
-      if (!fn) {
-        // Browser dev fallback: mock result
-        setResult({ rps, total: rps * duration, p50Ms: 42, p95Ms: 89, p99Ms: 120, errorRate: 0.02, statusCounts: { "200": 98, "500": 2 }, latenciesMs: Array.from({ length: 20 }, (_, i) => 20 + i * 5) });
-        return;
-      }
-      const res = await fn(file, rps, duration * 1000, rps);
+      const adapter = getPerfBridge();
+      const res = await adapter.run({
+        filePath: file,
+        rps,
+        durationMs: duration * 1000,
+        concurrency: rps,
+      });
       setResult(res.result);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!result || !chartRef.current || !histRef.current) return;
-    let destroyed = false;
-    // TanStack Charts DOM host — framework-agnostic per quick-start (mountChart)
-    // Adapter @tanstack/charts/react requires React ^19 (tanstack-charts-installation) — DOM host works without adapter.
-    // Fallback to simple div rendering when package not installed.
-    (async () => {
-      try {
-        // @ts-ignore — optional dep, installed via pnpm add @tanstack/charts
-        const charts = await import("@tanstack/charts");
-        // @ts-ignore
-        const scales = await import("@tanstack/charts/scales/linear");
-        // @ts-ignore
-        const point = await import("@tanstack/charts/scales/point");
-        if (destroyed || !chartRef.current || !histRef.current) return;
-        const latData = (result.latenciesMs ?? []).map((v, i) => ({ x: i, y: v }));
-        const chart = (charts as unknown as { defineChart: (o: unknown) => unknown; mountChart: (el: HTMLElement, o: unknown) => { destroy: () => void } });
-        // LineY latency snapshot
-        const def = chart.defineChart({
-          marks: [(charts as unknown as { lineY: (d: unknown, o: unknown) => unknown }).lineY(latData, { x: "x", y: "y", stroke: "#2563eb" })],
-          scales: {
-            x: { scale: () => (point as unknown as { scalePoint: () => unknown }).scalePoint(), axis: { label: "request" } },
-            y: { scale: scales.scaleLinear, axis: { label: "ms" } },
-          },
-        } as unknown as never);
-        const host = chart.mountChart(chartRef.current!, { definition: def, height: 200, ariaLabel: "latency" } as unknown as never);
-        // Histogram barY
-        const histData = Object.entries(result.statusCounts).map(([k, v]) => ({ code: k, count: v }));
-        const histDef = chart.defineChart({
-          marks: [(charts as unknown as { barY: (d: unknown, o: unknown) => unknown }).barY(histData, { x: "code", y: "count" })],
-          scales: { x: { scale: () => point.scalePoint() }, y: { scale: scales.scaleLinear } },
-        } as unknown as never);
-        const histHost = chart.mountChart(histRef.current!, { definition: histDef, height: 160, ariaLabel: "status histogram" } as unknown as never);
-        return () => {
-          host.destroy();
-          histHost.destroy();
-        };
-      } catch {
-        // Library not installed — leave placeholder
-      }
-    })();
-    return () => {
-      destroyed = true;
-    };
-  }, [result]);
+  const latencies = result?.latenciesMs ?? [];
+  const maxLat = Math.max(1, ...latencies);
+  const minLat = Math.min(...latencies);
+
+  const statusEntries = Object.entries(result?.statusCounts ?? {});
+  const maxCount = Math.max(1, ...statusEntries.map(([, count]) => count));
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
@@ -95,14 +43,61 @@ export function PerfView() {
       </div>
       {result && (
         <div className="flex flex-col gap-2">
-          <div className="flex gap-4 text-xs">
-            <span>p50 {result.p50Ms}ms</span><span>p95 {result.p95Ms}ms</span><span>p99 {result.p99Ms}ms</span><span>error {(result.errorRate * 100).toFixed(1)}%</span>
+          <div className="flex gap-4 text-xs font-mono">
+            <span>p50 {result.p50Ms}ms</span>
+            <span>p95 {result.p95Ms}ms</span>
+            <span>p99 {result.p99Ms}ms</span>
+            <span>error {(result.errorRate * 100).toFixed(1)}%</span>
           </div>
-          <div ref={chartRef} id="perf-latency-chart" className="rounded border border-border p-2" />
-          <div ref={histRef} id="perf-hist-chart" className="rounded border border-border p-2" />
-          <pre className="overflow-auto rounded bg-muted p-2 text-xs">{JSON.stringify(result, null, 2)}</pre>
+
+          {/* Latency Trend */}
+          <div id="perf-latency-chart" className="rounded border border-border p-2">
+            <p className="text-[11px] font-semibold text-muted-foreground mb-1">Latency Trend (ms)</p>
+            {latencies.length > 0 ? (
+              <svg viewBox="0 0 500 120" className="h-28 w-full">
+                <polyline
+                  fill="none"
+                  stroke="#2563eb"
+                  strokeWidth="2"
+                  points={latencies
+                    .map((val, idx) => {
+                      const x = latencies.length > 1 ? (idx / (latencies.length - 1)) * 480 + 10 : 250;
+                      const range = Math.max(1, maxLat - minLat);
+                      const y = 110 - ((val - minLat) / range) * 90;
+                      return `${x},${y}`;
+                    })
+                    .join(" ")}
+                />
+              </svg>
+            ) : (
+              <p className="text-xs text-muted-foreground">No latency data</p>
+            )}
+          </div>
+
+          {/* Status Code Histogram */}
+          <div id="perf-hist-chart" className="rounded border border-border p-2">
+            <p className="text-[11px] font-semibold text-muted-foreground mb-1">Status Code Distribution</p>
+            <div className="flex items-end gap-3 h-24 pt-2">
+              {statusEntries.map(([code, count]) => {
+                const heightPercent = Math.max(10, Math.round((count / maxCount) * 100));
+                return (
+                  <div key={code} className="flex flex-col items-center gap-1 font-mono text-xs">
+                    <div
+                      style={{ height: `${heightPercent}%` }}
+                      className="w-8 rounded-t bg-primary"
+                      title={`${code}: ${count}`}
+                    />
+                    <span>{code} ({count})</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <pre className="overflow-auto rounded bg-muted p-2 text-xs font-mono">{JSON.stringify(result, null, 2)}</pre>
         </div>
       )}
     </div>
   );
 }
+

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { getGitBridge } from "#lib/git";
 
 export function GitView() {
   const [status, setStatus] = useState<string[]>([]);
@@ -11,13 +12,13 @@ export function GitView() {
   const [tab, setTab] = useState<"status" | "diff" | "log">("status");
 
   const load = async () => {
-    const wails = (window as unknown as { go?: { main?: { AppService?: { GitStatus?: () => Promise<string[]>; GitDiff?: (s: boolean) => Promise<string>; GitLog?: (l: number, o: number) => Promise<string[]> } } } }).go;
     try {
-      const s = await wails?.main?.AppService?.GitStatus?.();
+      const adapter = getGitBridge();
+      const s = await adapter.status();
       if (s) setStatus(s);
-      const d = await wails?.main?.AppService?.GitDiff?.(false);
+      const d = await adapter.diff(false);
       if (d) setDiff(d);
-      const l = await wails?.main?.AppService?.GitLog?.(50, 0);
+      const l = await adapter.log(50, 0);
       if (l) setLog(l);
     } catch {}
   };
@@ -30,9 +31,9 @@ export function GitView() {
     setSelected(next);
   };
   const commit = async () => {
-    const wails = (window as unknown as { go?: { main?: { AppService?: { GitCommit?: (m: string, f: string[]) => Promise<void> } } } }).go;
+    const adapter = getGitBridge();
     const files = Array.from(selected).map((l) => l.slice(3).trim());
-    await wails?.main?.AppService?.GitCommit?.(message, files);
+    await adapter.commit(message, files);
     setMessage("");
     setSelected(new Set());
     void load();
