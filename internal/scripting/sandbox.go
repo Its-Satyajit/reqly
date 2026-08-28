@@ -18,11 +18,13 @@
 package scripting
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/dop251/goja"
 
+	"github.com/Its-Satyajit/reqly/internal/graphql"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/response"
 	"github.com/Its-Satyajit/reqly/internal/validation"
@@ -272,6 +274,18 @@ func (s *Sandbox) bindReqly() {
 			return s.vm.ToValue(false)
 		}
 		return s.vm.ToValue(true)
+	})
+
+	r.Set("introspectGraphQL", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return goja.Undefined()
+		}
+		endpoint := toString(call, 0)
+		sch, _, err := graphql.Introspect(context.Background(), endpoint, graphql.IntrospectOptions{})
+		if err != nil || sch == nil {
+			return goja.Undefined()
+		}
+		return s.vm.ToValue(sch)
 	})
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {

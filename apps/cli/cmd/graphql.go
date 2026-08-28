@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -79,11 +80,37 @@ types alphabetically.
 	},
 }
 
+var graphqlParseCmd = &cobra.Command{
+	Use:   "parse <schema.graphql> [--type <Name>] [--json]",
+	Short: "Parse a local GraphQL SDL schema file",
+	Long:  "Parse an offline .graphql / .gql SDL schema file and print type summaries or JSON.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		data, err := os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("read schema file: %w", err)
+		}
+		schema, err := graphql.ParseSDL(string(data))
+		if err != nil {
+			return fmt.Errorf("parse sdl: %w", err)
+		}
+		if graphqlIntrospectJSON {
+			enc := json.NewEncoder(cmd.OutOrStdout())
+			enc.SetIndent("", "  ")
+			return enc.Encode(schema)
+		}
+		fmt.Fprint(cmd.OutOrStdout(), schema.Summary(graphqlIntrospectType))
+		return nil
+	},
+}
+
 func init() {
-	graphqlCmd.AddCommand(graphqlIntrospectCmd)
+	graphqlCmd.AddCommand(graphqlIntrospectCmd, graphqlParseCmd)
 	graphqlIntrospectCmd.Flags().StringArrayVar(&graphqlIntrospectHeaders, "header", nil, "extra request header, repeatable (\"Name: value\")")
 	graphqlIntrospectCmd.Flags().StringVar(&graphqlIntrospectType, "type", "", "render only this type")
 	graphqlIntrospectCmd.Flags().BoolVar(&graphqlIntrospectJSON, "json", false, "print the raw introspection result as JSON")
+	graphqlParseCmd.Flags().StringVar(&graphqlIntrospectType, "type", "", "render only this type")
+	graphqlParseCmd.Flags().BoolVar(&graphqlIntrospectJSON, "json", false, "print the schema model as JSON")
 
 	rootCmd.AddCommand(graphqlCmd)
 }
