@@ -55,7 +55,7 @@ Features that make Reqly more capable than a basic API client.
 - [x] Request/response diff (JSON structural) — `diffing.JSON` + `reqly diff`
 - [x] Environment diff — `reqly env diff` + desktop env tools panel
 - [~] HAR import/export + replay — import (`internal/importer/har.go`) + export (`internal/exporter/har.go`) shipped; HAR-specific replay pending (history replay via `HistoryReplay` shipped)
-- [~] JWT tooling (decode, claims viewer, signing) — decode/claims viewer + expiry detection (`reqly jwt decode`, ADR 0021) + per-request HS256/384/512 signing shipped; `verify`/`sign` CLI deferred to M29b
+- [x] JWT tooling (decode, claims viewer, signing, verification) — decode/claims viewer (`reqly jwt decode`, ADR 0021), HMAC/RSA verification (`internal/jwt.VerifyToken`, `reqly jwt verify`, ADR 0037), and Goja sandbox assertion `reqly.verifyJWT()` shipped ([M53](docs/spec/m53-jwt-signature-verification.md))
 - [~] GraphQL introspection / gRPC reflection tooling — GraphQL schema introspection + summary shipped (`internal/graphql/introspect.go`, desktop GraphQL browser); gRPC reflection not started
 - [ ] Advanced HTTP: HTTP/2, HTTP/3, streaming, chunked transfer, keep-alive
 - [x] Pagination runner (page/offset/cursor/link-header, stop conditions, aggregation) — `internal/pagination` + `reqly pagination run` ([ADR 0022](docs/adr/0022-pagination-runner.md)) + desktop runners panel

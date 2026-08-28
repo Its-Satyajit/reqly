@@ -26,6 +26,7 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/graphql"
 	"github.com/Its-Satyajit/reqly/internal/jsonschema"
+	"github.com/Its-Satyajit/reqly/internal/jwt"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/response"
 	"github.com/Its-Satyajit/reqly/internal/validation"
@@ -308,6 +309,23 @@ func (s *Sandbox) bindReqly() {
 		}
 		violations, err := jsonschema.Validate(sch, instanceData)
 		if err != nil || len(violations) > 0 {
+			return s.vm.ToValue(false)
+		}
+		return s.vm.ToValue(true)
+	})
+
+	r.Set("verifyJWT", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 2 {
+			return s.vm.ToValue(false)
+		}
+		tokenStr := toString(call, 0)
+		keyStr := toString(call, 1)
+		alg := ""
+		if len(call.Arguments) >= 3 {
+			alg = toString(call, 2)
+		}
+		res, err := jwt.VerifyToken(tokenStr, []byte(keyStr), jwt.VerifyOptions{Algorithm: alg})
+		if err != nil || res == nil || !res.Valid {
 			return s.vm.ToValue(false)
 		}
 		return s.vm.ToValue(true)
