@@ -22,15 +22,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
 	"github.com/Its-Satyajit/reqly/internal/jsonschema"
+	"github.com/Its-Satyajit/reqly/internal/validation"
 )
 
 var (
 	schemaValidateDraft   string
+	schemaValidateType    string
 	schemaValidateJSON    bool
 	schemaInspectJSON     bool
 	schemaGenerateSeed    int64
@@ -59,6 +62,31 @@ stdin; omitting it reads stdin.
 		if err != nil {
 			return fmt.Errorf("read schema: %w", err)
 		}
+		isXSD := schemaValidateType == "xml" || strings.HasSuffix(args[0], ".xsd")
+		if isXSD {
+			instanceData, err := readInstance(args)
+			if err != nil {
+				return fmt.Errorf("read instance: %w", err)
+			}
+			res, err := validation.ValidateXMLAgainstXSD(instanceData, schemaData, validation.ValidationOptions{})
+			if err != nil {
+				return fmt.Errorf("validate xsd: %w", err)
+			}
+			if schemaValidateJSON {
+				enc := json.NewEncoder(cmd.OutOrStdout())
+				enc.SetIndent("", "  ")
+				return enc.Encode(res)
+			}
+			for _, v := range res.Errors {
+				fmt.Fprintln(cmd.OutOrStdout(), v.Message)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "%d violation(s)\n", len(res.Errors))
+			if !res.Valid {
+				return fmt.Errorf("schema validation failed with %d violation(s)", len(res.Errors))
+			}
+			return nil
+		}
+
 		sch, err := jsonschema.Compile(schemaData, schemaValidateDraft)
 		if err != nil {
 			return fmt.Errorf("compile schema: %w", err)
@@ -165,6 +193,7 @@ func readInstance(args []string) ([]byte, error) {
 
 func init() {
 	schemaValidateCmd.Flags().StringVar(&schemaValidateDraft, "draft", "", "override $schema draft detection (2020, 2019, 7, 6, 4)")
+	schemaValidateCmd.Flags().StringVar(&schemaValidateType, "type", "", "schema type (json|xml)")
 	schemaValidateCmd.Flags().BoolVar(&schemaValidateJSON, "json", false, "print violations as JSON")
 	schemaInspectCmd.Flags().BoolVar(&schemaInspectJSON, "json", false, "dump the schema keyword map as JSON")
 
