@@ -32,6 +32,7 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/mqtt"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/response"
+	"github.com/Its-Satyajit/reqly/internal/socketio"
 	"github.com/Its-Satyajit/reqly/internal/validation"
 )
 
@@ -370,6 +371,19 @@ func (s *Sandbox) bindReqly() {
 		return s.vm.ToValue(err == nil)
 	})
 	r.Set("mqtt", mqttObj)
+
+	sioObj := s.vm.NewObject()
+	sioObj.Set("emit", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 3 {
+			return s.vm.ToValue(false)
+		}
+		urlStr := toString(call, 0)
+		event := toString(call, 1)
+		data := call.Arguments[2].Export()
+		err := socketio.Emit(context.Background(), urlStr, event, data, socketio.Options{})
+		return s.vm.ToValue(err == nil)
+	})
+	r.Set("socketio", sioObj)
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
