@@ -17,6 +17,7 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/history"
+	"github.com/Its-Satyajit/reqly/internal/importer"
 	"github.com/Its-Satyajit/reqly/internal/request"
 )
 
@@ -133,9 +134,9 @@ var historySearchCmd = &cobra.Command{
 }
 
 var historyReplayCmd = &cobra.Command{
-	Use:   "replay <id>",
-	Short: "Replay a history entry's stored request verbatim",
-	Args:  cobra.ExactArgs(1),
+	Use:   "replay [<id>] [--har <archive.har>]",
+	Short: "Replay a history entry's stored request verbatim or replay a HAR archive",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		svc, err := historyService()
 		if err != nil {
@@ -143,14 +144,45 @@ var historyReplayCmd = &cobra.Command{
 		}
 		defer closeHistoryStore(svc)
 		jsonOut, _ := cmd.Flags().GetBool("json")
-		// Replay loads stored request and re-sends via request.Client
-		// For now, history.Entry stores URL/method; replay rebuilds a minimal Request.
+		harFile, _ := cmd.Flags().GetString("har")
+		if harFile != "" {
+			diff, _ := cmd.Flags().GetBool("diff")
+			includeStatic, _ := cmd.Flags().GetBool("include-static")
+			filterUrl, _ := cmd.Flags().GetString("filter-url")
+			filterMethod, _ := cmd.Flags().GetString("filter-method")
+
+			res, err := importer.ReplayHAR(cmd.Context(), harFile, importer.HARReplayOptions{
+				Diff:          diff,
+				IncludeStatic: includeStatic,
+				FilterURL:     filterUrl,
+				FilterMethod:  filterMethod,
+			})
+			if err != nil {
+				return err
+			}
+			if jsonOut {
+				enc := json.NewEncoder(cmd.OutOrStdout())
+				enc.SetIndent("", "  ")
+				return enc.Encode(res)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "HAR Replay: %d total, %d passed, %d failed\n", res.Total, res.Passed, res.Failed)
+			for _, e := range res.Entries {
+				statusMark := "PASS"
+				if !e.StatusMatch {
+					statusMark = "FAIL"
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "  [%s] %s %s -> %d (orig: %d)\n", statusMark, e.Method, e.URL, e.ReplayedStatus, e.OriginalStatus)
+			}
+			return nil
+		}
+		if len(args) == 0 {
+			return fmt.Errorf("requires entry ID or --har <archive.har>")
+		}
 		e, err := svc.Show(context.Background(), args[0])
 		if err != nil {
 			return err
 		}
 		client := request.NewClient()
-		// Load raw entry to get exact bodies (Show returns masked headers but bodies exact)
 		storeEntry, err := rawHistoryEntry(args[0])
 		if err != nil {
 			return err
@@ -283,6 +315,11 @@ func init() {
 	historySearchCmd.Flags().Int("limit", 50, "max entries")
 	historySearchCmd.Flags().Bool("json", false, "JSON output")
 	historyReplayCmd.Flags().Bool("json", false, "JSON output")
+	historyReplayCmd.Flags().String("har", "", "path to HAR archive to replay")
+	historyReplayCmd.Flags().Bool("diff", false, "compare response bodies against original HAR snapshots")
+	historyReplayCmd.Flags().Bool("include-static", false, "include static web assets in replay")
+	historyReplayCmd.Flags().String("filter-url", "", "filter HAR entries by URL substring")
+	historyReplayCmd.Flags().String("filter-method", "", "filter HAR entries by HTTP method")
 	historyClearCmd.Flags().String("env", "", "clear only this env")
 	historyClearCmd.Flags().Bool("all", false, "clear entire workspace history")
 	historyClearCmd.Flags().Bool("force", false, "confirm without prompt")
