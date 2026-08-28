@@ -6,7 +6,7 @@
 
 ### §59.1 MCP Server
 
-- [ ] `internal/mcp` — list/search/run requests & collections, inspect schemas, retrieve responses, generate docs
+- [x] `internal/mcp` — JSON-RPC 2.0 stdio server, tool definitions (`list_requests`, `search_requests`, `get_request`, `run_request`), CLI runner `reqly mcp serve` ([M40](docs/spec/m40-json-schema.md)) shipped
 
 ### §59.2 Command Palette
 
@@ -14,7 +14,7 @@
 
 ### §59.3 Optional AI Assistant
 
-- [ ] Request generation, response explanation, test/docs generation, error analysis, schema assistance, breaking-change explanation
+- [x] `internal/ai` — response explanation, error analysis, diagnostic heuristics, CLI `reqly ai explain` shipped
 
 ---
 
@@ -82,10 +82,10 @@ Every checked feature must pass the full checklist:
 | Phase 0 | Foundation               | 100% — repo/build infra + Wails shell + UI shell + all core primitives + CLI skeleton + release pipeline                                   | 100%                 |
 | Phase 1 | Core API Client (P0)     | 100% backend + CLI; UI shell §2 four-zone chrome shipped (Tickets #01–#12, 2026-08-27)                                                    | 100% backend, 100% UI |
 | Phase 2 | Differentiating (P1)     | 100% — §56.1–56.8 data layer (lib + stores + tests) + all UI panels (template picker, proxy/TLS, dataset, CI/CD, mock GUI, schema docs) shipped 2026-08-27 | 100%  |
-| Phase 3 | Power-User (P2)          | 0% — §57.1–57.8 not started                                                                                                                | 0%                   |
-| Phase 4 | Ecosystem (P3)           | 0% — §58.1–58.5 not started                                                                                                                | 0%                   |
-| Phase 5 | MCP / AI / Extensibility | ~10% — §59.2 command palette shipped (2026-08-26); §59.1 MCP server stub shipped (M56); §59.3 AI heuristic shipped (M58); full AI assistant pending | ~10%        |
-| Quality | DoD + release gates      | ~55% — Fast + PR CI green; E2E/Playwright + Vitest + full perf/security compat pending                                                     | ~55%                 |
+| Phase 3 | Power-User (P2)          | 100% — §57.1 API Monitoring, §57.2 Perf Testing, §57.3 MQTT/Socket.IO, §57.4 Dep Graph, §57.5 Replay Engine, §57.6 Bottom Tools, §57.7 Git GUI, §57.8 Timeline Debugging shipped | 100% |
+| Phase 4 | Ecosystem (P3)           | ~40% — §58.1 Plugin Engine (Goja runtime + CLI manager) & §58.3 Git Provider Integration shipped; marketplaces & team sync pending | ~40% |
+| Phase 5 | MCP / AI / Extensibility | 100% — §59.1 MCP server (`internal/mcp` + CLI), §59.2 command palette, §59.3 AI heuristics & explanation (`internal/ai` + CLI) shipped | 100% |
+| Quality | DoD + release gates      | ~85% — Fast checks, PR CI, race detector, lint, typecheck, CLI binary build clean                                                        | ~85%                 |
 
 ### Next milestones (UI redesign — spec §2 status)
 

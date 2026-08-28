@@ -246,9 +246,11 @@ Features that make Reqly more capable than a basic API client.
 ## Phase 3 — Power-User Features (P2) — [Spec Reference](Milestones/04-phase-3-power-user-features.md)
 
 - [x] **§57.1 API Monitoring Dashboard (Milestone 38)** — scheduled requests, periodic health checks, latency trends, and CLI runner
+- [x] **§57.2 Performance Testing Suite** — RPS, latency, P95/P99, error rate, status distribution, and CLI runner
 - [x] **§57.3 Realtime Protocol Expansion** — WebSocket, SSE, MQTT, and Socket.IO protocol support
 - [x] **§57.4 Request Dependency Graph** — request execution chaining and variable propagation graph
 - [x] **§57.5 Request Replay Engine** — timeline replay and multi-environment variable substitution
+- [x] **§57.8 Timeline Debugging** — request execution waterfall breakdown, timing metrics, and CLI `--timeline` flag
 
 ---
 

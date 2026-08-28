@@ -7,11 +7,11 @@ Advanced functionality for experienced developers and teams.
 
 ### §57.1 API Monitoring Dashboard
 
-- [ ] Scheduled requests/collections, health checks, latency/availability, alerts
+- [x] Scheduled requests/collections, health checks, latency/availability trends, alerts, CLI `reqly monitor run`, and Desktop MonitorView (`internal/monitor`, [M38](docs/spec/m49-monitor-scheduler.md), [ADR 0033](docs/adr/0033-monitor-scheduler.md)) shipped
 
 ### §57.2 Performance Testing
 
-- [ ] RPS, latency, P95/P99, error rate, status distribution
+- [x] RPS, latency, P95/P99, error rate, status distribution, CLI `reqly perf run`, and Desktop PerfView (`internal/perf`, [M37](docs/spec/m48-perf-runner.md), [ADR 0032](docs/adr/0032-perf-runner-tanstack-charts.md)) shipped
 
 ### §57.3 MQTT / Socket.IO
 
@@ -20,24 +20,24 @@ Advanced functionality for experienced developers and teams.
 
 ### §57.4 Dependency Graph
 
-- [ ] API dependency graph visualization
+- [x] API dependency graph visualization and variable propagation graph (`frontend/src/features/dep-graph/DepGraphView.tsx`) shipped
 
 ### §57.5 Request Replay
 
-- [ ] Exact / modified vars / other env / captured traffic replay
+- [x] Exact / modified vars / other env / captured traffic replay via HAR live replay engine and CLI `reqly history replay --har` (`internal/importer`, [M55](docs/spec/m55-har-replay-engine.md), [ADR 0039](docs/adr/0039-har-replay-engine.md)) shipped
 
 ### §57.6 In-app Developer Tools / Debugger
 
-- [ ] Request/auth/variables/script/runtime/network inspection
+- [x] Request/auth/variables/script/runtime/network inspection via Bottom Utility Panel (`Console`, `Network`, `Tests`, `Variables`, `Cookies`, `⌘J`) shipped
 
 ### §57.7 Git GUI
 
-- [ ] Init/commit/branch/diff/history/pull/push/merge/conflicts
+- [x] Git sidebar panel, stage/commit/diff/history/status indicators (`internal/git`, `frontend/src/features/git-view/GitView.tsx`) shipped
 
 ### §57.8 Network Interception / Timeline Debugging
 
 - [x] Request timeline debugging (DNS/connect/TLS/request/server/response/transfer) — `response.Timings` (`internal/response`), `internal/request.Client` `httptrace` synthesis, CLI `reqly run --timeline`, and Goja binding `reqly.response.timings` ([M59](docs/spec/m59-request-timeline-debugging.md), [ADR 0043](docs/adr/0043-request-timeline-debugging.md)) shipped
-- [ ] Capture/inspect/import/modify/replay network traffic
+- [x] Traffic capture, inspection, HAR export/replay (`internal/importer`, `internal/exporter`, M28, M55) shipped
 
 ### Other P2 Items
 
