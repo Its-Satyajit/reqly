@@ -25,6 +25,7 @@ import (
 	"github.com/dop251/goja"
 
 	"github.com/Its-Satyajit/reqly/internal/graphql"
+	"github.com/Its-Satyajit/reqly/internal/jsonschema"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/response"
 	"github.com/Its-Satyajit/reqly/internal/validation"
@@ -286,6 +287,30 @@ func (s *Sandbox) bindReqly() {
 			return goja.Undefined()
 		}
 		return s.vm.ToValue(sch)
+	})
+
+	r.Set("assertJSONSchema", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return s.vm.ToValue(false)
+		}
+		schemaPath := toString(call, 0)
+		schemaData, err := os.ReadFile(schemaPath)
+		if err != nil {
+			schemaData = []byte(schemaPath)
+		}
+		sch, err := jsonschema.Compile(schemaData, "")
+		if err != nil || sch == nil {
+			return s.vm.ToValue(false)
+		}
+		var instanceData []byte
+		if s.respView != nil {
+			instanceData = []byte(s.respView.Body)
+		}
+		violations, err := jsonschema.Validate(sch, instanceData)
+		if err != nil || len(violations) > 0 {
+			return s.vm.ToValue(false)
+		}
+		return s.vm.ToValue(true)
 	})
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
