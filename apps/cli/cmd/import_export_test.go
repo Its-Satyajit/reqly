@@ -384,3 +384,19 @@ func TestImportWSDLRejectsDirectory(t *testing.T) {
 		t.Fatalf("expected directory error, got %v", err)
 	}
 }
+
+func TestImportFetch(t *testing.T) {
+	importOutput = ""
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	snippet := `fetch("https://api.example.com/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{\"item\": 1}" })`
+	rootCmd.SetArgs([]string{"import", "fetch", snippet})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("import fetch failed: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "POST https://api.example.com/items") || !strings.Contains(output, "Content-Type: application/json") {
+		t.Fatalf("unexpected import fetch output: %s", output)
+	}
+}
