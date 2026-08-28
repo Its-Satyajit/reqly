@@ -20,6 +20,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -150,6 +151,28 @@ var openapiValidateCmd = &cobra.Command{
 	},
 }
 
+var openapiConvertV2Cmd = &cobra.Command{
+	Use:   "convert-v2 <swagger2.json|yaml>",
+	Short: "Convert a Swagger 2.0 / OpenAPI 2.0 spec to OpenAPI 3.0.3",
+	Long: `Convert a legacy Swagger 2.0 specification file (JSON or YAML) into
+a clean OpenAPI 3.0.3 YAML spec.
+
+  reqly openapi convert-v2 swagger.json > openapi3.yaml`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		data, err := os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("read spec file: %w", err)
+		}
+		converted, err := openapi.ConvertSwagger2ToOpenAPI3(data)
+		if err != nil {
+			return fmt.Errorf("convert spec: %w", err)
+		}
+		fmt.Fprint(cmd.OutOrStdout(), string(converted))
+		return nil
+	},
+}
+
 func init() {
 	openapiExploreCmd.Flags().StringArrayVar(&openapiExploreTags, "tag", nil, "filter by tag, repeatable")
 	openapiExploreCmd.Flags().BoolVar(&openapiExploreJSON, "json", false, "print endpoints as JSON")
@@ -161,6 +184,6 @@ func init() {
 	openapiGenerateCmd.Flags().BoolVar(&openapiGenerateAll, "all", false, "generate every operation in the spec")
 	openapiGenerateCmd.Flags().StringVar(&openapiGenerateOut, "output", "", "output directory (default ./requests)")
 
-	openapiCmd.AddCommand(openapiExploreCmd, openapiGenerateCmd, openapiValidateCmd)
+	openapiCmd.AddCommand(openapiExploreCmd, openapiGenerateCmd, openapiValidateCmd, openapiConvertV2Cmd)
 	rootCmd.AddCommand(openapiCmd)
 }
