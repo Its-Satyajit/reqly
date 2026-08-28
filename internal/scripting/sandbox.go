@@ -29,6 +29,7 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/importer"
 	"github.com/Its-Satyajit/reqly/internal/jsonschema"
 	"github.com/Its-Satyajit/reqly/internal/jwt"
+	"github.com/Its-Satyajit/reqly/internal/mqtt"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/response"
 	"github.com/Its-Satyajit/reqly/internal/validation"
@@ -356,6 +357,19 @@ func (s *Sandbox) bindReqly() {
 		}
 		return s.vm.ToValue(res)
 	})
+
+	mqttObj := s.vm.NewObject()
+	mqttObj.Set("publish", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 3 {
+			return s.vm.ToValue(false)
+		}
+		broker := toString(call, 0)
+		topic := toString(call, 1)
+		payload := []byte(toString(call, 2))
+		err := mqtt.Publish(context.Background(), broker, topic, payload, mqtt.MQTTOptions{})
+		return s.vm.ToValue(err == nil)
+	})
+	r.Set("mqtt", mqttObj)
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
