@@ -10,7 +10,7 @@ require (
 	github.com/r3labs/diff/v3 v3.0.2
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
-	github.com/wailsapp/wails/v3 v3.0.0-beta.14
+	github.com/wailsapp/wails/v3 v3.0.0-beta.15
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/text v0.41.0
 	google.golang.org/grpc v1.83.2
