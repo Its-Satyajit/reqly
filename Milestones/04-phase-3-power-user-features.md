@@ -43,7 +43,7 @@ Advanced functionality for experienced developers and teams.
 
 - [x] API changelog (from specs + Git changes) — `internal/diffing.GenerateChangelog`, Markdown/JSON formatting, SemVer bump classification, CLI `reqly changelog <old> <new> [--format markdown|json] [--fail-on-breaking]`, and Goja `reqly.generateChangelog` binding ([M60](docs/spec/m60-api-changelog-semver.md), [ADR 0044](docs/adr/0044-api-changelog-semver.md)) shipped
 - [x] Browser integrations (Chrome/Firefox/Safari/Edge DevTools 'Copy as fetch' & cURL parser, CLI `reqly import fetch`, Goja `reqly.importFetch` binding) — `internal/importer.ParseFetch`, [M63](docs/spec/m63-devtools-fetch-importer.md), [ADR 0047](docs/adr/0047-devtools-fetch-importer.md) shipped
-- [ ] Advanced mock state (multi-scenario state machines)
+- [x] Advanced mock state (multi-scenario state machines, transition rules, status control endpoints `/__reqly/state`, CLI `reqly mock --scenario <file>`, and Goja `reqly.mock` bindings) — `internal/mocking.StateMachine`, [M64](docs/spec/m64-stateful-mock-engine.md), [ADR 0048](docs/adr/0048-stateful-mock-engine.md) shipped
 - [ ] Visual workflow builder
 - [ ] Self-hosted automation
 

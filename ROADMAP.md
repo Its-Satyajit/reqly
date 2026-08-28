@@ -253,6 +253,7 @@ Features that make Reqly more capable than a basic API client.
 - [x] **§57.8 Timeline Debugging** — request execution waterfall breakdown, timing metrics, and CLI `--timeline` flag
 - [x] **M60 API Changelog & SemVer Classifier** — automated spec diff changelog generator, Markdown/JSON export, SemVer major/minor/patch bump classification, CLI `reqly changelog`, and Goja binding `reqly.generateChangelog`
 - [x] **M63 Browser DevTools & Fetch Importer** — Chrome/Firefox/Safari/Edge DevTools 'Copy as fetch' parser, CLI `reqly import fetch`, and Goja sandbox binding `reqly.importFetch`
+- [x] **M64 Stateful Mock Engine** — multi-scenario state machine transitions, state control endpoints `/__reqly/state`, CLI `reqly mock --scenario`, and Goja `reqly.mock` bindings
 
 ---
 

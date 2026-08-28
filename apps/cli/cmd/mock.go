@@ -28,35 +28,43 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/Its-Satyajit/reqly/internal/mocking"
 	"github.com/Its-Satyajit/reqly/internal/openapi"
 )
 
 var (
-	mockHost  string
-	mockPort  int
-	mockDelay time.Duration
-	mockEvery int
+	mockHost         string
+	mockPort         int
+	mockDelay        time.Duration
+	mockEvery        int
+	mockScenarioFile string
 )
 
 var mockCmd = &cobra.Command{
-	Use:   "mock <spec>",
-	Short: "Serve a mock API from an OpenAPI spec",
-	Long: `Start a local mock server generated from an OpenAPI 3.x spec (JSON or YAML).
+	Use:   "mock [spec] [--scenario <scenario.yaml>]",
+	Short: "Serve a mock API from an OpenAPI spec or stateful scenario",
+	Long: `Start a local mock server generated from an OpenAPI 3.x spec or a multi-scenario
+state machine definition.
 
   reqly mock openapi.yaml
-  reqly mock openapi.yaml --port 4010 --delay 200ms
+  reqly mock --scenario scenario.yaml
+  reqly mock openapi.yaml --scenario scenario.yaml --port 4010 --delay 200ms
 
-Requests are matched against the spec paths and answered with generated example
-bodies from the operation responses. Use --delay to add artificial latency and
---fail-every to simulate intermittent 500 errors. Ctrl-C stops the server.`,
-	Args: cobra.ExactArgs(1),
+Requests are matched against state machine scenarios and spec paths. Use --delay to add
+artificial latency and --fail-every to simulate intermittent 500 errors. Ctrl-C stops the server.`,
+	Args: cobra.RangeArgs(0, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		doc, err := openapi.LoadFile(args[0])
-		if err != nil {
-			return err
+		var doc *openapi3.T
+		if len(args) > 0 {
+			var err error
+			doc, err = openapi.LoadFile(args[0])
+			if err != nil {
+				return err
+			}
 		}
 
 		opts := []mocking.Option{
@@ -67,6 +75,23 @@ bodies from the operation responses. Use --delay to add artificial latency and
 		}
 		if mockEvery > 1 {
 			opts = append(opts, mocking.WithFailureRate(mockEvery))
+		}
+
+		if mockScenarioFile != "" {
+			data, err := os.ReadFile(mockScenarioFile)
+			if err != nil {
+				return fmt.Errorf("read scenario file: %w", err)
+			}
+			var sc mocking.Scenario
+			if err := yaml.Unmarshal(data, &sc); err != nil {
+				return fmt.Errorf("parse scenario file: %w", err)
+			}
+			sm := mocking.NewStateMachine(&sc)
+			opts = append(opts, mocking.WithStateMachine(sm))
+		}
+
+		if doc == nil && mockScenarioFile == "" {
+			return fmt.Errorf("either an OpenAPI spec file or --scenario <file> is required")
 		}
 
 		handler, err := mocking.NewServer(doc, opts...)
@@ -93,6 +118,7 @@ func init() {
 	mockCmd.Flags().IntVarP(&mockPort, "port", "p", 4010, "port to listen on")
 	mockCmd.Flags().DurationVar(&mockDelay, "delay", 0, "artificial latency before every response (e.g. 250ms)")
 	mockCmd.Flags().IntVar(&mockEvery, "fail-every", 0, "simulate a 500 error on every Nth request (0 disables)")
+	mockCmd.Flags().StringVar(&mockScenarioFile, "scenario", "", "path to stateful scenario YAML/JSON file")
 }
 
 // serveMock serves handler on the bound listener and blocks until the context

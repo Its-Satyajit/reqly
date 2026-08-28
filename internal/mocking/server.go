@@ -40,6 +40,8 @@ type Server struct {
 	delay     time.Duration
 	failEvery int
 	logger    *log.Logger
+	// stateMachine manages multi-scenario stateful mock transitions.
+	stateMachine *StateMachine
 	// routes are manual overrides checked before spec matching; nil doc with
 	// routes only is valid (spec-less mock server).
 	routes []Route
@@ -55,6 +57,11 @@ type Route struct {
 	Body    string            `json:"body,omitempty" yaml:"body,omitempty"`
 	Headers map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
 	Enabled bool              `json:"enabled" yaml:"enabled"`
+}
+
+// WithStateMachine configures a multi-scenario state machine for stateful mocking.
+func WithStateMachine(sm *StateMachine) Option {
+	return func(s *Server) { s.stateMachine = sm }
 }
 
 // WithRoutes adds manual routes served before the OpenAPI document. A nil
@@ -88,15 +95,15 @@ func WithLogger(l *log.Logger) Option {
 }
 
 // NewServer builds a mock server from an OpenAPI document. The document may
-// be nil when manual routes are supplied via WithRoutes.
+// be nil when manual routes are supplied via WithRoutes or a state machine via WithStateMachine.
 func NewServer(doc *openapi3.T, opts ...Option) (*Server, error) {
 	s := &Server{}
 	for _, opt := range opts {
 		opt(s)
 	}
 	if doc == nil {
-		if len(s.routes) == 0 {
-			return nil, errors.New("mocking: nil OpenAPI document without manual routes")
+		if len(s.routes) == 0 && s.stateMachine == nil {
+			return nil, errors.New("mocking: nil OpenAPI document without manual routes or state machine")
 		}
 	} else {
 		if err := doc.Validate(context.Background(), openapi3.DisableExamplesValidation()); err != nil {
@@ -159,6 +166,47 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if counter.n > 0 && counter.n%s.failEvery == 0 {
 			writeJSON(w, http.StatusInternalServerError, "internal", "simulated server error")
 			s.maybeLog("→ 500 simulated (after %s)", time.Since(start))
+			return
+		}
+	}
+
+	// State control endpoint
+	if s.stateMachine != nil && (r.URL.Path == "/__reqly/state" || r.URL.Path == "/__reqly/state/") {
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]string{"state": s.stateMachine.CurrentState()})
+			return
+		}
+		if r.Method == http.MethodPost {
+			var body struct {
+				State string `json:"state"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err == nil && body.State != "" {
+				s.stateMachine.SetState(body.State)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]string{"state": s.stateMachine.CurrentState()})
+			return
+		}
+	}
+
+	// Stateful mock machine transitions
+	if s.stateMachine != nil {
+		if mockResp, ok := s.stateMachine.Handle(r.Method, r.URL.Path); ok {
+			contentType := "application/json"
+			for k, v := range mockResp.Headers {
+				if strings.EqualFold(k, "Content-Type") {
+					contentType = v
+					continue
+				}
+				w.Header().Set(k, v)
+			}
+			w.Header().Set("Content-Type", contentType)
+			w.WriteHeader(mockResp.Status)
+			_, _ = w.Write([]byte(mockResp.Body))
+			s.maybeLog("→ stateful route in state %s (%s)", s.stateMachine.CurrentState(), time.Since(start))
 			return
 		}
 	}
