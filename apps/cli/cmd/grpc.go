@@ -42,8 +42,9 @@ var grpcCmd = &cobra.Command{
 var grpcServicesJSON bool
 
 var grpcServicesCmd = &cobra.Command{
-	Use:   "services <host:port>",
-	Short: "Discover services and methods via server reflection",
+	Use:     "services <host:port>",
+	Aliases: []string{"reflect"},
+	Short:   "Discover services and methods via server reflection",
 	Long: `List every service and method a gRPC server exposes via server reflection.
 
   reqly grpc services localhost:50051

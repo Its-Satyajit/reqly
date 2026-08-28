@@ -25,6 +25,7 @@ import (
 	"github.com/dop251/goja"
 
 	"github.com/Its-Satyajit/reqly/internal/graphql"
+	grpcpkg "github.com/Its-Satyajit/reqly/internal/grpc"
 	"github.com/Its-Satyajit/reqly/internal/jsonschema"
 	"github.com/Its-Satyajit/reqly/internal/jwt"
 	"github.com/Its-Satyajit/reqly/internal/request"
@@ -329,6 +330,18 @@ func (s *Sandbox) bindReqly() {
 			return s.vm.ToValue(false)
 		}
 		return s.vm.ToValue(true)
+	})
+
+	r.Set("reflectGRPC", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return goja.Undefined()
+		}
+		endpoint := toString(call, 0)
+		services, err := grpcpkg.Discover(context.Background(), endpoint, grpcpkg.Transport{})
+		if err != nil || len(services) == 0 {
+			return goja.Undefined()
+		}
+		return s.vm.ToValue(services)
 	})
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
