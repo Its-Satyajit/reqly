@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, Play, Square, RefreshCw } from "lucide-react";
 import { PageHeader } from "#components/PageHeader";
 import { Button } from "#components/ui/button";
@@ -22,7 +22,6 @@ export function MonitorView() {
     { at: "00:20", ok: true, status: 200, latencyMs: 40 },
   ]);
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const chartRef = useRef<HTMLDivElement>(null);
 
   // Summary Metrics calculation
   const total = points.length;
@@ -52,46 +51,8 @@ export function MonitorView() {
     };
   }, [isMonitoring]);
 
-  useEffect(() => {
-    if (!chartRef.current || points.length === 0) return;
-    let destroyed = false;
-    (async () => {
-      try {
-        // @ts-ignore optional dep
-        const charts = await import("@tanstack/charts");
-        // @ts-ignore
-        const linear = await import("@tanstack/charts/scales/linear");
-        // @ts-ignore
-        const point = await import("@tanstack/charts/scales/point");
-        if (destroyed || !chartRef.current) return;
-        const c = charts as unknown as {
-          defineChart: (o: unknown) => unknown;
-          mountChart: (el: HTMLElement, o: unknown) => { destroy: () => void };
-        };
-        const def = c.defineChart({
-          marks: [
-            (c as unknown as { lineY: (d: unknown, o: unknown) => unknown }).lineY(
-              points.map((p) => ({ at: p.at, latency: p.latencyMs })),
-              { x: "at", y: "latency", stroke: "#c93517" },
-            ),
-          ],
-          scales: {
-            x: { scale: () => (point as unknown as { scalePoint: () => unknown }).scalePoint() },
-            y: { scale: linear.scaleLinear },
-          },
-        } as unknown as never);
-        const host = c.mountChart(chartRef.current!, {
-          definition: def,
-          height: 180,
-          ariaLabel: "Latency Trend",
-        } as unknown as never);
-        return () => host.destroy();
-      } catch {}
-    })();
-    return () => {
-      destroyed = true;
-    };
-  }, [points]);
+  const maxLatency = Math.max(1, ...points.map((p) => p.latencyMs));
+  const minLatency = Math.min(...points.map((p) => p.latencyMs));
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="API monitoring dashboard">
@@ -166,9 +127,39 @@ export function MonitorView() {
         <div className="rounded-lg border border-border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold">Latency History (ms)</h3>
-            <span className="text-[11px] font-mono text-muted-foreground">last {points.length} samples</span>
+            <span className="text-[11px] font-mono text-muted-foreground">last {points.length} samples (min: {minLatency}ms, max: {maxLatency}ms)</span>
           </div>
-          <div ref={chartRef} className="rounded border border-border/40 bg-background/50 p-2" />
+          <div className="rounded border border-border/40 bg-background/50 p-2">
+            <svg viewBox="0 0 500 120" className="h-28 w-full">
+              <polyline
+                fill="none"
+                stroke="var(--color-primary, #c93517)"
+                strokeWidth="2"
+                points={points
+                  .map((p, idx) => {
+                    const x = points.length > 1 ? (idx / (points.length - 1)) * 480 + 10 : 250;
+                    const range = Math.max(1, maxLatency - minLatency);
+                    const y = 110 - ((p.latencyMs - minLatency) / range) * 90;
+                    return `${x},${y}`;
+                  })
+                  .join(" ")}
+              />
+              {points.map((p, idx) => {
+                const x = points.length > 1 ? (idx / (points.length - 1)) * 480 + 10 : 250;
+                const range = Math.max(1, maxLatency - minLatency);
+                const y = 110 - ((p.latencyMs - minLatency) / range) * 90;
+                return (
+                  <circle
+                    key={idx}
+                    cx={x}
+                    cy={y}
+                    r="3.5"
+                    className={p.ok ? "fill-primary" : "fill-destructive"}
+                  />
+                );
+              })}
+            </svg>
+          </div>
         </div>
 
         {/* History Table */}

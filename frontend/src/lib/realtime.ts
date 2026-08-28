@@ -1,4 +1,7 @@
 export type RealtimeKind = "ws" | "sse" | "mqtt" | "socketio";
+export function isRealtimeKind(v: string): v is RealtimeKind {
+  return v === "ws" || v === "sse" || v === "mqtt" || v === "socketio";
+}
 export type RealtimeStatus = "idle" | "connecting" | "connected" | "closed" | "error";
 
 export interface RealtimeFrameView {

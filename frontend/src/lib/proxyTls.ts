@@ -1,6 +1,16 @@
+export type ProxyType = "http" | "https" | "socks5";
+export function isProxyType(v: string): v is ProxyType {
+  return v === "http" || v === "https" || v === "socks5";
+}
+
+export type TlsVersion = "1.0" | "1.1" | "1.2" | "1.3";
+export function isTlsVersion(v: string): v is TlsVersion {
+  return v === "1.0" || v === "1.1" || v === "1.2" || v === "1.3";
+}
+
 export interface ProxyConfig {
   enabled: boolean;
-  type: "http" | "https" | "socks5";
+  type: ProxyType;
   host: string;
   port: number;
   auth?: { username: string; password: string };
@@ -13,8 +23,8 @@ export interface TlsConfig {
   customCaPath?: string;
   clientCertPath?: string;
   clientKeyPath?: string;
-  minVersion: "1.0" | "1.1" | "1.2" | "1.3";
-  maxVersion?: "1.0" | "1.1" | "1.2" | "1.3";
+  minVersion: TlsVersion;
+  maxVersion?: TlsVersion;
   cipherSuites?: string[];
 }
 
@@ -47,10 +57,8 @@ export function validateTls(config: TlsConfig): string[] {
   if (!config.verifyPeer) errors.push("Peer verification is disabled — insecure in production");
   if (!config.verifyHostnames) errors.push("Hostname verification is disabled — insecure in production");
   if (config.maxVersion) {
-    // SAFETY: minVersion and maxVersion are constrained to "1.0"|"1.1"|"1.2"|"1.3" — same keys as VERSION_ORDER.
-    const min = VERSION_ORDER[config.minVersion as keyof typeof VERSION_ORDER] ?? 0;
-    // SAFETY: same constraint as minVersion — both are TLS version string literals.
-    const max = VERSION_ORDER[config.maxVersion as keyof typeof VERSION_ORDER] ?? 3;
+    const min = VERSION_ORDER[config.minVersion] ?? 0;
+    const max = config.maxVersion ? (VERSION_ORDER[config.maxVersion] ?? 3) : 3;
     if (min > max) errors.push("Min TLS version must be ≤ max TLS version");
   }
   return errors;

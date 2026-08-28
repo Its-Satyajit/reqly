@@ -8,14 +8,14 @@ import { parseSetCookies, type ResponseCookie } from "#lib/response";
 import type { ResolvedVariable } from "#lib/collections";
 import { cn } from "#lib/utils";
 
-const LABELS: Record<BottomPanelId, string> = {
+const LABELS = {
   console: "Console",
   network: "Network",
   tests: "Tests",
   variables: "Variables",
   cookies: "Cookies",
   devtools: "DevTools",
-};
+} satisfies Record<BottomPanelId, string>;
 
 function PanelContent({ active }: { active: BottomPanelId }) {
   const pool = useHistoryStore((s) => s.pool);

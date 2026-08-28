@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { isFunction } from "#lib/typeGuards";
 import {
   STORAGE_KEY,
   DEFAULT_THEME,
@@ -19,13 +20,7 @@ function getInitialPreference(): ThemePreference {
   if (typeof window === "undefined") return DEFAULT_THEME;
   const stored = normalizeStored(window.localStorage.getItem(STORAGE_KEY));
   if (stored) return stored;
-  // No stored value: default to resolved dark/light based on OS but store as explicit? Use system? Spec says default? Use system? We'll default to system? But keep stable: map to theme id? Instead default to system so OS tracking works. However existing behavior defaulted to dark. Use atlas-dark as fallback per ADR unknown->default.
-  // If no stored value, use system preference? Ticket says theme persists across restarts, rail cycles light→dark→system. Default unspecified. Use system if no storage? Let's default to system-aware but persisted as system would cause follow. Use DEFAULT_THEME as fallback for now.
-  // To preserve "follows OS" expectation, default to "system" when nothing stored? Choose DEFAULT_THEME? We'll choose "system" is more spec-compliant. But test expects atlas-dark when OS dark and no stored.
-  // That test will pass either way because system+dark => atlas-dark. Check: getInitialPreference returning "system" gives resolved atlas-dark. So both work.
-  // Return "system" only if we want live tracking by default. Let's return system? The legacy defaulted to explicit. We'll keep explicit default for backward compat: resolve via OS to explicit id.
   return osDark() ? "atlas-dark" : "atlas-light";
-  // Alternative: return "system" — would also resolve same but enable live tracking. Choose explicit to avoid surprise live re-skin for new users? Keep explicit.
 }
 
 function getInitialResolved(pref: ThemePreference): ThemeId {
@@ -51,17 +46,20 @@ if (typeof document !== "undefined") {
 // Live OS tracking when preference is system
 if (typeof window !== "undefined" && window.matchMedia) {
   const mql = window.matchMedia("(prefers-color-scheme: dark)");
-  const handler = () => {
+  const handler = (e: MediaQueryListEvent | MediaQueryList) => {
     const { theme } = useThemeStore.getState();
     if (theme === "system") {
-      const resolved = resolveTheme("system", mql.matches);
+      const resolved = resolveTheme("system", e.matches);
       applyThemeToDocument(resolved);
       useThemeStore.setState({ resolvedTheme: resolved });
     }
   };
   // Support both modern and legacy
-  if (typeof mql.addEventListener === "function") mql.addEventListener("change", handler);
-  else mql.addListener(handler as unknown as (e: MediaQueryListEvent) => void);
+  if (isFunction(mql.addEventListener)) {
+    mql.addEventListener("change", handler);
+  } else if (isFunction(mql.addListener)) {
+    mql.addListener(handler);
+  }
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({

@@ -17,7 +17,7 @@ function isTypingTarget(target: HTMLElement | null): boolean {
 export function useKeyboardMap(onToggleSidebar?: () => void) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
+      const target = e.target instanceof HTMLElement ? e.target : null;
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
       const key = e.key.toLowerCase();
@@ -59,10 +59,23 @@ export function useKeyboardMap(onToggleSidebar?: () => void) {
           // Non-request tabs: no-op per spec
           return;
         }
-        // SAFETY: RequestEditor send seam expects (id, request) - delegate to store's send via draft; check exists
+        // SAFETY: RequestEditor send seam expects tab id and draft input
         const draft = rs.drafts[active];
         if (!draft) return;
-        void rs.send(active, draft as unknown as never);
+        void rs.send(active, {
+          method: draft.method,
+          url: draft.url,
+          params: draft.params,
+          headers: draft.headers,
+          bodyType: draft.bodyType,
+          body: draft.body,
+          form: draft.form,
+          graphqlQuery: draft.graphqlQuery,
+          graphqlVariables: draft.graphqlVariables,
+          auth: draft.auth,
+          proxy: draft.proxy,
+          tls: draft.tls,
+        });
         return;
       }
       if (key === "j") {
@@ -78,7 +91,7 @@ export function useKeyboardMap(onToggleSidebar?: () => void) {
         e.preventDefault();
         const idx = Number(e.key) - 1;
         const view = RAIL_VIEWS[idx];
-        if (view) useWorkspaceStore.getState().requestView(view as never);
+        if (view) useWorkspaceStore.getState().requestView(view);
       }
     };
     window.addEventListener("keydown", handler);

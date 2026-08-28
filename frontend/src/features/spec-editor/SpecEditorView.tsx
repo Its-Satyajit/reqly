@@ -3,6 +3,7 @@ import { CodeMirrorEditor } from "../../editors/CodeMirrorEditor";
 import { Button } from "#components/ui/button";
 import { nodesForContent } from "#lib/specTree";
 import { nodesForSpec, edgesForNodes } from "#lib/schemaGraph";
+import { getOpenapiBridge } from "#lib/openapi";
 import { cn } from "#lib/utils";
 import { useSpecEditorStore } from "#stores/useSpecEditorStore";
 
@@ -61,22 +62,20 @@ export function SpecEditorView() {
       setGenerateWarnings(["select at least one operation"]);
       return;
     }
-    // Try Wails bridge when available, else surface as warning (browser dev)
-    const wails = (window as unknown as { go?: { main?: { AppService?: { OpenapiGenerateRequests?: (a: string, b: unknown, c: string) => Promise<unknown> } } } }).go;
-    const fn = wails?.main?.AppService?.OpenapiGenerateRequests;
-    if (!fn) {
-      setGenerateWarnings([`selected ${ops.length} operation(s) — bridge unavailable in browser dev`]);
-      return;
-    }
     try {
-      const sels = ops.map((id) => {
+      const adapter = getOpenapiBridge();
+      const selections = ops.map((id) => {
         const p = id.replace(/^paths:/, "");
         return { method: "GET", path: p };
       });
-      const res = (await fn(filePath, sels, "generated")) as { warnings?: string[]; created?: string[] };
+      const res = await adapter.generate({
+        specPath: filePath,
+        selections,
+        dirName: "generated",
+      });
       setGenerateWarnings(res.warnings ?? (res.created ? [`created ${res.created.length} file(s)`] : []));
     } catch (e) {
-      setGenerateWarnings([String((e as Error).message ?? e)]);
+      setGenerateWarnings([String(e instanceof Error ? e.message : e)]);
     }
   };
 
