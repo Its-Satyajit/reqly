@@ -164,6 +164,15 @@ export function ResponseViewer() {
 						) : null}
 						<span aria-hidden>·</span>
 						<span>{formatBytes(response.size)}</span>
+						{ct.includes("xml") ? (
+							<>
+								<span aria-hidden>·</span>
+								<span className="inline-flex items-center gap-1 font-data text-xs text-status-ok" title="XML/XSD Ready">
+									<span className="h-1.5 w-1.5 rounded-full bg-status-ok" />
+									XSD
+								</span>
+							</>
+						) : null}
 						{ct ? (
 							<>
 								<span aria-hidden>·</span>

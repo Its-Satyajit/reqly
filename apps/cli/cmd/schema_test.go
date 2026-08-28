@@ -28,6 +28,7 @@ import (
 
 func resetSchemaFlags() {
 	schemaValidateDraft = ""
+	schemaValidateType = ""
 	schemaValidateJSON = false
 	schemaInspectJSON = false
 	schemaGenerateSeed = 0

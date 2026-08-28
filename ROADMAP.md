@@ -205,6 +205,7 @@ The minimum set to make Reqly a serious API client.
 - [~] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); OpenAPI 2.x import via hand-rolled parser; 3.1 partial
 - [~] Endpoint explorer + generate requests from spec — `reqly openapi explore/generate` ([M39](docs/spec/m39-openapi-explorer.md))
 - [~] JSON Schema: validate, inspect, generate — `reqly schema validate/inspect/generate` ([M40](docs/spec/m40-json-schema.md))
+- [x] XML/XSD schema validation — `internal/validation.ValidateXMLAgainstXSD`, `reqly schema validate --type xml`, Goja assertion `reqly.assertXSD()`, Desktop XML badge ([M49](docs/spec/m49-xml-xsd-validation.md))
 - [x] Generate mocks from OpenAPI — `reqly mock` serves schema/example-driven responses
 
 ### 1.11 CLI (P0 commands)

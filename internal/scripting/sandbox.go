@@ -19,11 +19,13 @@ package scripting
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/dop251/goja"
 
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/response"
+	"github.com/Its-Satyajit/reqly/internal/validation"
 )
 
 // Test is a named test registered by a post-request script via reqly.test().
@@ -39,7 +41,9 @@ type Test struct {
 type Sandbox struct {
 	vm *goja.Runtime
 
-	// request mirrors the outgoing request for pre-request scripts.
+	// respView keeps track of the response body for assertions.
+	respView *responseView
+
 	request *goja.Object
 	// response mirrors the received response for post-request scripts.
 	response *goja.Object
@@ -135,6 +139,7 @@ func (v *requestView) applyTo(req *request.Request) {
 // BindResponse exposes the received response to the script. Test registration
 // (reqly.test) is available in post-request scripts.
 func (s *Sandbox) BindResponse(resp *responseView) {
+	s.respView = resp
 	s.response = s.vm.NewObject()
 	if resp != nil {
 		s.response.Set("status", resp.Status)
@@ -248,6 +253,26 @@ func (s *Sandbox) bindReqly() {
 			return goja.Undefined()
 		})
 	}
+
+	r.Set("assertXSD", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return s.vm.ToValue(false)
+		}
+		schemaPath := toString(call, 0)
+		xsdData, err := os.ReadFile(schemaPath)
+		if err != nil {
+			return s.vm.ToValue(false)
+		}
+		var xmlData []byte
+		if s.respView != nil {
+			xmlData = []byte(s.respView.Body)
+		}
+		res, err := validation.ValidateXMLAgainstXSD(xmlData, xsdData, validation.ValidationOptions{})
+		if err != nil || res == nil || !res.Valid {
+			return s.vm.ToValue(false)
+		}
+		return s.vm.ToValue(true)
+	})
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
