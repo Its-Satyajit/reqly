@@ -203,16 +203,26 @@ authorize. The token is cached in <workspace>/.reqly/tokens.json; the client
 secret and tokens never print.`,
 	Args: cobra.RangeArgs(0, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if authProvider == "github" {
+		if authProvider != "" {
+			validProviders := map[string]string{
+				"github":       "GitHub",
+				"gitlab":       "GitLab",
+				"bitbucket":    "Bitbucket",
+				"azure-devops": "Azure DevOps",
+			}
+			displayName, ok := validProviders[authProvider]
+			if !ok {
+				return fmt.Errorf("unsupported provider %q: must be github, gitlab, bitbucket, or azure-devops", authProvider)
+			}
 			root := findWorkspaceRoot(".")
 			if root == "" {
-				return fmt.Errorf("no workspace found: run reqly auth login --provider github inside a workspace")
+				return fmt.Errorf("no workspace found: run reqly auth login --provider %s inside a workspace", authProvider)
 			}
 			store, _, err := openTokenStore(root)
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(cmd.OutOrStdout(), "GitHub PAT: ")
+			fmt.Fprintf(cmd.OutOrStdout(), "%s PAT: ", displayName)
 			var token string
 			if _, err := fmt.Fscanln(os.Stdin, &token); err != nil {
 				token = ""
@@ -221,14 +231,14 @@ secret and tokens never print.`,
 			if token == "" {
 				return fmt.Errorf("PAT required")
 			}
-			if err := store.Set("github", token); err != nil {
+			if err := store.Set(authProvider, token); err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "GitHub PAT saved")
+			fmt.Fprintf(cmd.OutOrStdout(), "%s PAT saved\n", displayName)
 			return nil
 		}
 		if len(args) == 0 {
-			return fmt.Errorf("config file required (or use --provider github)")
+			return fmt.Errorf("config file required (or use --provider <github|gitlab|bitbucket|azure-devops>)")
 		}
 		cfg, err := loadAuthConfig(args[0])
 		if err != nil {
@@ -411,7 +421,7 @@ func yesNo(b bool) string {
 func init() {
 	authLoginCmd.Flags().IntVar(&authLoginTimeoutSeconds, "timeout", 300, "seconds to wait for the browser callback or device-flow approval")
 	authLoginCmd.Flags().StringVar(&authLoginFlow, "flow", "auto", "grant to run: authorization_code, device_code, or auto (infer from the config)")
-	authLoginCmd.Flags().StringVar(&authProvider, "provider", "", "git provider: github (PAT via REQLY_GITHUB_TOKEN or secrets.Store)")
+	authLoginCmd.Flags().StringVar(&authProvider, "provider", "", "git provider: github, gitlab, bitbucket, or azure-devops (PAT via env or secrets.Store)")
 	authCmd.PersistentFlags().StringVar(&authStoreFlag, "store", "", "token store backend: file or keychain (default REQLY_TOKEN_STORE or file)")
 	authCmd.AddCommand(authLoginCmd, authStatusCmd, authLogoutCmd)
 	rootCmd.AddCommand(authCmd)
