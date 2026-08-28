@@ -92,7 +92,7 @@ The minimum set to make Reqly a serious API client.
 - [x] **REST** — complete builder (see §1.1/§1.6: method/URL/headers/params/body + file upload + cookies/history)
 - [x] **WebSocket** — connection mgmt, message composer, in/out inspection (`internal/websocket` + `reqly ws`)
 - [x] **SSE** — live event stream, inspection, event history (`internal/sse` + `reqly sse`)
-- [~] **GraphQL** — query editor + variables via `BodyType: graphql` shipped (ADR 0013); introspection/autocomplete/schema browser deferred to P1
+- [x] **GraphQL** — query editor + variables via `BodyType: graphql` (ADR 0013), live endpoint introspection (`reqly graphql introspect <url>`), offline SDL schema parsing (`reqly graphql parse <file.graphql>`), Goja scripting helper `reqly.introspectGraphQL()`, and Desktop Schema Browser ([M50](docs/spec/m50-graphql-schema-introspection.md), [ADR 0034](docs/adr/0034-graphql-schema-introspection.md))
 - [x] **gRPC** — proto files, reflection, service/method discovery, unary + server-streaming — `internal/grpc` (reflection via v1 protocol, protocompile `.proto` fallback, TLS/h2c, deadlines), `grpc:` request-file block, scripting/assertions parity, history, `reqly grpc services|invoke`, desktop gRPC view (ADR 0028, M43; client-stream/bidi deferred)
 - [~] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; external schemas/rpc-encoded best-effort with warnings; the "XML builder" surface is these generated envelopes, no runtime builder)
 
