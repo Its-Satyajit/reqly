@@ -236,6 +236,24 @@ func (c *Client) transportForRequest(r *Request, vars auth.Interpolator) (*http.
 			base.TLSClientConfig = tlsCfg
 		}
 	}
+	// DisableKeepAlives
+	if r.DisableKeepAlives {
+		base.DisableKeepAlives = true
+	}
+	// HTTPVersion ALPN / transport preferences
+	if r.HTTPVersion != "" && r.HTTPVersion != "auto" {
+		if base.TLSClientConfig == nil {
+			base.TLSClientConfig = &tls.Config{}
+		}
+		switch strings.ToLower(r.HTTPVersion) {
+		case "http1.1":
+			base.TLSClientConfig.NextProtos = []string{"http/1.1"}
+			base.ForceAttemptHTTP2 = false
+		case "http2":
+			base.TLSClientConfig.NextProtos = []string{"h2", "http/1.1"}
+			base.ForceAttemptHTTP2 = true
+		}
+	}
 	return base, nil
 }
 
@@ -248,9 +266,9 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 		return nil, err
 	}
 
-	// Per-request transport (M47) — only when proxy/TLS set to avoid alloc.
+	// Per-request transport (M47/M56) — when proxy/TLS/HTTPVersion/DisableKeepAlives set to avoid alloc.
 	var httpClient *http.Client = c.http
-	if r.Proxy != "" || r.TLS != nil {
+	if r.Proxy != "" || r.TLS != nil || r.DisableKeepAlives || (r.HTTPVersion != "" && r.HTTPVersion != "auto") {
 		tr, err := c.transportForRequest(r, vars)
 		if err != nil {
 			return nil, err

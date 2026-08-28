@@ -34,15 +34,17 @@ import (
 )
 
 var (
-	runMethod     string
-	runHeaders    []string
-	runBody       string
-	runTimeout    time.Duration
-	runRetries    int
-	runRetryDelay time.Duration
-	runProxy      string
-	runInsecure   bool
-	runCAFile     string
+	runMethod      string
+	runHeaders     []string
+	runBody        string
+	runTimeout     time.Duration
+	runRetries     int
+	runRetryDelay  time.Duration
+	runProxy       string
+	runInsecure    bool
+	runCAFile      string
+	runHTTP2       bool
+	runNoKeepAlive bool
 )
 
 var runCmd = &cobra.Command{
@@ -194,6 +196,8 @@ func init() {
 	runCmd.Flags().StringVar(&runProxy, "proxy", "", "proxy URL for this request (overrides environment proxy)")
 	runCmd.Flags().BoolVar(&runInsecure, "insecure", false, "skip TLS verification for this request")
 	runCmd.Flags().StringVar(&runCAFile, "ca-file", "", "path to PEM CA bundle for this request")
+	runCmd.Flags().BoolVar(&runHTTP2, "http2", false, "force HTTP/2 ALPN protocol for this request")
+	runCmd.Flags().BoolVar(&runNoKeepAlive, "no-keepalive", false, "disable HTTP connection pooling for this request")
 }
 
 // applyRunOverrides copies explicitly-set CLI flags onto a request loaded from
@@ -234,6 +238,12 @@ func applyRunOverrides(cmd *cobra.Command, req *request.Request) error {
 	}
 	if flags.Changed("proxy") {
 		req.Proxy = runProxy
+	}
+	if flags.Changed("http2") && runHTTP2 {
+		req.HTTPVersion = "http2"
+	}
+	if flags.Changed("no-keepalive") && runNoKeepAlive {
+		req.DisableKeepAlives = true
 	}
 	if flags.Changed("insecure") || flags.Changed("ca-file") {
 		tlsCfg := req.TLS
