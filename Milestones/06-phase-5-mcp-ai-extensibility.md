@@ -14,7 +14,7 @@
 
 ### §59.3 Optional AI Assistant
 
-- [x] `internal/ai` — response explanation, error analysis, diagnostic heuristics, CLI `reqly ai explain` shipped
+- [x] `internal/ai` — automated test assertion generation, Markdown API documentation synthesis, error diagnosis with remediation tips, response explanation, CLI `reqly ai <test|docs|diagnose|explain|schema>`, and Goja sandbox `reqly.ai` bindings ([M62](docs/spec/m62-ai-assistant-suite.md), [ADR 0046](docs/adr/0046-ai-assistant-suite.md)) shipped
 
 ---
 
