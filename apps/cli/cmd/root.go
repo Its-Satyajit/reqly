@@ -77,5 +77,6 @@ func init() {
 		mcpCmd,
 		aiCmd,
 		schemaCmd,
+		changelogCmd,
 	)
 }
