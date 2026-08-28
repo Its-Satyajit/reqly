@@ -42,7 +42,7 @@ Advanced functionality for experienced developers and teams.
 ### Other P2 Items
 
 - [x] API changelog (from specs + Git changes) — `internal/diffing.GenerateChangelog`, Markdown/JSON formatting, SemVer bump classification, CLI `reqly changelog <old> <new> [--format markdown|json] [--fail-on-breaking]`, and Goja `reqly.generateChangelog` binding ([M60](docs/spec/m60-api-changelog-semver.md), [ADR 0044](docs/adr/0044-api-changelog-semver.md)) shipped
-- [ ] Browser integrations (DevTools import, cURL copy, Chrome/Firefox/Safari)
+- [x] Browser integrations (Chrome/Firefox/Safari/Edge DevTools 'Copy as fetch' & cURL parser, CLI `reqly import fetch`, Goja `reqly.importFetch` binding) — `internal/importer.ParseFetch`, [M63](docs/spec/m63-devtools-fetch-importer.md), [ADR 0047](docs/adr/0047-devtools-fetch-importer.md) shipped
 - [ ] Advanced mock state (multi-scenario state machines)
 - [ ] Visual workflow builder
 - [ ] Self-hosted automation

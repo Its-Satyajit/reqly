@@ -466,6 +466,27 @@ func (s *Sandbox) bindReqly() {
 	})
 	r.Set("ai", aiObj)
 
+	r.Set("importFetch", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		snippet := toString(call, 0)
+		req, err := importer.ParseFetch(snippet)
+		if err != nil {
+			return goja.Undefined()
+		}
+		outObj := s.vm.NewObject()
+		outObj.Set("method", string(req.Method))
+		outObj.Set("url", req.URL)
+		outObj.Set("body", req.Body)
+		hObj := s.vm.NewObject()
+		for _, h := range req.Headers {
+			hObj.Set(h.Key, h.Value)
+		}
+		outObj.Set("headers", hObj)
+		return outObj
+	})
+
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
 			panic(s.vm.ToValue("reqly.test(name, fn) requires two arguments"))

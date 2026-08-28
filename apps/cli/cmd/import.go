@@ -316,9 +316,54 @@ best-effort and reported as warnings.`,
 	},
 }
 
+var importFetchCmd = &cobra.Command{
+	Use:   "fetch <snippet-or-file> [--output <file.yaml>]",
+	Short: "Import a browser DevTools 'Copy as fetch' snippet",
+	Long: `Convert a JavaScript fetch(...) snippet copied from Chrome, Firefox, or Safari
+DevTools Network tab into a Reqly request.
+
+  reqly import fetch 'fetch("https://api.example.com/data", { method: "POST", body: "{}" })'
+  reqly import fetch snippet.js --output request.yaml`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		code := args[0]
+		if data, err := os.ReadFile(args[0]); err == nil {
+			code = string(data)
+		}
+
+		req, err := importer.ParseFetch(code)
+		if err != nil {
+			return err
+		}
+
+		if importOutput == "" {
+			fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", req.Method, req.URL)
+			for _, h := range req.Headers {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", h.Key, h.Value)
+			}
+			if req.Body != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "\n%s\n", req.Body)
+			}
+			return nil
+		}
+
+		f := &requestfile.File{Name: "imported", Request: *req}
+		data, err := yaml.Marshal(f)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(importOutput, data, 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", importOutput)
+		return nil
+	},
+}
+
 func init() {
-	importCmd.AddCommand(importCurlCmd, importOpenAPICmd, importHarCmd, importPostmanCmd, importInsomniaCmd, importBrunoCmd, importWSDLCmd)
+	importCmd.AddCommand(importCurlCmd, importFetchCmd, importOpenAPICmd, importHarCmd, importPostmanCmd, importInsomniaCmd, importBrunoCmd, importWSDLCmd)
 	importCurlCmd.Flags().StringVar(&importOutput, "output", "", "write a request file to this path")
+	importFetchCmd.Flags().StringVar(&importOutput, "output", "", "write a request file to this path")
 	importOpenAPICmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importHarCmd.Flags().StringVar(&importOutput, "output", "", "directory to write the workspace into")
 	importHarCmd.Flags().StringVar(&importHarCollection, "collection", "har-import", "collection name for HAR entries")
