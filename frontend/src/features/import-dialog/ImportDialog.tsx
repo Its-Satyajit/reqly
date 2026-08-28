@@ -56,23 +56,29 @@ function OperationGroups({ operations }: { operations: ImportedOperation[] }) {
   const total = operations.length;
   const shown = expanded ? total : Math.min(total, OPERATION_CAP);
 
-  let rendered = 0;
+  const visibleGroups = useMemo(() => {
+    let renderedCount = 0;
+    return groups
+      .map(([tag, ops]) => {
+        const visible = expanded ? ops : ops.slice(0, Math.max(0, shown - renderedCount));
+        renderedCount += visible.length;
+        return { tag, totalCount: ops.length, visible };
+      })
+      .filter((g) => g.visible.length > 0);
+  }, [groups, expanded, shown]);
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-2">
-        {groups.map(([tag, ops]) => {
-          const visible = expanded ? ops : ops.slice(0, Math.max(0, shown - rendered));
-          rendered += visible.length;
-          if (visible.length === 0) return null;
-          return (
-            <div key={tag}>
-              <p className="pb-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                {tag} · {ops.length}
-              </p>
-              <ul className="flex flex-col divide-y divide-border/60 rounded-md border border-border">
-                {visible.map((op) => {
-                  const key = `${op.method}-${op.path}-${op.operationId ?? ""}`;
-                  return (
+        {visibleGroups.map(({ tag, totalCount, visible }) => (
+          <div key={tag}>
+            <p className="pb-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {tag} · {totalCount}
+            </p>
+            <ul className="flex flex-col divide-y divide-border/60 rounded-md border border-border">
+              {visible.map((op) => {
+                const key = `${op.method}-${op.path}-${op.operationId ?? ""}`;
+                return (
                   <li key={key} className="flex items-baseline gap-2 px-2 py-1 font-mono text-[11px]">
                     <span className="w-12 shrink-0 font-sans text-[10px] font-semibold text-status-info">
                       {op.method}
@@ -84,12 +90,11 @@ function OperationGroups({ operations }: { operations: ImportedOperation[] }) {
                       </span>
                     )}
                   </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        })}
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </div>
       {!expanded && total > OPERATION_CAP && (
         <Button variant="ghost" size="sm" className="self-start" onClick={() => setExpanded(true)}>
