@@ -45,6 +45,7 @@ var (
 	runCAFile      string
 	runHTTP2       bool
 	runNoKeepAlive bool
+	runTimeline    bool
 )
 
 var runCmd = &cobra.Command{
@@ -181,6 +182,15 @@ and --data to build requests directly on the CLI:
 		if len(resp.Body) > 0 {
 			fmt.Fprintln(cmd.OutOrStdout(), string(resp.Body))
 		}
+		if runTimeline && resp.Timings != nil {
+			fmt.Fprintln(cmd.OutOrStdout())
+			fmt.Fprintln(cmd.OutOrStdout(), "TIMELINE WATERFALL:")
+			fmt.Fprintf(cmd.OutOrStdout(), "  DNS Lookup:        %4dms\n", resp.Timings.DNS)
+			fmt.Fprintf(cmd.OutOrStdout(), "  TCP Connect:       %4dms\n", resp.Timings.Connect)
+			fmt.Fprintf(cmd.OutOrStdout(), "  TLS Handshake:     %4dms\n", resp.Timings.TLS)
+			fmt.Fprintf(cmd.OutOrStdout(), "  Server Processing: %4dms (TTFB)\n", resp.Timings.Server)
+			fmt.Fprintf(cmd.OutOrStdout(), "  Content Transfer:  %4dms\n", resp.Timings.Transfer)
+		}
 		return nil
 	},
 }
@@ -198,6 +208,7 @@ func init() {
 	runCmd.Flags().StringVar(&runCAFile, "ca-file", "", "path to PEM CA bundle for this request")
 	runCmd.Flags().BoolVar(&runHTTP2, "http2", false, "force HTTP/2 ALPN protocol for this request")
 	runCmd.Flags().BoolVar(&runNoKeepAlive, "no-keepalive", false, "disable HTTP connection pooling for this request")
+	runCmd.Flags().BoolVar(&runTimeline, "timeline", false, "display ASCII network timing waterfall")
 }
 
 // applyRunOverrides copies explicitly-set CLI flags onto a request loaded from

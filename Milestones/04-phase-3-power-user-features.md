@@ -36,8 +36,8 @@ Advanced functionality for experienced developers and teams.
 
 ### §57.8 Network Interception / Timeline Debugging
 
+- [x] Request timeline debugging (DNS/connect/TLS/request/server/response/transfer) — `response.Timings` (`internal/response`), `internal/request.Client` `httptrace` synthesis, CLI `reqly run --timeline`, and Goja binding `reqly.response.timings` ([M59](docs/spec/m59-request-timeline-debugging.md), [ADR 0043](docs/adr/0043-request-timeline-debugging.md)) shipped
 - [ ] Capture/inspect/import/modify/replay network traffic
-- [ ] Request timeline debugging (DNS/connect/TLS/request/server/response/transfer)
 
 ### Other P2 Items
 
