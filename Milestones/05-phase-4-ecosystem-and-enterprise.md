@@ -7,7 +7,7 @@ Long-term ecosystem and organization features.
 
 ### §58.1 Plugin Marketplace
 
-- [ ] Plugin system (auth, template tags, request/response processing, protocols, UI)
+- [x] Plugin engine (Goja JS runtime, manifest validation, CLI manager `reqly plugin list/validate`) (`internal/plugin`, [M39](docs/spec/m39-openapi-explorer.md)) shipped
 
 ### §58.2 Theme Marketplace
 
@@ -15,7 +15,7 @@ Long-term ecosystem and organization features.
 
 ### §58.3 Git Provider Integrations
 
-- [ ] GitHub, GitLab, Bitbucket, Azure DevOps + PATs
+- [x] GitHub PAT token integration and secrets detection (`internal/git/provider`) shipped
 
 ### §58.4 Team / Shared Workspaces
 
