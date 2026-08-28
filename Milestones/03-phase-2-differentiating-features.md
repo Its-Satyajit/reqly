@@ -56,7 +56,7 @@ Features that make Reqly more capable than a basic API client.
 - [x] Environment diff — `reqly env diff` + desktop env tools panel
 - [~] HAR import/export + replay — import (`internal/importer/har.go`) + export (`internal/exporter/har.go`) shipped; HAR-specific replay pending (history replay via `HistoryReplay` shipped)
 - [x] JWT tooling (decode, claims viewer, signing, verification) — decode/claims viewer (`reqly jwt decode`, ADR 0021), HMAC/RSA verification (`internal/jwt.VerifyToken`, `reqly jwt verify`, ADR 0037), and Goja sandbox assertion `reqly.verifyJWT()` shipped ([M53](docs/spec/m53-jwt-signature-verification.md))
-- [~] GraphQL introspection / gRPC reflection tooling — GraphQL schema introspection + summary shipped (`internal/graphql/introspect.go`, desktop GraphQL browser); gRPC reflection not started
+- [x] GraphQL introspection / gRPC reflection tooling — GraphQL schema introspection (`internal/graphql/introspect.go`, `reqly graphql introspect`) and gRPC server reflection (`internal/grpc.Discover`, `reqly grpc reflect`, Goja binding `reqly.reflectGRPC()`, [M54](docs/spec/m54-grpc-server-reflection.md), [ADR 0038](docs/adr/0038-grpc-server-reflection.md)) shipped
 - [ ] Advanced HTTP: HTTP/2, HTTP/3, streaming, chunked transfer, keep-alive
 - [x] Pagination runner (page/offset/cursor/link-header, stop conditions, aggregation) — `internal/pagination` + `reqly pagination run` ([ADR 0022](docs/adr/0022-pagination-runner.md)) + desktop runners panel
 - [x] Bulk request execution (CSV/JSON inputs, sequential/parallel, concurrency) — `internal/bulk` + `reqly bulk run --data` ([ADR 0023](docs/adr/0023-bulk-runner.md)) + desktop runners panel
