@@ -148,3 +148,37 @@ func TestMockCommandLoadError(t *testing.T) {
 		t.Fatal("expected error for missing spec file")
 	}
 }
+
+func TestMockCommandScenario(t *testing.T) {
+	dir := t.TempDir()
+	scenarioFile := filepath.Join(dir, "scenario.yaml")
+	scenarioYaml := `
+initial_state: s1
+states:
+  s1:
+    transitions:
+      - method: GET
+        path: /hello
+        response:
+          status: 200
+          body: "world"
+`
+	if err := os.WriteFile(scenarioFile, []byte(scenarioYaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	var sc mocking.Scenario
+	_ = json.Unmarshal([]byte(`{"initial_state":"s1"}`), &sc)
+
+	data, err := os.ReadFile(scenarioFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = data
+}

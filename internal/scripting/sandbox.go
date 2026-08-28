@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/dop251/goja"
+	"gopkg.in/yaml.v3"
 
 	"github.com/Its-Satyajit/reqly/internal/ai"
 	"github.com/Its-Satyajit/reqly/internal/diffing"
@@ -32,6 +33,7 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/importer"
 	"github.com/Its-Satyajit/reqly/internal/jsonschema"
 	"github.com/Its-Satyajit/reqly/internal/jwt"
+	"github.com/Its-Satyajit/reqly/internal/mocking"
 	"github.com/Its-Satyajit/reqly/internal/mqtt"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/response"
@@ -486,6 +488,47 @@ func (s *Sandbox) bindReqly() {
 		outObj.Set("headers", hObj)
 		return outObj
 	})
+
+	mockObj := s.vm.NewObject()
+	mockObj.Set("createStateMachine", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		specStr := toString(call, 0)
+		var sc mocking.Scenario
+		if err := yaml.Unmarshal([]byte(specStr), &sc); err != nil {
+			return goja.Undefined()
+		}
+		sm := mocking.NewStateMachine(&sc)
+		return s.vm.ToValue(sm)
+	})
+	mockObj.Set("handle", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 3 {
+			return goja.Undefined()
+		}
+		smVal := call.Arguments[0].Export()
+		sm, ok := smVal.(*mocking.StateMachine)
+		if !ok || sm == nil {
+			return goja.Undefined()
+		}
+		method := toString(call, 1)
+		path := toString(call, 2)
+		res, matched := sm.Handle(method, path)
+		if !matched || res == nil {
+			return goja.Undefined()
+		}
+		resObj := s.vm.NewObject()
+		resObj.Set("status", res.Status)
+		resObj.Set("body", res.Body)
+		hObj := s.vm.NewObject()
+		for k, v := range res.Headers {
+			hObj.Set(k, v)
+		}
+		resObj.Set("headers", hObj)
+		resObj.Set("state", sm.CurrentState())
+		return resObj
+	})
+	r.Set("mock", mockObj)
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
