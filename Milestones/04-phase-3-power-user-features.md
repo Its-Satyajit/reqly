@@ -15,7 +15,7 @@ Advanced functionality for experienced developers and teams.
 
 ### §57.3 MQTT / Socket.IO
 
-- [ ] MQTT publish/subscribe, topics, QoS, retained/will, auth, TLS
+- [x] MQTT publish/subscribe, topics, QoS (0,1,2), retain, TLS, CLI `reqly mqtt pub/sub`, and Goja binding `reqly.mqtt` (`internal/mqtt`, [M57](docs/spec/m57-mqtt-protocol-engine.md), [ADR 0041](docs/adr/0041-mqtt-protocol-engine.md)) shipped
 - [ ] Socket.IO connections, events, rooms, namespaces, debugging
 
 ### §57.4 Dependency Graph
