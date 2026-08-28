@@ -733,3 +733,22 @@ func TestAuthStatusShowsGrantAndRefresh(t *testing.T) {
 		t.Fatalf("status leaked a secret:\n%s", output)
 	}
 }
+
+func TestAuthLoginGitProviders(t *testing.T) {
+	root := makeTestWorkspace(t, "http://example.com")
+	chdirWorkspace(t, root)
+
+	for _, providerName := range []string{"github", "gitlab", "bitbucket", "azure-devops"} {
+		store, _, err := openTokenStore(root)
+		if err != nil {
+			t.Fatalf("openTokenStore: %v", err)
+		}
+		if err := store.Set(providerName, "tok-"+providerName); err != nil {
+			t.Fatalf("store.Set: %v", err)
+		}
+		got, err := store.Get(providerName)
+		if err != nil || got != "tok-"+providerName {
+			t.Fatalf("want tok-%s, got %q (%v)", providerName, got, err)
+		}
+	}
+}

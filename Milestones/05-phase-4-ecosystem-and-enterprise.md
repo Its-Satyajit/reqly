@@ -15,7 +15,7 @@ Long-term ecosystem and organization features.
 
 ### §58.3 Git Provider Integrations
 
-- [x] GitHub PAT token integration and secrets detection (`internal/git/provider`) shipped
+- [x] GitHub, GitLab, Bitbucket, and Azure DevOps integration, remote host auto-detection, PAT token management, CLI `reqly auth login --provider <github|gitlab|bitbucket|azure-devops>`, and Goja `reqly.git.detectProvider` binding (`internal/git/provider`, [M61](docs/spec/m61-git-providers.md), [ADR 0045](docs/adr/0045-git-provider-integrations.md)) shipped
 
 ### §58.4 Team / Shared Workspaces
 

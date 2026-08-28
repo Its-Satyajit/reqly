@@ -25,6 +25,7 @@ import (
 	"github.com/dop251/goja"
 
 	"github.com/Its-Satyajit/reqly/internal/diffing"
+	gitprovider "github.com/Its-Satyajit/reqly/internal/git/provider"
 	"github.com/Its-Satyajit/reqly/internal/graphql"
 	grpcpkg "github.com/Its-Satyajit/reqly/internal/grpc"
 	"github.com/Its-Satyajit/reqly/internal/importer"
@@ -404,6 +405,24 @@ func (s *Sandbox) bindReqly() {
 		outObj.Set("markdown", cl.ToMarkdown())
 		return outObj
 	})
+
+	gitObj := s.vm.NewObject()
+	gitObj.Set("detectProvider", func(call goja.FunctionCall) goja.Value {
+		dir := "."
+		if len(call.Arguments) > 0 {
+			dir = toString(call, 0)
+		}
+		p, err := gitprovider.Detect(dir, nil)
+		if err != nil {
+			return goja.Undefined()
+		}
+		pObj := s.vm.NewObject()
+		pObj.Set("name", p.Name())
+		remote, _ := p.Remote(dir)
+		pObj.Set("remote", remote)
+		return pObj
+	})
+	r.Set("git", gitObj)
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
