@@ -24,6 +24,7 @@ import (
 
 	"github.com/dop251/goja"
 
+	"github.com/Its-Satyajit/reqly/internal/ai"
 	"github.com/Its-Satyajit/reqly/internal/diffing"
 	gitprovider "github.com/Its-Satyajit/reqly/internal/git/provider"
 	"github.com/Its-Satyajit/reqly/internal/graphql"
@@ -51,6 +52,10 @@ type Test struct {
 type Sandbox struct {
 	vm *goja.Runtime
 
+	// rawReq and rawResp store references for AI / reflection tooling.
+	rawReq  *request.Request
+	rawResp *response.Response
+
 	// respView keeps track of the response body for assertions.
 	respView *responseView
 
@@ -70,6 +75,11 @@ type Sandbox struct {
 
 // SandboxOptions configures a Sandbox.
 type SandboxOptions struct {
+	// Request provides the outgoing request (optional).
+	Request *request.Request
+	// Response provides the received response (optional).
+	Response *response.Response
+
 	// GetVariable resolves a variable by name (nil means an empty lookup).
 	GetVariable func(name string) (string, bool)
 	// SetVariable stores a variable (nil disables writing).
@@ -81,6 +91,8 @@ func NewSandbox(opts SandboxOptions) *Sandbox {
 	vm := goja.New()
 	s := &Sandbox{
 		vm:          vm,
+		rawReq:      opts.Request,
+		rawResp:     opts.Response,
 		getVariable: opts.GetVariable,
 		setVariable: opts.SetVariable,
 	}
@@ -89,6 +101,12 @@ func NewSandbox(opts SandboxOptions) *Sandbox {
 	}
 	s.bindConsole()
 	s.bindReqly()
+	if opts.Request != nil {
+		s.BindRequest(newRequestView(opts.Request))
+	}
+	if opts.Response != nil {
+		s.BindResponse(newResponseView(opts.Response))
+	}
 	return s
 }
 
@@ -423,6 +441,30 @@ func (s *Sandbox) bindReqly() {
 		return pObj
 	})
 	r.Set("git", gitObj)
+
+	aiObj := s.vm.NewObject()
+	aiObj.Set("generateTests", func(call goja.FunctionCall) goja.Value {
+		if s.rawResp == nil {
+			return s.vm.ToValue("// No response available\n")
+		}
+		return s.vm.ToValue(ai.GenerateTests(s.rawResp))
+	})
+	aiObj.Set("explain", func(call goja.FunctionCall) goja.Value {
+		if s.rawResp == nil {
+			return s.vm.ToValue("no response")
+		}
+		return s.vm.ToValue(ai.ExplainResponse(s.rawResp))
+	})
+	aiObj.Set("diagnose", func(call goja.FunctionCall) goja.Value {
+		if s.rawResp == nil {
+			return s.vm.ToValue("No response to diagnose")
+		}
+		return s.vm.ToValue(ai.Diagnose(s.rawResp, nil))
+	})
+	aiObj.Set("generateDocs", func(call goja.FunctionCall) goja.Value {
+		return s.vm.ToValue(ai.GenerateDocs(s.rawReq, s.rawResp))
+	})
+	r.Set("ai", aiObj)
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {

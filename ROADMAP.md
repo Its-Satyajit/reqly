@@ -266,7 +266,7 @@ Features that make Reqly more capable than a basic API client.
 
 - [x] **§59.1 Model Context Protocol (MCP) Server (Milestone 40)** — JSON-RPC 2.0 stdio server (`list_requests`, `search_requests`, `get_request`, `run_request`)
 - [x] **§59.2 Command Palette** — global search and shortcut palette
-- [x] **§59.3 AI Heuristics & Diagnostics** — response explanation, error analysis, and diagnostic heuristics
+- [x] **§59.3 AI Assistant Suite (Milestone 62)** — automated test assertion generator, Markdown API documentation synthesizer, failure diagnostics & remediation tips, response explanation, CLI `reqly ai <test|docs|diagnose|explain|schema>`, and Goja sandbox `reqly.ai` bindings
 
 ---
 
