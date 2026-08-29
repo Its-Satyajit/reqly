@@ -65,7 +65,7 @@ Every checked feature must pass the full checklist:
 - [~] Coverage within targets — CI enforces `go test -race` + coverage; thresholds tracked per PR
 - [x] Docs updated (ROADMAP + CONTEXT + ADR per milestone)
 - [x] CI green (vet, gofmt, typecheck, unit, race, build)
-- [ ] Frontend unit tests (Vitest) — **TBD** (typecheck only: `nub run typecheck`)
+- [x] Frontend unit tests (Vitest) — `frontend/src/lib` 20 files / 160 tests via `vitest run` (`frontend/vitest.config.ts` jsdom, `nub run --filter @reqly/frontend test`), `frontend/src/lib/themes.test.ts` (M67) 15 tests — shipped 2026-08-29
 
 ### Release gates
 
