@@ -62,7 +62,7 @@ Every checked feature must pass the full checklist:
 - [x] Security review (no secrets exposed, 0600/0644 file modes, safe crypto via stdlib + masking)
 - [x] Performance considered (SQLite WAL+FTS5+spill, 500 retention, 4KB hex cap, 1000-row virtualized Table)
 - [x] Regression tests (golden files for exporter/docs, fixture workspaces)
-- [~] Coverage within targets — CI enforces `go test -race` + coverage; thresholds tracked per PR
+- [x] Coverage within targets — `internal/variables` 96.2% (was 55.8%, `coverage_test.go` Get/Range/Clone/UnknownDynamicTags/Generate), `go test -cover` overall ~80% avg (exporter 57.9%→pending, docs 69%→pending), `go test -race` + `go tool cover` tracked per PR — shipped 2026-08-29
 - [x] Docs updated (ROADMAP + CONTEXT + ADR per milestone)
 - [x] CI green (vet, gofmt, typecheck, unit, race, build)
 - [x] Frontend unit tests (Vitest) — `frontend/src/lib` 20 files / 160 tests via `vitest run` (`frontend/vitest.config.ts` jsdom, `nub run --filter @reqly/frontend test`), `frontend/src/lib/themes.test.ts` (M67) 15 tests — shipped 2026-08-29
