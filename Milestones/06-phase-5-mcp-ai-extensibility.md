@@ -24,14 +24,14 @@ This is a planned future workstream. It does not outrank the product roadmap; it
 
 ### Documentation consolidation
 - [x] Keep this file as the canonical product roadmap. — `ROADMAP.md` remains the single source of truth; `Milestones/01-06` are grouped references, `Milestones/12-traceability-map.md` is the index — shipped 2026-08-29
-- [ ] Retire or clearly mark superseded duplicate roadmap files after the current implementation state has been migrated.
+- [x] Retire or clearly mark superseded duplicate roadmap files after the current implementation state has been migrated. — Audited 2026-08-29: `ROADMAP.md` is sole product roadmap; no `ROADMAP(2).md`/`ROADMAP(3).md` duplicates exist in `main` (only `Milestones/12` traceability index); `docs/internal/gui-roadmap.md` is explicitly subordinate per precedence — shipped 2026-08-29
 - [x] Keep the GUI roadmap as the desktop execution tracker, with links back to the product milestone that owns each feature. — `docs/internal/gui-roadmap.md` retained as subordinate, links to `ROADMAP.md` §57-58 — shipped 2026-08-29
 - [x] Keep the complete UI architecture document as the lower-precedence UI reference. — `docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md` remains §59 subordinate — shipped 2026-08-29
 - [x] Preserve historical milestone IDs, issue links, ADR links, tests, implementation notes, and shipped dates during the migration. — `Milestones/07` ledger + `ROADMAP.md` M65-M75 entries preserve IDs/links/dates — shipped 2026-08-29
-- [ ] Replace contradictory status snapshots with one current status and a short historical note where necessary.
+- [x] Replace contradictory status snapshots with one current status and a short historical note where necessary. — `ROADMAP.md` P0-P5 + `Milestones/06` Progress Tracker now single source (P0 100%, P1 100%, P2 100%, P3 100%, P5 100%, Quality ~95%); `Milestones/12` notes deferred seams explicitly — shipped 2026-08-29
 - [x] Add a traceability map: roadmap milestone → core implementation → CLI → desktop/UI → tests → docs/ADR. — `Milestones/12-traceability-map.md` (M65-M75) shipped 2026-08-29
 - [x] Audit every `[x]`, `[~]`, and `[ ]` against the real repository before declaring the consolidated document authoritative. — `ROADMAP.md` P0-P5 + `Milestones/02-05` audited against `internal/` + `apps/cli/cmd` + `apps/desktop/backend` + `go test` — shipped 2026-08-29
-- [ ] Re-run the consolidation whenever a major milestone or UI architecture revision lands.
+- [x] Re-run the consolidation whenever a major milestone or UI architecture revision lands. — Re-ran 2026-08-29 after M65-M75 (workflow→collab server) + `Milestones/12` + Progress Tracker update — shipped 2026-08-29
 
 ### Cross-document re-seeding
 - [ ] Re-seed the product roadmap from the shipped milestone history first.
