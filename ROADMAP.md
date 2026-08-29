@@ -255,6 +255,7 @@ Features that make Reqly more capable than a basic API client.
 - [x] **M63 Browser DevTools & Fetch Importer** — Chrome/Firefox/Safari/Edge DevTools 'Copy as fetch' parser, CLI `reqly import fetch`, and Goja sandbox binding `reqly.importFetch`
 - [x] **M64 Stateful Mock Engine** — multi-scenario state machine transitions, state control endpoints `/__reqly/state`, CLI `reqly mock --scenario`, and Goja `reqly.mock` bindings
 - [x] **M65 Workflow Engine (core & CLI + Desktop)** — sequential workflow execution with variable extraction, conditional step evaluation, query/header/body interpolation, `internal/workflow` + CLI `reqly workflow <file>` + Goja `reqly.workflow.run` + desktop `AppService.WorkflowRun` binding; visual builder UI pending
+- [x] **M66 Self-Hosted Automation** — local workflow scheduler (interval + maxRuns, enabled flag, `IsEnabled`/`IntervalDuration`/`Validate`), `internal/automation` `Scheduler.Run` (immediate first run + ticker, context-cancel, `onReport` callback) + CLI `reqly automation run <file> [--once --interval --max-runs]` + desktop `AppService.AutomationRun` binding; cron/Git-ops UI pending
 
 ---
 

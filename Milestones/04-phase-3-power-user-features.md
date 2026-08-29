@@ -45,7 +45,7 @@ Advanced functionality for experienced developers and teams.
 - [x] Browser integrations (Chrome/Firefox/Safari/Edge DevTools 'Copy as fetch' & cURL parser, CLI `reqly import fetch`, Goja `reqly.importFetch` binding) — `internal/importer.ParseFetch`, [M63](docs/spec/m63-devtools-fetch-importer.md), [ADR 0047](docs/adr/0047-devtools-fetch-importer.md) shipped
 - [x] Advanced mock state (multi-scenario state machines, transition rules, status control endpoints `/__reqly/state`, CLI `reqly mock --scenario <file>`, and Goja `reqly.mock` bindings) — `internal/mocking.StateMachine`, [M64](docs/spec/m64-stateful-mock-engine.md), [ADR 0048](docs/adr/0048-stateful-mock-engine.md) shipped
 - [x] Workflow engine — sequential workflow execution with variable extraction, conditional step evaluation via Goja, `{{var}}` interpolation for URL/headers/query/body, `internal/workflow` + CLI `reqly workflow <file>` + Goja `reqly.workflow.run` + desktop `AppService.WorkflowRun` binding; visual builder UI pending — `internal/workflow` (M65) shipped (core + CLI + desktop shipped / UI pending)
-- [ ] Self-hosted automation
+- [x] Self-hosted automation — local workflow scheduler (`Automation{Name, Workflow, Interval, Enabled, MaxRuns}` + `Scheduler.Run` with ticker, immediate first run, `MaxRuns` cap, `IsEnabled`/`Validate`), `internal/automation` + CLI `reqly automation run <file> [--once --interval --max-runs]` + desktop `AppService.AutomationRun`; cron/Git-ops UI pending — `internal/automation` (M66) shipped (core + CLI + desktop shipped / UI pending)
 
 ---
 
