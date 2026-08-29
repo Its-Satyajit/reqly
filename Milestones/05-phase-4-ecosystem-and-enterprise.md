@@ -19,7 +19,7 @@ Long-term ecosystem and organization features.
 
 ### §58.4 Team / Shared Workspaces
 
-- [ ] Multi-user collaboration, shared workspaces
+- [x] Shared workspaces & collaboration — Git-native shared workspace (`.reqly/collab.yaml` 0600, `SharedWorkspace{Path,Collaborators}` + `Collaborator{User,Role,AddedAt}` + `Validate`/`AddCollaborator`/`RemoveCollaborator`/`IsCollaborator` + `Load`/`Save`/`DefaultPath` 0700/0600) — `internal/collab` + CLI `reqly collab list/add/remove` + desktop `AppService.CollabList/CollabAdd/CollabRemove` — `internal/collab` (M74) shipped (core + CLI + desktop shipped / self-hosted server deferred)
 
 ### §58.5 Enterprise
 
