@@ -23,14 +23,14 @@
 This is a planned future workstream. It does not outrank the product roadmap; it exists to keep the roadmap set from drifting again.
 
 ### Documentation consolidation
-- [ ] Keep this file as the canonical product roadmap.
+- [x] Keep this file as the canonical product roadmap. — `ROADMAP.md` remains the single source of truth; `Milestones/01-06` are grouped references, `Milestones/12-traceability-map.md` is the index — shipped 2026-08-29
 - [ ] Retire or clearly mark superseded duplicate roadmap files after the current implementation state has been migrated.
-- [ ] Keep the GUI roadmap as the desktop execution tracker, with links back to the product milestone that owns each feature.
-- [ ] Keep the complete UI architecture document as the lower-precedence UI reference.
-- [ ] Preserve historical milestone IDs, issue links, ADR links, tests, implementation notes, and shipped dates during the migration.
+- [x] Keep the GUI roadmap as the desktop execution tracker, with links back to the product milestone that owns each feature. — `docs/internal/gui-roadmap.md` retained as subordinate, links to `ROADMAP.md` §57-58 — shipped 2026-08-29
+- [x] Keep the complete UI architecture document as the lower-precedence UI reference. — `docs/Reqly Complete UI Architecture, Pages, Panels, and Navigation Specification.md` remains §59 subordinate — shipped 2026-08-29
+- [x] Preserve historical milestone IDs, issue links, ADR links, tests, implementation notes, and shipped dates during the migration. — `Milestones/07` ledger + `ROADMAP.md` M65-M75 entries preserve IDs/links/dates — shipped 2026-08-29
 - [ ] Replace contradictory status snapshots with one current status and a short historical note where necessary.
-- [ ] Add a traceability map: roadmap milestone → core implementation → CLI → desktop/UI → tests → docs/ADR.
-- [ ] Audit every `[x]`, `[~]`, and `[ ]` against the real repository before declaring the consolidated document authoritative.
+- [x] Add a traceability map: roadmap milestone → core implementation → CLI → desktop/UI → tests → docs/ADR. — `Milestones/12-traceability-map.md` (M65-M75) shipped 2026-08-29
+- [x] Audit every `[x]`, `[~]`, and `[ ]` against the real repository before declaring the consolidated document authoritative. — `ROADMAP.md` P0-P5 + `Milestones/02-05` audited against `internal/` + `apps/cli/cmd` + `apps/desktop/backend` + `go test` — shipped 2026-08-29
 - [ ] Re-run the consolidation whenever a major milestone or UI architecture revision lands.
 
 ### Cross-document re-seeding
@@ -83,9 +83,9 @@ Every checked feature must pass the full checklist:
 | Phase 1 | Core API Client (P0)     | 100% backend + CLI; UI shell §2 four-zone chrome shipped (Tickets #01–#12, 2026-08-27)                                                    | 100% backend, 100% UI |
 | Phase 2 | Differentiating (P1)     | 100% — §56.1–56.8 data layer (lib + stores + tests) + all UI panels (template picker, proxy/TLS, dataset, CI/CD, mock GUI, schema docs) shipped 2026-08-27 | 100%  |
 | Phase 3 | Power-User (P2)          | 100% — §57.1 API Monitoring, §57.2 Perf Testing, §57.3 MQTT/Socket.IO, §57.4 Dep Graph, §57.5 Replay Engine, §57.6 Bottom Tools, §57.7 Git GUI, §57.8 Timeline Debugging shipped | 100% |
-| Phase 4 | Ecosystem (P3)           | ~40% — §58.1 Plugin Engine (Goja runtime + CLI manager) & §58.3 Git Provider Integration shipped; marketplaces & team sync pending | ~40% |
+| Phase 4 | Ecosystem (P3)           | 100% — §58.1 Plugin Engine, §58.2 Theme Sharing (M67), §58.3 Git Providers, §58.4 Shared Workspaces (M74), §58.5 Enterprise (M69 Audit, M70 Policy, M71 RBAC, M72 Vault, M73 SSO/SCIM) + M75 Collab Server shipped | 100% |
 | Phase 5 | MCP / AI / Extensibility | 100% — §59.1 MCP server (`internal/mcp` + CLI), §59.2 command palette, §59.3 AI heuristics & explanation (`internal/ai` + CLI) shipped | 100% |
-| Quality | DoD + release gates      | ~85% — Fast checks, PR CI, race detector, lint, typecheck, CLI binary build clean                                                        | ~85%                 |
+| Quality | DoD + release gates      | ~95% — Fast checks, PR CI, race detector, lint, typecheck, CLI binary build, frontend Vitest 20 files/160 tests (M68) clean                                                        | ~95%                 |
 
 ### Next milestones (UI redesign — spec §2 status)
 
