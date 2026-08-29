@@ -34,19 +34,19 @@ This is a planned future workstream. It does not outrank the product roadmap; it
 - [x] Re-run the consolidation whenever a major milestone or UI architecture revision lands. — Re-ran 2026-08-29 after M65-M75 (workflow→collab server) + `Milestones/12` + Progress Tracker update — shipped 2026-08-29
 
 ### Cross-document re-seeding
-- [ ] Re-seed the product roadmap from the shipped milestone history first.
-- [ ] Re-seed the GUI roadmap from the product roadmap second.
-- [ ] Re-seed the UI architecture navigation and panel inventory third.
-- [ ] Reconcile page names, tool names, protocol names, runner names, and terminology across all three layers.
-- [ ] Keep UI-only polish and layout proposals from changing product priority unless a development-roadmap milestone explicitly adopts them.
-- [ ] Preserve deferred seams as explicit follow-up work rather than silently dropping them.
+- [x] Re-seed the product roadmap from the shipped milestone history first. — Re-seeded 2026-08-29: `ROADMAP.md` P0-P5 reflects `Milestones/01-05` + `Milestones/12` M65-M75 (workflow→collab server) — shipped 2026-08-29
+- [x] Re-seed the GUI roadmap from the product roadmap second. — `docs/internal/gui-roadmap.md` re-seeded from `ROADMAP.md` §57-58 (P2/P3 GUI panels) — shipped 2026-08-29
+- [x] Re-seed the UI architecture navigation and panel inventory third. — `Milestones/09-11` re-seeded from `ROADMAP.md` §2-§4 + `Milestones/12` traceability — shipped 2026-08-29
+- [x] Reconcile page names, tool names, protocol names, runner names, and terminology across all three layers. — Audited 2026-08-29: `request`/`collection`/`workflow`/`automation`/`theme`/`audit`/`policy`/`rbac`/`vault`/`sso/scim`/`collab` consistent across `ROADMAP.md`/`Milestones`/`internal/` — shipped 2026-08-29
+- [x] Keep UI-only polish and layout proposals from changing product priority unless a development-roadmap milestone explicitly adopts them. — `DESIGN.md` remains subordinate; no UI polish promoted without `ROADMAP.md` milestone (e.g. theme picker UI deferred) — shipped 2026-08-29
+- [x] Preserve deferred seams as explicit follow-up work rather than silently dropping them. — `Milestones/12` lists all deferred seams (cron, JWKS RS256, AWS/Azure, visual builder UI, collab server UI) — shipped 2026-08-29
 
 ### Definition of done for the documentation redesign
-- [ ] Every source feature appears exactly once in the canonical product roadmap or in a clearly labeled historical/reference section.
-- [ ] Every GUI-specific implementation task points to a product-roadmap owner.
-- [ ] Every UI-spec page, panel, dialog, interaction pattern, navigation node, and layout rule is still represented in the subordinate UI reference.
-- [ ] No shipped item is accidentally regressed to `[ ]` because an older snapshot said it was pending.
-- [ ] No UI specification item is promoted to product scope merely because it appears in the UI reference.
+- [x] Every source feature appears exactly once in the canonical product roadmap or in a clearly labeled historical/reference section. — `ROADMAP.md` P0-P5 + `Milestones/07` ledger + `Milestones/12` index — shipped 2026-08-29
+- [x] Every GUI-specific implementation task points to a product-roadmap owner. — `Milestones/12` GUI linkage + `docs/internal/gui-roadmap.md` — shipped 2026-08-29
+- [x] Every UI-spec page, panel, dialog, interaction pattern, navigation node, and layout rule is still represented in the subordinate UI reference. — `Milestones/09-11` + `docs/Reqly Complete UI Architecture` retained — shipped 2026-08-29
+- [x] No shipped item is accidentally regressed to `[ ]` because an older snapshot said it was pending. — Audited 2026-08-29: `ROADMAP.md` M65-M75 vs `internal/` + `go test` — shipped 2026-08-29
+- [x] No UI specification item is promoted to product scope merely because it appears in the UI reference. — Audited 2026-08-29: UI spec §56-63 remains subordinate per precedence — shipped 2026-08-29
 
 ---
 
