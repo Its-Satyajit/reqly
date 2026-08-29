@@ -26,7 +26,7 @@ Long-term ecosystem and organization features.
 - [ ] Self-hosted collaboration server
 - [ ] Enterprise SSO, SCIM provisioning
 - [x] Audit logs — local append-only trail (`.reqly/audit.log` JSONL, 0600, `Entry{ID,Timestamp,Actor,Action,Resource,Details}` + `Validate` 11 actions) — `internal/audit` (`NewStore`/`Add`/`List`/`Clear` 0700/0600) + CLI `reqly audit list/clear` + desktop `AppService.AuditList/Add/Clear/Export` — `internal/audit` (M69) shipped (core + CLI + desktop shipped / org policies deferred)
-- [ ] Organization policies
+- [x] Organization policies — local policy file (`.reqly/policy.yaml` 0600, `Policy{RequireAudit,MaxWorkflowSteps,AllowedActions,RequireAuth,AllowCustomThemes}` + `Validate`/`Enforce`/`EnforceWorkflow` + `DefaultPolicy`/`Load`/`Save`/`DefaultPath` 0700/0600) — `internal/policy` + CLI `reqly policy show/validate/enforce` + desktop `AppService.PolicyGet/PolicySave/PolicyEnforce` — `internal/policy` (M70) shipped (core + CLI + desktop shipped / SSO/SCIM deferred)
 - [ ] Enterprise secret management (Vault, AWS, Azure, role-based access)
 - [ ] Advanced access control / permissions
 
