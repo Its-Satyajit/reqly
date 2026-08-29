@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   THEMES,
   isThemeId,
-  isThemePreference,
   resolveTheme,
   appearanceFor,
   nextPreference,
@@ -75,7 +74,9 @@ describe("themes lib", () => {
       expect(validateCustomTheme({ ...valid, label: "" })).toMatch(/label/);
     });
     it("rejects bad appearance", () => {
-      expect(validateCustomTheme({ ...valid, appearance: "blue" as unknown as "light" })).toMatch(/appearance/);
+      // SAFETY: testing invalid appearance string by casting literal
+      const bad = "blue" as CustomTheme["appearance"];
+      expect(validateCustomTheme({ ...valid, appearance: bad })).toMatch(/appearance/);
     });
     it("parses YAML and JSON", () => {
       const yaml = `id: yaml-theme\nlabel: YAML\nappearance: dark\ntokens:\n  primary: "#123456"\n`;

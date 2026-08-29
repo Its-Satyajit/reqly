@@ -70,9 +70,16 @@ export function validateCustomTheme(t: CustomTheme): string | null {
   return null;
 }
 
+type YamlResult = {
+  id?: string;
+  label?: string;
+  appearance?: string;
+  tokens?: Record<string, string>;
+};
+
 function parseSimpleYaml(yaml: string): CustomTheme {
   const lines = yaml.split("\n");
-  const result: Record<string, unknown> = {};
+  const result: YamlResult = {};
   let currentKey: string | null = null;
   let tokens: Record<string, string> = {};
   let inTokens = false;
@@ -94,22 +101,31 @@ function parseSimpleYaml(yaml: string): CustomTheme {
     if (k === "tokens") {
       inTokens = true;
       tokens = {};
-      result["tokens"] = tokens;
+      result.tokens = tokens;
       currentKey = "tokens";
+    } else if (k === "id") {
+      result.id = v;
+      currentKey = k;
+    } else if (k === "label") {
+      result.label = v;
+      currentKey = k;
+    } else if (k === "appearance") {
+      result.appearance = v;
+      currentKey = k;
     } else {
-      result[k] = v;
       currentKey = k;
     }
   }
   // Handle tokens already captured
   if (inTokens && currentKey === "tokens") {
-    result["tokens"] = tokens;
+    result.tokens = tokens;
   }
   return {
-    id: String(result["id"] ?? ""),
-    label: String(result["label"] ?? ""),
-    appearance: String(result["appearance"] ?? "") as "light" | "dark",
-    tokens: (result["tokens"] as Record<string, string>) ?? undefined,
+    id: String(result.id ?? ""),
+    label: String(result.label ?? ""),
+    // SAFETY: appearance is validated by validateCustomTheme after parsing
+    appearance: String(result.appearance ?? "") as "light" | "dark",
+    tokens: result.tokens ?? undefined,
   };
 }
 
@@ -118,11 +134,13 @@ export function parseCustomTheme(input: string): CustomTheme {
   // Try JSON first
   if (trimmed.startsWith("{")) {
     try {
+      // SAFETY: JSON payload is validated by validateCustomTheme
       const parsed = JSON.parse(trimmed) as CustomTheme;
       const err = validateCustomTheme(parsed);
       if (err) throw new Error(err);
       return parsed;
     } catch (e) {
+      // SAFETY: error is always Error in this branch
       throw new Error(`parse theme: ${(e as Error).message}`);
     }
   }
@@ -133,6 +151,7 @@ export function parseCustomTheme(input: string): CustomTheme {
     if (err) throw new Error(err);
     return parsed;
   } catch (e) {
+    // SAFETY: error is always Error
     throw new Error(`parse theme: ${(e as Error).message}`);
   }
 }
