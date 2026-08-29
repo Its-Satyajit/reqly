@@ -32,3 +32,16 @@ func TestCollab_Desktop(t *testing.T) {
 		t.Fatalf("want 0, got %v", list)
 	}
 }
+
+func TestCollabServe_Desktop(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewAppService()
+	svc.root = dir
+	url, err := svc.CollabServe(0)
+	if err != nil {
+		t.Fatalf("CollabServe: %v", err)
+	}
+	if url == "" {
+		t.Fatalf("expected url")
+	}
+}

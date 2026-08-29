@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/spf13/cobra"
 
@@ -101,6 +102,22 @@ var collabRemoveCmd = &cobra.Command{
 	},
 }
 
+var collabServeCmd = &cobra.Command{
+	Use:   "serve",
+	Short: "Start self-hosted collaboration server",
+	Long:  `Start a local HTTP server for shared workspace collaboration (health, collab, workspace).`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		port, _ := cmd.Flags().GetInt("port")
+		if port <= 0 || port > 65535 {
+			port = 8080
+		}
+		srv := collab.NewServer(".")
+		addr := fmt.Sprintf("127.0.0.1:%d", port)
+		fmt.Fprintf(cmd.OutOrStdout(), "Collab server listening on http://%s\n", addr)
+		return http.ListenAndServe(addr, srv.Handler())
+	},
+}
+
 func init() {
 	collabListCmd.Flags().String("file", "", "collab file path (default .reqly/collab.yaml)")
 	collabAddCmd.Flags().String("user", "", "user to add")
@@ -108,8 +125,10 @@ func init() {
 	collabAddCmd.Flags().String("file", "", "collab file path")
 	collabRemoveCmd.Flags().String("user", "", "user to remove")
 	collabRemoveCmd.Flags().String("file", "", "collab file path")
+	collabServeCmd.Flags().Int("port", 8080, "port to listen on")
 	collabCmd.AddCommand(collabListCmd)
 	collabCmd.AddCommand(collabAddCmd)
 	collabCmd.AddCommand(collabRemoveCmd)
+	collabCmd.AddCommand(collabServeCmd)
 	rootCmd.AddCommand(collabCmd)
 }

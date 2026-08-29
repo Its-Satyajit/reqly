@@ -6,6 +6,10 @@
 package main
 
 import (
+	"fmt"
+	"net"
+	"net/http"
+
 	"github.com/Its-Satyajit/reqly/internal/collab"
 )
 
@@ -57,4 +61,25 @@ func (s *AppService) CollabRemove(user string) error {
 		return err
 	}
 	return collab.Save(path, ws)
+}
+
+// CollabServe starts a self-hosted collaboration server and returns its URL.
+func (s *AppService) CollabServe(port int) (string, error) {
+	root := s.root
+	if root == "" {
+		root = "."
+	}
+	if port < 0 || port > 65535 {
+		port = 8080
+	}
+	srv := collab.NewServer(root)
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return "", fmt.Errorf("collab serve: %w", err)
+	}
+	go func() {
+		_ = http.Serve(listener, srv.Handler())
+	}()
+	return "http://" + listener.Addr().String(), nil
 }
