@@ -262,6 +262,7 @@ Features that make Reqly more capable than a basic API client.
 ## Phase 4 — Ecosystem & Enterprise (P3) — [Spec Reference](Milestones/05-phase-4-ecosystem-and-enterprise.md)
 
 - [x] **§58.1 Plugin Engine & Marketplace (Milestone 39)** — Goja JS runtime plugin execution, manifest validation, CLI manager
+- [x] **§58.2 Theme Sharing & Custom Themes (M67)** — Git-native shareable themes (`id` kebab-case, `label`, `appearance` light/dark, `tokens` map), `internal/theme` (`Validate`/`Parse`/`MarshalYAML`/`MarshalJSON`/`ToCSS`/`BuiltInThemes`/`IsBuiltIn`) + CLI `reqly theme list/export/import` + desktop `AppService.ThemeList/ThemeExport/ThemeImport` bindings; UI picker/extensions pending
 - [x] **§58.3 Git Provider Integrations (Milestone 61)** — GitHub, GitLab, Bitbucket, and Azure DevOps integration, remote auto-detection, PAT token storage, and CLI login
 
 ---

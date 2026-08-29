@@ -11,7 +11,7 @@ Long-term ecosystem and organization features.
 
 ### §58.2 Theme Marketplace
 
-- [ ] Theme sharing + custom themes + UI extensions
+- [x] Theme sharing + custom themes — Git-native shareable themes (`id` kebab-case, `label`, `appearance` light/dark, `tokens` primary/background etc.), `internal/theme` (`Validate`/`Parse`/`MarshalYAML`/`MarshalJSON`/`ToCSS`/`BuiltInThemes`/`IsBuiltIn`) + CLI `reqly theme list/export/import` + desktop `AppService.ThemeList/ThemeExport/ThemeImport` bindings; UI picker/extensions pending — `internal/theme` (M67) shipped (core + CLI + desktop shipped / UI extensions pending)
 
 ### §58.3 Git Provider Integrations
 
