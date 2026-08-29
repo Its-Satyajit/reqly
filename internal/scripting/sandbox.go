@@ -39,6 +39,7 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/response"
 	"github.com/Its-Satyajit/reqly/internal/socketio"
 	"github.com/Its-Satyajit/reqly/internal/validation"
+	"github.com/Its-Satyajit/reqly/internal/workflow"
 )
 
 // Test is a named test registered by a post-request script via reqly.test().
@@ -213,12 +214,21 @@ func NewResponseView(resp *response.Response) *responseView {
 	return newResponseView(resp)
 }
 
-// Run evaluates source as a script. It returns the script's final value.
+// Run evaluates source as a script.
 func (s *Sandbox) Run(source string) error {
 	if _, err := s.vm.RunString(source); err != nil {
 		return fmt.Errorf("script error: %w", err)
 	}
 	return nil
+}
+
+// RunString evaluates source as a script and returns the resulting goja.Value.
+func (s *Sandbox) RunString(source string) (goja.Value, error) {
+	val, err := s.vm.RunString(source)
+	if err != nil {
+		return nil, fmt.Errorf("script error: %w", err)
+	}
+	return val, nil
 }
 
 // Tests returns tests registered during script execution.
@@ -529,6 +539,34 @@ func (s *Sandbox) bindReqly() {
 		return resObj
 	})
 	r.Set("mock", mockObj)
+
+	wfObj := s.vm.NewObject()
+	wfObj.Set("run", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		wfStr := toString(call, 0)
+		var wf workflow.Workflow
+		if err := yaml.Unmarshal([]byte(wfStr), &wf); err != nil {
+			return goja.Undefined()
+		}
+		exec := workflow.NewWorkflowExecutor(nil)
+		report, err := exec.Execute(context.Background(), &wf, workflow.WorkflowOptions{})
+		if err != nil || report == nil {
+			return goja.Undefined()
+		}
+		repObj := s.vm.NewObject()
+		repObj.Set("workflowName", report.WorkflowName)
+		repObj.Set("passed", report.Passed)
+		repObj.Set("duration", report.Duration.Milliseconds())
+		extObj := s.vm.NewObject()
+		for k, v := range report.ExtractedVars {
+			extObj.Set(k, v)
+		}
+		repObj.Set("extractedVars", extObj)
+		return repObj
+	})
+	r.Set("workflow", wfObj)
 
 	r.Set("test", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
