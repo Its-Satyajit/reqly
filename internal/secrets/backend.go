@@ -80,12 +80,24 @@ func openForWorkspace(root, defaultBackend, envBackend string, openKeychain keyc
 			return fileStore(root, "keychain unavailable: "+err.Error()+"; falling back to the file store")
 		}
 		return Opened{Store: store, Backend: "keychain"}
+	case "vault":
+		addr := os.Getenv("VAULT_ADDR")
+		token := os.Getenv("VAULT_TOKEN")
+		if addr == "" || token == "" {
+			return fileStore(root, "vault requires VAULT_ADDR and VAULT_TOKEN; falling back to file store")
+		}
+		mount := os.Getenv("VAULT_MOUNT")
+		prefix := os.Getenv("VAULT_PREFIX")
+		store, err := NewVaultStore(VaultConfig{Addr: addr, Token: token, Mount: mount, Prefix: prefix})
+		if err != nil {
+			return fileStore(root, "vault unavailable: "+err.Error()+"; falling back to file store")
+		}
+		return Opened{Store: store, Backend: "vault"}
 	case "file":
+		return fileStore(root, "")
 	default:
-		backend = "file"
 		return fileStore(root, "unknown token store \""+envBackend+"\"; using the file store")
 	}
-	return fileStore(root, "")
 }
 
 func fileStore(root, warning string) Opened {
