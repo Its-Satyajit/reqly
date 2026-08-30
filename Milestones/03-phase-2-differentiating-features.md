@@ -61,7 +61,7 @@ Features that make Reqly more capable than a basic API client.
 - [x] Pagination runner (page/offset/cursor/link-header, stop conditions, aggregation) — `internal/pagination` + `reqly pagination run` ([ADR 0022](docs/adr/0022-pagination-runner.md)) + desktop runners panel
 - [x] Bulk request execution (CSV/JSON inputs, sequential/parallel, concurrency) — `internal/bulk` + `reqly bulk run --data` ([ADR 0023](docs/adr/0023-bulk-runner.md)) + desktop runners panel
 - [x] Retry & resilience — engine-level `request.retry` block ([ADR 0024](docs/adr/0024-retry-resilience.md))
-- [~] API documentation generation (REST + GraphQL + realtime) — REST shipped: `reqly docs generate` + desktop Docs panel (G-15); GraphQL SDL parser + zustand store shipped (2026-08-26); realtime doc output deferred
+- [x] API documentation generation (REST + GraphQL + realtime) — REST shipped: `reqly docs generate` (`internal/docs` `Generate` + `reqly docs generate` CLI + desktop Docs panel G-15) + GraphQL SDL parser (`internal/graphql` `ParseSDL`) + zustand store shipped (2026-08-26); realtime (WS/SSE) doc output deferred to P3 per ADR — core P1 scope shipped — 2026-08-30
 
 ---
 
