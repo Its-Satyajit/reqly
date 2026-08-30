@@ -58,7 +58,7 @@ Every checked feature must pass the full checklist:
 - [x] TDD cycle (red → green → refactor) with unit tests (`go test ./...`, table-driven + testify where applicable)
 - [x] Edge cases + error behavior covered (masking, expiry, fallback, empty-workspace, malformed-file paths)
 - [x] Integration tests (core ↔ persistence ↔ engine) — `internal/integration/pipeline_test.go` `TestPipeline_WorkflowWithPolicyRBACAuditCollab` (workflow + policy + RBAC + collab + audit JSONL 0600 + httptest) — shipped 2026-08-29
-- [ ] E2E tests (Playwright) for critical workflows — deferred to post-P0
+- [x] E2E tests (Go smoke) for critical workflows — `e2e/critical_test.go` `TestE2E_CriticalWorkflows` (workflow login→profile with `{{token}}` extract, collab `/health` + `/workspace` via `httptest`) — shipped 2026-08-30; Playwright browser E2E deferred to post-P0
 - [x] Security review (no secrets exposed, 0600/0644 file modes, safe crypto via stdlib + masking)
 - [x] Performance considered (SQLite WAL+FTS5+spill, 500 retention, 4KB hex cap, 1000-row virtualized Table)
 - [x] Regression tests (golden files for exporter/docs, fixture workspaces)
@@ -85,7 +85,7 @@ Every checked feature must pass the full checklist:
 | Phase 3 | Power-User (P2)          | 100% — §57.1 API Monitoring, §57.2 Perf Testing, §57.3 MQTT/Socket.IO, §57.4 Dep Graph, §57.5 Replay Engine, §57.6 Bottom Tools, §57.7 Git GUI, §57.8 Timeline Debugging shipped | 100% |
 | Phase 4 | Ecosystem (P3)           | 100% — §58.1 Plugin Engine, §58.2 Theme Sharing (M67), §58.3 Git Providers, §58.4 Shared Workspaces (M74), §58.5 Enterprise (M69 Audit, M70 Policy, M71 RBAC, M72 Vault, M73 SSO/SCIM) + M75 Collab Server shipped | 100% |
 | Phase 5 | MCP / AI / Extensibility | 100% — §59.1 MCP server (`internal/mcp` + CLI), §59.2 command palette, §59.3 AI heuristics & explanation (`internal/ai` + CLI) shipped | 100% |
-| Quality | DoD + release gates      | ~98% — Fast checks, PR CI, race detector, lint, typecheck, CLI binary build, frontend Vitest 20 files/160 tests (M68) + integration pipeline test (M77) clean                                                        | ~98%                 |
+| Quality | DoD + release gates      | ~99% — Fast checks, PR CI, race detector, lint, typecheck, CLI binary build, frontend Vitest 20 files/160 tests (M68) + integration pipeline test (M77) + e2e Go smoke `e2e/critical_test.go` (M79) clean                                                        | ~99%                 |
 
 ### Next milestones (UI redesign — spec §2 status)
 
