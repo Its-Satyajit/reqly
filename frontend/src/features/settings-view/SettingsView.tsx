@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { useThemeStore } from "#stores";
 import { THEMES } from "#lib/themes";
+import { APP_VERSION } from "#lib/crash";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
 import { useHistoryStore } from "#stores/useHistoryStore";
 import { useWorkspaceBootstrapStore } from "#stores/useWorkspaceBootstrap";
@@ -85,6 +86,7 @@ export function SettingsView() {
       <section className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-semibold">About</h2>
         <p className="mt-1 text-xs text-muted-foreground">Reqly — local-first, zero telemetry.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Version <span className="font-mono font-medium text-foreground">{APP_VERSION}</span> — report bugs with this version.</p>
         <div className="mt-3 rounded-md border border-border bg-muted/30 p-3">
           <p className="text-xs font-medium">Keyboard shortcuts</p>
           <ul className="mt-2 grid gap-1">

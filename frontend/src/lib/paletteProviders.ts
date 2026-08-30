@@ -2,6 +2,8 @@ import { useWorkspaceStore, type WorkspaceView } from "#stores/useWorkspaceStore
 import { useHistoryStore } from "#stores/useHistoryStore";
 import { useCommandPaletteStore } from "#stores/useCommandPaletteStore";
 import { useThemeStore } from "#stores/useThemeStore";
+import { useImportStore } from "#stores/useImportStore";
+import { useExportStore } from "#stores/useExportStore";
 import type { WorkspaceFolder } from "./collections";
 
 export function registerDefaultPaletteProviders() {
@@ -12,11 +14,18 @@ export function registerDefaultPaletteProviders() {
     "requests",
     "environments",
     "history",
+    "mocks",
+    "diff",
+    "jwt",
+    "graphql",
+    "runners",
+    "explorer",
+    "docs",
+    "grpc",
     "websocket",
     "sse",
     "settings",
-    "mocks",
-    "docs",
+    "spec-editor",
   ];
   navViews.forEach((v) => {
     store.registerCommand({
@@ -30,6 +39,12 @@ export function registerDefaultPaletteProviders() {
   store.registerCommand({ id: "new-request", title: "New request", hint: "⌘N", keywords: "new request tab", run: () => useWorkspaceStore.getState().openTab({ id: `req-${Date.now()}`, title: "New Request" }) });
   store.registerCommand({ id: "close-tab", title: "Close tab", hint: "⌘W", keywords: "close", run: () => { const id = useWorkspaceStore.getState().activeTabId; if (id) useWorkspaceStore.getState().closeTab(id); } });
   store.registerCommand({ id: "toggle-theme", title: "Toggle theme", hint: "Theme", keywords: "theme dark light system", run: () => useThemeStore.getState().cycleTheme() });
+  store.registerCommand({ id: "import", title: "Import collection", hint: "Import", keywords: "import openapi postman curl har", run: () => useImportStore.getState().setOpen(true) });
+  store.registerCommand({ id: "export", title: "Export collection", hint: "Export", keywords: "export openapi postman curl har", run: () => useExportStore.getState().setOpen(true) });
+  // Direct theme picks (story 18) — one palette hit per theme
+  store.registerCommand({ id: "theme-light", title: "Theme: Light", hint: "Appearance", keywords: "theme light atlas-light", run: () => useThemeStore.getState().setTheme("atlas-light") });
+  store.registerCommand({ id: "theme-dark", title: "Theme: Dark", hint: "Appearance", keywords: "theme dark atlas-dark", run: () => useThemeStore.getState().setTheme("atlas-dark") });
+  store.registerCommand({ id: "theme-system", title: "Theme: System", hint: "Appearance", keywords: "theme system auto", run: () => useThemeStore.getState().setTheme("system") });
 
   // Data providers - capped at 50, graceful degrade
   store.registerProvider({
