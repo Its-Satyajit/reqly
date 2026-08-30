@@ -246,17 +246,22 @@ export function patchEndpointInContent(content: string, oldPath: string, updated
   // Ensure method and summary under the (possibly new) path.
   // We look for the path block and inject/update method.
   const targetPath = updated.path;
-  // Simple heuristic: if content already contains method under that path, leave it;
-  // otherwise inject a minimal method block with summary/operationId.
   const methodLower = updated.method.toLowerCase();
-  const pathIndex = content.indexOf(`${targetPath}:`);
+  const escapedPathForSearch = targetPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedMethodForSearch = methodLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pathIndex = content.search(new RegExp(`^\\s*${escapedPathForSearch}:`, "m"));
   if (pathIndex !== -1) {
     const afterPath = content.slice(pathIndex);
-    const hasMethod = new RegExp(`\\n\\s+${methodLower}:`, "i").test(afterPath.split("\n").slice(0, 10).join("\n"));
+    // Find next path to bound the search (avoid matching method from next path)
+    const nextPathMatch = afterPath.slice(targetPath.length + 1).search(/\n\s*\//);
+    const pathBlock = nextPathMatch === -1 ? afterPath : afterPath.slice(0, nextPathMatch + targetPath.length + 1);
+    const hasMethod = new RegExp(`\\n\\s+${escapedMethodForSearch}:`, "i").test(pathBlock);
     if (!hasMethod) {
-      // Insert method block after path line — find end of path line
       const lines = content.split("\n");
-      const pathLineIdx = lines.findIndex((l) => l.trim() === `${targetPath}:`);
+      const pathLineIdx = lines.findIndex((l) => {
+        const t = l.trim();
+        return t === `${targetPath}:` || t === `"${targetPath}":` || t === `'${targetPath}':`;
+      });
       if (pathLineIdx !== -1) {
         const indent = "    ";
         const methodBlock = [`${indent}${methodLower}:`, `${indent}  summary: ${updated.summary ?? "New endpoint"}`];
@@ -265,10 +270,7 @@ export function patchEndpointInContent(content: string, oldPath: string, updated
         content = lines.join("\n");
       }
     } else if (updated.summary) {
-      // Update summary if method exists — replace first summary under that path
-      const escapedPath = targetPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const escapedMethod = methodLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      content = content.replace(new RegExp(`(${escapedPath}:[\\s\\S]*?${escapedMethod}:\\s*\\n\\s+summary:)\\s*.*`), `$1 ${updated.summary}`);
+      content = content.replace(new RegExp(`(${escapedPathForSearch}:[\\s\\S]*?${escapedMethodForSearch}:\\s*\\n\\s+summary:)\\s*.*`), `$1 ${updated.summary}`);
     }
   }
   return content;

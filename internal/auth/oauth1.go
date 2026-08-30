@@ -45,41 +45,56 @@ var oauth1Now = func() int64 { return time.Now().Unix() }
 
 type oauth1Scheme struct{}
 
-func (oauth1Scheme) Apply(req *http.Request, cfg map[string]string, vars Interpolator) error {
-	consumerKey, err := vars.Interpolate(cfg["consumerKey"])
-	if err != nil {
-		return fmt.Errorf("oauth1 consumerKey: %w", err)
-	}
-	if consumerKey == "" {
-		consumerKey, err = vars.Interpolate(cfg["consumer_key"])
-		if err != nil {
-			return fmt.Errorf("oauth1 consumerKey: %w", err)
+func lookupInterpolated(vars Interpolator, cfg map[string]string, keys ...string) (string, error) {
+	for _, k := range keys {
+		if v, ok := cfg[k]; ok && v != "" {
+			interpolated, err := vars.Interpolate(v)
+			if err != nil {
+				return "", fmt.Errorf("oauth1 %s: %w", k, err)
+			}
+			if interpolated != "" {
+				return interpolated, nil
+			}
 		}
+	}
+	// Try each key even if empty in cfg, to surface interpolation errors for {{var}} syntax
+	for _, k := range keys {
+		if _, ok := cfg[k]; ok {
+			// already tried above with non-empty, now try empty to catch syntax errors
+			if _, err := vars.Interpolate(cfg[k]); err != nil {
+				return "", fmt.Errorf("oauth1 %s: %w", k, err)
+			}
+		}
+	}
+	return "", nil
+}
+
+func (oauth1Scheme) Apply(req *http.Request, cfg map[string]string, vars Interpolator) error {
+	consumerKey, err := lookupInterpolated(vars, cfg, "consumerKey", "consumer_key")
+	if err != nil {
+		return err
 	}
 	if consumerKey == "" {
 		return fmt.Errorf("oauth1 auth requires consumerKey")
 	}
-	consumerSecret, err := vars.Interpolate(cfg["consumerSecret"])
+	consumerSecret, err := lookupInterpolated(vars, cfg, "consumerSecret", "consumer_secret")
 	if err != nil {
-		return fmt.Errorf("oauth1 consumerSecret: %w", err)
-	}
-	if consumerSecret == "" {
-		consumerSecret, err = vars.Interpolate(cfg["consumer_secret"])
-		if err != nil {
-			return fmt.Errorf("oauth1 consumerSecret: %w", err)
-		}
+		return err
 	}
 	if consumerSecret == "" {
 		return fmt.Errorf("oauth1 auth requires consumerSecret")
 	}
-	token, _ := vars.Interpolate(cfg["token"])
-	tokenSecret, _ := vars.Interpolate(cfg["tokenSecret"])
-	if tokenSecret == "" {
-		tokenSecret, _ = vars.Interpolate(cfg["token_secret"])
+	token, err := lookupInterpolated(vars, cfg, "token")
+	if err != nil {
+		return err
 	}
-	sigMethod, _ := vars.Interpolate(cfg["signatureMethod"])
-	if sigMethod == "" {
-		sigMethod, _ = vars.Interpolate(cfg["signature_method"])
+	tokenSecret, err := lookupInterpolated(vars, cfg, "tokenSecret", "token_secret")
+	if err != nil {
+		return err
+	}
+	sigMethod, err := lookupInterpolated(vars, cfg, "signatureMethod", "signature_method")
+	if err != nil {
+		return err
 	}
 	if sigMethod == "" {
 		sigMethod = "HMAC-SHA1"

@@ -422,18 +422,26 @@ func collectSchemasWithBase(root *wsdlNode, rep *ImportReport, baseDir string) m
 		if loc == "" || baseDir == "" || isURL(loc) {
 			return false
 		}
-		// Prevent directory traversal outside base
-		if strings.Contains(loc, "..") {
+		// Prevent directory traversal (including encoded %2e%2e) and absolute paths
+		lowerLoc := strings.ToLower(loc)
+		if strings.Contains(loc, "..") || strings.Contains(lowerLoc, "%2e") {
 			rep.Add("", CategorySchema, SeverityWarned, "external %s %q contains traversal; not followed", kind, loc)
-			return true // handled (warned, but don't add not-followed again)
+			return true
 		}
 		cleanLoc := filepath.Clean(loc)
 		if filepath.IsAbs(cleanLoc) {
-			return false
+			rep.Add("", CategorySchema, SeverityWarned, "external %s %q is absolute; not followed", kind, loc)
+			return true
 		}
 		candidate := filepath.Join(baseDir, cleanLoc)
+		// Ensure candidate is still within baseDir after clean (no escape via a/../b)
+		rel, err := filepath.Rel(baseDir, candidate)
+		if err != nil || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == ".." {
+			rep.Add("", CategorySchema, SeverityWarned, "external %s %q escapes base; not followed", kind, loc)
+			return true
+		}
 		if visited[candidate] {
-			return true // already processed, suppress duplicate warning
+			return true
 		}
 		visited[candidate] = true
 		data, err := os.ReadFile(candidate)
@@ -444,7 +452,7 @@ func collectSchemasWithBase(root *wsdlNode, rep *ImportReport, baseDir string) m
 			for k, v := range extShapes {
 				shapes[k] = v
 			}
-			return true // resolved
+			return true
 		}
 		return false
 	}

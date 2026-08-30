@@ -79,3 +79,13 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
     set({ dataset: null, currentIteration: 0, results: [] });
   },
 }));
+
+// selectBulkData is the single selector for RunnersPanel bulk mode —
+// it prefers the dataset store's rawContent (with validation/preview) over
+// the legacy textarea fallback, hiding the store walk behind one call.
+export function selectBulkData(mode: string, fallbackData: string): string | undefined {
+  if (mode !== "bulk") return undefined;
+  const ds = useDatasetStore.getState().dataset;
+  if (ds?.rawContent && ds.rawContent.trim() !== "") return ds.rawContent;
+  return fallbackData.trim() !== "" ? fallbackData : undefined;
+}

@@ -24,7 +24,7 @@ import {
 } from "#lib/runners";
 import { useRequestStore, type TabDraft } from "#stores/useRequestStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
-import { useDatasetStore } from "#stores/useDatasetStore";
+import { useDatasetStore, selectBulkData } from "#stores/useDatasetStore";
 import { DatasetPicker } from "./DatasetPicker";
 
 type Mode = "pagination" | "bulk" | "graph";
@@ -106,13 +106,7 @@ export function RunnersPanel() {
       if (strategy === "cursor") pagination.nextPath = nextPath;
     }
 
-    // Prefer dataset store (picker) over legacy textarea — handles CSV/JSON validation & preview.
-    const bulkData = (() => {
-      if (mode !== "bulk") return undefined;
-      const ds = useDatasetStore.getState().dataset;
-      if (ds?.rawContent && ds.rawContent.trim() !== "") return ds.rawContent;
-      return data.trim() !== "" ? data : undefined;
-    })();
+    const bulkData = selectBulkData(mode, data);
 
     // The listener lives in an effect keyed on the run id so unmount and
     // restarts always detach cleanly (react-doctor/effect-needs-cleanup).
