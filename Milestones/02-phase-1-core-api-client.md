@@ -40,7 +40,7 @@ The minimum set to make Reqly a serious API client.
 - [x] AWS Signature V4 — `internal/auth/aws.go` (`auth.type: aws`, SigV4 per-request signing, `accessKey`/`secretKey`/`region`/`service` + optional `sessionToken`, [ADR 0012](docs/adr/0012-aws-edgegrid-auth.md))
 - [x] Akamai EdgeGrid — `internal/auth/edgegrid.go` (`auth.type: edgegrid`, EG1-HMAC-SHA256, `clientToken`/`clientSecret`/`accessToken`/`host`, [ADR 0012](docs/adr/0012-aws-edgegrid-auth.md))
 - [x] OAuth 1.0 — `internal/auth/oauth1.go` (`auth.type: oauth1`, RFC 5849 HMAC-SHA1 per-request signing, `consumerKey`/`consumerSecret` + optional `token`/`tokenSecret`, `Authorization: OAuth` header with `oauth_signature`, `oauth_nonce`/`oauth_timestamp`, `auth.config` + Auth tab `OAuth 1.0` form) — 2026-08-30
-- [ ] Custom auth — deferred (reuses same `auth.config` + Auth tab seams)
+- [x] Custom auth — `internal/auth/custom.go` (`auth.type: custom`, `header`/`value` per-request header injection, `auth.config` + Auth tab `Custom` form, secret `value`) — 2026-08-30
 - [x] Auth inheritance — Workspace → Collection → Folder → Request (base URL, headers, auth, vars)
 
 ### 1.4 Secrets
