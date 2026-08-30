@@ -115,6 +115,25 @@ P1 is 100% shipped (14/14). GUI panels formerly deferred are now in `Milestones/
 
 ---
 
+## Shell Rebuild — Slice Plan (372) — REBUILDING SLICE-BY-SLICE
+
+> `372` (84 stories) is rebuilt incrementally; data layer `lib/`+`stores/` preserved. Each slice ships as a tracer bullet (core+UI+tests) with gates (`nub typecheck`, `oxlint`, `go vet`, `vitest 185`) before merge. This section is the execution tracker; `Milestones/08` remains the GUI roadmap source.
+
+| Slice | Scope | Stories | Key files | Status |
+|-------|-------|---------|-----------|--------|
+| **01** | **Foundation — tokens + storage + AppShell + useShellStore** | — (infra) | `frontend/src/styles/tokens.css:1`, `shell/storage.ts:1`, `shell/AppShell.tsx:1`, `stores/useShellStore.ts:1`, `index.css:7` import | `[x]` `33a1d1db` — additive, no App.tsx change yet |
+| **02** | **AppShell mount** — refactor `App.tsx` to thin wrapper | Shell chrome 1–8 | `frontend/src/app/App.tsx:57` `ResiablePanelGroup` → `<AppShell brand/headerCenter/headerActions/sidebar/children/inspector/statusbar>` | `[ ]` next — extract 370-line layout, keep `activeView`/`pendingView`/`Toaster` |
+| **03** | Home + Collections | WS Home 9–12, Collections 22–24 | `HomeView` stat cards/empty, `CollectionTree` (`1882bd34` duplicate already) + filter/drag | `[ ]` |
+| **04** | Request/Response | Builder 13–17, Response 18–21, Body 69–70, Auth 71–72 | `RequestEditor` 4 tabs + overflow + `RequestSettingsDialog` (`1882bd34`), `ResponseViewer` `horizontal`/`vertical` `useShellStore.responseMode` | `[ ]` |
+| **05** | Tool Pages | Envs 25–27, History 28–30, Mocks 31–36, Diff 37–38, JWT 39–41, GraphQL 42–45, gRPC 46–48, Runners 49–50, OpenAPI 51–52 | `EnvironmentsView`/`HistoryView`/`MocksView`/`DiffView`/`JwtInspector`/`GraphqlBrowser`/`GrpcTab`/`RunnersPanel`/`OpenapiExplorer` | `[ ]` |
+| **06** | Import/Export + Settings | Import 53–55, Export 56, Settings 57–59 | `ImportDialog`/`ExportDialog` modals, `SettingsView` Appearance/Workspace/Retention/About (`5553cd19` version) + `ProxyTlsPanel`/`CicdPanel` | `[ ]` palette `import`/`export` already `5553cd19` |
+| **07** | Global Panels + Realtime | Bottom 60–64, Realtime 65–66 | `BottomPanel` (`Console`/`Network`/`Tests`/`Variables`/`Cookies`, `⌘J`), `RealtimePage`/`RealtimeTab` auto-reconnect | `[ ]` |
+| **08** | Search & Palette polish | Search 67–68, Palette + Keyboard | `paletteProviders.ts:19` (`navViews` 16 + `import`/`export`/`theme-*` `5553cd19`) + `CommandPalette` grouping/recent + `useKeyboardMap` `⌘K/⌘1-8` | `[ ]` |
+
+*Slice 01 additive — existing `App.tsx` layout preserved until Slice 02 mount. Each slice PR must keep `frontend/src/lib`/`stores` pure and `ErrorBoundary` per panel.*
+
+---
+
 ## Historical & UI Reference
 
 All ticket-level histories, GUI matrices, and full UI spec are in [`Milestones/`](Milestones/): [`07` Ledger](Milestones/07-historical-milestones-ledger.md) (M01–M40) · [`08` GUI Roadmap](Milestones/08-gui-roadmap-and-execution.md) · [`09` §1–25](Milestones/09-ui-architecture-shell-and-requests.md) · [`10` §26–55](Milestones/10-ui-architecture-tools-and-pages.md) · [`11` §56–63](Milestones/11-ui-architecture-phase-panels-and-navigation.md) · [`12` Traceability](Milestones/12-traceability-map.md) (roadmap → code → CLI → desktop → tests → ADR).
