@@ -31,7 +31,7 @@ Features that make Reqly more capable than a basic API client.
 ### §56.5 Data-driven Testing
 
 - [x] Data-driven testing — CSV/JSON dataset lib + zustand store + 23 tests — 2026-08-26
-- [ ] Dataset picker + runner integration UI (P1 GUI pending)
+- [x] Dataset picker + runner integration UI — `features/runners-panel/DatasetPicker.tsx` (file load + textarea paste → `useDatasetStore.loadDataset` auto-detect CSV/JSON, validation via `validateDataset`, 5-row preview, clear) + `RunnersPanel` bulk mode integration (prefers `dataset.rawContent` with textarea fallback) + `useDatasetStore.loadDataset`/`getValidationErrors` (7 TDD tests) — 2026-08-30
 
 ### §56.6 CI/CD Integration
 

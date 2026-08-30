@@ -3,6 +3,7 @@ import {
   parseCsv,
   parseJsonDataset,
   getRowVariables,
+  validateDataset,
   type Dataset,
 } from "#lib/datasets";
 
@@ -20,6 +21,8 @@ interface DatasetState {
   results: { iteration: number; passed: boolean; error?: string }[];
   loadCsv(content: string, name?: string): void;
   loadJson(content: string, name?: string): void;
+  loadDataset(content: string, name?: string): void;
+  getValidationErrors(): string[];
   setConfig(patch: Partial<DatasetRunConfig>): void;
   getRowVariables(rowIndex: number): { [key: string]: string };
   clearDataset(): void;
@@ -38,6 +41,28 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
 
   loadJson(content, name) {
     set({ dataset: parseJsonDataset(content, name), currentIteration: 0, results: [] });
+  },
+
+  loadDataset(content, name) {
+    const trimmed = content.trim();
+    // Content sniffing wins over filename — JSON arrays are unambiguous.
+    if (trimmed.startsWith("[")) {
+      try {
+        const ds = parseJsonDataset(content, name);
+        set({ dataset: ds, currentIteration: 0, results: [] });
+        return;
+      } catch {
+        // fall through to CSV
+      }
+    }
+    // Fallback: treat as CSV (covers CSV content with .json name, empty, etc.)
+    set({ dataset: parseCsv(content, name), currentIteration: 0, results: [] });
+  },
+
+  getValidationErrors() {
+    const ds = get().dataset;
+    if (!ds) return [];
+    return validateDataset(ds);
   },
 
   setConfig(patch) {
