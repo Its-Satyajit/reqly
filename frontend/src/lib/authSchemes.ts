@@ -17,6 +17,7 @@ export type AuthSchemeId =
 	| "apikey"
 	| "jwt"
 	| "digest"
+	| "oauth1"
 	| "oauth2"
 	| "aws"
 	| "edgegrid"
@@ -161,6 +162,23 @@ export const AUTH_SCHEMES: AuthScheme[] = [
 		],
 	},
 	{
+		id: "oauth1",
+		label: "OAuth 1.0",
+		fields: [
+			{ key: "consumerKey", label: "Consumer key", placeholder: "consumer key" },
+			{ key: "consumerSecret", label: "Consumer secret", placeholder: "••••••••", secret: true },
+			{ key: "token", label: "Token", placeholder: "token (optional)", secret: true, optional: true },
+			{ key: "tokenSecret", label: "Token secret", placeholder: "••••••••", secret: true, optional: true },
+			{
+				key: "signatureMethod",
+				label: "Signature method",
+				options: ["HMAC-SHA1"],
+				help: "Only HMAC-SHA1 for P0.",
+				optional: true,
+			},
+		],
+	},
+	{
 		// The oauth2 fields are grant-driven; see OAUTH2_GRANTS.
 		id: "oauth2",
 		label: "OAuth 2.0",
@@ -207,6 +225,7 @@ export const AUTH_SCHEME_LABELS = {
 	apikey: "API Key",
 	jwt: "JWT",
 	digest: "Digest",
+	oauth1: "OAuth 1.0",
 	oauth2: "OAuth 2.0",
 	aws: "AWS SigV4",
 	edgegrid: "Akamai EdgeGrid",
@@ -235,6 +254,7 @@ export const ORDERED_AUTH_SCHEMES: AuthSchemeId[] = [
 	"apikey",
 	"jwt",
 	"digest",
+	"oauth1",
 	"oauth2",
 	"aws",
 	"edgegrid",

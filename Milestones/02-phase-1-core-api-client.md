@@ -32,14 +32,15 @@ The minimum set to make Reqly a serious API client.
 ### 1.3 Authentication
 
 - [x] Basic, Bearer, API key — `internal/auth` scheme registry, `request.Auth` dispatch, secret masking ([ADR 0005](docs/adr/0005-git-native-auth-schemes.md))
-- [~] JWT — HS256/384/512 per-request signing + `reqly jwt decode` claims viewer shipped ([ADR 0021](docs/adr/0021-jwt-tooling-decode.md)); `verify`/`sign` deferred to M29b
-- [~] Digest — challenge/response shipped (SHA-256 fallback, request-body aware); NTLM deferred
+- [x] JWT — HS256/384/512 per-request signing, decoding, claims viewer, and signature verification (`reqly jwt decode/verify/sign`, ADR 0021)
+- [x] Digest — challenge/response shipped (SHA-256 fallback, `internal/auth/digest.go` request-body aware, `request.FollowRedirects` aware); **NTLM deferred to P3** (Windows `NTLMSSP`/`SSPI` requires CGO/`gssapi`, out of scope for P0 local-first/no-CGO) — core P0 shipped 2026-08-30
 - [x] OAuth 2.0 Client Credentials — RFC 6749 §4.4 with store-backed token caching (`TokenSource` + `secrets.Store`, ADR 0006), expiry-skewed proactive refresh, reactive 401 refresh+retry-once, `reqly auth status`/`auth logout`
 - [x] OAuth 2.0 Authorization Code + PKCE — RFC 6749 §4.1 + RFC 7636 (`AuthorizationCodeSource`, one-shot loopback callback, state/verifier, [ADR 0007](docs/adr/0007-oauth2-authorization-code-pkce.md)), `reqly auth login`, first-request auto-login, refresh-token reuse (RFC 6749 §6, proactive + 401, rotation) — spec [#52](https://github.com/Its-Satyajit/reqly/issues/52), tickets [#53–#57](https://github.com/Its-Satyajit/reqly/issues/53)
 - [x] OAuth 2.0 Device flow (RFC 8628) + OS-keychain store + custom redirects + desktop auth — `reqly auth login --flow device` (verification URI + code, RFC poll semantics), `--store keychain`/`REQLY_TOKEN_STORE` with file fallback, `reqly://` deep-link callbacks, sidebar auth panel (login/status/logout) — spec [#60](https://github.com/Its-Satyajit/reqly/issues/60), tickets [#61–#65](https://github.com/Its-Satyajit/reqly/issues/61), [ADR 0008](docs/adr/0008-oauth2-auth-leftovers.md)
 - [x] AWS Signature V4 — `internal/auth/aws.go` (`auth.type: aws`, SigV4 per-request signing, `accessKey`/`secretKey`/`region`/`service` + optional `sessionToken`, [ADR 0012](docs/adr/0012-aws-edgegrid-auth.md))
 - [x] Akamai EdgeGrid — `internal/auth/edgegrid.go` (`auth.type: edgegrid`, EG1-HMAC-SHA256, `clientToken`/`clientSecret`/`accessToken`/`host`, [ADR 0012](docs/adr/0012-aws-edgegrid-auth.md))
-- [ ] OAuth 1.0, custom auth — deferred (reuses the same `auth.config` + Auth tab seams)
+- [x] OAuth 1.0 — `internal/auth/oauth1.go` (`auth.type: oauth1`, RFC 5849 HMAC-SHA1 per-request signing, `consumerKey`/`consumerSecret` + optional `token`/`tokenSecret`, `Authorization: OAuth` header with `oauth_signature`, `oauth_nonce`/`oauth_timestamp`, `auth.config` + Auth tab `OAuth 1.0` form) — 2026-08-30
+- [x] Custom auth — `internal/auth/custom.go` (`auth.type: custom`, `header`/`value` per-request header injection, `auth.config` + Auth tab `Custom` form, secret `value`) — 2026-08-30
 - [x] Auth inheritance — Workspace → Collection → Folder → Request (base URL, headers, auth, vars)
 
 ### 1.4 Secrets
@@ -94,7 +95,7 @@ The minimum set to make Reqly a serious API client.
 - [x] **SSE** — live event stream, inspection, event history (`internal/sse` + `reqly sse`)
 - [x] **GraphQL** — query editor + variables via `BodyType: graphql` (ADR 0013), live endpoint introspection (`reqly graphql introspect <url>`), offline SDL schema parsing (`reqly graphql parse <file.graphql>`), Goja scripting helper `reqly.introspectGraphQL()`, and Desktop Schema Browser ([M50](docs/spec/m50-graphql-schema-introspection.md), [ADR 0034](docs/adr/0034-graphql-schema-introspection.md))
 - [x] **gRPC** — proto files, reflection, service/method discovery, unary + server-streaming — `internal/grpc` (reflection via v1 protocol, protocompile `.proto` fallback, TLS/h2c, deadlines), `grpc:` request-file block, scripting/assertions parity, history, `reqly grpc services|invoke`, desktop gRPC view (ADR 0028, M43; client-stream/bidi deferred)
-- [~] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; external schemas/rpc-encoded best-effort with warnings; the "XML builder" surface is these generated envelopes, no runtime builder)
+- [x] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; local `xsd:import`/`include` resolved via `ParseWSDLWithBase` (`filepath.Dir` in CLI) shipped 2026-08-30; remote URLs + `rpc/encoded` still best-effort with warnings per ADR — core P0 shipped, `rpc/encoded` P3)
 
 ### 1.9 Import / export
 
@@ -108,10 +109,10 @@ The minimum set to make Reqly a serious API client.
 ### 1.10 OpenAPI & JSON Schema
 
 - [x] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); Swagger 2.0 / OpenAPI 2.0 import & `reqly openapi convert-v2` spec converter shipped ([M51](docs/spec/m51-swagger2-importer-converter.md))
-- [~] Endpoint explorer + generate requests from spec — `reqly openapi explore <spec> [--tag]... [--json]` (operation table / machine-readable list) and `reqly openapi generate <spec> [--operation]... | [--method --path] | [--tag]... | --all [--output dir]` ([M39](docs/spec/m39-openapi-explorer.md) — native request files, inline example/default bodies+params, bearer/basic/apikey-header → native auth blocks, unmappable features warned; desktop explorer panel deferred to M39b)
+- [x] Endpoint explorer + generate requests from spec — `reqly openapi explore <spec> [--tag]... [--json]` (operation table / machine-readable list) and `reqly openapi generate <spec> [--operation]... | [--method --path] | [--tag]... | --all [--output dir]` ([M39](docs/spec/m39-openapi-explorer.md) — native request files, inline example/default bodies+params, bearer/basic/apikey-header → native auth blocks, unmappable features warned) + desktop explorer panel (`features/openapi-explorer/OpenapiExplorer.tsx` 304 lines, `lib/openapi` adapter) — 2026-08-30
 - [x] JSON Schema: validate, inspect, generate & test assertion — `reqly schema validate/inspect/generate` ([M40](docs/spec/m40-json-schema.md)) and Goja sandbox assertion hook `reqly.assertJSONSchema(schemaPath)` ([M52](docs/spec/m52-json-schema-assertion.md), [ADR 0036](docs/adr/0036-json-schema-script-assertion.md))
 - [x] XML/XSD schema validation where applicable — `internal/validation.ValidateXMLAgainstXSD` pure Go XSD parsing, DOM element/attribute constraint checking, local `schemaLocation` resolution, `reqly schema validate --type xml <schema.xsd> <instance.xml>`, Goja sandbox assertion `reqly.assertXSD(schemaPath)`, and Desktop UI ResponseViewer XML validation badge ([M49](docs/spec/m49-xml-xsd-validation.md), [ADR 0033](docs/adr/0033-xml-xsd-schema-validation.md))
-- [~] Generate mocks from OpenAPI (see P1) — `reqly mock` serves schema/example-driven responses
+- [x] Generate mocks from OpenAPI — `reqly mock [spec] [--scenario]` serves schema/example-driven responses (`internal/mocking`, `apps/cli/cmd/mock.go`, `MockView` GUI) — 2026-08-30
 
 ### 1.11 CLI (P0 commands)
 

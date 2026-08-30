@@ -37,6 +37,10 @@ type Request struct {
 	Pagination *Pagination `json:"pagination,omitempty" yaml:"pagination,omitempty"`
 	Retry      *Retry      `json:"retry,omitempty" yaml:"retry,omitempty"`
 	Timeout    int64       `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds; 0 means "no explicit timeout"
+	// FollowRedirects overrides the default follow behavior when explicitly
+	// false: the first response is returned as-is (3xx and all). nil keeps
+	// the standard net/http follow behavior.
+	FollowRedirects *bool `json:"followRedirects,omitempty" yaml:"followRedirects,omitempty"`
 
 	// Proxy is an optional per-request proxy URL (http://proxy:8080). When set it
 	// overrides ProxyFromEnvironment for this send; empty means environment proxy.

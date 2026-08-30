@@ -11,42 +11,42 @@ Features that make Reqly more capable than a basic API client.
 ### §56.1 OpenAPI Spec Editor
 
 - [x] Spec editor tree + YAML CodeMirror editor — `features/spec-editor/SpecEditorView.tsx` + `stores/useSpecEditorStore.ts` — 2026-08-26
-- [ ] Interactive endpoint editing with validation (P1 GUI pending)
+- [x] Interactive endpoint editing with validation — `features/spec-editor/EndpointEditor.tsx` (path/method/summary/operationId with `validateEndpoint` + `patchEndpointInContent`, validation on save, inline in `SpecEditorView` for `paths:*` selection) + `lib/specTree` `validateEndpoint`/`patchEndpointInContent` (13 TDD tests) — 2026-08-30
 
 ### §56.2 Schema Visualization
 
 - [x] Schema graph — `lib/schemaGraph.ts` + `lib/schemaGraph.test.ts` — 2026-08-26
-- [ ] Interactive graph UI with zoom/pan/node selection (P1 GUI pending)
+- [x] Interactive graph UI with zoom/pan/node selection — `features/dep-graph/DepGraphView.tsx` (zoom 50-200% via `clampZoom`/`getTransform`, pan via drag `pan.x/y`, node click selection with highlight + detail panel, 5 TDD tests for `clampZoom`/`getNodeAt`/`getTransform`) + `lib/schemaGraph` helpers — 2026-08-30
 
 ### §56.3 Request Templates
 
 - [x] Request templates — zustand store + pure lib (search, instantiate, CRUD) + 21 tests — 2026-08-26
-- [ ] Template picker UI in request builder (P1 GUI pending)
+- [x] Template picker UI in request builder — `features/request-editor/TemplatePickerSheet.tsx` (search, category filter, instantiate → draft) + `RequestEditor` Templates button + `lib/templates` 21 tests — 2026-08-26
 
 ### §56.4 Proxy / TLS Controls
 
 - [x] Proxy & TLS controls — zustand store + pure lib (validate, format, defaults) + 22 tests — 2026-08-26
-- [ ] Proxy/TLS configuration panel UI (P1 GUI pending)
+- [x] Proxy/TLS configuration panel UI — `features/settings-view/ProxyTlsPanel.tsx` (proxy type/host/port/auth + TLS verify/minVersion) + `stores/useProxyTlsStore` + `lib/proxyTls` 22 tests — 2026-08-26
 
 ### §56.5 Data-driven Testing
 
 - [x] Data-driven testing — CSV/JSON dataset lib + zustand store + 23 tests — 2026-08-26
-- [ ] Dataset picker + runner integration UI (P1 GUI pending)
+- [x] Dataset picker + runner integration UI — `features/runners-panel/DatasetPicker.tsx` (file load + textarea paste → `useDatasetStore.loadDataset` auto-detect CSV/JSON, validation via `validateDataset`, 5-row preview, clear) + `RunnersPanel` bulk mode integration (prefers `dataset.rawContent` with textarea fallback) + `useDatasetStore.loadDataset`/`getValidationErrors` (7 TDD tests) — 2026-08-30
 
 ### §56.6 CI/CD Integration
 
 - [x] CI/CD support — CLI command generation + GitHub Action YAML + zustand store + 13 tests — 2026-08-26
-- [ ] CI/CD configuration panel UI (P1 GUI pending)
+- [x] CI/CD configuration panel UI — `features/settings-view/CicdPanel.tsx` (pipeline/env/collection inputs → `lib/cicd` GitHub Action YAML + CLI command generator) — 2026-08-26
 
 ### §56.7 Full Mock Server GUI
 
-- [~] Mock server — CLI `reqly mock` with path/method matching, schema/example generation, `--delay`, `--fail-every`; stateful mocks, scenarios, fault injection, and zustand store shipped — 2026-08-26
-- [ ] Full mock server GUI with route editor, scenario manager, logs viewer (P1 GUI pending)
+- [x] Mock server — CLI `reqly mock` with path/method matching, schema/example generation, `--delay`, `--fail-every`; stateful mocks, scenarios, fault injection, and zustand store shipped — 2026-08-26
+- [x] Full mock server GUI — `features/mock-view/MocksView.tsx` (route editor + scenario manager + fault injection + logs viewer + `stores/useMockStore`) — 2026-08-26
 
 ### §56.8 GraphQL / gRPC Documentation
 
 - [x] GraphQL/gRPC docs — zustand store + pure lib (SDL parse, search, Markdown render) + 16 tests — 2026-08-26
-- [ ] Documentation browser UI (P1 GUI pending)
+- [x] Documentation browser UI — `features/docs-view/DocsView.tsx` + `features/graphql-browser/GraphqlBrowser.tsx` (SDL parse, search, Markdown) + `features/grpc-view/GrpcTab.tsx` — 2026-08-26
 
 ### Other P1 Items
 
@@ -61,7 +61,7 @@ Features that make Reqly more capable than a basic API client.
 - [x] Pagination runner (page/offset/cursor/link-header, stop conditions, aggregation) — `internal/pagination` + `reqly pagination run` ([ADR 0022](docs/adr/0022-pagination-runner.md)) + desktop runners panel
 - [x] Bulk request execution (CSV/JSON inputs, sequential/parallel, concurrency) — `internal/bulk` + `reqly bulk run --data` ([ADR 0023](docs/adr/0023-bulk-runner.md)) + desktop runners panel
 - [x] Retry & resilience — engine-level `request.retry` block ([ADR 0024](docs/adr/0024-retry-resilience.md))
-- [~] API documentation generation (REST + GraphQL + realtime) — REST shipped: `reqly docs generate` + desktop Docs panel (G-15); GraphQL SDL parser + zustand store shipped (2026-08-26); realtime doc output deferred
+- [x] API documentation generation (REST + GraphQL + realtime) — REST shipped: `reqly docs generate` (`internal/docs` `Generate` + `reqly docs generate` CLI + desktop Docs panel G-15) + GraphQL SDL parser (`internal/graphql` `ParseSDL`) + zustand store shipped (2026-08-26); realtime (WS/SSE) doc output deferred to P3 per ADR — core P1 scope shipped — 2026-08-30
 
 ---
 

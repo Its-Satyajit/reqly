@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { CodeMirrorEditor } from "../../editors/CodeMirrorEditor";
 import { Button } from "#components/ui/button";
-import { nodesForContent } from "#lib/specTree";
+import { nodesForContent, patchEndpointInContent, type EndpointInput } from "#lib/specTree";
 import { nodesForSpec, edgesForNodes } from "#lib/schemaGraph";
 import { getOpenapiBridge } from "#lib/openapi";
 import { cn } from "#lib/utils";
 import { useSpecEditorStore } from "#stores/useSpecEditorStore";
+import { EndpointEditor } from "./EndpointEditor";
 
 function SchemaViz({ selectedId }: { selectedId: string }) {
   const nodes = nodesForSpec(selectedId);
@@ -55,6 +56,15 @@ export function SpecEditorView() {
   const toggleOp = useSpecEditorStore((s) => s.toggleOp);
   const setGenerateWarnings = useSpecEditorStore((s) => s.setGenerateWarnings);
   const sections = useMemo(() => nodesForContent(content), [content]);
+
+  const isPathSelected = selectedId.startsWith("paths:/");
+  const oldPath = isPathSelected ? selectedId.replace(/^paths:/, "") : "";
+
+  const handleEndpointSave = (updated: EndpointInput) => {
+    const next = patchEndpointInContent(content, oldPath, updated);
+    setContent(next);
+    if (updated.path !== oldPath) setSelected(`paths:${updated.path}`);
+  };
 
   const handleGenerate = async () => {
     const ops = Array.from(selectedOps);
@@ -162,6 +172,11 @@ export function SpecEditorView() {
             </Button>
           </div>
         </div>
+        {tab === "editor" && isPathSelected && (
+          <div className="border-b border-border bg-muted/20 p-2">
+            <EndpointEditor initial={{ path: oldPath, method: "GET" }} onSave={handleEndpointSave} />
+          </div>
+        )}
         <div className="min-h-0 flex-1">{tab === "editor" ? <CodeMirrorEditor value={content} language="yaml" onChange={setContent} className="h-full" /> : <SchemaViz selectedId={selectedId} />}</div>
         {(diagnostics.length > 0 || generateWarnings.length > 0) && (
           <div className="max-h-28 shrink-0 overflow-auto border-t border-border bg-card/40">
