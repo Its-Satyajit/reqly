@@ -173,6 +173,7 @@ The minimum set to make Reqly a serious API client.
 - [x] JSONPath / XPath response querying — dependency-free evaluator (`$.user.name`, `$['users'][0]`, wildcard `*`) with match list + specific errors; XPath pending
 - [x] Response actions: copy (body/headers), download (Content-Disposition filename), format
 - [x] Cookies: persistent jar (`history.db` `cookies` table, `env`-partitioned, `0600`, domain/path/secure/expires matching via `history.FilterCookies`, auto-attach `Cookie:` on next `SendRequest`, `Set-Cookie` ingest via `HistoryService.Record`, view + delete/clear in `ResponseViewer` Cookies tab + desktop `CookieList/Delete/Clear` bindings, CLI jar implicit) — [Milestone 14 T5](https://github.com/Its-Satyajit/reqly/issues/76) + [Milestone 22](https://github.com/Its-Satyajit/reqly/issues/197) ([ADR 0014](docs/adr/0014-history-cookie-jar-table-view.md))
+- [x] Per-request settings + duplicate — timeout (ms) + `followRedirects` (`RequestSettingsDialog`, `core.RequestSave` + `mergeDraftRequest`, `WorkspaceService.DuplicateRequest` + `AppService.WorkspaceDuplicateRequest` + `RequestTabs`/`CollectionTree` duplicate) — `internal/request` + `internal/core` + `apps/desktop` + `frontend/src/lib/request.ts:47` + `frontend/src/stores/useRequestStore.ts:12` — shipped 2026-08-30 (M328)
 
 ### 1.7 Scripting & automation
 
