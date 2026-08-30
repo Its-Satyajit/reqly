@@ -266,8 +266,9 @@ export function patchEndpointInContent(content: string, oldPath: string, updated
       }
     } else if (updated.summary) {
       // Update summary if method exists — replace first summary under that path
-      // Very naive: replace summary line after path
-      content = content.replace(new RegExp(`(${targetPath}:[\\s\\S]*?${methodLower}:\\s*\\n\\s+summary:)\\s*.*`), `$1 ${updated.summary}`);
+      const escapedPath = targetPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapedMethod = methodLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      content = content.replace(new RegExp(`(${escapedPath}:[\\s\\S]*?${escapedMethod}:\\s*\\n\\s+summary:)\\s*.*`), `$1 ${updated.summary}`);
     }
   }
   return content;
