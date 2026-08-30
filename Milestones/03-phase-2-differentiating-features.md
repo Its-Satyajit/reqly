@@ -16,7 +16,7 @@ Features that make Reqly more capable than a basic API client.
 ### §56.2 Schema Visualization
 
 - [x] Schema graph — `lib/schemaGraph.ts` + `lib/schemaGraph.test.ts` — 2026-08-26
-- [ ] Interactive graph UI with zoom/pan/node selection (P1 GUI pending)
+- [x] Interactive graph UI with zoom/pan/node selection — `features/dep-graph/DepGraphView.tsx` (zoom 50-200% via `clampZoom`/`getTransform`, pan via drag `pan.x/y`, node click selection with highlight + detail panel, 5 TDD tests for `clampZoom`/`getNodeAt`/`getTransform`) + `lib/schemaGraph` helpers — 2026-08-30
 
 ### §56.3 Request Templates
 

@@ -31,3 +31,20 @@ export function nodesForOpenApiContent(content: string): SchemaNode[] {
   // M53 T1: reuse static nodes for now; full YAML ref parsing deferred to follow-up
   return SCHEMA_NODES;
 }
+
+export function clampZoom(z: number): number {
+  return Math.min(2, Math.max(0.5, z));
+}
+
+export function getNodeAt(nodes: SchemaNode[], x: number, y: number): SchemaNode | undefined {
+  // Node rect: width 88, height 36, anchored at x-44,y
+  for (const n of nodes) {
+    if (x >= n.x - 44 && x <= n.x + 44 && y >= n.y && y <= n.y + 36) return n;
+  }
+  return undefined;
+}
+
+export function getTransform(zoom: number, panX: number, panY: number): string {
+  const z = clampZoom(zoom);
+  return `translate(${panX} ${panY}) scale(${z})`;
+}
