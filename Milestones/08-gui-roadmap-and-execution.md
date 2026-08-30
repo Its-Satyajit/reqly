@@ -119,5 +119,5 @@ This section preserves `gui-roadmap.md` in full. It is subordinate to the develo
 
 ## Code Review Gate (`/code-review` — two-axis)
 
-- [ ] Standards: `oxlint` + `gofmt`/`go vet` + `anti-slop` + Fowler smell baseline — `git diff main...HEAD` (three-dot, merge-base) — no `as` without `// SAFETY:`, no hard violations
-- [ ] Spec: this milestone (`Milestones/` + Phase) vs implementation (`ROADMAP.md` DoD: core+UI/CLI+tests) — `git log main..HEAD` + `git diff main...HEAD` — both axes must be green before ticking `[x]` above; fix `main...HEAD` diff until green — run `/code-review`
+- [x] Standards: `oxlint` + `gofmt`/`go vet` + `anti-slop` + Fowler smell baseline — `git diff main...HEAD` (three-dot, merge-base) — no `as` without `// SAFETY:`, no hard violations
+- [x] Spec: this milestone (`Milestones/` + Phase) vs implementation (`ROADMAP.md` DoD: core+UI/CLI+tests) — `git log main..HEAD` + `git diff main...HEAD` — both axes must be green before ticking `[x]` above; fix `main...HEAD` diff until green — run `/code-review`
