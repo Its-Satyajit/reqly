@@ -203,10 +203,10 @@ The minimum set to make Reqly a serious API client.
 ### 1.10 OpenAPI & JSON Schema
 
 - [x] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); Swagger 2.0 / OpenAPI 2.0 import & `reqly openapi convert-v2` spec converter shipped ([M51](docs/spec/m51-swagger2-importer-converter.md))
-- [~] Endpoint explorer + generate requests from spec — `reqly openapi explore <spec> [--tag]... [--json]` (operation table / machine-readable list) and `reqly openapi generate <spec> [--operation]... | [--method --path] | [--tag]... | --all [--output dir]` ([M39](docs/spec/m39-openapi-explorer.md) — native request files, inline example/default bodies+params, bearer/basic/apikey-header → native auth blocks, unmappable features warned; desktop explorer panel deferred to M39b)
+- [x] Endpoint explorer + generate requests from spec — `reqly openapi explore <spec> [--tag]... [--json]` (operation table / machine-readable list) and `reqly openapi generate <spec> [--operation]... | [--method --path] | [--tag]... | --all [--output dir]` ([M39](docs/spec/m39-openapi-explorer.md) — native request files, inline example/default bodies+params, bearer/basic/apikey-header → native auth blocks, unmappable features warned) + desktop explorer panel (`features/openapi-explorer/OpenapiExplorer.tsx` 304 lines, `lib/openapi` adapter, `getOpenapiBridge`) — 2026-08-30
 - [x] JSON Schema: validate, inspect, generate & test assertion — `reqly schema validate/inspect/generate` ([M40](docs/spec/m40-json-schema.md)) and Goja sandbox assertion hook `reqly.assertJSONSchema(schemaPath)` ([M52](docs/spec/m52-json-schema-assertion.md), [ADR 0036](docs/adr/0036-json-schema-script-assertion.md))
 - [x] XML/XSD schema validation where applicable — `internal/validation.ValidateXMLAgainstXSD` pure Go XSD parsing, DOM element/attribute constraint checking, local `schemaLocation` resolution, `reqly schema validate --type xml <schema.xsd> <instance.xml>`, Goja sandbox assertion `reqly.assertXSD(schemaPath)`, and Desktop UI ResponseViewer XML validation badge ([M49](docs/spec/m49-xml-xsd-validation.md), [ADR 0033](docs/adr/0033-xml-xsd-schema-validation.md))
-- [~] Generate mocks from OpenAPI (see P1) — `reqly mock` serves schema/example-driven responses
+- [x] Generate mocks from OpenAPI — `reqly mock [spec] [--scenario]` serves schema/example-driven responses (`internal/mocking` 0.069s, `apps/cli/cmd/mock.go` 50 lines, stateful scenarios + `MockView` GUI) — 2026-08-30
 
 ### 1.11 CLI (P0 commands)
 
