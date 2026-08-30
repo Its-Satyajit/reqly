@@ -21,12 +21,12 @@ Features that make Reqly more capable than a basic API client.
 ### §56.3 Request Templates
 
 - [x] Request templates — zustand store + pure lib (search, instantiate, CRUD) + 21 tests — 2026-08-26
-- [ ] Template picker UI in request builder (P1 GUI pending)
+- [x] Template picker UI in request builder — `features/request-editor/TemplatePickerSheet.tsx` (search, category filter, instantiate → draft) + `RequestEditor` Templates button + `lib/templates` 21 tests — 2026-08-26
 
 ### §56.4 Proxy / TLS Controls
 
 - [x] Proxy & TLS controls — zustand store + pure lib (validate, format, defaults) + 22 tests — 2026-08-26
-- [ ] Proxy/TLS configuration panel UI (P1 GUI pending)
+- [x] Proxy/TLS configuration panel UI — `features/settings-view/ProxyTlsPanel.tsx` (proxy type/host/port/auth + TLS verify/minVersion) + `stores/useProxyTlsStore` + `lib/proxyTls` 22 tests — 2026-08-26
 
 ### §56.5 Data-driven Testing
 
@@ -36,17 +36,17 @@ Features that make Reqly more capable than a basic API client.
 ### §56.6 CI/CD Integration
 
 - [x] CI/CD support — CLI command generation + GitHub Action YAML + zustand store + 13 tests — 2026-08-26
-- [ ] CI/CD configuration panel UI (P1 GUI pending)
+- [x] CI/CD configuration panel UI — `features/settings-view/CicdPanel.tsx` (pipeline/env/collection inputs → `lib/cicd` GitHub Action YAML + CLI command generator) — 2026-08-26
 
 ### §56.7 Full Mock Server GUI
 
-- [~] Mock server — CLI `reqly mock` with path/method matching, schema/example generation, `--delay`, `--fail-every`; stateful mocks, scenarios, fault injection, and zustand store shipped — 2026-08-26
-- [ ] Full mock server GUI with route editor, scenario manager, logs viewer (P1 GUI pending)
+- [x] Mock server — CLI `reqly mock` with path/method matching, schema/example generation, `--delay`, `--fail-every`; stateful mocks, scenarios, fault injection, and zustand store shipped — 2026-08-26
+- [x] Full mock server GUI — `features/mock-view/MocksView.tsx` (route editor + scenario manager + fault injection + logs viewer + `stores/useMockStore`) — 2026-08-26
 
 ### §56.8 GraphQL / gRPC Documentation
 
 - [x] GraphQL/gRPC docs — zustand store + pure lib (SDL parse, search, Markdown render) + 16 tests — 2026-08-26
-- [ ] Documentation browser UI (P1 GUI pending)
+- [x] Documentation browser UI — `features/docs-view/DocsView.tsx` + `features/graphql-browser/GraphqlBrowser.tsx` (SDL parse, search, Markdown) + `features/grpc-view/GrpcTab.tsx` — 2026-08-26
 
 ### Other P1 Items
 
