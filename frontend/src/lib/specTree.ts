@@ -222,3 +222,79 @@ export function flattenSpecTree(nodes: SpecNode[]): SpecNode[] {
   walk(nodes);
   return out;
 }
+
+export interface EndpointInput {
+  path: string;
+  method: string;
+  summary?: string;
+  operationId?: string;
+}
+
+export function patchEndpointInContent(content: string, oldPath: string, updated: EndpointInput): string {
+  // Replace path key if changed — preserve leading indentation (usually 2 spaces under paths:)
+  if (updated.path !== oldPath) {
+    const escapedOld = oldPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pathRegex = new RegExp(`^(\\s*)${escapedOld}:`, "m");
+    if (pathRegex.test(content)) {
+      content = content.replace(pathRegex, `$1${updated.path}:`);
+    } else {
+      // Fallback: append new path block if old not found (should not happen)
+      content = content.trimEnd() + `\n  ${updated.path}:\n    ${updated.method.toLowerCase()}:\n      summary: ${updated.summary ?? "New endpoint"}\n`;
+      return content;
+    }
+  }
+  // Ensure method and summary under the (possibly new) path.
+  // We look for the path block and inject/update method.
+  const targetPath = updated.path;
+  // Simple heuristic: if content already contains method under that path, leave it;
+  // otherwise inject a minimal method block with summary/operationId.
+  const methodLower = updated.method.toLowerCase();
+  const pathIndex = content.indexOf(`${targetPath}:`);
+  if (pathIndex !== -1) {
+    const afterPath = content.slice(pathIndex);
+    const hasMethod = new RegExp(`\\n\\s+${methodLower}:`, "i").test(afterPath.split("\n").slice(0, 10).join("\n"));
+    if (!hasMethod) {
+      // Insert method block after path line — find end of path line
+      const lines = content.split("\n");
+      const pathLineIdx = lines.findIndex((l) => l.trim() === `${targetPath}:`);
+      if (pathLineIdx !== -1) {
+        const indent = "    ";
+        const methodBlock = [`${indent}${methodLower}:`, `${indent}  summary: ${updated.summary ?? "New endpoint"}`];
+        if (updated.operationId) methodBlock.push(`${indent}  operationId: ${updated.operationId}`);
+        lines.splice(pathLineIdx + 1, 0, ...methodBlock);
+        content = lines.join("\n");
+      }
+    } else if (updated.summary) {
+      // Update summary if method exists — replace first summary under that path
+      // Very naive: replace summary line after path
+      content = content.replace(new RegExp(`(${targetPath}:[\\s\\S]*?${methodLower}:\\s*\\n\\s+summary:)\\s*.*`), `$1 ${updated.summary}`);
+    }
+  }
+  return content;
+}
+
+const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE"]);
+
+export function validateEndpoint(input: EndpointInput): string[] {
+  const errors: string[] = [];
+  const path = input.path.trim();
+  if (path.length === 0) {
+    errors.push("path is required");
+  } else {
+    if (!path.startsWith("/")) errors.push("path must start with '/'");
+    if (/\s/.test(path)) errors.push("path must not contain spaces");
+    // Only allow visible ASCII, no control chars
+    if (/[^\x20-\x7E]/.test(path)) errors.push("path contains invalid characters");
+  }
+  const method = input.method.trim().toUpperCase();
+  if (method.length === 0) {
+    errors.push("method is required");
+  } else if (!ALLOWED_METHODS.has(method)) {
+    errors.push(`method must be one of ${[...ALLOWED_METHODS].join(", ")}`);
+  }
+  if (input.operationId !== undefined && input.operationId !== null) {
+    const op = String(input.operationId);
+    if (/\s/.test(op)) errors.push("operationId must not contain spaces");
+  }
+  return errors;
+}

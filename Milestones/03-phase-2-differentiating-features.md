@@ -11,7 +11,7 @@ Features that make Reqly more capable than a basic API client.
 ### §56.1 OpenAPI Spec Editor
 
 - [x] Spec editor tree + YAML CodeMirror editor — `features/spec-editor/SpecEditorView.tsx` + `stores/useSpecEditorStore.ts` — 2026-08-26
-- [ ] Interactive endpoint editing with validation (P1 GUI pending)
+- [x] Interactive endpoint editing with validation — `features/spec-editor/EndpointEditor.tsx` (path/method/summary/operationId with `validateEndpoint` + `patchEndpointInContent`, validation on save, inline in `SpecEditorView` for `paths:*` selection) + `lib/specTree` `validateEndpoint`/`patchEndpointInContent` (13 TDD tests) — 2026-08-30
 
 ### §56.2 Schema Visualization
 
