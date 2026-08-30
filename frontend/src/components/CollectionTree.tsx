@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { ChevronRight, Play, Plus, Search } from "lucide-react";
 import type { EntryIdentity, WorkspaceFolder, WorkspaceRequest } from "#lib/collections";
 import { cn } from "#lib/utils";
+import { ContextMenu as SharedContextMenu } from "#components/ContextMenu";
 import { RUN_TAB_ID, useCollectionRunStore, useWorkspaceStore } from "#stores";
 
 const TREE_KEYS = new Set([
@@ -115,9 +116,10 @@ function ContextMenu({ path, name, onClose }: EntryIdentity & { onClose: () => v
 
 function RequestRow({ request }: { request: WorkspaceRequest }) {
 	const openRequest = useWorkspaceStore((s) => s.openRequest);
-	const [menu, setMenu] = useState(false);
+	const duplicateRequestPath = useWorkspaceStore((s) => s.duplicateRequestPath);
+	const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 	return (
-		<div style={{ paddingLeft: "1.5rem" }} className="relative">
+		<div style={{ paddingLeft: "1.5rem" }}>
 			<button
 				type="button"
 				data-tree-row
@@ -125,7 +127,7 @@ function RequestRow({ request }: { request: WorkspaceRequest }) {
 				onDragStart={(e) => e.dataTransfer.setData("text/plain", request.path)}
 				onContextMenu={(e) => {
 					e.preventDefault();
-					setMenu((v) => !v);
+					setMenu({ x: e.clientX, y: e.clientY });
 				}}
 				onClick={() => void openRequest(request.path)}
 				title={`Open ${request.name}`}
@@ -134,7 +136,19 @@ function RequestRow({ request }: { request: WorkspaceRequest }) {
 				<span className="size-3 shrink-0" aria-hidden />
 				<span className="truncate">{request.name}</span>
 			</button>
-			{menu && <ContextMenu path={request.path} name={request.name} onClose={() => setMenu(false)} />}
+			{menu && (
+				<SharedContextMenu
+					x={menu.x}
+					y={menu.y}
+					items={[
+						{
+							label: "Duplicate request",
+							onSelect: () => void duplicateRequestPath(request.path),
+						},
+					]}
+					onClose={() => setMenu(null)}
+				/>
+			)}
 		</div>
 	);
 }

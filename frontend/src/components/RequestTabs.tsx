@@ -8,6 +8,7 @@ import { useRequestStore } from "#stores/useRequestStore";
 import type { RequestTab } from "#stores/useWorkspaceStore";
 import { cn } from "#lib/utils";
 import { handleTabArrowKeys } from "#lib/ui";
+import { ContextMenu } from "#components/ContextMenu";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -23,12 +24,13 @@ function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; on
 	const activeTabId = useWorkspaceStore((s) => s.activeTabId);
 	const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
 	const closeTab = useWorkspaceStore((s) => s.closeTab);
-	const openTab = useWorkspaceStore((s) => s.openTab);
 	const dirty = useRequestStore((s) =>
 		tabIsDirty(s.drafts[tab.id], s.meta[tab.id]),
 	);
 	const [confirming, setConfirming] = useState(false);
 	const [pinned, setPinned] = useState(false);
+	const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+	const duplicateTab = useWorkspaceStore((s) => s.duplicateTab);
 	const active = activeTabId === tab.id;
 
 	const requestClose = () => {
@@ -42,12 +44,15 @@ function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; on
 	};
 
 	const duplicate = () => {
-		const id = `${tab.id}--copy-${Date.now()}`;
-		openTab({ ...tab, id, title: `${tab.title} (copy)` });
+		if ((tab.kind ?? "request") === "request") duplicateTab(tab.id);
 	};
 
 	return (
 		<div
+			onContextMenu={(e) => {
+				e.preventDefault();
+				setMenu({ x: e.clientX, y: e.clientY });
+			}}
 			draggable
 			onDragStart={(e) => e.dataTransfer.setData("text/plain", String(index))}
 			onDragOver={(e) => e.preventDefault()}
@@ -131,6 +136,21 @@ function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; on
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+			{menu && (
+				<ContextMenu
+					x={menu.x}
+					y={menu.y}
+					items={[
+						{
+							label: "Duplicate request",
+							onSelect: () => {
+								if ((tab.kind ?? "request") === "request") duplicateTab(tab.id);
+							},
+						},
+					]}
+					onClose={() => setMenu(null)}
+				/>
+			)}
 		</div>
 	);
 }

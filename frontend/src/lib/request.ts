@@ -148,6 +148,11 @@ export const fetchSender: RequestSender = async (req) => {
 		method,
 		headers,
 		body: requestBody,
+		redirect: req.followRedirects === false ? 'manual' : 'follow',
+		signal:
+			req.timeout && req.timeout > 0
+				? AbortSignal.timeout(req.timeout)
+				: undefined,
 	});
 
 	const body = await res.text();

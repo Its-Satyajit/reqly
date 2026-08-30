@@ -123,6 +123,9 @@ export interface CollectionsAdapter {
    * rejects the save (changed on disk) without touching the file. Resolves
    * to the new baseline version on success. */
   save: (path: string, draft: FileRequestInput, expectedVersion: string) => Promise<string>
+  /** duplicateRequest copies a request file in place as "<name> copy" (file name
+   * suffixed -copy, -copy-2, …) and returns the copy's Request Path. */
+  duplicateRequest?: (path: string) => Promise<string>
 }
 
 /** ResolvedVariable is one entry of an opened request's effective variable
@@ -161,6 +164,9 @@ export interface FileRequestInput {
   auth?: RequestAuth
   /** The file's own retry policy (unset when the request retries nothing). */
   retry?: RequestRetry
+  /** The file's own request settings (unset = engine defaults). */
+  timeout?: number
+  followRedirects?: boolean
 }
 
 /** OpenedRequest is a request file combined with its inherited configuration
@@ -198,5 +204,8 @@ export const fallbackCollectionsAdapter: CollectionsAdapter = {
   },
   save: async () => {
     throw new Error('Saving request files requires the desktop app.')
+  },
+  duplicateRequest: async () => {
+    throw new Error('Duplicating requests requires the desktop app.')
   },
 }
