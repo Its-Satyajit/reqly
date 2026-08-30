@@ -1,136 +1,116 @@
-import { useState, type ReactNode } from 'react'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
-import { useDefaultLayout, usePanelRef } from 'react-resizable-panels'
-
+import { useState, useEffect, type ReactNode } from "react";
+import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
-} from '../ui/resizable'
-import { Button } from '../ui/button'
-import { ThemeToggle } from '../ThemeToggle'
-import { useShellStore } from '#stores'
-import { shellStorage } from './storage'
+} from "../ui/resizable";
+import { useBottomPanelStore } from "#stores";
+import { useKeyboardMap } from "../../hooks/useKeyboardMap";
+import { shellStorage } from "./storage";
 
 export interface AppShellProps {
-	/** Brand block rendered at the far left of the header. */
-	brand?: ReactNode;
-	/** Center header slot — command-palette trigger lands here (M44 T3). */
-	headerCenter?: ReactNode;
-	/** Right-aligned header actions (environment pill, settings, …). */
-	headerActions?: ReactNode;
+	topBar?: ReactNode;
+	toolRail?: ReactNode;
 	sidebar: ReactNode;
-	/** Main column content: tabstrip + view host. */
 	children: ReactNode;
-	/** Right-hand inspector mount point content; hidden while closed. */
-	inspector?: ReactNode;
-	/** Commit-strip slot above the statusbar; populated by M44 T7. */
-	commitStrip?: ReactNode;
-	statusbar?: ReactNode;
+	bottom?: ReactNode;
+	statusBar?: ReactNode;
 }
 
 /**
- * Atlas-style application shell (M44 T2): header / [sidebar | main |
- * inspector] body / statusbar, mirroring the ui-demos atlas layout.
- * Sidebar gutter sizes persist via react-resizable-panels' default-layout
- * storage; the inspector is collapsible and driven by useShellStore.
+ * Shell layout for Slice 02 — 5-zone model (TopBar / ToolRail / Sidebar / Main + Bottom / StatusBar).
+ * Sidebar + BottomPanel sizes persist via react-resizable-panels storage.
+ * ToolRail is rendered alongside the sidebar's ResizablePanelGroup as a fixed gutter.
  */
 export function AppShell({
-	brand,
-	headerCenter,
-	headerActions,
+	topBar,
+	toolRail,
 	sidebar,
 	children,
-	inspector,
-	commitStrip,
-	statusbar,
+	bottom,
+	statusBar,
 }: AppShellProps) {
 	const sidebarLayout = useDefaultLayout({
 		id: "reqly-shell-sidebar",
 		storage: shellStorage,
 	});
 	const sidebarPanel = usePanelRef();
+	const bottomLayout = useDefaultLayout({
+		id: "reqly-shell-bottom",
+		storage: shellStorage,
+	});
+	const bottomPanelRef = usePanelRef();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const toggleSidebar = () => {
-		if (sidebarCollapsed) {
-			sidebarPanel.current?.expand();
-			return;
-		}
-		sidebarPanel.current?.collapse();
+		if (sidebarCollapsed) sidebarPanel.current?.expand();
+		else sidebarPanel.current?.collapse();
 	};
-	const inspectorOpen = useShellStore((s) => s.inspectorOpen);
+	useKeyboardMap(toggleSidebar);
+
+	const bottomCollapsed = useBottomPanelStore((s) => s.collapsed);
+	useEffect(() => {
+		if (bottomCollapsed) bottomPanelRef.current?.collapse();
+		else bottomPanelRef.current?.expand();
+	}, [bottomCollapsed]);
 
 	return (
 		<div className="flex h-screen flex-col overflow-hidden">
-			<header className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
-				<div className="flex items-center gap-2">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						onClick={toggleSidebar}
-						aria-label={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
-						aria-pressed={!sidebarCollapsed}
-						title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+			{topBar}
+			<div className="flex min-h-0 flex-1">
+				{toolRail}
+				<div className="min-w-0 flex-1">
+					<ResizablePanelGroup
+						orientation="horizontal"
+						defaultLayout={sidebarLayout.defaultLayout}
+						onLayoutChanged={sidebarLayout.onLayoutChanged}
 					>
-						{sidebarCollapsed ? (
-							<PanelLeftOpen className="size-4" aria-hidden />
-						) : (
-							<PanelLeftClose className="size-4" aria-hidden />
-						)}
-					</Button>
-					{brand}
-				</div>
-				{headerCenter}
-				<div className="flex items-center gap-2">
-					{headerActions}
-					<ThemeToggle />
-				</div>
-			</header>
-			<div className="min-h-0 flex-1">
-				<ResizablePanelGroup
-					orientation="horizontal"
-					defaultLayout={sidebarLayout.defaultLayout}
-					onLayoutChanged={sidebarLayout.onLayoutChanged}
-				>
-					<ResizablePanel
-						id="sidebar"
-						panelRef={sidebarPanel}
-						collapsible
-						collapsedSize={0}
-						defaultSize="17%"
-						minSize={168}
-						maxSize="42%"
-						onResize={(size) => setSidebarCollapsed(size.inPixels <= 1)}
-					>
-						{sidebar}
-					</ResizablePanel>
-					<ResizableHandle data-split="side" />
-					<ResizablePanel id="main" minSize="35%">
-						{children}
-					</ResizablePanel>
-					{inspector !== undefined && (
-						<>
-							{inspectorOpen && <ResizableHandle data-split="inspector" />}
-							<ResizablePanel
-								id="inspector"
-								collapsible
-								collapsedSize={0}
-								defaultSize="25%"
-								minSize={220}
-								maxSize="45%"
+						<ResizablePanel
+							id="sidebar"
+							panelRef={sidebarPanel}
+							collapsible
+							collapsedSize={0}
+							defaultSize="17%"
+							minSize={200}
+							maxSize="42%"
+							onResize={(size) => setSidebarCollapsed(size.inPixels <= 1)}
+						>
+							{sidebar}
+						</ResizablePanel>
+						<ResizableHandle />
+						<ResizablePanel id="main" minSize="35%">
+							<ResizablePanelGroup
+								orientation="vertical"
+								defaultLayout={bottomLayout.defaultLayout}
+								onLayoutChanged={bottomLayout.onLayoutChanged}
 							>
-								{inspector}
-							</ResizablePanel>
-						</>
-					)}
-				</ResizablePanelGroup>
+								<ResizablePanel id="main-content" minSize="40%">
+									<div className="h-full min-h-0 overflow-hidden">{children}</div>
+								</ResizablePanel>
+								<ResizableHandle />
+								<ResizablePanel
+									id="bottom"
+									panelRef={bottomPanelRef}
+									collapsible
+									collapsedSize={0}
+									minSize={6}
+									defaultSize="28%"
+									onResize={(s) => {
+										if (s.inPixels <= 1)
+											queueMicrotask(() => {
+												if (!useBottomPanelStore.getState().collapsed)
+													useBottomPanelStore.getState().setCollapsed(true);
+											});
+									}}
+								>
+									{bottom}
+								</ResizablePanel>
+							</ResizablePanelGroup>
+						</ResizablePanel>
+					</ResizablePanelGroup>
+				</div>
 			</div>
-			{commitStrip}
-			{statusbar !== undefined && (
-				<footer className="flex h-6 shrink-0 items-center justify-between border-t border-border px-3 text-xs text-muted-foreground">
-					{statusbar}
-				</footer>
-			)}
+			{statusBar}
 		</div>
 	);
 }
