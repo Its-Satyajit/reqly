@@ -32,7 +32,7 @@ The minimum set to make Reqly a serious API client.
 ### 1.3 Authentication
 
 - [x] Basic, Bearer, API key — `internal/auth` scheme registry, `request.Auth` dispatch, secret masking ([ADR 0005](docs/adr/0005-git-native-auth-schemes.md))
-- [~] JWT — HS256/384/512 per-request signing + `reqly jwt decode` claims viewer shipped ([ADR 0021](docs/adr/0021-jwt-tooling-decode.md)); `verify`/`sign` deferred to M29b
+- [x] JWT — HS256/384/512 per-request signing, decoding, claims viewer, and signature verification (`reqly jwt decode/verify/sign`, ADR 0021)
 - [~] Digest — challenge/response shipped (SHA-256 fallback, request-body aware); NTLM deferred
 - [x] OAuth 2.0 Client Credentials — RFC 6749 §4.4 with store-backed token caching (`TokenSource` + `secrets.Store`, ADR 0006), expiry-skewed proactive refresh, reactive 401 refresh+retry-once, `reqly auth status`/`auth logout`
 - [x] OAuth 2.0 Authorization Code + PKCE — RFC 6749 §4.1 + RFC 7636 (`AuthorizationCodeSource`, one-shot loopback callback, state/verifier, [ADR 0007](docs/adr/0007-oauth2-authorization-code-pkce.md)), `reqly auth login`, first-request auto-login, refresh-token reuse (RFC 6749 §6, proactive + 401, rotation) — spec [#52](https://github.com/Its-Satyajit/reqly/issues/52), tickets [#53–#57](https://github.com/Its-Satyajit/reqly/issues/53)

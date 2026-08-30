@@ -187,7 +187,7 @@ The minimum set to make Reqly a serious API client.
 - [x] **REST** — complete builder (see §1.1/§1.6: method/URL/headers/params/body + file upload + cookies/history)
 - [x] **WebSocket** — connection mgmt, message composer, in/out inspection (`internal/websocket` + `reqly ws`)
 - [x] **SSE** — live event stream, inspection, event history (`internal/sse` + `reqly sse`)
-- [~] **GraphQL** — query editor + variables via `BodyType: graphql` shipped (ADR 0013); introspection/autocomplete/schema browser deferred to P1
+- [x] **GraphQL** — query editor + variables via `BodyType: graphql` (ADR 0013), live endpoint introspection (`reqly graphql introspect <url>`), offline SDL schema parsing (`reqly graphql parse <file.graphql>`), Goja scripting helper `reqly.introspectGraphQL()`, and Desktop Schema Browser ([M50](docs/spec/m50-graphql-schema-introspection.md), [ADR 0034](docs/adr/0034-graphql-schema-introspection.md))
 - [x] **gRPC** — proto files, reflection, service/method discovery, unary + server-streaming — `internal/grpc` (reflection via v1 protocol, protocompile `.proto` fallback, TLS/h2c, deadlines), `grpc:` request-file block, scripting/assertions parity, history, `reqly grpc services|invoke`, desktop gRPC view (ADR 0028, M43; client-stream/bidi deferred)
 - [~] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; external schemas/rpc-encoded best-effort with warnings; the "XML builder" surface is these generated envelopes, no runtime builder)
 
@@ -196,17 +196,17 @@ The minimum set to make Reqly a serious API client.
 - [x] Import cURL — `reqly import curl` (method, headers, JSON/raw/data bodies, basic auth, user-agent, cookies, GET-style query data; unsupported features reported)
 - [x] Import OpenAPI 3.x — `reqly import openapi` (servers, paths, operations, params, JSON bodies; writes a Git-native workspace)
 - [x] Export Postman collection v2.1 — `reqly export postman` (flat list, inherited base URL/headers applied)
-- [~] Import: Postman v2.1 ([M34](docs/spec/m34-postman-import.md)), Insomnia v4/v5 ([M35](docs/spec/m35-insomnia-import.md)), Bruno ([M36](docs/spec/m36-bruno-import.md)), Swagger 2.x; HAR done ([M28](docs/spec/m28-har-import-export.md))
+- [x] Import: Postman v2.1 ([M34](docs/spec/m34-postman-import.md)), Insomnia v4/v5 ([M35](docs/spec/m35-insomnia-import.md)), Bruno ([M36](docs/spec/m36-bruno-import.md)), Swagger 2.0 / OpenAPI 2.0 (`internal/importer.ParseSwagger2` + `reqly openapi convert-v2` converter, [M51](docs/spec/m51-swagger2-importer-converter.md), [ADR 0035](docs/adr/0035-swagger2-importer-converter.md)); HAR done ([M28](docs/spec/m28-har-import-export.md))
 - [x] Export: requests ([`export workspace`](docs/adr/0017-workspace-save-export.md) + `export code`), OpenAPI 3.0 spec generation (`export openapi`, [M37](docs/spec/m37-export-reports-openapi.md)), responses (`export har` from history, M28 + desktop download), test results (`collection test --report-junit/--report-json`, M37); docs done (§1.11 `reqly docs`)
 - [x] Import preservation (env/auth/scripts) + unsupported-feature reporting — [M42](docs/spec/m42-import-preservation.md) ([ADR 0026](docs/adr/0026-import-preservation-script-translation.md))
 
 ### 1.10 OpenAPI & JSON Schema
 
-- [~] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); OpenAPI 2.x import via hand-rolled parser; 3.1 partial
-- [~] Endpoint explorer + generate requests from spec — `reqly openapi explore/generate` ([M39](docs/spec/m39-openapi-explorer.md))
-- [~] JSON Schema: validate, inspect, generate — `reqly schema validate/inspect/generate` ([M40](docs/spec/m40-json-schema.md))
-- [x] XML/XSD schema validation — `internal/validation.ValidateXMLAgainstXSD`, `reqly schema validate --type xml`, Goja assertion `reqly.assertXSD()`, Desktop XML badge ([M49](docs/spec/m49-xml-xsd-validation.md))
-- [x] Generate mocks from OpenAPI — `reqly mock` serves schema/example-driven responses
+- [x] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); Swagger 2.0 / OpenAPI 2.0 import & `reqly openapi convert-v2` spec converter shipped ([M51](docs/spec/m51-swagger2-importer-converter.md))
+- [~] Endpoint explorer + generate requests from spec — `reqly openapi explore <spec> [--tag]... [--json]` (operation table / machine-readable list) and `reqly openapi generate <spec> [--operation]... | [--method --path] | [--tag]... | --all [--output dir]` ([M39](docs/spec/m39-openapi-explorer.md) — native request files, inline example/default bodies+params, bearer/basic/apikey-header → native auth blocks, unmappable features warned; desktop explorer panel deferred to M39b)
+- [x] JSON Schema: validate, inspect, generate & test assertion — `reqly schema validate/inspect/generate` ([M40](docs/spec/m40-json-schema.md)) and Goja sandbox assertion hook `reqly.assertJSONSchema(schemaPath)` ([M52](docs/spec/m52-json-schema-assertion.md), [ADR 0036](docs/adr/0036-json-schema-script-assertion.md))
+- [x] XML/XSD schema validation where applicable — `internal/validation.ValidateXMLAgainstXSD` pure Go XSD parsing, DOM element/attribute constraint checking, local `schemaLocation` resolution, `reqly schema validate --type xml <schema.xsd> <instance.xml>`, Goja sandbox assertion `reqly.assertXSD(schemaPath)`, and Desktop UI ResponseViewer XML validation badge ([M49](docs/spec/m49-xml-xsd-validation.md), [ADR 0033](docs/adr/0033-xml-xsd-schema-validation.md))
+- [~] Generate mocks from OpenAPI (see P1) — `reqly mock` serves schema/example-driven responses
 
 ### 1.11 CLI (P0 commands)
 
