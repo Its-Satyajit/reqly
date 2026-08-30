@@ -30,7 +30,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/Its-Satyajit/reqly/internal/mocking"
 	"github.com/Its-Satyajit/reqly/internal/openapi"

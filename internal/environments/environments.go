@@ -24,7 +24,7 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Environment is a named set of variables plus optional secrets, stored as a

@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Format identifies which import format a payload represents, as determined

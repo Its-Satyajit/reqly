@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Policy is a local organization policy file (e.g. .reqly/policy.yaml, 0600).

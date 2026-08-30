@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/Its-Satyajit/reqly/internal/request"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // ---- OpenAPI 3.0 document shapes (only what the exporter emits) ----
