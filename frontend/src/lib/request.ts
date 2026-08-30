@@ -59,6 +59,7 @@ export interface RequestInput {
 	graphqlQuery?: string;
 	graphqlVariables?: string;
 	timeout?: number;
+	followRedirects?: boolean;
 	/** Per-request proxy URL (overrides environment). */
 	proxy?: string;
 	/** Per-request TLS (M47). */
