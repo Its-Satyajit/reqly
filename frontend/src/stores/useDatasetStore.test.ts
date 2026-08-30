@@ -49,4 +49,53 @@ describe("useDatasetStore", () => {
     useDatasetStore.getState().clearDataset();
     expect(useDatasetStore.getState().dataset).toBeNull();
   });
+
+  describe("loadDataset auto-detect", () => {
+    it("auto-detects CSV and sets dataset", () => {
+      useDatasetStore.getState().loadDataset("id,name\n1,Alice", "test.csv");
+      const s = useDatasetStore.getState();
+      expect(s.dataset).not.toBeNull();
+      expect(s.dataset!.source).toBe("csv");
+      expect(s.dataset!.rows).toHaveLength(1);
+    });
+
+    it("auto-detects JSON array and sets dataset", () => {
+      useDatasetStore.getState().loadDataset('[{"id":1,"name":"Bob"}]', "data.json");
+      const s = useDatasetStore.getState();
+      expect(s.dataset).not.toBeNull();
+      expect(s.dataset!.source).toBe("json");
+      expect(s.dataset!.rows[0].values).toEqual({ id: "1", name: "Bob" });
+    });
+
+    it("prefers JSON when content is JSON array even with .csv name", () => {
+      useDatasetStore.getState().loadDataset('[{"id":1}]', "weird.csv");
+      expect(useDatasetStore.getState().dataset!.source).toBe("json");
+    });
+
+    it("falls back to CSV when JSON parse fails", () => {
+      useDatasetStore.getState().loadDataset("id,name\n1,Alice", "data.json");
+      // content is CSV even though name suggests JSON — should still parse as CSV
+      expect(useDatasetStore.getState().dataset!.source).toBe("csv");
+    });
+
+    it("throws or validates on empty dataset (no rows)", () => {
+      // empty header only should result in validation error via getValidationErrors
+      useDatasetStore.getState().loadDataset("id,name", "empty.csv");
+      const s = useDatasetStore.getState();
+      expect(s.dataset).not.toBeNull();
+      expect(s.getValidationErrors().length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("getValidationErrors", () => {
+    it("returns empty for valid dataset", () => {
+      useDatasetStore.getState().loadCsv("id,name\n1,Alice");
+      expect(useDatasetStore.getState().getValidationErrors()).toEqual([]);
+    });
+
+    it("returns errors for empty dataset", () => {
+      useDatasetStore.getState().loadCsv("id,name");
+      expect(useDatasetStore.getState().getValidationErrors().length).toBeGreaterThan(0);
+    });
+  });
 });

@@ -29,6 +29,8 @@ export interface TabDraft {
   proxy?: string
   /** Per-request TLS (M47). */
   tls?: { insecureSkipVerify?: boolean; caFile?: string }
+  timeout?: number
+  followRedirects?: boolean
 }
 
 /** Per-tab metadata for requests opened from a collection: the source request
@@ -88,6 +90,8 @@ export interface FileDraftInput {
   body: string
   auth?: RequestAuth
   retry?: RequestRetry
+  timeout?: number
+  followRedirects?: boolean
 }
 
 /** fileInputFromDraft serializes a tab's editable fields into the
@@ -115,6 +119,8 @@ export function fileInputFromDraft(draft: TabDraft): FileDraftInput {
     body: body ?? '',
     auth: draft.auth,
     retry: draft.retry,
+    timeout: draft.timeout,
+    followRedirects: draft.followRedirects,
   }
 }
 

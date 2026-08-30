@@ -268,12 +268,30 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 
 	// Per-request transport (M47/M56) — when proxy/TLS/HTTPVersion/DisableKeepAlives set to avoid alloc.
 	var httpClient *http.Client = c.http
-	if r.Proxy != "" || r.TLS != nil || r.DisableKeepAlives || (r.HTTPVersion != "" && r.HTTPVersion != "auto") {
+	needsTransport := r.Proxy != "" || r.TLS != nil || r.DisableKeepAlives || (r.HTTPVersion != "" && r.HTTPVersion != "auto")
+	needsNoFollow := r.FollowRedirects != nil && !*r.FollowRedirects
+	if needsTransport || needsNoFollow {
 		tr, err := c.transportForRequest(r, vars)
-		if err != nil {
+		if err != nil && needsTransport {
 			return nil, err
 		}
+		if !needsTransport {
+			// Clone current transport when only redirect behavior changes.
+			if c.http.Transport != nil {
+				if base, ok := c.http.Transport.(*http.Transport); ok {
+					tr = base.Clone()
+				}
+			}
+			if tr == nil {
+				tr = http.DefaultTransport.(*http.Transport).Clone()
+			}
+		}
 		httpClient = &http.Client{Transport: tr, Timeout: c.http.Timeout}
+		if needsNoFollow {
+			httpClient.CheckRedirect = func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			}
+		}
 	}
 
 	start := time.Now()

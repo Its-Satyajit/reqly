@@ -394,11 +394,29 @@ func emitEvent(name string, data any) {
 // must match the file's on-disk fingerprint from OpenedRequest.Version; a
 // mismatch surfaces as a changed-on-disk conflict instead of clobbering the
 // external edit. The returned string is the new baseline version for the tab.
-func (s *AppService) WorkspaceSaveRequest(path string, draft request.Request, expectedVersion string) (string, error) {
+func (s *AppService) WorkspaceSaveRequest(path string, save core.RequestSave, expectedVersion string) (string, error) {
 	if s == nil || s.workspace == nil {
 		return "", fmt.Errorf("no workspace found: open a reqly workspace to save requests")
 	}
-	return s.workspace.SaveRequest(path, draft, expectedVersion)
+	return s.workspace.SaveRequest(path, save, expectedVersion)
+}
+
+// WorkspaceDuplicateRequest copies a request file in place as "<name> copy"
+// (file name suffixed -copy, -copy-2, …) and returns the refreshed tree plus
+// the copy's workspace-relative Request Path.
+func (s *AppService) WorkspaceDuplicateRequest(path string) (*core.WorkspaceDuplicateResult, error) {
+	if s == nil || s.workspace == nil {
+		return nil, fmt.Errorf("no workspace found: open a reqly workspace to duplicate requests")
+	}
+	newPath, err := s.workspace.DuplicateRequest(path)
+	if err != nil {
+		return nil, err
+	}
+	tree, err := s.workspace.Load()
+	if err != nil {
+		return nil, err
+	}
+	return &core.WorkspaceDuplicateResult{Tree: tree, Path: newPath}, nil
 }
 
 // HistoryList returns masked history entries.

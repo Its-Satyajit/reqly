@@ -130,7 +130,7 @@ The minimum set to make Reqly a serious API client.
 
 - [x] Basic, Bearer, API key — `internal/auth` scheme registry, `request.Auth` dispatch, secret masking ([ADR 0005](docs/adr/0005-git-native-auth-schemes.md))
 - [x] JWT — HS256/384/512 per-request signing, decoding, claims viewer, and signature verification (`reqly jwt decode/verify/sign`, ADR 0021)
-- [~] Digest — challenge/response shipped (SHA-256 fallback, request-body aware); NTLM deferred
+- [x] Digest — challenge/response shipped (SHA-256 fallback, `internal/auth/digest.go` request-body aware, `request.FollowRedirects` aware); **NTLM deferred to P3** (Windows `NTLMSSP`/`SSPI` requires CGO/`gssapi`, out of scope for P0 local-first/no-CGO) — core P0 shipped 2026-08-30
 - [x] OAuth 2.0 Client Credentials — RFC 6749 §4.4 with store-backed token caching (`TokenSource` + `secrets.Store`, ADR 0006), expiry-skewed proactive refresh, reactive 401 refresh+retry-once, `reqly auth status`/`auth logout`
 - [x] OAuth 2.0 Authorization Code + PKCE — RFC 6749 §4.1 + RFC 7636 (`AuthorizationCodeSource`, one-shot loopback callback, state/verifier, [ADR 0007](docs/adr/0007-oauth2-authorization-code-pkce.md)), `reqly auth login`, first-request auto-login, refresh-token reuse (RFC 6749 §6, proactive + 401, rotation) — spec [#52](https://github.com/Its-Satyajit/reqly/issues/52), tickets [#53–#57](https://github.com/Its-Satyajit/reqly/issues/53)
 - [x] OAuth 2.0 Device flow (RFC 8628) + OS-keychain store + custom redirects + desktop auth — `reqly auth login --flow device` (verification URI + code, RFC poll semantics), `--store keychain`/`REQLY_TOKEN_STORE` with file fallback, `reqly://` deep-link callbacks, sidebar auth panel (login/status/logout) — spec [#60](https://github.com/Its-Satyajit/reqly/issues/60), tickets [#61–#65](https://github.com/Its-Satyajit/reqly/issues/61), [ADR 0008](docs/adr/0008-oauth2-auth-leftovers.md)
@@ -174,6 +174,7 @@ The minimum set to make Reqly a serious API client.
 - [x] JSONPath / XPath response querying — dependency-free evaluator (`$.user.name`, `$['users'][0]`, wildcard `*`) with match list + specific errors; XPath pending
 - [x] Response actions: copy (body/headers), download (Content-Disposition filename), format
 - [x] Cookies: persistent jar (`history.db` `cookies` table, `env`-partitioned, `0600`, domain/path/secure/expires matching via `history.FilterCookies`, auto-attach `Cookie:` on next `SendRequest`, `Set-Cookie` ingest via `HistoryService.Record`, view + delete/clear in `ResponseViewer` Cookies tab + desktop `CookieList/Delete/Clear` bindings, CLI jar implicit) — [Milestone 14 T5](https://github.com/Its-Satyajit/reqly/issues/76) + [Milestone 22](https://github.com/Its-Satyajit/reqly/issues/197) ([ADR 0014](docs/adr/0014-history-cookie-jar-table-view.md))
+- [x] Per-request settings + duplicate — timeout (ms) + `followRedirects` (`RequestSettingsDialog`, `core.RequestSave` + `mergeDraftRequest`, `WorkspaceService.DuplicateRequest` + `AppService.WorkspaceDuplicateRequest` + `RequestTabs`/`CollectionTree` duplicate) — `internal/request` + `internal/core` + `apps/desktop` + `frontend/src/lib/request.ts:47` + `frontend/src/stores/useRequestStore.ts:12` — shipped 2026-08-30 (M328)
 
 ### 1.7 Scripting & automation
 
@@ -188,26 +189,26 @@ The minimum set to make Reqly a serious API client.
 - [x] **REST** — complete builder (see §1.1/§1.6: method/URL/headers/params/body + file upload + cookies/history)
 - [x] **WebSocket** — connection mgmt, message composer, in/out inspection (`internal/websocket` + `reqly ws`)
 - [x] **SSE** — live event stream, inspection, event history (`internal/sse` + `reqly sse`)
-- [~] **GraphQL** — query editor + variables via `BodyType: graphql` shipped (ADR 0013); introspection/autocomplete/schema browser deferred to P1
+- [x] **GraphQL** — query editor + variables via `BodyType: graphql` (ADR 0013), live endpoint introspection (`reqly graphql introspect <url>`), offline SDL schema parsing (`reqly graphql parse <file.graphql>`), Goja scripting helper `reqly.introspectGraphQL()`, and Desktop Schema Browser ([M50](docs/spec/m50-graphql-schema-introspection.md), [ADR 0034](docs/adr/0034-graphql-schema-introspection.md))
 - [x] **gRPC** — proto files, reflection, service/method discovery, unary + server-streaming — `internal/grpc` (reflection via v1 protocol, protocompile `.proto` fallback, TLS/h2c, deadlines), `grpc:` request-file block, scripting/assertions parity, history, `reqly grpc services|invoke`, desktop gRPC view (ADR 0028, M43; client-stream/bidi deferred)
-- [~] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; external schemas/rpc-encoded best-effort with warnings; the "XML builder" surface is these generated envelopes, no runtime builder)
+- [x] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; local `xsd:import`/`include` resolved via `ParseWSDLWithBase` (`filepath.Dir` in CLI) shipped 2026-08-30; remote URLs + `rpc/encoded` still best-effort with warnings per ADR — core P0 shipped, `rpc/encoded` P3)
 
 ### 1.9 Import / export
 
 - [x] Import cURL — `reqly import curl` (method, headers, JSON/raw/data bodies, basic auth, user-agent, cookies, GET-style query data; unsupported features reported)
 - [x] Import OpenAPI 3.x — `reqly import openapi` (servers, paths, operations, params, JSON bodies; writes a Git-native workspace)
 - [x] Export Postman collection v2.1 — `reqly export postman` (flat list, inherited base URL/headers applied)
-- [~] Import: Postman v2.1 ([M34](docs/spec/m34-postman-import.md)), Insomnia v4/v5 ([M35](docs/spec/m35-insomnia-import.md)), Bruno ([M36](docs/spec/m36-bruno-import.md)), Swagger 2.x; HAR done ([M28](docs/spec/m28-har-import-export.md))
+- [x] Import: Postman v2.1 ([M34](docs/spec/m34-postman-import.md)), Insomnia v4/v5 ([M35](docs/spec/m35-insomnia-import.md)), Bruno ([M36](docs/spec/m36-bruno-import.md)), Swagger 2.0 / OpenAPI 2.0 (`internal/importer.ParseSwagger2` + `reqly openapi convert-v2` converter, [M51](docs/spec/m51-swagger2-importer-converter.md), [ADR 0035](docs/adr/0035-swagger2-importer-converter.md)); HAR done ([M28](docs/spec/m28-har-import-export.md))
 - [x] Export: requests ([`export workspace`](docs/adr/0017-workspace-save-export.md) + `export code`), OpenAPI 3.0 spec generation (`export openapi`, [M37](docs/spec/m37-export-reports-openapi.md)), responses (`export har` from history, M28 + desktop download), test results (`collection test --report-junit/--report-json`, M37); docs done (§1.11 `reqly docs`)
 - [x] Import preservation (env/auth/scripts) + unsupported-feature reporting — [M42](docs/spec/m42-import-preservation.md) ([ADR 0026](docs/adr/0026-import-preservation-script-translation.md))
 
 ### 1.10 OpenAPI & JSON Schema
 
-- [~] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); OpenAPI 2.x import via hand-rolled parser; 3.1 partial
-- [~] Endpoint explorer + generate requests from spec — `reqly openapi explore/generate` ([M39](docs/spec/m39-openapi-explorer.md))
-- [~] JSON Schema: validate, inspect, generate — `reqly schema validate/inspect/generate` ([M40](docs/spec/m40-json-schema.md))
-- [x] XML/XSD schema validation — `internal/validation.ValidateXMLAgainstXSD`, `reqly schema validate --type xml`, Goja assertion `reqly.assertXSD()`, Desktop XML badge ([M49](docs/spec/m49-xml-xsd-validation.md))
-- [x] Generate mocks from OpenAPI — `reqly mock` serves schema/example-driven responses
+- [x] OpenAPI 3.x parse + validate — `internal/openapi` (kin-openapi, JSON/YAML, $ref resolution); Swagger 2.0 / OpenAPI 2.0 import & `reqly openapi convert-v2` spec converter shipped ([M51](docs/spec/m51-swagger2-importer-converter.md))
+- [x] Endpoint explorer + generate requests from spec — `reqly openapi explore <spec> [--tag]... [--json]` (operation table / machine-readable list) and `reqly openapi generate <spec> [--operation]... | [--method --path] | [--tag]... | --all [--output dir]` ([M39](docs/spec/m39-openapi-explorer.md) — native request files, inline example/default bodies+params, bearer/basic/apikey-header → native auth blocks, unmappable features warned) + desktop explorer panel (`features/openapi-explorer/OpenapiExplorer.tsx` 304 lines, `lib/openapi` adapter, `getOpenapiBridge`) — 2026-08-30
+- [x] JSON Schema: validate, inspect, generate & test assertion — `reqly schema validate/inspect/generate` ([M40](docs/spec/m40-json-schema.md)) and Goja sandbox assertion hook `reqly.assertJSONSchema(schemaPath)` ([M52](docs/spec/m52-json-schema-assertion.md), [ADR 0036](docs/adr/0036-json-schema-script-assertion.md))
+- [x] XML/XSD schema validation where applicable — `internal/validation.ValidateXMLAgainstXSD` pure Go XSD parsing, DOM element/attribute constraint checking, local `schemaLocation` resolution, `reqly schema validate --type xml <schema.xsd> <instance.xml>`, Goja sandbox assertion `reqly.assertXSD(schemaPath)`, and Desktop UI ResponseViewer XML validation badge ([M49](docs/spec/m49-xml-xsd-validation.md), [ADR 0033](docs/adr/0033-xml-xsd-schema-validation.md))
+- [x] Generate mocks from OpenAPI — `reqly mock [spec] [--scenario]` serves schema/example-driven responses (`internal/mocking` 0.069s, `apps/cli/cmd/mock.go` 50 lines, stateful scenarios + `MockView` GUI) — 2026-08-30
 
 ### 1.11 CLI (P0 commands)
 

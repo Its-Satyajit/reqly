@@ -220,6 +220,15 @@ type xsdShape struct {
 // ParseWSDL parses a WSDL 1.1 document into per-service collections of
 // generated requests.
 func ParseWSDL(data []byte) (*WSDLResult, *ImportReport, error) {
+	return ParseWSDLWithBase(data, "")
+}
+
+// ParseWSDLWithBase parses a WSDL document with optional base directory for
+// resolving local xsd:import/xsd:include schemaLocation values. When baseDir
+// is non-empty, relative schemaLocation paths are resolved against it and
+// their file contents are merged into the schema shapes; warnings are
+// suppressed for successfully resolved imports.
+func ParseWSDLWithBase(data []byte, baseDir string) (*WSDLResult, *ImportReport, error) {
 	root, err := parseTree(data)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse XML: %w", err)
@@ -232,7 +241,7 @@ func ParseWSDL(data []byte) (*WSDLResult, *ImportReport, error) {
 	rep := NewReport("wsdl")
 	targetNS := root.attr("targetNamespace")
 
-	shapes := collectSchemas(root, rep)
+	shapes := collectSchemasWithBase(root, rep, baseDir)
 	messages := collectMessages(targetNS, root)
 	portTypes := collectPortTypes(targetNS, root)
 	bindings := collectBindings(targetNS, root)
@@ -403,13 +412,56 @@ type wsdlPart struct {
 }
 
 func collectSchemas(root *wsdlNode, rep *ImportReport) map[string]*xsdShape {
+	return collectSchemasWithBase(root, rep, "")
+}
+
+func collectSchemasWithBase(root *wsdlNode, rep *ImportReport, baseDir string) map[string]*xsdShape {
 	shapes := map[string]*xsdShape{} // "{ns}Name" → shape
+	visited := map[string]bool{}
+	resolveLocal := func(loc, kind string) bool {
+		if loc == "" || baseDir == "" || isURL(loc) {
+			return false
+		}
+		// Prevent directory traversal outside base
+		if strings.Contains(loc, "..") {
+			rep.Add("", CategorySchema, SeverityWarned, "external %s %q contains traversal; not followed", kind, loc)
+			return true // handled (warned, but don't add not-followed again)
+		}
+		cleanLoc := filepath.Clean(loc)
+		if filepath.IsAbs(cleanLoc) {
+			return false
+		}
+		candidate := filepath.Join(baseDir, cleanLoc)
+		if visited[candidate] {
+			return true // already processed, suppress duplicate warning
+		}
+		visited[candidate] = true
+		data, err := os.ReadFile(candidate)
+		if err != nil {
+			return false
+		}
+		if extShapes := tryParseExternalSchema(data, rep); extShapes != nil {
+			for k, v := range extShapes {
+				shapes[k] = v
+			}
+			return true // resolved
+		}
+		return false
+	}
 	addSchema := func(schema *wsdlNode) {
 		targetNS := schema.attr("targetNamespace")
 		for _, imp := range schema.all("import") {
+			loc := imp.attr("schemaLocation")
+			if resolveLocal(loc, "xsd:import") {
+				continue
+			}
 			rep.Add("", CategorySchema, SeverityWarned, "external xsd:import %q not followed; affected elements get skeleton-only bodies", imp.attr("schemaLocation"))
 		}
 		for _, inc := range schema.all("include") {
+			loc := inc.attr("schemaLocation")
+			if resolveLocal(loc, "xsd:include") {
+				continue
+			}
 			rep.Add("", CategorySchema, SeverityWarned, "external xsd:include %q not followed; affected elements get skeleton-only bodies", inc.attr("schemaLocation"))
 		}
 		for _, el := range schema.all("element") {
@@ -433,6 +485,54 @@ func collectSchemas(root *wsdlNode, rep *ImportReport) map[string]*xsdShape {
 		}
 	}
 	return shapes
+}
+
+func isURL(s string) bool {
+	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "//")
+}
+
+func tryParseExternalSchema(data []byte, rep *ImportReport) map[string]*xsdShape {
+	root, err := parseTree(data)
+	if err != nil {
+		return nil
+	}
+	// External file may be a standalone <xsd:schema> or a full document with single schema
+	var schemas []*wsdlNode
+	if root.Space == xsdNS && root.Local == "schema" {
+		schemas = []*wsdlNode{root}
+	} else {
+		for _, c := range root.Children {
+			if c.Space == xsdNS && c.Local == "schema" {
+				schemas = append(schemas, c)
+			}
+		}
+		if len(schemas) == 0 && root.Space == xsdNS && root.Local == "schema" {
+			schemas = []*wsdlNode{root}
+		}
+	}
+	if len(schemas) == 0 {
+		return nil
+	}
+	out := map[string]*xsdShape{}
+	for _, schema := range schemas {
+		targetNS := schema.attr("targetNamespace")
+		for _, el := range schema.all("element") {
+			shape := &xsdShape{NS: targetNS}
+			if ct := el.get("complexType"); ct != nil {
+				shape.Children = sequenceChildren(ct)
+			}
+			out["{"+targetNS+"}"+el.attr("name")] = shape
+		}
+		for _, ct := range schema.all("complexType") {
+			if name := ct.attr("name"); name != "" {
+				out["{"+targetNS+"}"+name] = &xsdShape{NS: targetNS, Children: sequenceChildren(ct)}
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // sequenceChildren flattens a complexType's sequence (or choice) one level;

@@ -282,8 +282,9 @@ SOAPAction header, and body children from the operation's inline XSD.
   reqly import wsdl service.wsdl
   reqly import wsdl service.wsdl --output ./soap-ws
 
-External schemas (xsd:import/xsd:include) and rpc/encoded styles are handled
-best-effort and reported as warnings.`,
+External schemas (xsd:import/xsd:include) are resolved when the
+schemaLocation is a local file relative to the WSDL (e.g. other.xsd);
+remote URLs and rpc/encoded styles remain best-effort with warnings.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		info, err := os.Stat(args[0])
@@ -294,7 +295,8 @@ best-effort and reported as warnings.`,
 		if err != nil {
 			return fmt.Errorf("read WSDL document: %w", err)
 		}
-		result, report, err := importer.ParseWSDL(data)
+		baseDir := filepath.Dir(args[0])
+		result, report, err := importer.ParseWSDLWithBase(data, baseDir)
 		if err != nil {
 			return err
 		}

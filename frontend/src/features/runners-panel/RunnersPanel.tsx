@@ -24,6 +24,8 @@ import {
 } from "#lib/runners";
 import { useRequestStore, type TabDraft } from "#stores/useRequestStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
+import { useDatasetStore } from "#stores/useDatasetStore";
+import { DatasetPicker } from "./DatasetPicker";
 
 type Mode = "pagination" | "bulk" | "graph";
 
@@ -104,6 +106,14 @@ export function RunnersPanel() {
       if (strategy === "cursor") pagination.nextPath = nextPath;
     }
 
+    // Prefer dataset store (picker) over legacy textarea — handles CSV/JSON validation & preview.
+    const bulkData = (() => {
+      if (mode !== "bulk") return undefined;
+      const ds = useDatasetStore.getState().dataset;
+      if (ds?.rawContent && ds.rawContent.trim() !== "") return ds.rawContent;
+      return data.trim() !== "" ? data : undefined;
+    })();
+
     // The listener lives in an effect keyed on the run id so unmount and
     // restarts always detach cleanly (react-doctor/effect-needs-cleanup).
     patch({ activeRunId: runId });
@@ -114,7 +124,7 @@ export function RunnersPanel() {
         request: draft,
         pagination,
         maxPagesOverride: mode === "pagination" ? maxPages : undefined,
-        data: mode === "bulk" ? data : undefined,
+        data: bulkData,
         parallel: mode === "bulk" ? parallel : undefined,
         concurrency: mode === "bulk" && parallel ? concurrency : undefined,
       })
@@ -246,28 +256,21 @@ export function RunnersPanel() {
             </>
           ) : (
             <>
+              <DatasetPicker />
+              {/* Legacy textarea kept for quick paste — synced with dataset store */}
               <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">Dataset (CSV or JSON Array)</span>
-                  <label className="cursor-pointer rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground">
-                    Load File
-                    <input
-                      type="file"
-                      accept=".csv,.json"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        const text = await f.text();
-                        patch({ data: text });
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
+                <span className="text-xs font-medium text-muted-foreground">Quick paste (syncs with picker above)</span>
                 <Textarea
                   value={data}
-                  onChange={(e) => patch({ data: e.target.value })}
+                  onChange={(e) => {
+                    patch({ data: e.target.value });
+                    // Keep dataset store in sync for validation/preview
+                    if (e.target.value.trim() !== "") {
+                      useDatasetStore.getState().loadDataset(e.target.value, "paste.csv");
+                    } else {
+                      useDatasetStore.getState().clearDataset();
+                    }
+                  }}
                   rows={3}
                   spellCheck={false}
                   aria-label="Bulk data rows (CSV or JSON array)"
