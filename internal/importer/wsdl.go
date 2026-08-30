@@ -487,7 +487,9 @@ func collectSchemasWithBase(root *wsdlNode, rep *ImportReport, baseDir string) m
 	return shapes
 }
 
-func isURL(s string) bool { return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "//") }
+func isURL(s string) bool {
+	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "//")
+}
 
 func tryParseExternalSchema(data []byte, rep *ImportReport) map[string]*xsdShape {
 	root, err := parseTree(data)
