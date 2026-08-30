@@ -173,6 +173,32 @@ func TestWSDLExternalImportWarns(t *testing.T) {
 	}
 }
 
+func TestWSDLExternalImportLocalResolution(t *testing.T) {
+	dir := t.TempDir()
+	otherXSD := `<?xml version="1.0"?><xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://other"><xsd:element name="OtherRequest"><xsd:complexType><xsd:sequence><xsd:element name="externalField" type="xsd:string"/></xsd:sequence></xsd:complexType></xsd:element></xsd:schema>`
+	if err := os.WriteFile(filepath.Join(dir, "other.xsd"), []byte(otherXSD), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wsdl := strings.Replace(simpleWSDL,
+		`<xsd:element name="SayHelloRequest">`,
+		`<xsd:import namespace="http://other" schemaLocation="other.xsd"/><xsd:element name="SayHelloRequest">`, 1)
+	// Feature: ParseWSDLWithBase should resolve local other.xsd and make OtherRequest available
+	res, report, err := ParseWSDLWithBase([]byte(wsdl), dir)
+	if err != nil {
+		t.Fatalf("ParseWSDLWithBase() error = %v", err)
+	}
+	// Should not warn about unresolved import when file was resolved
+	joined := strings.Join(report.Messages(), "\n")
+	if strings.Contains(joined, "not followed") {
+		t.Errorf("should not warn when external file resolved: %v", report.Messages())
+	}
+	// Verify the main operation still generates, and that the schema handling did not break
+	body := firstReq(res).Request.Body
+	if !strings.Contains(body, "<SayHelloRequest") {
+		t.Errorf("body missing SayHelloRequest: %s", body)
+	}
+}
+
 func TestWSDLRPCStyleWarns(t *testing.T) {
 	rpc := `<?xml version="1.0"?>
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
