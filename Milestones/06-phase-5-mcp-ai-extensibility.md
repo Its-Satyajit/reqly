@@ -137,3 +137,10 @@ Every checked feature must pass the full checklist:
 ### Next milestones — P1 Differentiating Features (suggested order)
 
 28. **HAR import/export + replay** — `internal/importer` HAR parse + `reqly import har <har-file> [--output <dir>] [--collection <name>]` ( `headers+cookies→Headers` `Cookie:` merged, `queryString→Query`, `postData.text→Body` base64 decoded, `mimeType→Content-Type`, >1MB spill `blobs/`, `pageref`/`timings`/`cache` warnings) + `reqly export har [--out <file.har>] [--env <name>] [--limit 500]` history→HAR via `internal/exporter/har.go` (`ExportHAR` pure, `timings` synthesized, base64 binary, secrets masked), replay via `har-import` collection + `history replay` ([ADR 0020](docs/adr/0020-har-import-export.md), CONTEXT `HAR`/`HAR Import`/`HAR Export`/`HAR Replay` grilling Q1–Q4 done, `docs/spec/m28-har-import-export.md`) — **shipped**
+
+---
+
+## Code Review Gate (`/code-review` — two-axis)
+
+- [ ] Standards: `oxlint` + `gofmt`/`go vet` + `anti-slop` + Fowler smell baseline — `git diff main...HEAD` (three-dot, merge-base) — no `as` without `// SAFETY:`, no hard violations
+- [ ] Spec: this milestone (P4/P5 `Milestones/06` §59 + M60-M79) vs implementation (`ROADMAP.md` Phase 5 + DoD: core+UI/CLI+tests) — `git log main..HEAD` + `git diff main...HEAD` — both axes must be green before ticking `[x]` above; fix `main...HEAD` diff until green — run `/code-review`

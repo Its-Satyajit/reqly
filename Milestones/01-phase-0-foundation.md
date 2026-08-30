@@ -47,3 +47,8 @@ Project skeleton, build system, and the first core primitives.
 
 ---
 
+## Code Review Gate (`/code-review` — two-axis)
+
+- [ ] Standards: `oxlint` + `gofmt`/`go vet` + `anti-slop` + Fowler smell baseline — `git diff main...HEAD` (three-dot, merge-base) — no `as` without `// SAFETY:`, no hard violations
+- [ ] Spec: this milestone (`Milestones/01`) vs implementation (`ROADMAP.md` Phase 0 + DoD: core+UI/CLI+tests) — `git log main..HEAD` + `git diff main...HEAD` — both axes must be green before ticking `[x]` above; fix `main...HEAD` diff until green — run `/code-review`
+

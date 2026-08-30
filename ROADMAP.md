@@ -304,3 +304,16 @@ All detailed ticket-level milestone histories, GUI execution matrices, and compl
 - [x] Security review & file permissions
 - [x] Fast checks (formatting, linting, typechecking, unit tests)
 - [x] PR CI + Release CI cross-platform matrix (Linux, macOS, Windows)
+
+## Code Review Gates (`/code-review` — two-axis: Standards + Spec)
+
+> Every phase/milestone must pass the `/code-review` skill before it is marked `[x]` in the ledger above. The skill spawns two parallel sub-agents — **Standards** (`oxlint.config.ts` + `gofmt`/`go vet` + Fowler smell baseline) and **Spec** (milestone spec vs `ROADMAP.md` DoD: core+UI/CLI+tests) — against `git diff main...HEAD` (three-dot, merge-base). Fix the diff until both axes are green. See `docs/agents/issue-tracker.md` (run `/setup-matt-pocock-skills` if missing).
+
+- [ ] Phase 0 — Foundation (`Milestones/01-phase-0-foundation.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [ ] Phase 1 — Core API Client (P0) (`Milestones/02-phase-1-core-api-client.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [ ] Phase 2 — Differentiating Features (P1) (`Milestones/03-phase-2-differentiating-features.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [ ] Phase 3 — Power-User Features (P2) (`Milestones/04-phase-3-power-user-features.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [ ] Phase 4 — Ecosystem & Enterprise (P3) (`Milestones/05-phase-4-ecosystem-and-enterprise.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [ ] Phase 5 — MCP, AI & Extensibility (P4/P5) (`Milestones/06-phase-5-mcp-ai-extensibility.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [ ] Historical Ledger — M01–M40 (`Milestones/07-historical-milestones-ledger.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [ ] Full UI Architecture — §1–§63 (`Milestones/09` + `10` + `11`) — `/code-review` `main...HEAD` Standards + Spec
