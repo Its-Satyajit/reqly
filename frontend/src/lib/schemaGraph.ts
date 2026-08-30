@@ -32,14 +32,19 @@ export function nodesForOpenApiContent(content: string): SchemaNode[] {
   return SCHEMA_NODES;
 }
 
+export const ZOOM_MIN = 0.5;
+export const ZOOM_MAX = 2;
+export const NODE_WIDTH = 88;
+export const NODE_HEIGHT = 36;
+export const NODE_HALF_WIDTH = NODE_WIDTH / 2;
+
 export function clampZoom(z: number): number {
-  return Math.min(2, Math.max(0.5, z));
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
 }
 
 export function getNodeAt(nodes: SchemaNode[], x: number, y: number): SchemaNode | undefined {
-  // Node rect: width 88, height 36, anchored at x-44,y
   for (const n of nodes) {
-    if (x >= n.x - 44 && x <= n.x + 44 && y >= n.y && y <= n.y + 36) return n;
+    if (x >= n.x - NODE_HALF_WIDTH && x <= n.x + NODE_HALF_WIDTH && y >= n.y && y <= n.y + NODE_HEIGHT) return n;
   }
   return undefined;
 }
