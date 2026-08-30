@@ -136,7 +136,8 @@ The minimum set to make Reqly a serious API client.
 - [x] OAuth 2.0 Device flow (RFC 8628) + OS-keychain store + custom redirects + desktop auth — `reqly auth login --flow device` (verification URI + code, RFC poll semantics), `--store keychain`/`REQLY_TOKEN_STORE` with file fallback, `reqly://` deep-link callbacks, sidebar auth panel (login/status/logout) — spec [#60](https://github.com/Its-Satyajit/reqly/issues/60), tickets [#61–#65](https://github.com/Its-Satyajit/reqly/issues/61), [ADR 0008](docs/adr/0008-oauth2-auth-leftovers.md)
 - [x] AWS Signature V4 — `internal/auth/aws.go` (`auth.type: aws`, SigV4 per-request signing, `accessKey`/`secretKey`/`region`/`service` + optional `sessionToken`, [ADR 0012](docs/adr/0012-aws-edgegrid-auth.md))
 - [x] Akamai EdgeGrid — `internal/auth/edgegrid.go` (`auth.type: edgegrid`, EG1-HMAC-SHA256, `clientToken`/`clientSecret`/`accessToken`/`host`, [ADR 0012](docs/adr/0012-aws-edgegrid-auth.md))
-- [ ] OAuth 1.0, custom auth — deferred (reuses the same `auth.config` + Auth tab seams)
+- [x] OAuth 1.0 — `internal/auth/oauth1.go` (`auth.type: oauth1`, RFC 5849 HMAC-SHA1 per-request signing, `consumerKey`/`consumerSecret` + optional `token`/`tokenSecret`, `Authorization: OAuth` header with `oauth_signature`, `oauth_nonce`/`oauth_timestamp`, `auth.config` + Auth tab `OAuth 1.0` form) — 2026-08-30
+- [ ] Custom auth — deferred (reuses same `auth.config` + Auth tab seams)
 - [x] Auth inheritance — Workspace → Collection → Folder → Request (base URL, headers, auth, vars)
 
 ### 1.4 Secrets
