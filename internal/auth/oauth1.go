@@ -95,34 +95,26 @@ func (oauth1Scheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 	}
 	timestamp := fmt.Sprintf("%d", oauth1Now())
 
-	// Collect OAuth params
-	params := map[string]string{
-		"oauth_consumer_key":     consumerKey,
-		"oauth_nonce":            nonce,
-		"oauth_signature_method": sigMethod,
-		"oauth_timestamp":        timestamp,
-		"oauth_version":          "1.0",
-	}
-	if token != "" {
-		params["oauth_token"] = token
-	}
-
-	// Add query params from URL
-	queryVals := req.URL.Query()
-	for k, vs := range queryVals {
-		for _, v := range vs {
-			// Use composite key to avoid collision with oauth params; we'll sort encoded pairs
-			params[k] = v
-			// For multiple values, the last wins in this simplified map — acceptable for P0
-			// A full impl would handle multi-valued keys, but tests use single values.
-		}
-	}
-
-	// Build normalized parameter string: sort by percent-encoded key
+	// Collect OAuth and query params — RFC 5849 §3.4.1.3.1 requires each value
+	// for a repeated key to appear as a separate pair, sorted by encoded value.
 	type kv struct{ k, v string }
 	var pairs []kv
-	for k, v := range params {
-		pairs = append(pairs, kv{percentEncode(k), percentEncode(v)})
+	// OAuth params
+	pairs = append(pairs,
+		kv{percentEncode("oauth_consumer_key"), percentEncode(consumerKey)},
+		kv{percentEncode("oauth_nonce"), percentEncode(nonce)},
+		kv{percentEncode("oauth_signature_method"), percentEncode(sigMethod)},
+		kv{percentEncode("oauth_timestamp"), percentEncode(timestamp)},
+		kv{percentEncode("oauth_version"), percentEncode("1.0")},
+	)
+	if token != "" {
+		pairs = append(pairs, kv{percentEncode("oauth_token"), percentEncode(token)})
+	}
+	// Query params — each value produces its own pair (multi-value correct)
+	for k, vs := range req.URL.Query() {
+		for _, v := range vs {
+			pairs = append(pairs, kv{percentEncode(k), percentEncode(v)})
+		}
 	}
 	sort.Slice(pairs, func(i, j int) bool {
 		if pairs[i].k == pairs[j].k {
@@ -140,18 +132,23 @@ func (oauth1Scheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 		normParams.WriteString(p.v)
 	}
 
-	// Normalized URL: scheme://host/path (no query)
+	// Normalized URL: scheme://host/path (no query) — RFC 5849 §3.4.1.2
 	scheme := strings.ToLower(req.URL.Scheme)
 	if scheme == "" {
 		scheme = "https"
-		if req.URL.Host == "" {
-			// For requests without explicit scheme/host (e.g., test URLs), use host from URL or fallback
-			scheme = "https"
-		}
 	}
 	host := strings.ToLower(req.URL.Host)
 	if host == "" {
-		host = "api.example.com"
+		host = strings.ToLower(req.Host)
+	}
+	if host == "" {
+		return fmt.Errorf("oauth1: request URL must have host")
+	}
+	// Strip default ports per RFC
+	if strings.HasSuffix(host, ":443") && scheme == "https" {
+		host = strings.TrimSuffix(host, ":443")
+	} else if strings.HasSuffix(host, ":80") && scheme == "http" {
+		host = strings.TrimSuffix(host, ":80")
 	}
 	path := req.URL.EscapedPath()
 	if path == "" {
