@@ -7,12 +7,13 @@
 
 import type { RequestAuth, RequestRetry, ResponseData } from './request'
 
+/** EntryIdentity is the minimal identity shared by any collection, folder, or request node.
+ * Extracted to avoid Data Clumps where `path`+`name` travel as loose params. */
+export type EntryIdentity = { path: string; name: string }
+
 /** WorkspaceRequest is a request file within a collection or folder, located
  * by its workspace-relative Request Path (e.g. "users/auth/login"). */
-export interface WorkspaceRequest {
-  name: string
-  path: string
-}
+export interface WorkspaceRequest extends EntryIdentity {}
 
 /** WorkspaceFolder is a nested container (recursively) within a collection. */
 export interface WorkspaceFolder {

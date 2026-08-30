@@ -350,10 +350,13 @@ func (c *Client) sendOnce(ctx context.Context, r *Request, vars auth.Interpolato
 		return nil, err
 	}
 
-	// Digest (and other challenge-based schemes) respond to a 401 Digest
-	// WWW-Authenticate challenge by computing credentials and retrying once.
-	// The retry is bounded to a single challenge/response round-trip and only
-	// fires for a matching Digest challenge; other 401s return as-is.
+	// Auth retries (Digest challenge or TokenSource 401 refresh) reuse the same
+	// httpClient built above, so per-request FollowRedirects (needsNoFollow) and
+	// Timeout (ctx.WithTimeout) and per-request transport (proxy/TLS/HTTPVersion)
+	// are propagated to the retry — avoiding a redirect-loop where the retry
+	// would otherwise follow a 3xx that the original `followRedirects:false`
+	// intended to expose, and ensuring the timeout deadline still applies.
+	// Each branch retries at most once; a second 401 is returned as-is.
 	if resp.StatusCode == http.StatusUnauthorized && r.Auth.Type != "" {
 		challenge := resp.Header.Get("WWW-Authenticate")
 		if strings.HasPrefix(challenge, "Digest") {
@@ -498,20 +501,25 @@ func (c *Client) build(ctx context.Context, r *Request, vars auth.Interpolator) 
 	u.RawQuery = q.Encode()
 
 	var body io.Reader
+	var bodyStr string
 	if r.Body != "" {
 		interpolated, err := vars.Interpolate(r.Body)
 		if err != nil {
 			return nil, "", err
 		}
-		body = strings.NewReader(interpolated)
+		bodyStr = interpolated
+		body = strings.NewReader(bodyStr)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, string(method), u.String(), body)
 	if err != nil {
 		return nil, "", err
 	}
-
+	// Make request body re-readable for auth schemes that need to inspect it
+	// (e.g. OAuth 1.0 RFC 5849 §3.4.1.3.1 body params) and for retry.
 	if body != nil {
+		b := bodyStr // capture for closure
+		req.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(strings.NewReader(b)), nil }
 		req.Header.Set("Content-Type", detectContentType(r.Body))
 	}
 

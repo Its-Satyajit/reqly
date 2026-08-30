@@ -1,4 +1,5 @@
 import { cn } from "#lib/utils";
+import { methodTint } from "#lib/methodTint";
 import { AuthPanel } from "../../features";
 import { CollectionTree } from "../CollectionTree";
 import { useWorkspaceStore, type WorkspaceView } from "../../stores";
@@ -6,14 +7,6 @@ import { useHistoryStore } from "../../stores/useHistoryStore";
 import { useTestStore } from "../../stores/useTestStore";
 import { useRealtimeRecentsStore } from "../../stores/useRealtimeRecentsStore";
 import { useRealtimeStore } from "../../stores/useRealtimeStore";
-
-const methodTint = {
-	GET: "text-method-get",
-	POST: "text-method-post",
-	PUT: "text-method-put",
-	PATCH: "text-method-put",
-	DELETE: "text-method-delete",
-} satisfies Record<string, string>;
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
 	return (

@@ -18,12 +18,14 @@
 package auth
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -131,6 +133,36 @@ func (oauth1Scheme) Apply(req *http.Request, cfg map[string]string, vars Interpo
 			pairs = append(pairs, kv{percentEncode(k), percentEncode(v)})
 		}
 	}
+	// Body params — RFC 5849 §3.4.1.3.1: when Content-Type is
+	// application/x-www-form-urlencoded, the entity-body params are part of the
+	// signature base string (each value as separate pair, sorted by encoded value).
+	if strings.Contains(strings.ToLower(req.Header.Get("Content-Type")), "application/x-www-form-urlencoded") {
+		if req.Body != nil {
+			var bodyBytes []byte
+			// Prefer GetBody for retryable requests; fallback to reading Body directly and restoring it.
+			if req.GetBody != nil {
+				rc, err := req.GetBody()
+				if err == nil && rc != nil {
+					bodyBytes, _ = io.ReadAll(rc)
+					_ = rc.Close()
+				}
+			} else {
+				bodyBytes, _ = io.ReadAll(req.Body)
+				// Restore Body for downstream transport (important: OAuth signs but must not consume).
+				_ = req.Body.Close()
+				req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			}
+			if len(bodyBytes) > 0 {
+				if params, err := url.ParseQuery(string(bodyBytes)); err == nil {
+					for k, vs := range params {
+						for _, v := range vs {
+							pairs = append(pairs, kv{percentEncode(k), percentEncode(v)})
+						}
+					}
+				}
+			}
+		}
+	}
 	sort.Slice(pairs, func(i, j int) bool {
 		if pairs[i].k == pairs[j].k {
 			return pairs[i].v < pairs[j].v
@@ -200,8 +232,16 @@ func (oauth1Scheme) SecretKeys() []string {
 }
 
 func percentEncode(s string) string {
-	// OAuth percent-encode per RFC 5849 §3.6
-	return strings.ReplaceAll(url.QueryEscape(s), "+", "%20")
+	// OAuth percent-encode per RFC 5849 §3.6 / RFC 3986 §2.1.
+	// url.QueryEscape already encodes "*" as "%2A" and leaves "~" unescaped (~ is unreserved),
+	// but we normalize explicitly so behaviour is contract-tested even if stdlib changes.
+	// Space is "+" in QueryEscape, but OAuth requires "%20".
+	enc := url.QueryEscape(s)
+	enc = strings.ReplaceAll(enc, "+", "%20")
+	// Defensive: ensure "*" always "%2A" and "~" stays "~" (QueryEscape uses "%7E" on some platforms).
+	enc = strings.ReplaceAll(enc, "*", "%2A")
+	enc = strings.ReplaceAll(enc, "%7E", "~")
+	return enc
 }
 
 func init() { Register("oauth1", oauth1Scheme{}) }
