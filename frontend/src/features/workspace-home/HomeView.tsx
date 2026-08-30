@@ -7,6 +7,7 @@ import {
 	FolderOpen,
 } from "lucide-react";
 import { cn } from "#lib/utils";
+import { methodTint } from "#lib/methodTint";
 import { Button } from "../../components/ui/button";
 import { ImportDialog, ExportDialog } from "../../features";
 import { useWorkspaceStore } from "../../stores";
@@ -14,14 +15,6 @@ import { useWorkspaceBootstrapStore } from "../../stores/useWorkspaceBootstrap";
 import { useImportStore, useExportStore } from "../../stores";
 import { useHistoryStore } from "../../stores/useHistoryStore";
 import { NEW_REQUEST_TAB_ID } from "../../stores/useRequestStore";
-
-const methodTint = {
-	GET: "text-method-get",
-	POST: "text-method-post",
-	PUT: "text-method-put",
-	PATCH: "text-method-put",
-	DELETE: "text-method-delete",
-} satisfies Record<string, string>;
 
 function Stat({ value, label }: { value: number | string; label: string }) {
 	return (

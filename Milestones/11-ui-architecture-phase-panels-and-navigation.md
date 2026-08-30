@@ -858,3 +858,10 @@ This consolidated structure preserves the missing surfaces from the earlier spec
 
 ## Completeness rule
 No source detail should be deleted merely because it is duplicated. Duplicate statements are consolidated into the current roadmap, while unique ticket-level or UI-reference detail is retained in the historical or lower-precedence sections.
+
+---
+
+## Code Review Gate (`/code-review` — two-axis)
+
+- [x] Standards: `oxlint` + `gofmt`/`go vet` + `anti-slop` + Fowler smell baseline — `git diff main...HEAD` (three-dot, merge-base) — no `as` without `// SAFETY:`, no hard violations
+- [x] Spec: this milestone (`Milestones/` + Phase) vs implementation (`ROADMAP.md` DoD: core+UI/CLI+tests) — `git log main..HEAD` + `git diff main...HEAD` — both axes must be green before ticking `[x]` above; fix `main...HEAD` diff until green — run `/code-review`

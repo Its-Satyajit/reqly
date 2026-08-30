@@ -23,3 +23,10 @@
 **GUI linkage:** Each desktop binding above is the product-roadmap owner for its GUI counterpart (e.g. `WorkflowRun` → future visual DAG, `ThemeList` → future picker, `CollabServe` → future server panel). See `docs/internal/gui-roadmap.md` for GUI execution tracking.
 
 **Verification:** All 12 milestones pass `go test ./...` (46 pkgs), `go test -race`, `go vet`, `gofmt -l`, `go build -o reqly`, `nub run typecheck`, `oxlint`, `vitest run` before `but commit`.
+
+---
+
+## Code Review Gate (`/code-review` — two-axis)
+
+- [x] Standards: `oxlint` + `gofmt`/`go vet` + `anti-slop` + Fowler smell baseline — `git diff main...HEAD` (three-dot, merge-base) — no `as` without `// SAFETY:`, no hard violations
+- [x] Spec: this milestone (`Milestones/` + Phase) vs implementation (`ROADMAP.md` DoD: core+UI/CLI+tests) — `git log main..HEAD` + `git diff main...HEAD` — both axes must be green before ticking `[x]` above; fix `main...HEAD` diff until green — run `/code-review`

@@ -1,3 +1,10 @@
+// Bridge is the thin Wails boundary over the Go core's DTO surface (internal/core + internal/*).
+// It currently co-locates all adapters (HTTP, gRPC, runners, JWT, export) in one module
+// to keep the generated bindings import graph flat. Splitting by domain (bridge/http.ts,
+// bridge/grpc.ts, …) is acknowledged as the Divergent Change fix and tracked as a
+// follow-up once bindings stabilize; until then the single façade avoids scattered
+// DTO imports.
+
 import type {
 	AuthAdapter,
 	CollectionsAdapter,

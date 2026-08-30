@@ -108,7 +108,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Request execution shared by Desktop + CLI (single engine, no duplication)
 - [x] Response model: status, headers, cookies, timing, size, raw body
 - [x] Response body parsing — JSON (pretty/tree) + XML (pretty) + CSV (Table) + binary (image inline, PDF banner, hex 4KB) via `frontend/src/lib/response.ts:187` `isTabular/parseTable/binaryPreviewType` and `ResponseViewer` Table tab ([ADR 0014](docs/adr/0014-history-cookie-jar-table-view.md)); file download via `suggestedFilename`
-- [x] File upload / multipart — `BodyType: binary` (single file, `application/octet-stream`) + file-aware `form-data` rows (`file` + `filename`, `multipart/form-data` via `boundaryFor`, [ADR 0013](docs/adr/0013-binary-graphql-body.md)); file download pending
+- [~] File upload / multipart — `BodyType: binary` (single file, `application/octet-stream`) + file-aware `form-data` rows (`file` + `filename`, `multipart/form-data` via `boundaryFor`, [ADR 0013](docs/adr/0013-binary-graphql-body.md)); **file download via `suggestedFilename` shipped, raw file-system download UI pending** — core upload [x], download [~]
 - [x] SQLite local metadata — per-workspace `<workspace>/.reqly/history.db` (`modernc.org/sqlite` WAL, FTS5, `history` + `cookies` tables, 1MB spill to `blobs/`, 500 retention, `0600`), history search/replay (`internal/history` + `core.HistoryService` + `reqly history` + desktop History view), request replay exact via `HistoryReplay` ([ADR 0014](docs/adr/0014-history-cookie-jar-table-view.md))
 
 ### 1.2 Variables & environments
@@ -130,7 +130,7 @@ The minimum set to make Reqly a serious API client.
 
 - [x] Basic, Bearer, API key — `internal/auth` scheme registry, `request.Auth` dispatch, secret masking ([ADR 0005](docs/adr/0005-git-native-auth-schemes.md))
 - [x] JWT — HS256/384/512 per-request signing, decoding, claims viewer, and signature verification (`reqly jwt decode/verify/sign`, ADR 0021)
-- [x] Digest — challenge/response shipped (SHA-256 fallback, `internal/auth/digest.go` request-body aware, `request.FollowRedirects` aware); **NTLM deferred to P3** (Windows `NTLMSSP`/`SSPI` requires CGO/`gssapi`, out of scope for P0 local-first/no-CGO) — core P0 shipped 2026-08-30
+- [~] Digest — challenge/response shipped (SHA-256 fallback, `internal/auth/digest.go` request-body aware, `request.FollowRedirects` aware); **NTLM deferred to P3** (Windows `NTLMSSP`/`SSPI` requires CGO/`gssapi`, out of scope for P0 local-first/no-CGO) — Digest P0 [x], NTLM [ ] deferred
 - [x] OAuth 2.0 Client Credentials — RFC 6749 §4.4 with store-backed token caching (`TokenSource` + `secrets.Store`, ADR 0006), expiry-skewed proactive refresh, reactive 401 refresh+retry-once, `reqly auth status`/`auth logout`
 - [x] OAuth 2.0 Authorization Code + PKCE — RFC 6749 §4.1 + RFC 7636 (`AuthorizationCodeSource`, one-shot loopback callback, state/verifier, [ADR 0007](docs/adr/0007-oauth2-authorization-code-pkce.md)), `reqly auth login`, first-request auto-login, refresh-token reuse (RFC 6749 §6, proactive + 401, rotation) — spec [#52](https://github.com/Its-Satyajit/reqly/issues/52), tickets [#53–#57](https://github.com/Its-Satyajit/reqly/issues/53)
 - [x] OAuth 2.0 Device flow (RFC 8628) + OS-keychain store + custom redirects + desktop auth — `reqly auth login --flow device` (verification URI + code, RFC poll semantics), `--store keychain`/`REQLY_TOKEN_STORE` with file fallback, `reqly://` deep-link callbacks, sidebar auth panel (login/status/logout) — spec [#60](https://github.com/Its-Satyajit/reqly/issues/60), tickets [#61–#65](https://github.com/Its-Satyajit/reqly/issues/61), [ADR 0008](docs/adr/0008-oauth2-auth-leftovers.md)
@@ -144,7 +144,7 @@ The minimum set to make Reqly a serious API client.
 
 - [x] Encrypted-at-rest secret storage + OS keychain — token stores behind the `secrets.Store` interface: FileStore (plain-text 0600 `.reqly/tokens.json`, default) and KeychainStore (OS keychain via go-keyring; keychain default on desktop), backend selection `--store keychain`/`REQLY_TOKEN_STORE` with graceful file-store fallback
 - [x] Secret variables + masking (CLI output, logs, test output) — `environments/<name>.yaml` `secrets:` maps render as `[SECRET]`; masking wired through run/test/collection/validate/diff; acquired OAuth tokens masked post-request
-- [x] `.env` support — dotenv parsing (process-env scope, OS env wins) shipped via `internal/variables` + `internal/environments`; external managers (Vault, AWS, Azure) — P3
+- [~] `.env` support — dotenv parsing (process-env scope, OS env wins) shipped via `internal/variables` + `internal/environments`; **external secret managers (Vault shipped via `internal/secrets.VaultStore`, AWS/Azure deferred to P3)** — `.env` [x], Vault [x], AWS/Azure [ ]
 
 ### 1.5 Workspaces, collections & storage
 
@@ -171,7 +171,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Params/headers/body tabs in the builder
 - [x] Body editors: JSON/XML/raw/binary/GraphQL via CodeMirror, form-data/urlencoded via key-value rows (file-aware `form-data` + `binary` file picker + `graphql` query+variables), auto Content-Type (manual wins) — [Milestone 14 T2](https://github.com/Its-Satyajit/reqly/issues/73) + [Milestone 21](https://github.com/Its-Satyajit/reqly/issues/189) ([ADR 0013](docs/adr/0013-binary-graphql-body.md))
 - [x] Response viewer: metadata, raw/pretty/tree/table views (Table for JSON array-of-objects + CSV, 1000 rows virtualized, `isTabular` disabled hint), binary preview (image `data:` inline, PDF banner, hex 4KB), search — ([ADR 0014](docs/adr/0014-history-cookie-jar-table-view.md))
-- [x] JSONPath / XPath response querying — dependency-free evaluator (`$.user.name`, `$['users'][0]`, wildcard `*`) with match list + specific errors; XPath pending
+- [~] JSONPath / XPath response querying — dependency-free evaluator (`$.user.name`, `$['users'][0]`, wildcard `*`) with match list + specific errors; **JSONPath [x], XPath [ ] pending (deferred to P3)**
 - [x] Response actions: copy (body/headers), download (Content-Disposition filename), format
 - [x] Cookies: persistent jar (`history.db` `cookies` table, `env`-partitioned, `0600`, domain/path/secure/expires matching via `history.FilterCookies`, auto-attach `Cookie:` on next `SendRequest`, `Set-Cookie` ingest via `HistoryService.Record`, view + delete/clear in `ResponseViewer` Cookies tab + desktop `CookieList/Delete/Clear` bindings, CLI jar implicit) — [Milestone 14 T5](https://github.com/Its-Satyajit/reqly/issues/76) + [Milestone 22](https://github.com/Its-Satyajit/reqly/issues/197) ([ADR 0014](docs/adr/0014-history-cookie-jar-table-view.md))
 - [x] Per-request settings + duplicate — timeout (ms) + `followRedirects` (`RequestSettingsDialog`, `core.RequestSave` + `mergeDraftRequest`, `WorkspaceService.DuplicateRequest` + `AppService.WorkspaceDuplicateRequest` + `RequestTabs`/`CollectionTree` duplicate) — `internal/request` + `internal/core` + `apps/desktop` + `frontend/src/lib/request.ts:47` + `frontend/src/stores/useRequestStore.ts:12` — shipped 2026-08-30 (M328)
@@ -181,7 +181,7 @@ The minimum set to make Reqly a serious API client.
 - [x] Pre-request / post-request scripts (Goja) — `reqly` sandbox (request/response access, variable get/set, `reqly.test()`, console)
 - [x] Test scripts + assertion library (core assertion engine shipped: status, header, body, JSON, response-time, schema)
 - [x] Request chaining (login → extract token → next request) — runtime variables persist across collection steps
-- [x] Chain runner — sequential execution, variable passing, assertions, script execution, fail-fast failure handling (conditional branching deferred to P1)
+- [~] Chain runner — sequential execution, variable passing, assertions, script execution, fail-fast failure handling (**conditional branching deferred to P1** — core runner [x], branching [ ])
 - [x] Collection runner (sequential, variable passing, assertions, fail-fast) — `reqly collection test` + desktop Run View streaming
 
 ### 1.8 Protocols (P0: REST-first, then extended)
@@ -190,8 +190,8 @@ The minimum set to make Reqly a serious API client.
 - [x] **WebSocket** — connection mgmt, message composer, in/out inspection (`internal/websocket` + `reqly ws`)
 - [x] **SSE** — live event stream, inspection, event history (`internal/sse` + `reqly sse`)
 - [x] **GraphQL** — query editor + variables via `BodyType: graphql` (ADR 0013), live endpoint introspection (`reqly graphql introspect <url>`), offline SDL schema parsing (`reqly graphql parse <file.graphql>`), Goja scripting helper `reqly.introspectGraphQL()`, and Desktop Schema Browser ([M50](docs/spec/m50-graphql-schema-introspection.md), [ADR 0034](docs/adr/0034-graphql-schema-introspection.md))
-- [x] **gRPC** — proto files, reflection, service/method discovery, unary + server-streaming — `internal/grpc` (reflection via v1 protocol, protocompile `.proto` fallback, TLS/h2c, deadlines), `grpc:` request-file block, scripting/assertions parity, history, `reqly grpc services|invoke`, desktop gRPC view (ADR 0028, M43; client-stream/bidi deferred)
-- [x] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; local `xsd:import`/`include` resolved via `ParseWSDLWithBase` (`filepath.Dir` in CLI) shipped 2026-08-30; remote URLs + `rpc/encoded` still best-effort with warnings per ADR — core P0 shipped, `rpc/encoded` P3)
+- [~] **gRPC** — proto files, reflection, service/method discovery, unary + server-streaming — `internal/grpc` (reflection via v1 protocol, protocompile `.proto` fallback, TLS/h2c, deadlines), `grpc:` request-file block, scripting/assertions parity, history, `reqly grpc services|invoke`, desktop gRPC view (ADR 0028, M43; **unary/server-streaming [x], client-stream/bidi [ ] deferred to P3**)
+- [~] **SOAP** — WSDL import, operation discovery, envelope skeletons: `reqly import wsdl <file> [--output dir]` ([M41](docs/spec/m41-wsdl-import.md) — one runnable POST per operation with binding-matched SOAP 1.1/1.2 envelopes, SOAPAction, inline-XSD body placeholders; local `xsd:import`/`include` resolved via `ParseWSDLWithBase` (`filepath.Dir` in CLI) shipped 2026-08-30; remote URLs + `rpc/encoded` still best-effort with warnings per ADR — **core P0 [x], `rpc/encoded` [ ] P3**)
 
 ### 1.9 Import / export
 
@@ -220,7 +220,7 @@ The minimum set to make Reqly a serious API client.
 
 ### 1.13 Desktop shell redesign — P0 UI Architecture
 
-- [x] §2.1 TopBar, §2.2 Tool Rail, §2.3 Context Sidebar, §2.4 Main Workspace, §2.5 Bottom Utility Panel, §3 Design System, §4 Navigation Model, §60 Navigation Map, §61 Shared Patterns, §62 Page vs Panel Rules, §63 Final Layout Model.
+- [~] §2.1 TopBar, §2.2 Tool Rail, §2.3 Context Sidebar, §2.4 Main Workspace, §2.5 Bottom Utility Panel, §3 Design System, §4 Navigation Model, §60 Navigation Map, §61 Shared Patterns, §62 Page vs Panel Rules, §63 Final Layout Model — **core shell shipped 2026-08-27 per `docs/internal/gui-roadmap.md` GUI-0→GUI-5, but per UI Redesign Notice above the `frontend/src/` chrome is being rewritten from scratch to the four-zone model; count as core [x] / UI [~] pending**.
 
 ---
 
@@ -256,21 +256,21 @@ Features that make Reqly more capable than a basic API client.
 - [x] **M60 API Changelog & SemVer Classifier** — automated spec diff changelog generator, Markdown/JSON export, SemVer major/minor/patch bump classification, CLI `reqly changelog`, and Goja binding `reqly.generateChangelog`
 - [x] **M63 Browser DevTools & Fetch Importer** — Chrome/Firefox/Safari/Edge DevTools 'Copy as fetch' parser, CLI `reqly import fetch`, and Goja sandbox binding `reqly.importFetch`
 - [x] **M64 Stateful Mock Engine** — multi-scenario state machine transitions, state control endpoints `/__reqly/state`, CLI `reqly mock --scenario`, and Goja `reqly.mock` bindings
-- [x] **M65 Workflow Engine (core & CLI + Desktop)** — sequential workflow execution with variable extraction, conditional step evaluation, query/header/body interpolation, `internal/workflow` + CLI `reqly workflow <file>` + Goja `reqly.workflow.run` + desktop `AppService.WorkflowRun` binding; visual builder UI pending
-- [x] **M66 Self-Hosted Automation** — local workflow scheduler (interval + maxRuns, enabled flag, `IsEnabled`/`IntervalDuration`/`Validate`), `internal/automation` `Scheduler.Run` (immediate first run + ticker, context-cancel, `onReport` callback) + CLI `reqly automation run <file> [--once --interval --max-runs]` + desktop `AppService.AutomationRun` binding; cron/Git-ops UI pending
+- [~] **M65 Workflow Engine (core & CLI + Desktop)** — sequential workflow execution with variable extraction, conditional step evaluation, query/header/body interpolation, `internal/workflow` + CLI `reqly workflow <file>` + Goja `reqly.workflow.run` + desktop `AppService.WorkflowRun` binding; **core/CLI/desktop [x], visual builder UI [ ] pending**
+- [~] **M66 Self-Hosted Automation** — local workflow scheduler (interval + maxRuns, enabled flag, `IsEnabled`/`IntervalDuration`/`Validate`), `internal/automation` `Scheduler.Run` (immediate first run + ticker, context-cancel, `onReport` callback) + CLI `reqly automation run <file> [--once --interval --max-runs]` + desktop `AppService.AutomationRun` binding; **core/CLI/desktop [x], cron/Git-ops UI [ ] pending**
 
 ---
 
 ## Phase 4 — Ecosystem & Enterprise (P3) — [Spec Reference](Milestones/05-phase-4-ecosystem-and-enterprise.md)
 
 - [x] **§58.1 Plugin Engine & Marketplace (Milestone 39)** — Goja JS runtime plugin execution, manifest validation, CLI manager
-- [x] **§58.2 Theme Sharing & Custom Themes (M67)** — Git-native shareable themes (`id` kebab-case, `label`, `appearance` light/dark, `tokens` map), `internal/theme` (`Validate`/`Parse`/`MarshalYAML`/`MarshalJSON`/`ToCSS`/`BuiltInThemes`/`IsBuiltIn`) + CLI `reqly theme list/export/import` + desktop `AppService.ThemeList/ThemeExport/ThemeImport` bindings; UI picker/extensions pending
+- [~] **§58.2 Theme Sharing & Custom Themes (M67)** — Git-native shareable themes (`id` kebab-case, `label`, `appearance` light/dark, `tokens` map), `internal/theme` (`Validate`/`Parse`/`MarshalYAML`/`MarshalJSON`/`ToCSS`/`BuiltInThemes`/`IsBuiltIn`) + CLI `reqly theme list/export/import` + desktop `AppService.ThemeList/ThemeExport/ThemeImport` bindings; **core/CLI/desktop [x], UI picker/extensions [ ] pending**
 - [x] **§58.3 Git Provider Integrations (Milestone 61)** — GitHub, GitLab, Bitbucket, and Azure DevOps integration, remote auto-detection, PAT token storage, and CLI login
 - [x] **M69 Audit Logs** — local append-only audit trail (`.reqly/audit.log` JSONL, 0600, `Entry{ID,Timestamp,Actor,Action,Resource,Details}` + `Validate` + 11 allowed actions), `internal/audit` (`NewStore`/`Add`/`List`/`Clear` with 0700/0600, mutex) + CLI `reqly audit list/clear` + desktop `AppService.AuditList/AuditAdd/AuditClear/AuditExport` bindings; org policies/SCIM deferred
 - [x] **M70 Organization Policies** — local policy file (`.reqly/policy.yaml` 0600, `Policy{RequireAudit,MaxWorkflowSteps,AllowedActions,RequireAuth,AllowCustomThemes}` + `Validate`/`Enforce`/`EnforceWorkflow` + `DefaultPolicy`/`Load`/`Save`/`DefaultPath` 0700/0600), `internal/policy` + CLI `reqly policy show/validate/enforce` + desktop `AppService.PolicyGet/PolicySave/PolicyEnforce` bindings; SSO/SCIM/collaboration deferred
 - [x] **M71 Advanced Access Control (RBAC)** — local RBAC (`.reqly/rbac.yaml` 0600, `RBAC{Roles,UserRoles}` + `Role{Name,Permissions}` + `DefaultRBAC` admin/editor/viewer + `Validate`/`Can`/`Enforce`/`ListRoles` + `Load`/`Save`/`DefaultPath` 0700/0600), `internal/rbac` + CLI `reqly rbac list/check` + desktop `AppService.RBACList/RBACCheck/RBACGet` bindings; collaboration/SSO deferred
-- [x] **M72 Enterprise Secret Management (Vault)** — HashiCorp Vault KV v2 store (`VaultStore{Addr,Token,Mount,Prefix}` + `Get`/`Set`/`Delete`/`Keys` via `X-Vault-Token`, `secret/data/prefix/<key>`), `internal/secrets.VaultStore` + `NewVaultStore` validation + `VaultConfig` + `REQLY_TOKEN_STORE=vault` with `VAULT_ADDR`/`VAULT_TOKEN`/`VAULT_MOUNT`/`VAULT_PREFIX` env, fallback to file store; AWS/Azure deferred
-- [x] **M73 Enterprise SSO & SCIM (M73)** — local SSO (`Config{Issuer,ClientID,JWKSURL,AllowedGroups}` + `Validate`/`ValidateToken` (HMAC via `jwt.Verify`, issuer check, `IsGroupAllowed`) + `internal/sso`) + SCIM in-memory store (`User{ID,UserName,Email,Groups,Active}`/`Group{ID,DisplayName,Members}` + `ValidateUser/Group` + `Store{CreateUser/GetUser/ListUsers/DeactivateUser/CreateGroup/AddUserToGroup}` + `internal/scim`) + CLI `reqly sso validate` + `reqly scim user create/list` + desktop `AppService.SSOValidate/SCIMCreateUser/SCIMListUsers`; collaboration server deferred
+- [~] **M72 Enterprise Secret Management (Vault)** — HashiCorp Vault KV v2 store (`VaultStore{Addr,Token,Mount,Prefix}` + `Get`/`Set`/`Delete`/`Keys` via `X-Vault-Token`, `secret/data/prefix/<key>`), `internal/secrets.VaultStore` + `NewVaultStore` validation + `VaultConfig` + `REQLY_TOKEN_STORE=vault` with `VAULT_ADDR`/`VAULT_TOKEN`/`VAULT_MOUNT`/`VAULT_PREFIX` env, fallback to file store; **Vault [x], AWS/Azure [ ] deferred to P3**
+- [~] **M73 Enterprise SSO & SCIM (M73)** — local SSO (`Config{Issuer,ClientID,JWKSURL,AllowedGroups}` + `Validate`/`ValidateToken` (HMAC via `jwt.Verify`, issuer check, `IsGroupAllowed`) + `internal/sso`) + SCIM in-memory store (`User{ID,UserName,Email,Groups,Active}`/`Group{ID,DisplayName,Members}` + `ValidateUser/Group` + `Store{CreateUser/GetUser/ListUsers/DeactivateUser/CreateGroup/AddUserToGroup}` + `internal/scim`) + CLI `reqly sso validate` + `reqly scim user create/list` + desktop `AppService.SSOValidate/SCIMCreateUser/SCIMListUsers`; **local HMAC/issuer/group [x], JWKS RS256 [ ] + collaboration server [ ] deferred**
 - [x] **M74 Shared Workspaces & Collaboration (M74)** — Git-native shared workspace (`.reqly/collab.yaml` 0600, `SharedWorkspace{Path,Collaborators}` + `Collaborator{User,Role,AddedAt}` + `Validate`/`AddCollaborator`/`RemoveCollaborator`/`IsCollaborator` + `Load`/`Save`/`DefaultPath` 0700/0600), `internal/collab` + CLI `reqly collab list/add/remove` + desktop `AppService.CollabList/CollabAdd/CollabRemove` bindings; self-hosted server deferred
 - [x] **M75 Self-Hosted Collaboration Server (M75)** — local HTTP server for shared workspaces (`Server{root,mux}` + `NewServer` + `Handler` + `/health`/`/collab`/`/workspace` endpoints, `net.Listen` ephemeral port, `http.Serve`), `internal/collab.Server` + CLI `reqly collab serve --port` + desktop `AppService.CollabServe(port) (string,error)` binding; collaboration server shipped
 
@@ -304,3 +304,16 @@ All detailed ticket-level milestone histories, GUI execution matrices, and compl
 - [x] Security review & file permissions
 - [x] Fast checks (formatting, linting, typechecking, unit tests)
 - [x] PR CI + Release CI cross-platform matrix (Linux, macOS, Windows)
+
+## Code Review Gates (`/code-review` — two-axis: Standards + Spec)
+
+> Every phase/milestone must pass the `/code-review` skill before it is marked `[x]` in the ledger above. The skill spawns two parallel sub-agents — **Standards** (`oxlint.config.ts` + `gofmt`/`go vet` + Fowler smell baseline) and **Spec** (milestone spec vs `ROADMAP.md` DoD: core+UI/CLI+tests) — against `git diff main...HEAD` (three-dot, merge-base). Fix the diff until both axes are green. See `docs/agents/issue-tracker.md` (run `/setup-matt-pocock-skills` if missing).
+
+- [x] Phase 0 — Foundation (`Milestones/01-phase-0-foundation.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [x] Phase 1 — Core API Client (P0) (`Milestones/02-phase-1-core-api-client.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [x] Phase 2 — Differentiating Features (P1) (`Milestones/03-phase-2-differentiating-features.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [x] Phase 3 — Power-User Features (P2) (`Milestones/04-phase-3-power-user-features.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [x] Phase 4 — Ecosystem & Enterprise (P3) (`Milestones/05-phase-4-ecosystem-and-enterprise.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [x] Phase 5 — MCP, AI & Extensibility (P4/P5) (`Milestones/06-phase-5-mcp-ai-extensibility.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [x] Historical Ledger — M01–M40 (`Milestones/07-historical-milestones-ledger.md`) — `/code-review` `main...HEAD` Standards + Spec
+- [x] Full UI Architecture — §1–§63 (`Milestones/09` + `10` + `11`) — `/code-review` `main...HEAD` Standards + Spec

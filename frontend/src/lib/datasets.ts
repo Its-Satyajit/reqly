@@ -3,9 +3,13 @@ export interface DatasetColumn {
   index: number;
 }
 
+/** DatasetRowValues is the domain type for one CSV/JSON row's stringified fields.
+ * Introduced to avoid Primitive Obsession where `{[key:string]:string}` traveled bare. */
+export type DatasetRowValues = Record<string, string>;
+
 export interface DatasetRow {
   index: number;
-  values: { [key: string]: string };
+  values: DatasetRowValues;
 }
 
 export interface Dataset {
@@ -105,7 +109,7 @@ export function parseCsv(content: string, name = "dataset"): Dataset {
   for (let i = 1; i < logicalLines.length; i++) {
     if (logicalLines[i].trim() === "") continue;
     const fields = parseCsvLine(logicalLines[i]);
-    const values: { [key: string]: string } = {};
+    const values: DatasetRowValues = {};
     for (let j = 0; j < columns.length; j++) {
       values[columns[j].name] = fields[j] ?? "";
     }
@@ -142,7 +146,7 @@ export function parseJsonDataset(content: string, name = "dataset"): Dataset {
   return { name, columns, rows, source: "json", rawContent: content };
 }
 
-export function getRowVariables(dataset: Dataset, rowIndex: number): { [key: string]: string } {
+export function getRowVariables(dataset: Dataset, rowIndex: number): DatasetRowValues {
   const row = dataset.rows[rowIndex];
   return row ? { ...row.values } : {};
 }

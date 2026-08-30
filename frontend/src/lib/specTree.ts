@@ -230,50 +230,130 @@ export interface EndpointInput {
   operationId?: string;
 }
 
+function yamlEscape(value: string): string {
+  // Minimal YAML quoting: if value contains chars that would break plain scalar,
+  // wrap in double quotes and JSON-escape. Mirrors how OpenAPI generators quote summaries.
+  if (value === "") return '""';
+  const needsQuote =
+    value.includes(":") ||
+    value.includes("#") ||
+    value.includes("[") ||
+    value.includes("]") ||
+    value.includes("{") ||
+    value.includes("}") ||
+    value.includes("&") ||
+    value.includes("*") ||
+    value.includes("?") ||
+    value.includes("|") ||
+    value.includes(">") ||
+    value.includes("-") ||
+    value.includes("!") ||
+    value.includes("%") ||
+    value.includes("@") ||
+    value.includes("`") ||
+    value.includes("\n") ||
+    /^\s|\s$/.test(value) ||
+    value.includes('"') ||
+    value.includes("'");
+  if (needsQuote) return JSON.stringify(value);
+  return value;
+}
+
+function isPathLine(line: string): boolean {
+  const t = line.trim();
+  // Unquoted or quoted path-like keys: must start with "/" and end with ":"
+  return (/^"?\s*\/[^:]*"?\s*:\s*$/).test(t) || (/^'\/[^']*':\s*$/).test(t);
+}
+
 export function patchEndpointInContent(content: string, oldPath: string, updated: EndpointInput): string {
-  // Replace path key if changed — preserve leading indentation (usually 2 spaces under paths:)
-  if (updated.path !== oldPath) {
-    const escapedOld = oldPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pathRegex = new RegExp(`^(\\s*)${escapedOld}:`, "m");
-    if (pathRegex.test(content)) {
-      content = content.replace(pathRegex, `$1${updated.path}:`);
-    } else {
-      // Fallback: append new path block if old not found (should not happen)
-      content = content.trimEnd() + `\n  ${updated.path}:\n    ${updated.method.toLowerCase()}:\n      summary: ${updated.summary ?? "New endpoint"}\n`;
-      return content;
-    }
-  }
-  // Ensure method and summary under the (possibly new) path.
-  // We look for the path block and inject/update method.
   const targetPath = updated.path;
   const methodLower = updated.method.toLowerCase();
-  const escapedPathForSearch = targetPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const escapedMethodForSearch = methodLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pathIndex = content.search(new RegExp(`^\\s*${escapedPathForSearch}:`, "m"));
-  if (pathIndex !== -1) {
-    const afterPath = content.slice(pathIndex);
-    // Find next path to bound the search (avoid matching method from next path)
-    const nextPathMatch = afterPath.slice(targetPath.length + 1).search(/\n\s*\//);
-    const pathBlock = nextPathMatch === -1 ? afterPath : afterPath.slice(0, nextPathMatch + targetPath.length + 1);
-    const hasMethod = new RegExp(`\\n\\s+${escapedMethodForSearch}:`, "i").test(pathBlock);
-    if (!hasMethod) {
-      const lines = content.split("\n");
-      const pathLineIdx = lines.findIndex((l) => {
-        const t = l.trim();
-        return t === `${targetPath}:` || t === `"${targetPath}":` || t === `'${targetPath}':`;
-      });
-      if (pathLineIdx !== -1) {
-        const indent = "    ";
-        const methodBlock = [`${indent}${methodLower}:`, `${indent}  summary: ${updated.summary ?? "New endpoint"}`];
-        if (updated.operationId) methodBlock.push(`${indent}  operationId: ${updated.operationId}`);
-        lines.splice(pathLineIdx + 1, 0, ...methodBlock);
-        content = lines.join("\n");
-      }
-    } else if (updated.summary) {
-      content = content.replace(new RegExp(`(${escapedPathForSearch}:[\\s\\S]*?${escapedMethodForSearch}:\\s*\\n\\s+summary:)\\s*.*`), `$1 ${updated.summary}`);
+  const lines = content.split("\n");
+
+  // Helper to find exact path line (no prefix collision) — matches whole key, not substring.
+  const findPathIdx = (path: string, from = 0): number => {
+    for (let i = from; i < lines.length; i++) {
+      const t = lines[i].trim();
+      if (t === `${path}:` || t === `"${path}":` || t === `'${path}':`) return i;
+      // Strict regex: leading whitespace, exact path (escaped), optional whitespace, colon, optional whitespace, end
+      const esc = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`^\\s*(?:"${esc}"|'${esc}'|${esc})\\s*:\\s*$`);
+      if (re.test(lines[i])) return i;
+    }
+    return -1;
+  };
+
+  if (updated.path !== oldPath) {
+    const oldIdx = findPathIdx(oldPath);
+    if (oldIdx !== -1) {
+      const indent = lines[oldIdx].match(/^\s*/)?.[0] ?? "  ";
+      // Preserve quoting style of original; default to unquoted.
+      const origTrim = lines[oldIdx].trim();
+      const wasSingle = origTrim.startsWith("'");
+      const wasDouble = origTrim.startsWith('"');
+      const newKey = wasSingle ? `'${targetPath}':` : wasDouble ? `"${targetPath}":` : `${targetPath}:`;
+      lines[oldIdx] = `${indent}${newKey}`;
+      content = lines.join("\n");
+    } else {
+      // Fallback: append new path block if old not found — quote summary safely
+      content = content.trimEnd() + `\n  ${targetPath}:\n    ${methodLower}:\n      summary: ${yamlEscape(updated.summary ?? "New endpoint")}\n`;
+      // Append operationId if present
+      if (updated.operationId) content = content.trimEnd() + `\n        operationId: ${yamlEscape(updated.operationId)}\n`;
+      return content;
+    }
+  } else {
+    content = lines.join("\n");
+  }
+
+  // Now ensure method and summary under targetPath
+  // Re-split after possible rename
+  const curLines = content.split("\n");
+  const pathIdx = findPathIdx(targetPath);
+  if (pathIdx === -1) return content;
+
+  // Bound path block: next path line after pathIdx
+  let nextPathIdx = curLines.length;
+  for (let i = pathIdx + 1; i < curLines.length; i++) {
+    if (isPathLine(curLines[i])) {
+      nextPathIdx = i;
+      break;
     }
   }
-  return content;
+  const pathBlock = curLines.slice(pathIdx, nextPathIdx).join("\n");
+  const escMethod = methodLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const hasMethod = new RegExp(`^\\s+${escMethod}\\s*:`, "im").test(pathBlock);
+
+  if (!hasMethod) {
+    const indent = "    ";
+    const methodBlock = [`${indent}${methodLower}:`, `${indent}  summary: ${yamlEscape(updated.summary ?? "New endpoint")}`];
+    if (updated.operationId) methodBlock.push(`${indent}  operationId: ${yamlEscape(updated.operationId)}`);
+    curLines.splice(pathIdx + 1, 0, ...methodBlock);
+    return curLines.join("\n");
+  }
+  if (updated.summary) {
+    // Update summary within this path+method block only, to avoid cross-path greed.
+    for (let i = pathIdx + 1; i < nextPathIdx; i++) {
+      if (/^\s+summary\s*:/.test(curLines[i]) && curLines.slice(pathIdx, i).some((l) => new RegExp(`^\\s+${escMethod}\\s*:`, "i").test(l))) {
+        // Find method line first, ensure summary is under that method
+        const methodIdx = curLines.slice(pathIdx + 1, nextPathIdx).findIndex((l) => new RegExp(`^\\s+${escMethod}\\s*:`, "i").test(l));
+        const absMethodIdx = pathIdx + 1 + methodIdx;
+        if (i > absMethodIdx) {
+          const indent = curLines[i].match(/^\s*/)?.[0] ?? "      ";
+          curLines[i] = `${indent}summary: ${yamlEscape(updated.summary)}`;
+          return curLines.join("\n");
+        }
+      }
+    }
+    // If summary line not found but method exists, insert it right after method
+    const methodIdx = curLines.slice(pathIdx + 1, nextPathIdx).findIndex((l) => new RegExp(`^\\s+${escMethod}\\s*:`, "i").test(l));
+    if (methodIdx !== -1) {
+      const absMethodIdx = pathIdx + 1 + methodIdx;
+      const indent = "      ";
+      curLines.splice(absMethodIdx + 1, 0, `${indent}summary: ${yamlEscape(updated.summary)}`);
+      return curLines.join("\n");
+    }
+  }
+  return curLines.join("\n");
 }
 
 const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE"]);

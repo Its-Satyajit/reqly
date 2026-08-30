@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { ChevronRight, Play, Plus, Search } from "lucide-react";
-import type { WorkspaceFolder, WorkspaceRequest } from "#lib/collections";
+import type { EntryIdentity, WorkspaceFolder, WorkspaceRequest } from "#lib/collections";
 import { cn } from "#lib/utils";
 import { RUN_TAB_ID, useCollectionRunStore, useWorkspaceStore } from "#stores";
 
@@ -52,7 +52,7 @@ function treeKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
 	}
 }
 
-function RunControl({ path, name }: { path: string; name: string }) {
+function RunControl({ path, name }: EntryIdentity) {
 	const running = useCollectionRunStore((s) => s.running);
 	const openTab = useWorkspaceStore((s) => s.openTab);
 	const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
@@ -78,7 +78,7 @@ function RunControl({ path, name }: { path: string; name: string }) {
 	);
 }
 
-function ContextMenu({ path, name, onClose }: { path: string; name: string; onClose: () => void }) {
+function ContextMenu({ path, name, onClose }: EntryIdentity & { onClose: () => void }) {
 	const items = [
 		"Rename",
 		"Move",
