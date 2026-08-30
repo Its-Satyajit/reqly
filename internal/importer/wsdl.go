@@ -417,35 +417,50 @@ func collectSchemas(root *wsdlNode, rep *ImportReport) map[string]*xsdShape {
 
 func collectSchemasWithBase(root *wsdlNode, rep *ImportReport, baseDir string) map[string]*xsdShape {
 	shapes := map[string]*xsdShape{} // "{ns}Name" → shape
+	visited := map[string]bool{}
+	resolveLocal := func(loc, kind string) bool {
+		if loc == "" || baseDir == "" || isURL(loc) {
+			return false
+		}
+		// Prevent directory traversal outside base
+		if strings.Contains(loc, "..") {
+			rep.Add("", CategorySchema, SeverityWarned, "external %s %q contains traversal; not followed", kind, loc)
+			return true // handled (warned, but don't add not-followed again)
+		}
+		cleanLoc := filepath.Clean(loc)
+		if filepath.IsAbs(cleanLoc) {
+			return false
+		}
+		candidate := filepath.Join(baseDir, cleanLoc)
+		if visited[candidate] {
+			return true // already processed, suppress duplicate warning
+		}
+		visited[candidate] = true
+		data, err := os.ReadFile(candidate)
+		if err != nil {
+			return false
+		}
+		if extShapes := tryParseExternalSchema(data, rep); extShapes != nil {
+			for k, v := range extShapes {
+				shapes[k] = v
+			}
+			return true // resolved
+		}
+		return false
+	}
 	addSchema := func(schema *wsdlNode) {
 		targetNS := schema.attr("targetNamespace")
 		for _, imp := range schema.all("import") {
 			loc := imp.attr("schemaLocation")
-			if loc != "" && baseDir != "" && !isURL(loc) {
-				candidate := filepath.Join(baseDir, loc)
-				if data, err := os.ReadFile(candidate); err == nil {
-					if extShapes := tryParseExternalSchema(data, rep); extShapes != nil {
-						for k, v := range extShapes {
-							shapes[k] = v
-						}
-						continue // resolved, no warning
-					}
-				}
+			if resolveLocal(loc, "xsd:import") {
+				continue
 			}
 			rep.Add("", CategorySchema, SeverityWarned, "external xsd:import %q not followed; affected elements get skeleton-only bodies", imp.attr("schemaLocation"))
 		}
 		for _, inc := range schema.all("include") {
 			loc := inc.attr("schemaLocation")
-			if loc != "" && baseDir != "" && !isURL(loc) {
-				candidate := filepath.Join(baseDir, loc)
-				if data, err := os.ReadFile(candidate); err == nil {
-					if extShapes := tryParseExternalSchema(data, rep); extShapes != nil {
-						for k, v := range extShapes {
-							shapes[k] = v
-						}
-						continue // resolved, no warning
-					}
-				}
+			if resolveLocal(loc, "xsd:include") {
+				continue
 			}
 			rep.Add("", CategorySchema, SeverityWarned, "external xsd:include %q not followed; affected elements get skeleton-only bodies", inc.attr("schemaLocation"))
 		}
