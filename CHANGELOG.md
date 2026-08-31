@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.10.0](https://github.com/Its-Satyajit/reqly/compare/v1.9.0...v1.10.0) (2026-08-31)
+
+
+### Features
+
+* **frontend:** add Motion (prev Framer Motion) v13.1.1 ([4e7d07e](https://github.com/Its-Satyajit/reqly/commit/4e7d07e603276986c4c94f10fb6547b55ac71333))
+* **importer:** add JS models import reportsAdd a generated Java module defining importer models used by thedesktop frontend binding. The file introduces enum-like constants(Category, Format, Severity) and classes (Report, ReportEntry) ([7bd2828](https://github.com/Its-Satyajit/reqly/commit/7bd2828e4106231cc18c5ad34964ba314a990fe3))
+* **importer:** add JS models import reportsAdd a generated Java module defining importer models used by thedesktop frontend binding. The file introduces enum-like constants(Category, Format, Severity) and classes (Report, ReportEntry) ([189531b](https://github.com/Its-Satyajit/reqly/commit/189531bc8f55898a6a6b6dfd73c40fdbdac82286))
+* **inst:** add AppImage option and improve fallbacksAdd --app/appimage flag support to install.sh to allow installing theReqly AppImage into ~/Applications. Implement install_appimage() todownload and install the AppImage (with curl/wget support and a genericrelease fallback), make it executable, and the installed path. ([9261629](https://github.com/Its-Satyajit/reqly/commit/92616293688ba8920974a78d002973d630cf564d))
+* **shell:** slice 01 — tokens + storage + AppShell + useShellStore (372.1) ([33a1d1d](https://github.com/Its-Satyajit/reqly/commit/33a1d1db888a1e0a5250484c53a47374611f2dd2))
+* **shell:** slice 02 — AppShell mount, App.tsx thin wrapper (372.2) ([82d4430](https://github.com/Its-Satyajit/reqly/commit/82d44305de17c70f52c552d3064e3222b9a3ea78))
+* **shell:** slice 08 — palette grouping + recent + directional empty (372.8) ([3d9d5f1](https://github.com/Its-Satyajit/reqly/commit/3d9d5f153196e85e529b9b60be855431e770e6b0))
+* **ui:** add Menubar component primitivesIntroduce a new Menubar component and its subcomponents built onbase-ui/react/menu primitives provide consistent, accessiblemenubar UI for the frontend. ([1238e50](https://github.com/Its-Satyajit/reqly/commit/1238e506d6d165ac57fdeaa5c22d0a8447417847))
+* **ui:** P0 polish for [#369](https://github.com/Its-Satyajit/reqly/issues/369) — About version + palette import/export ([5553cd1](https://github.com/Its-Satyajit/reqly/commit/5553cd19e2cb398d94a85f4cdd94974f6b650dd1))
+* **ui:** wire per-request timeout + followRedirects and duplicate request ([#328](https://github.com/Its-Satyajit/reqly/issues/328)) ([1882bd3](https://github.com/Its-Satyajit/reqly/commit/1882bd34b566e500575578a42c5fb86d471b9fa9))
+* **update:** add update command and testsAdd a new `update` Cobra command to the that checks Git for thelatest Reqly release and can download and replace the running executable. ([93db217](https://github.com/Its-Satyajit/reqly/commit/93db217628cd2886b8f7412c38a340fe3b684275))
+
+
+### Bug Fixes
+
+* **deps:** migrate from archived gopkg.in/yaml.v3 to go.yaml.in/yaml/v3 ([4b9987d](https://github.com/Its-Satyajit/reqly/commit/4b9987d217654e4790af8041023067c3b762ce68))
+* **deps:** update go.yaml.in/yaml/v3 to v3.0.5 ([d7022ae](https://github.com/Its-Satyajit/reqly/commit/d7022ae132f093f9acc9621d3dcac104bb7a55d3))
+
 ## [1.9.0](https://github.com/Its-Satyajit/reqly/compare/v1.8.0...v1.9.0) (2026-08-30)
 
 
