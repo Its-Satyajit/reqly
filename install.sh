@@ -202,6 +202,43 @@ install_rpm() {
   return 1
 }
 
+install_arch_pkg() {
+  local arch="$1"
+  local tmpdir
+  tmpdir=$(mktemp -d)
+  trap 'rm -rf "$tmpdir"' EXIT
+  echo "Downloading Reqly Arch package ($arch)..."
+  local urls=()
+  urls+=("$(desktop_url "reqly.pkg.tar.zst" "$VERSION")")
+  urls+=("$(desktop_url "reqly-${VERSION#v}-1-${arch}.pkg.tar.zst" "$VERSION")")
+  urls+=("$(desktop_url "reqly-${VERSION#v}-${arch}.pkg.tar.zst" "$VERSION")")
+  local pkg_path="$tmpdir/reqly.pkg.tar.zst"
+  if try_download "$pkg_path" "${urls[@]}"; then
+    echo "Installing Arch package..."
+    if sudo pacman -U --noconfirm "$pkg_path" 2>/dev/null; then
+      echo "Installed via pacman -U"
+      return 0
+    else
+      echo "pacman -U failed, trying to extract binary..."
+      tar -I zstd -xf "$pkg_path" -C "$tmpdir" 2>/dev/null || tar -xf "$pkg_path" -C "$tmpdir" 2>/dev/null || true
+      local bin
+      bin=$(find "$tmpdir" -name "reqly" -type f | head -n 1)
+      if [ -n "$bin" ]; then
+        chmod +x "$bin"
+        if [ -w "/usr/local/bin" ]; then
+          install -m 755 "$bin" "/usr/local/bin/reqly"
+        else
+          mkdir -p "$HOME/.local/bin"
+          install -m 755 "$bin" "$HOME/.local/bin/reqly"
+        fi
+        echo "Installed reqly binary from Arch package"
+        return 0
+      fi
+    fi
+  fi
+  return 1
+}
+
 install_desktop_binary_linux() {
   local arch="$1"
   local tmpdir
@@ -284,23 +321,32 @@ install_linux() {
 
   if [ "$WANT_DESKTOP" = true ]; then
     echo "Installing Reqly Desktop for Linux ($arch)..."
-    # 1) AppImage (portable, most universal)
-    if install_appimage "$arch"; then return 0; fi
     local pm
     pm=$(detect_linux_pm)
-    echo "Detected package manager: $pm (AppImage fallback failed or not preferred)"
-    case "$pm" in
-      apt)
-        if install_deb "$arch"; then return 0; fi
-        ;;
-      dnf|zypper)
-        if install_rpm "$arch"; then return 0; fi
-        ;;
-      pacman)
-        if command -v yay >/dev/null 2>&1 && yay -S --noconfirm reqly-bin 2>/dev/null; then return 0; fi
-        if command -v paru >/dev/null 2>&1 && paru -S --noconfirm reqly-bin 2>/dev/null; then return 0; fi
-        ;;
-    esac
+    echo "Detected package manager: $pm"
+    # On Arch, AppImage built on Ubuntu fails due to WebKit path /usr/lib/x86_64-linux-gnu
+    # Prefer native Arch package first
+    if [ "$pm" = "pacman" ]; then
+      if command -v yay >/dev/null 2>&1 && yay -S --noconfirm reqly-bin 2>/dev/null; then return 0; fi
+      if command -v paru >/dev/null 2>&1 && paru -S --noconfirm reqly-bin 2>/dev/null; then return 0; fi
+      if install_arch_pkg "$arch"; then return 0; fi
+      if install_desktop_binary_linux "$arch"; then return 0; fi
+      if install_appimage "$arch"; then
+        echo "Note: Ubuntu-built AppImage may fail on Arch with 'WebKitNetworkProcess No such file'. Use pacman package if it does."
+        return 0
+      fi
+    else
+      # apt/dnf: AppImage is portable and preferred
+      if install_appimage "$arch"; then return 0; fi
+      case "$pm" in
+        apt)
+          if install_deb "$arch"; then return 0; fi
+          ;;
+        dnf|zypper)
+          if install_rpm "$arch"; then return 0; fi
+          ;;
+      esac
+    fi
     # Fallback: desktop binary
     if install_desktop_binary_linux "$arch"; then return 0; fi
     echo "Desktop install failed, falling back to CLI..."
