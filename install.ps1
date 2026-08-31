@@ -1,4 +1,4 @@
-# Reqly - Windows installer (amd64, PowerShell)
+# Reqly - Windows installer (amd64/arm64, PowerShell)
 # Usage: irm https://raw.githubusercontent.com/Its-Satyajit/reqly/main/install.ps1 | iex
 # Or: powershell -ExecutionPolicy Bypass -File install.ps1
 param(
@@ -12,9 +12,8 @@ $BinName = "reqly.exe"
 
 function Get-Arch {
     $arch = $env:PROCESSOR_ARCHITECTURE
-    if ($arch -eq "AMD64" -or $arch -eq "x86_64") { return "amd64" }
     if ($arch -eq "ARM64") { return "arm64" }
-    return "amd64" # default to amd64 for Windows 64 as requested
+    return "amd64" # Default to amd64 for x86_64 / Intel / AMD
 }
 
 function Get-DownloadUrl {
@@ -35,23 +34,21 @@ function Install-Reqly {
     $tmpDir = Join-Path $env:TEMP "reqly-install-$(Get-Random)"
     New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
     try {
-        # Try zip first, then exe
-        $zipUrl = Get-DownloadUrl -Arch $arch -Version $Version -Ext ".zip"
         $exeUrl = Get-DownloadUrl -Arch $arch -Version $Version -Ext ".exe"
-        $zipPath = Join-Path $tmpDir "reqly.zip"
+        $zipUrl = Get-DownloadUrl -Arch $arch -Version $Version -Ext ".zip"
         $exePath = Join-Path $tmpDir $BinName
+        $zipPath = Join-Path $tmpDir "reqly.zip"
 
-        Write-Host "Downloading $zipUrl..." -ForegroundColor Gray
+        Write-Host "Downloading Reqly CLI ($arch)..." -ForegroundColor Gray
         try {
-            Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
-            Write-Host "Extracting..." -ForegroundColor Gray
+            Invoke-WebRequest -Uri $exeUrl -OutFile $exePath -UseBasicParsing -ErrorAction Stop
+            $bin = Get-Item $exePath
+        } catch {
+            Write-Host "Direct executable not found, trying zip archive..." -ForegroundColor Yellow
+            Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
             Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force
             $bin = Get-ChildItem -Path $tmpDir -Filter $BinName -Recurse | Select-Object -First 1
-            if (-not $bin) { $bin = Get-ChildItem -Path $tmpDir -Filter "reqly*" -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object -First 1 }
-        } catch {
-            Write-Host "Zip not found, trying exe..." -ForegroundColor Yellow
-            Invoke-WebRequest -Uri $exeUrl -OutFile $exePath -UseBasicParsing
-            $bin = Get-Item $exePath
+            if (-not $bin) { $bin = Get-ChildItem -Path $tmpDir -Filter "reqly*.exe" -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object -First 1 }
         }
 
         if (-not $bin -or -not (Test-Path $bin.FullName)) {
@@ -78,8 +75,7 @@ function Install-Reqly {
         & $dest --version
         Write-Host "Run: reqly --version" -ForegroundColor Cyan
     } finally {
-        # keep tmp for debugging on failure, else remove
-        # Remove-Item -Path $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 

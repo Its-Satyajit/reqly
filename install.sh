@@ -8,6 +8,13 @@ REPO="Its-Satyajit/reqly"
 BIN_NAME="reqly"
 INSTALL_DIR="/usr/local/bin"
 VERSION="${VERSION:-latest}"
+WANT_APPIMAGE=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --app|--appimage) WANT_APPIMAGE=true ;;
+  esac
+done
 
 detect_os() {
   case "$(uname -s)" in
@@ -42,41 +49,76 @@ download_url() {
   fi
 }
 
+install_appimage() {
+  local arch="$1"
+  local tmpdir
+  tmpdir=$(mktemp -d)
+  trap 'rm -rf "$tmpdir"' EXIT
+  local url
+  url=$(download_url "linux" "$arch" "$VERSION" ".AppImage")
+  echo "Downloading Reqly AppImage ($arch)..."
+  local target_dir="$HOME/Applications"
+  mkdir -p "$target_dir"
+  local target_path="$target_dir/Reqly.AppImage"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$url" -o "$target_path" || {
+      # Try generic name without arch
+      if [ "$VERSION" = "latest" ]; then
+        url="https://github.com/${REPO}/releases/latest/download/Reqly.AppImage"
+      else
+        url="https://github.com/${REPO}/releases/download/${VERSION}/Reqly.AppImage"
+      fi
+      curl -fsSL "$url" -o "$target_path" || { echo "AppImage download failed. Falling back to CLI binary..."; install_binary "linux" "$arch"; return; }
+    }
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q "$url" -O "$target_path" || { echo "AppImage download failed. Falling back to CLI binary..."; install_binary "linux" "$arch"; return; }
+  fi
+  chmod +x "$target_path"
+  echo "Reqly AppImage installed to: $target_path"
+}
+
 install_binary() {
   local os="$1" arch="$2"
   local tmpdir
   tmpdir=$(mktemp -d)
   trap 'rm -rf "$tmpdir"' EXIT
   local url
-  url=$(download_url "$os" "$arch" "$VERSION" ".tar.gz")
-  echo "Downloading $url..."
+  url=$(download_url "$os" "$arch" "$VERSION" "")
+  echo "Downloading Reqly CLI ($os/$arch)..."
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$url" -o "$tmpdir/reqly.tar.gz" || {
-      echo "Trying binary fallback..."
-      url=$(download_url "$os" "$arch" "$VERSION" "")
-      curl -fsSL "$url" -o "$tmpdir/reqly" || { echo "Download failed"; exit 1; }
-      chmod +x "$tmpdir/reqly"
-      install -m 755 "$tmpdir/reqly" "$INSTALL_DIR/$BIN_NAME" 2>/dev/null || install -m 755 "$tmpdir/reqly" "$HOME/.local/bin/$BIN_NAME"
-      echo "Installed $BIN_NAME to $INSTALL_DIR"
-      return
+    curl -fsSL "$url" -o "$tmpdir/reqly" || {
+      echo "Trying tar.gz archive fallback..."
+      url=$(download_url "$os" "$arch" "$VERSION" ".tar.gz")
+      curl -fsSL "$url" -o "$tmpdir/reqly.tar.gz" || { echo "Download failed for $os/$arch"; exit 1; }
+      tar -xzf "$tmpdir/reqly.tar.gz" -C "$tmpdir"
+      local bin
+      bin=$(find "$tmpdir" -name "reqly" -type f | head -n 1)
+      if [ -n "$bin" ] && [ "$bin" != "$tmpdir/reqly" ]; then
+        cp "$bin" "$tmpdir/reqly"
+      fi
     }
   elif command -v wget >/dev/null 2>&1; then
-    wget -q "$url" -O "$tmpdir/reqly.tar.gz" || { echo "Download failed"; exit 1; }
+    wget -q "$url" -O "$tmpdir/reqly" || {
+      url=$(download_url "$os" "$arch" "$VERSION" ".tar.gz")
+      wget -q "$url" -O "$tmpdir/reqly.tar.gz" || { echo "Download failed"; exit 1; }
+      tar -xzf "$tmpdir/reqly.tar.gz" -C "$tmpdir"
+      local bin
+      bin=$(find "$tmpdir" -name "reqly" -type f | head -n 1)
+      if [ -n "$bin" ] && [ "$bin" != "$tmpdir/reqly" ]; then
+        cp "$bin" "$tmpdir/reqly"
+      fi
+    }
   else
-    echo "Need curl or wget"; exit 1
+    echo "Error: curl or wget is required"; exit 1
   fi
-  tar -xzf "$tmpdir/reqly.tar.gz" -C "$tmpdir"
-  # find binary
-  local bin
-  bin=$(find "$tmpdir" -name "reqly" -type f | head -n 1)
-  if [ -z "$bin" ]; then bin="$tmpdir/reqly"; fi
-  chmod +x "$bin"
+
+  chmod +x "$tmpdir/reqly"
   if [ -w "$INSTALL_DIR" ]; then
-    install -m 755 "$bin" "$INSTALL_DIR/$BIN_NAME"
+    install -m 755 "$tmpdir/reqly" "$INSTALL_DIR/$BIN_NAME"
   else
     mkdir -p "$HOME/.local/bin"
-    install -m 755 "$bin" "$HOME/.local/bin/$BIN_NAME"
-    echo "Installed to $HOME/.local/bin (add to PATH)"
+    install -m 755 "$tmpdir/reqly" "$HOME/.local/bin/$BIN_NAME"
+    echo "Installed to $HOME/.local/bin (ensure it is in your PATH)"
     INSTALL_DIR="$HOME/.local/bin"
   fi
   echo "Installed $BIN_NAME to $INSTALL_DIR/$BIN_NAME"
@@ -84,22 +126,24 @@ install_binary() {
 }
 
 install_linux() {
-  local pm
-  pm=$(detect_linux_pm)
   local arch
   arch=$(detect_arch)
+  if [ "$WANT_APPIMAGE" = true ]; then
+    install_appimage "$arch"
+    return
+  fi
+
+  local pm
+  pm=$(detect_linux_pm)
   echo "Detected Linux ($arch), package manager: $pm"
-  # Try native package first for amd64 (most distro support)
+
   case "$pm" in
     pacman)
-      echo "Arch Linux detected — trying AUR (reqly-bin)..."
-      if command -v yay >/dev/null 2>&1; then yay -S --noconfirm reqly-bin || install_binary "linux" "$arch"; return; fi
-      if command -v paru >/dev/null 2>&1; then paru -S --noconfirm reqly-bin || install_binary "linux" "$arch"; return; fi
+      if command -v yay >/dev/null 2>&1 && yay -S --noconfirm reqly-bin 2>/dev/null; then return; fi
+      if command -v paru >/dev/null 2>&1 && paru -S --noconfirm reqly-bin 2>/dev/null; then return; fi
       install_binary "linux" "$arch"
       ;;
     apt)
-      echo "Debian/Ubuntu detected..."
-      # try .deb if available, else tar.gz
       local tmpdir
       tmpdir=$(mktemp -d)
       trap 'rm -rf "$tmpdir"' EXIT
@@ -111,14 +155,6 @@ install_linux() {
         install_binary "linux" "$arch"
       fi
       ;;
-    dnf)
-      echo "Fedora/RHEL detected..."
-      install_binary "linux" "$arch"
-      ;;
-    zypper)
-      echo "openSUSE detected..."
-      install_binary "linux" "$arch"
-      ;;
     *)
       install_binary "linux" "$arch"
       ;;
@@ -128,48 +164,47 @@ install_linux() {
 install_darwin() {
   local arch
   arch=$(detect_arch)
-  echo "Detected macOS ($arch)..."
-  # For macOS, use tar.gz (dmg requires hdiutil + quarantine handling)
+  echo "Detected macOS ($arch: $([ "$arch" = "arm64" ] && echo "Apple Silicon" || echo "Intel"))..."
   local tmpdir
   tmpdir=$(mktemp -d)
   trap 'rm -rf "$tmpdir"' EXIT
   local url
-  # Map arch: x86_64 -> amd64, arm64 stays
-  url=$(download_url "darwin" "$arch" "$VERSION" ".tar.gz")
-  echo "Downloading $url..."
+  url=$(download_url "darwin" "$arch" "$VERSION" "")
+  echo "Downloading Reqly CLI (darwin/$arch)..."
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$url" -o "$tmpdir/reqly.tar.gz" || { echo "Download failed, trying binary..."; url=$(download_url "darwin" "$arch" "$VERSION" ""); curl -fsSL "$url" -o "$tmpdir/reqly"; }
-  else
-    wget -q "$url" -O "$tmpdir/reqly.tar.gz"
+    curl -fsSL "$url" -o "$tmpdir/reqly" || {
+      url=$(download_url "darwin" "$arch" "$VERSION" ".tar.gz")
+      curl -fsSL "$url" -o "$tmpdir/reqly.tar.gz" || { echo "Download failed"; exit 1; }
+      tar -xzf "$tmpdir/reqly.tar.gz" -C "$tmpdir"
+      local bin
+      bin=$(find "$tmpdir" -name "reqly" -type f | head -n 1)
+      if [ -n "$bin" ] && [ "$bin" != "$tmpdir/reqly" ]; then
+        cp "$bin" "$tmpdir/reqly"
+      fi
+    }
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q "$url" -O "$tmpdir/reqly" || {
+      url=$(download_url "darwin" "$arch" "$VERSION" ".tar.gz")
+      wget -q "$url" -O "$tmpdir/reqly.tar.gz" || { echo "Download failed"; exit 1; }
+      tar -xzf "$tmpdir/reqly.tar.gz" -C "$tmpdir"
+      local bin
+      bin=$(find "$tmpdir" -name "reqly" -type f | head -n 1)
+      if [ -n "$bin" ] && [ "$bin" != "$tmpdir/reqly" ]; then
+        cp "$bin" "$tmpdir/reqly"
+      fi
+    }
   fi
-  if [ -f "$tmpdir/reqly.tar.gz" ]; then
-    tar -xzf "$tmpdir/reqly.tar.gz" -C "$tmpdir"
-    local bin
-    bin=$(find "$tmpdir" -name "reqly" -type f | head -n 1)
-    if [ -z "$bin" ]; then bin="$tmpdir/reqly"; fi
-    chmod +x "$bin"
-    # Try /usr/local/bin, else ~/bin
-    if [ -w "/usr/local/bin" ]; then
-      install -m 755 "$bin" "/usr/local/bin/$BIN_NAME"
-      echo "Installed to /usr/local/bin/$BIN_NAME"
-      # Remove quarantine for ad-hoc signed binary
-      xattr -d com.apple.quarantine "/usr/local/bin/$BIN_NAME" 2>/dev/null || true
-    else
-      mkdir -p "$HOME/bin"
-      install -m 755 "$bin" "$HOME/bin/$BIN_NAME"
-      echo "Installed to $HOME/bin/$BIN_NAME (add to PATH)"
-      xattr -d com.apple.quarantine "$HOME/bin/$BIN_NAME" 2>/dev/null || true
-    fi
-  elif [ -f "$tmpdir/reqly" ]; then
-    chmod +x "$tmpdir/reqly"
-    if [ -w "/usr/local/bin" ]; then
-      install -m 755 "$tmpdir/reqly" "/usr/local/bin/$BIN_NAME"
-      xattr -d com.apple.quarantine "/usr/local/bin/$BIN_NAME" 2>/dev/null || true
-    else
-      mkdir -p "$HOME/bin"
-      install -m 755 "$tmpdir/reqly" "$HOME/bin/$BIN_NAME"
-      xattr -d com.apple.quarantine "$HOME/bin/$BIN_NAME" 2>/dev/null || true
-    fi
+
+  chmod +x "$tmpdir/reqly"
+  if [ -w "/usr/local/bin" ]; then
+    install -m 755 "$tmpdir/reqly" "/usr/local/bin/$BIN_NAME"
+    xattr -d com.apple.quarantine "/usr/local/bin/$BIN_NAME" 2>/dev/null || true
+    echo "Installed to /usr/local/bin/$BIN_NAME"
+  else
+    mkdir -p "$HOME/bin"
+    install -m 755 "$tmpdir/reqly" "$HOME/bin/$BIN_NAME"
+    xattr -d com.apple.quarantine "$HOME/bin/$BIN_NAME" 2>/dev/null || true
+    echo "Installed to $HOME/bin/$BIN_NAME (ensure it is in your PATH)"
   fi
   echo "Run: reqly --version"
 }
