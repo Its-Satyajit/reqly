@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.1](https://github.com/Its-Satyajit/reqly/compare/v1.11.0...v1.11.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* **desktop:** sync remaining wails template placeholders to 1.2.0 ([78e7978](https://github.com/Its-Satyajit/reqly/commit/78e7978d33dc5221a815cf54f2a3a55c032d85b7))
+* **desktop:** sync remaining wails template placeholders to 1.2.0 ([5b43aa6](https://github.com/Its-Satyajit/reqly/commit/5b43aa68017b5635d91e7faafd7a50278908d387))
+
 ## [1.11.0](https://github.com/Its-Satyajit/reqly/compare/v1.10.0...v1.11.0) (2026-08-31)
 
 
