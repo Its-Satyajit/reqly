@@ -1,6 +1,6 @@
 module github.com/Its-Satyajit/reqly
 
-go 1.25.0
+go 1.27
 
 require (
 	github.com/bufbuild/protocompile v0.14.1
