@@ -75,34 +75,69 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 ---
 
+## Writing for Agents — how this roadmap is written (so agents don't guess)
+
+> **Source:** `writing-for-agents` — docs that agents can execute without asking a human. Every `UI-NN` below is a **tracer bullet** with explicit `Files`, `Change`, `Accept`, `Verify`, `Depends` — no pronouns without antecedents, no “etc.”, no “as needed”.
+
+**Agent contract — each ticket must have:**
+
+- **Title:** `UI-NN.T — verb + object` (e.g., `UI-01.1 — Extract tokens.css`)
+- **Scope:** one file or one concern (max 2 files, max 50 lines changed if possible)
+- **Files:** absolute `file_path:line_number` to touch + to not touch (`lib/`+`stores/` preserved, `internal/` untouched)
+- **Change:** imperative, present tense, file:line ref (e.g., `Create frontend/src/styles/tokens.css:1 with :root atlas-light/dark`)
+- **Accept:** observable behavior (e.g., `npm run typecheck` green, `Settings → Appearance` shows 4 themes + System)
+- **Verify:** exact commands (`nub run typecheck`, `npx oxlint`, `go vet ./...`, `vitest run frontend/src/...`)
+- **Depends:** explicit `UI-NN` id or `none`
+
+**Writing rules for agents (enforced):**
+
+- Use `file_path:line_number` for every ref (e.g., `frontend/src/components/shell/AppShell.tsx:1`), not `the shell`
+- Name things by what the user controls (`Duplicate request` not `WorkspaceDuplicateRequest`)
+- No “etc.”, “and so on”, “as needed” — list every item (`Params`/`Headers`/`Body`/`Auth` + `pre-request`/`tests`/`docs`/`settings`/`variables`)
+- Keep one job per element (`CompactSelect` everywhere, `AlertDialog` for destructive, `cn`/`cva` variants)
+- Empty states are invitations, not apologies (`Connect to an endpoint…` not `No data`)
+- Every `as` needs `// SAFETY:` per `oxlint: require-safety-comment-for-type-assertion` (`as const` exempt)
+
+**Example — `UI-01` broken down (this is the pattern for all `UI-NN` below):**
+
+- `UI-01.1 — Extract tokens.css` — **Files:** `frontend/src/styles/tokens.css:1` (new) + `frontend/src/index.css:7` (edit) — **Change:** move `:root`/`[data-theme]` blocks to `tokens.css`, keep `frontend/src/styles/tokens.css:1` as source — **Accept:** `Settings → Appearance` still shows 4 themes, `data-theme` still toggles — **Verify:** `nub run typecheck` + `grep -r "#c93517" frontend/src --include="*.tsx" | wc -l` == 0 (no hardcoded hex) — **Depends:** `none`
+- `UI-01.2 — Create shellStorage` — **Files:** `frontend/src/components/shell/storage.ts:1` — **Change:** export `shellStorage` (`getItem`/`setItem` via `localStorage`) — **Accept:** `useDefaultLayout` persists `reqly-shell-sidebar` — **Verify:** `vitest` `useDefaultLayout` + manual refresh keeps `17%` — **Depends:** `UI-01.1`
+
+*All `UI-NN` below follow this `UI-NN.T` sub-ticket pattern in the commit history (`33a1d1db` etc. are the original slices; new work will be `UI-01.1` etc.).*
+
+---
+
 ## Milestones — by panel & page (each is a tracer bullet)
 
 ### UI-01 — Shell & Design System (foundational — rebuild from scratch)
 
 **Goal:** Extract canonical tokens + shell chrome so every future panel inherits the same density/a11y floor.
 
-- [ ] `frontend/src/styles/tokens.css:1` canonical contract (`:root`/`[data-theme='atlas-light']`/`.dark,[data-theme='atlas-dark']` — adding theme = one block + `lib/themes.ts:1` entry)
-- [ ] `frontend/src/index.css:7` `@import "./styles/tokens.css"` (keep legacy `:root` until slice 08 removes duplication)
-- [ ] `frontend/src/components/shell/storage.ts:1` `shellStorage` (localStorage adapter)
-- [ ] `frontend/src/stores/useShellStore.ts:1` `inspectorOpen` + persistence
-- [ ] `frontend/src/components/shell/AppShell.tsx:1` 5-zone shell (`topBar`/`toolRail`/`sidebar`/`children`/`bottom`/`statusBar`, `sidebarLayout`/`bottomLayout`/`⌘B`/`bottomCollapsed`)
-- [ ] `frontend/src/app/App.tsx:57` 370→312 lines — thin wrapper (`TopBar`/`ToolRail`/`ContextSidebar`/`BottomPanel`/`StatusBar` via `AppShell`)
-- [ ] Remove duplicate `:root` tokens from `index.css:68` (keep only `@theme` mapping) — follow-up after slice 08
+**Sub-tickets (each is one `but commit` on `feat/shell-slice-N`):**
 
-**DoD:** `nub typecheck` + `oxlint` 0 + `go vet` + `vitest 185` green (already `33a1d1db`+`82d44305`).
+- [ ] `UI-01.1 — Extract tokens.css` — **Files:** `frontend/src/styles/tokens.css:1` (new 60 lines `:root`/`[data-theme]`), `frontend/src/index.css:7` (add `@import "./styles/tokens.css"`; keep legacy block until `UI-13`) — **Accept:** `Settings → Appearance` shows 4 themes + System, `data-theme` toggles light/dark — **Verify:** `nub run typecheck` + `grep -r "#c93517" frontend/src --include="*.tsx" --include="*.ts" | wc -l` == 1 (only `tokens.css`) — **Depends:** `none`
+- [ ] `UI-01.2 — Create shellStorage` — **Files:** `frontend/src/components/shell/storage.ts:1` (8 lines `getItem`/`setItem`) — **Change:** export `shellStorage` — **Accept:** `useDefaultLayout` persists `reqly-shell-sidebar` `17%` after refresh — **Verify:** `vitest` `useDefaultLayout` — **Depends:** `UI-01.1`
+- [ ] `UI-01.3 — Create useShellStore` — **Files:** `frontend/src/stores/useShellStore.ts:1` (45 lines `inspectorOpen`/`inspectorTab` + `localStorage` `reqly-shell-inspector-*`) — **Accept:** `inspectorOpen` persists — **Verify:** `vitest` `useShellStore` `initialShellState` — **Depends:** `UI-01.2`
+- [ ] `UI-01.4 — Create AppShell` — **Files:** `frontend/src/components/shell/AppShell.tsx:1` (130 lines 5-zone `topBar`/`toolRail`/`sidebar`/`children`/`bottom`/`statusBar`, `sidebarLayout`/`bottomLayout`/`⌘B`/`bottomCollapsed` via `shellStorage`+`useBottomPanelStore`) — **Accept:** renders `TopBar` + `ToolRail` + `ContextSidebar` + `MainWorkspace` + `BottomPanel` + `StatusBar` at correct sizes — **Verify:** `nub run typecheck` + manual `⌘B` toggles sidebar — **Depends:** `UI-01.3`
+- [ ] `UI-01.5 — Thin App.tsx wrapper` — **Files:** `frontend/src/app/App.tsx:57` (370→312 lines) — **Change:** replace `ResizablePanelGroup` 30 lines with `<AppShell topBar={<TopBar/>} toolRail={<ToolRail/>} sidebar={<ContextSidebar/>} bottom={<BottomPanel/>} statusBar={<StatusBar/>}>` + keep `activeView` switch + `RequestTabs`/`ResponseViewer` split inside `children` — **Accept:** no visual diff, `⌘J` still toggles bottom — **Verify:** `nub run typecheck` + `go vet` + `vitest 185` — **Depends:** `UI-01.4`
+- [ ] `UI-01.6 — Remove duplicate tokens` — **Files:** `frontend/src/index.css:68` (delete legacy `:root` block, keep only `@theme` `var(--background)` mapping) — **Accept:** no visual diff, single source `tokens.css` — **Verify:** `grep -n ":root" frontend/src/index.css` == 0 — **Depends:** `UI-13` (after all UI)
+
+**DoD:** `nub typecheck` + `oxlint` 0 + `go vet` + `vitest 185` green (already `33a1d1db`+`82d44305` for 01.1–01.5; 01.6 deferred).
 
 ### UI-02 — Request Workspace (Builder + Viewer)
 
 **Stories:** 13–21 (Builder 4 tabs + overflow, URL bar method/URL/Send/Save, tabs persist/drag, Viewer status/timing/size/proto + Body/Headers/Cookies/Test Results/Timeline + split `↔/↕` + divider).
 
-- [ ] `frontend/src/features/request-editor/RequestEditor.tsx:7` 4 tabs (`params`/`headers`/`body`/`auth`) + `overflowTabs` (`pre-request`/`tests`/`docs`/`settings`/`variables`), `TagPicker`, `methodTint`, `saveWarnings`
-- [ ] `frontend/src/features/request-editor/RequestSettingsDialog.tsx:1` per-request `timeout`/`followRedirects` (`1882bd34`) + `settingsSummary` chip
-- [ ] `frontend/src/features/response-viewer/ResponseViewer.tsx:1` `isTabular`/`binaryPreviewType`, `Timeline` waterfall
-- [ ] `frontend/src/components/RequestTabs.tsx:1` `duplicateTab` (`SharedContextMenu`), `tabIsDirty` dot, `⌘W` guard
-- [ ] Viewer `Response layout: split|inline` persisted via `useShellStore` (feat `m44-t5` has it, not yet in `main`) — **missing**
-- [ ] `Body: binary` file picker drop handling already `RequestEditor.tsx:484` but no `shell` file-browse binding — **missing**
+**Sub-tickets:**
 
-**Accept:** Send `GET` with `{{var}}` + `{{$uuid}}`, `followRedirects:false` shows `manual`, `duplicate` creates scratchpad copy, split toggle persists.
+- [ ] `UI-02.1 — Builder 4 tabs` — **Files:** `frontend/src/features/request-editor/RequestEditor.tsx:7` (4 tabs `params`/`headers`/`body`/`auth` + `overflowTabs` 5) — **Accept:** `Params`/`Headers`/`Body`/`Auth` visible, `More` shows 5 — **Verify:** `vitest` `RequestEditor` — **Depends:** `UI-01.5`
+- [ ] `UI-02.2 — RequestSettingsDialog` — **Files:** `frontend/src/features/request-editor/RequestSettingsDialog.tsx:1` (124 lines `timeout`/`followRedirects` `RedirectValue` `default|on|off`) — **Change:** per-request `timeout`/`followRedirects` + `settingsSummary` chip `frontend/src/features/request-editor/RequestEditor.tsx:335` — **Accept:** chip shows `3000ms · no redirects` — **Verify:** `vitest` `RequestSettingsDialog` + `handleSend` forwards seam — **Depends:** `UI-02.1`
+- [ ] `UI-02.3 — ResponseViewer` — **Files:** `frontend/src/features/response-viewer/ResponseViewer.tsx:1` (`isTabular`/`binaryPreviewType` + `Timeline` waterfall `frontend/src/lib/response.ts:187`) — **Accept:** `Body`/`Headers`/`Cookies`/`Test Results`/`Timeline` tabs, `↔/↕` split — **Verify:** `vitest` `ResponseViewer` Table 1000 rows — **Depends:** `UI-02.2`
+- [ ] `UI-02.4 — RequestTabs` — **Files:** `frontend/src/components/RequestTabs.tsx:1` (`duplicateTab` `SharedContextMenu` `x,y`, `tabIsDirty` dot, `⌘W` guard `useRequestStore`) — **Change:** `onContextMenu` → `SharedContextMenu` `Duplicate request` → `duplicateTab` — **Accept:** right-click `Duplicate` creates `copy` — **Verify:** `vitest` `RequestTabs` — **Depends:** `UI-02.3`
+- [ ] `UI-02.5 — Response layout persist` — **Files:** `frontend/src/stores/useShellStore.ts:1` (`responseMode: split|inline` + `localStorage`), `frontend/src/app/App.tsx:94` `splitOrientation` → `useShellStore` — **Accept:** `↔/↕` persists after refresh — **Verify:** `vitest` `useShellStore` — **Depends:** `UI-02.4` — **missing** (feat `m44-t5` has it)
+- [ ] `UI-02.6 — Binary file picker` — **Files:** `frontend/src/features/request-editor/RequestEditor.tsx:484` (`drag` + `type` + `fixtures/`), `apps/desktop/frontend/src/bridge.ts:85` `file-browse` binding — **Accept:** drop `payload.bin` sets `./fixtures/payload.bin` — **Verify:** manual drop — **Depends:** `UI-02.5` — **missing**
+
+**Accept (milestone):** Send `GET` with `{{var}}` + `{{$uuid}}`, `followRedirects:false` shows `manual`, `duplicate` creates scratchpad copy, split toggle persists.
 
 ### UI-03 — Collections Explorer
 
