@@ -4,7 +4,9 @@
     ".": {
       "release-type": "go",
       "extra-files": [
-        "internal/version/version.go"
+        "internal/version/version.go",
+        "apps/desktop/backend/build/config.yml",
+        "apps/desktop/backend/build/linux/nfpm/nfpm.yaml"
       ]
     }
   }
