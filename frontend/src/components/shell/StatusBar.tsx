@@ -1,6 +1,6 @@
 import { GitBranch, GitCommitHorizontal, Circle } from "lucide-react";
 import { cn } from "#lib/utils";
-import { useWorkspaceStore } from "../../stores";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 
 export function StatusBar() {
 	const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);

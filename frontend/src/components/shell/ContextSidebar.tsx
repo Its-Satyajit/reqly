@@ -10,9 +10,9 @@ import {
 	Keyboard,
 	Info,
 } from "lucide-react";
-import { AuthPanel } from "../../features";
+import { AuthPanel } from "../../features/auth-panel/AuthPanel";
 import { CollectionTree } from "../CollectionTree";
-import { useWorkspaceStore } from "../../stores";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { useHistoryStore } from "../../stores/useHistoryStore";
 import { useTestStore } from "../../stores/useTestStore";
 import { useRealtimeRecentsStore } from "../../stores/useRealtimeRecentsStore";
@@ -193,11 +193,12 @@ function MocksContext() {
 					<p className="px-2 text-xs text-muted-foreground">No mock routes defined.</p>
 				) : (
 					<ul className="flex flex-col gap-0.5">
-						{routes.map((r, i) => {
+						{routes.map((r) => {
 							// SAFETY: Unknown mock HTTP methods fallback to muted tint
 							const tintClass = methodTint[r.method as keyof typeof methodTint] ?? "text-muted-foreground";
+							const routeKey = r.id || `${r.method}-${r.path}`;
 							return (
-								<li key={r.id ?? i} className="flex items-center gap-1.5 rounded px-2 py-1 text-xs hover:bg-muted/40 font-mono">
+								<li key={routeKey} className="flex items-center gap-1.5 rounded px-2 py-1 text-xs hover:bg-muted/40 font-mono">
 									<span className={cn("text-[10px] font-bold", tintClass)}>
 										{r.method}
 									</span>
@@ -245,6 +246,7 @@ function DocsContext() {
 	const result = useDocsStore((s) => s.result);
 	const activeFile = useDocsStore((s) => s.activeFile);
 	const setActiveFile = useDocsStore((s) => s.setActiveFile);
+	const selectedSet = new Set(selected);
 
 	return (
 		<div className="flex flex-col gap-3 p-2">
@@ -252,7 +254,7 @@ function DocsContext() {
 				<SectionLabel>Collections to Document</SectionLabel>
 				<ul className="flex flex-col gap-0.5">
 					{collections.map((c) => {
-						const isSelected = selected.length === 0 || selected.includes(c.name);
+						const isSelected = selected.length === 0 || selectedSet.has(c.name);
 						return (
 							<li key={c.name}>
 								<label className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-muted/40 cursor-pointer">

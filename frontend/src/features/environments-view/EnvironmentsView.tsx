@@ -1,7 +1,7 @@
 import { EnvToolsPanel } from "../env-tools/EnvToolsPanel";
 import { useEffect, useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { Button } from "../../components";
+import { Button } from "../../components/ui/button";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,7 +12,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
-import { useWorkspaceStore } from "../../stores";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { cn } from "#lib/utils";
 import { notifySuccess } from "../../lib/notify";
 import { inputClass } from "../../lib/ui";

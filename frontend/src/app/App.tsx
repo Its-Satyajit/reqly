@@ -11,14 +11,12 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "#components/ui/alert-dialog";
-import {
-	ContextSidebar,
-	RequestTabs,
-	RunView,
-	StatusBar,
-	TopBar,
-	ToolRail,
-} from "../components";
+import { ContextSidebar } from "../components/shell/ContextSidebar";
+import { RequestTabs } from "../components/RequestTabs";
+import { RunView } from "../components/RunView";
+import { StatusBar } from "../components/shell/StatusBar";
+import { TopBar } from "../components/shell/TopBar";
+import { ToolRail } from "../components/shell/ToolRail";
 import { AppShell } from "../components/shell/AppShell";
 import { RealtimeTab } from "../features/realtime-view/RealtimeTab";
 import { TestTab } from "../features/test-runner/TestTab";

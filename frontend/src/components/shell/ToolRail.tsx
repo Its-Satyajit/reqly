@@ -20,7 +20,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { cn } from "#lib/utils";
 import { ThemeToggle } from "../ThemeToggle";
-import { useWorkspaceStore, type WorkspaceView } from "../../stores";
+import { useWorkspaceStore, type WorkspaceView } from "../../stores/useWorkspaceStore";
 
 interface RailItem {
 	view?: WorkspaceView;

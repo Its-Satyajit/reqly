@@ -22,17 +22,16 @@ import {
 	MenubarSeparator,
 	MenubarShortcut,
 } from "../ui/menubar";
-import { ImportDialog, ExportDialog } from "../../features";
 import { CreateWorkspaceModal } from "../CreateWorkspaceModal";
-import {
-	useCommandPaletteStore,
-	useExportStore,
-	useImportStore,
-	useThemeStore,
-	useWorkspaceStore,
-} from "../../stores";
+import { useCommandPaletteStore } from "../../stores/useCommandPaletteStore";
+import { useExportStore } from "../../stores/useExportStore";
+import { useImportStore } from "../../stores/useImportStore";
+import { useThemeStore } from "../../stores/useThemeStore";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { useWorkspaceBootstrapStore } from "../../stores/useWorkspaceBootstrap";
 import { EnvironmentSelector } from "./EnvironmentSelector";
+import { ImportDialog } from "../../features/import-dialog/ImportDialog";
+import { ExportDialog } from "../../features/export-dialog/ExportDialog";
 
 export function TopBar() {
 	const resolvedTheme = useThemeStore((s) => s.resolvedTheme);

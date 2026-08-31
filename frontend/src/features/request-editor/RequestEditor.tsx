@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CodeMirrorEditor } from '../../editors'
+import { CodeMirrorEditor } from '../../editors/CodeMirrorEditor'
 import { Button } from '../../components/ui/button'
 import { CompactSelect } from '../../components/CompactSelect'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
@@ -7,9 +7,8 @@ import { ChevronRight, Loader2, SlidersHorizontal, Sparkles } from 'lucide-react
 import { RequestSettingsDialog } from './RequestSettingsDialog'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
-import { useRequestStore, useWorkspaceStore } from '../../stores'
-import { tabIsDirty } from '../../stores/useRequestStore'
-import { effectiveUrlFor } from '../../stores/useWorkspaceStore'
+import { useRequestStore, tabIsDirty } from '../../stores/useRequestStore'
+import { useWorkspaceStore, effectiveUrlFor } from '../../stores/useWorkspaceStore'
 import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
 import type { KeyValueRow, RequestAuth, RequestRetry } from '../../lib/request'
@@ -414,9 +413,9 @@ export function RequestEditor() {
           </div>
           {overflowTabs.some((o) => o.id === tab) && (
             <div className="flex items-center gap-1 pl-1 border-l border-border/60">
-              {overflowTabs
-                .filter((t) => t.id !== 'variables' || showVariables)
-                .map((t) => (
+              {overflowTabs.map((t) => {
+                if (t.id === 'variables' && !showVariables) return null;
+                return (
                   <button
                     key={t.id}
                     type="button"
@@ -428,12 +427,13 @@ export function RequestEditor() {
                       "rounded px-2 py-0.5 text-xs transition-colors",
                       tab === t.id
                         ? "bg-background text-foreground font-medium shadow-xs"
-                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     {t.label}
                   </button>
-                ))}
+                );
+              })}
             </div>
           )}
         </div>

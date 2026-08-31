@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button } from "../../components";
+import { Button } from "../../components/ui/button";
 import { CompactSelect } from "#components/CompactSelect";
-import { useAuthStore } from "../../stores";
+import { useAuthStore } from "../../stores/useAuthStore";
 import { isRecord, isString, type JsonObject, type JsonValue } from "../../lib/typeGuards";
 
 const DEFAULT_CONFIG = JSON.stringify(
