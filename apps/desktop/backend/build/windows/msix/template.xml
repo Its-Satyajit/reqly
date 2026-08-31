@@ -8,27 +8,27 @@
         AllowPromptForPassword="false">
     </Settings>
     <Installer
-        Path="wails3-ref"
+        Path="reqly"
         Arguments=""
-        InstallLocation="C:\Program Files\My Company\My Product">
+        InstallLocation="C:\Program Files\reqly\Reqly">
     </Installer>
     <PackageInformation
-        PackageName="My Product"
-        PackageDisplayName="My Product"
-        PublisherName="CN=My Company"
-        PublisherDisplayName="My Company"
-        Version="0.1.0.0"
-        PackageDescription="A wails3-ref application">
+        PackageName="Reqly"
+        PackageDisplayName="Reqly"
+        PublisherName="CN=reqly"
+        PublisherDisplayName="reqly"
+        Version="1.2.0.0"
+        PackageDescription="A local-first, Git-native API development environment">
         <Capabilities>
             <Capability Name="runFullTrust" />
             
         </Capabilities>
         <Applications>
             <Application
-                Id="com.example.wails3ref"
-                Description="A wails3-ref application"
-                DisplayName="My Product"
-                ExecutableName="wails3-ref"
+                Id="com.reqly.reqly"
+                Description="A local-first, Git-native API development environment"
+                DisplayName="Reqly"
+                ExecutableName="reqly"
                 EntryPoint="Windows.FullTrustApplication">
                 
             </Application>
@@ -41,13 +41,13 @@
         </Dependencies>
         <Properties>
             <Framework>false</Framework>
-            <DisplayName>My Product</DisplayName>
-            <PublisherDisplayName>My Company</PublisherDisplayName>
-            <Description>A wails3-ref application</Description>
+            <DisplayName>Reqly</DisplayName>
+            <PublisherDisplayName>reqly</PublisherDisplayName>
+            <Description>A local-first, Git-native API development environment</Description>
             <Logo>Assets\AppIcon.png</Logo>
         </Properties>
     </PackageInformation>
-    <SaveLocation PackagePath="wails3-ref.msix" />
+    <SaveLocation PackagePath="reqly.msix" />
     <PackageIntegrity>
         <CertificatePath></CertificatePath>
     </PackageIntegrity>

@@ -6,7 +6,11 @@
       "extra-files": [
         "internal/version/version.go",
         "apps/desktop/backend/build/config.yml",
-        "apps/desktop/backend/build/linux/nfpm/nfpm.yaml"
+        "apps/desktop/backend/build/linux/nfpm/nfpm.yaml",
+        "frontend/src/lib/crash.ts",
+        "frontend/package.json",
+        "apps/desktop/frontend/package.json",
+        "package.json"
       ]
     }
   }
