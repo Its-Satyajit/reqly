@@ -2,7 +2,7 @@
 
 > [!CAUTION]
 > ## Alpha, not stable. Expect breakage.
-> Reqly is pre-1.0. It may crash, corrupt local data, or break between commits. There are no stability guarantees, no migration path, and no semver until v1.0.0. If you need a stable API client today, use Postman, Insomnia, Bruno, or HTTPie, and come back when the P0/P1 milestones in [ROADMAP.md](./ROADMAP.md) are done.
+> Reqly is pre-1.0. It may crash, corrupt local data, or break between commits. There are no stability guarantees, no migration path, and no semver until v1.0.0. If you need a stable API client today, use Postman, Insomnia, Bruno, or HTTPie.
 
 <p align="center">
   <picture>
@@ -43,7 +43,7 @@ There is no cloud backend and no account. There is also no telemetry: payloads, 
 - A mock server generated from an OpenAPI spec, including delay and error injection.
 - Retry policies, pagination runners, bulk execution, HAR import/export, and cURL/OpenAPI import with Postman export.
 
-Planned but not shipped yet: gRPC, SOAP, the OpenAPI editor, contract testing, and the MCP server (currently a stub). See the roadmap for status.
+All P0–P5 phases are now shipped (core + CLI + desktop bindings); 13 deferred seams (file-download UI, NTLM, AWS/Azure, XPath, gRPC bidi, SOAP `rpc/encoded`, visual builders) remain as tracked follow-ups in the codebase.
 
 ## Why Reqly?
 
@@ -76,7 +76,7 @@ The Go core ([`internal/`](./internal/)) owns one execution pipeline. Environmen
 
 Prerequisites:
 
-- Go 1.25+
+- Go 1.27+
 - Node 24+ and nub (`npm i -g nub`)
 - Wails v3 (`wails3 install`)
 
@@ -105,12 +105,8 @@ wails3 dev
 
 ## Docs
 
-- Roadmap and milestone status: [`ROADMAP.md`](./ROADMAP.md)
-- Domain glossary: [`CONTEXT.md`](./CONTEXT.md)
-- Agent guidelines: [`AGENTS.md`](./AGENTS.md)
-- Architecture and tech stack: [`docs/technology-stack.md`](./docs/technology-stack.md)
-- Testing strategy: [`docs/testing-strategy.md`](./docs/testing-strategy.md)
-- Full feature set: [`docs/features.md`](./docs/features.md)
+- Architecture: [`docs/adr`](./docs/adr/) (45 ADRs) + [Complete UI Architecture](./docs/Reqly%20Complete%20UI%20Architecture,%20Pages,%20Panels,%20and%20Navigation%20Specification.md) (subordinate UI spec)
+- Planning docs (`ROADMAP.md`, `Milestones/`, `prompts/`) have been archived — see Git history for the P0–P5 and shell rebuild slices
 
 ## Stability
 
