@@ -68,6 +68,7 @@ func init() {
 		diffCmd,
 		docsCmd,
 		versionCmd,
+		updateCmd,
 		jwtCmd,
 		paginationCmd,
 		bulkCmd,

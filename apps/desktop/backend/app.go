@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -31,7 +32,9 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/core"
 	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/update"
 	"github.com/Its-Satyajit/reqly/internal/variables"
+	"github.com/Its-Satyajit/reqly/internal/version"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -620,3 +623,33 @@ var launchAppBrowser = func(url string) error {
 	}
 	return nil
 }
+
+// CheckForUpdates queries GitHub for the latest Reqly release and returns
+// version comparison metadata.
+func (s *AppService) CheckForUpdates() (*update.ReleaseInfo, error) {
+	checker := update.NewChecker()
+	return checker.Check(context.Background(), version.Version)
+}
+
+// ApplyUpdate downloads the new release asset for the current OS/architecture
+// and replaces the running executable.
+func (s *AppService) ApplyUpdate() error {
+	checker := update.NewChecker()
+	info, err := checker.Check(context.Background(), version.Version)
+	if err != nil {
+		return err
+	}
+	if !info.HasUpdate {
+		return fmt.Errorf("already on the latest version (%s)", version.Version)
+	}
+	asset, found := update.FindAssetForPlatform(info.Assets, runtime.GOOS, runtime.GOARCH)
+	if !found {
+		return fmt.Errorf("no update asset available for %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("find executable: %w", err)
+	}
+	return checker.ApplyBinaryUpdate(context.Background(), asset.DownloadURL, execPath)
+}
+
