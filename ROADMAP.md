@@ -22,6 +22,30 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 ---
 
+## Tech Stack — `go 1.27` + `Wails v3` + `Goja` + `React 19`
+
+> **Source:** `docs/internal:docs/technology-stack.md` (Go + Wails + Goja, React + Vite) via `git show origin/docs/internal:docs/technology-stack.md`. Versions from `go.mod:3` `go 1.27` + `frontend/package.json:1` + `go list -m`.
+
+| Layer | Tech | Version | Purpose |
+|-------|------|---------|---------|
+| **Desktop** | **Wails v3** | `v3.0.0-beta.16` | Native shell via system WebView (no bundled Chromium) — Linux `WebKit`, macOS `WebKit`, Windows `WebView2` |
+| **Core** | **Go** | `1.27` (`go.mod:3`) | Single execution pipeline (`internal/` — request, auth, vars, history, `sqlite`, Git, CLI, MCP) |
+| **Scripting** | **Goja** | `8f1c069` | Embedded JS for `pre/post` scripts, `reqly.test()`, dynamic `{{$tag}}`, plugins — lazy init |
+| **Frontend** | **React + TypeScript** | `19.2.8` + `5.x` | Highly interactive UI — `Vite` dev/build, `Tailwind v4` + `shadcn/ui` + `Base UI 1.7` |
+| **State** | **Zustand** | `5.0.15` | Lightweight stores (`useWorkspaceStore`, `useRequestStore`, `useThemeStore` etc) — one file per domain |
+| **Editor** | **CodeMirror 6** | `6.43` | JSON/JS/XML/YAML/Markdown/Text + `graphql` — `one-dark` theme |
+| **Styling** | **Tailwind CSS** | `v4` | `@theme` tokens (`--background`/`--primary`/`--status-*`/`--radius 6px`) + `@custom-variant dark` |
+| **Storage** | **Plain-text files + SQLite** | — | Collections/envs as YAML/JSON on disk (Git-native) + `modernc.org/sqlite v1.57` WAL/FTS5 `history.db` + `blobs/` |
+| **Secrets** | **OS Keychain** | `go-keyring 0.2.8` | `secrets.Store` `FileStore` (`0600 .reqly/tokens.json`) vs `KeychainStore` |
+| **OpenAPI** | **kin-openapi** | `0.149.0` | `internal/openapi` 3.x parse/validate + `oasdiff/yaml` |
+| **Protocols** | **gRPC + WebSocket/SSE/MQTT** | `grpc 1.83.2`, `websocket 1.8.15` | `internal/grpc` reflection + `protocompile 0.14.1`, `coder/websocket` |
+| **Build** | **Vite + Wails** | `6.x` + `Taskfile` | `nub` workspaces (`pnpm-lock.yaml`), `GoReleaser` OS matrix (`release.yml`) |
+| **Test** | **Go + Vitest + Playwright** | `go test -race`, `vitest 4.1` | `20` frontend files `185` tests, `46` Go pkgs |
+
+**Why Go+Wails+Goja:** small footprint, fast startup, native FS/Git, direct Go↔JS, no Node/Chromium bundled — target `linux`/`darwin`/`windows` via `Taskfile` `wails3 build`.
+
+---
+
 ## Milestones — by panel & page (each is a tracer bullet)
 
 ### UI-01 — Shell & Design System (foundational — rebuild from scratch)
