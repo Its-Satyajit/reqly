@@ -1,4 +1,4 @@
-export const APP_VERSION = "0.1.0";
+export const APP_VERSION = "1.2.0"; // x-release-please-version
 
 export type CrashKind =
   | "render"

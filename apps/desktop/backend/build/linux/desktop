@@ -1,13 +1,13 @@
 [Desktop Entry]
 Version=1.0
-Name=My Product
-Comment=A wails3-ref application
+Name=Reqly
+Comment=A local-first, Git-native API development environment
 # The Exec line includes %u to pass the URL to the application
-Exec=/usr/local/bin/wails3-ref %u
+Exec=/usr/local/bin/reqly %u
 Terminal=false
 Type=Application
-Icon=wails3-ref
+Icon=reqly
 Categories=Utility;
-StartupWMClass=wails3-ref
+StartupWMClass=reqly
 
  
