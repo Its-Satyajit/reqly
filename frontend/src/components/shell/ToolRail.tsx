@@ -78,65 +78,88 @@ export function ToolRail({ collapsed, onToggleCollapse }: ToolRailProps) {
 				aria-label={item.label}
 				title={item.label}
 				className={cn(
-					"group relative flex items-center justify-center rounded-md transition-colors",
-					collapsed ? "size-10" : "h-10 w-full gap-2 px-2",
+					"group relative flex items-center rounded transition-all select-none",
+					collapsed ? "size-8 justify-center" : "h-8 w-full gap-2.5 px-2.5",
 					active
-						? "bg-primary/12 text-primary"
-						: "text-muted-foreground hover:bg-muted hover:text-foreground",
+						? "bg-primary/10 font-medium text-primary"
+						: "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
 				)}
 			>
 				<span
 					aria-hidden
 					className={cn(
-						"absolute -left-[9px] h-5 w-[3px] rounded-full bg-primary transition-opacity",
+						"absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r bg-primary transition-opacity",
 						active ? "opacity-100" : "opacity-0",
 					)}
 				/>
-				<Icon className="size-[18px] shrink-0" aria-hidden />
+				<Icon className="size-4 shrink-0" aria-hidden />
 				{!collapsed && (
-					<span className="truncate text-sm">{item.label}</span>
+					<span className="truncate text-xs tracking-tight">{item.label}</span>
 				)}
 			</button>
 		);
 	};
 
 	return (
-		<nav
-			aria-label="Tools"
+		<aside
+			aria-label="Tool rail"
 			className={cn(
-				"flex shrink-0 flex-col items-center gap-1 border-r border-border bg-card/40 py-2 transition-all",
-				collapsed ? "w-10" : "w-14",
+				"flex shrink-0 flex-col justify-between border-r border-border bg-card/25 p-1.5 transition-[width] duration-150 ease-out",
+				collapsed ? "w-11" : "w-44",
 			)}
 		>
-			<div className="flex flex-col items-center gap-1">
-				{WORKSPACE_GROUP.map(railButton)}
-			</div>
-			<div className="my-1.5 h-px w-6 bg-border" aria-hidden />
-			<div className="flex flex-col items-center gap-1">
-				{API_TOOLS_GROUP.map(railButton)}
-			</div>
-			<div className="my-1.5 h-px w-6 bg-border" aria-hidden />
-			<div className="flex flex-col items-center gap-1">
-				{REALTIME_GROUP.map(railButton)}
-			</div>
-			<div className="my-1.5 h-px w-6 bg-border" aria-hidden />
-			<div className="mt-auto flex flex-col items-center gap-1 pt-2">
-				<span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">System</span>
-				<ThemeToggle />
-				<button
-					type="button"
-					onClick={onToggleCollapse}
-					aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-					title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-					className="flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-				>
-					{collapsed ? (
-						<PanelLeftOpen className="size-4" aria-hidden />
-					) : (
-						<PanelLeftClose className="size-4" aria-hidden />
+			<div className="flex flex-col gap-3">
+				<div className="flex flex-col gap-0.5">
+					{!collapsed && (
+						<p className="px-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/70">
+							Workspace
+						</p>
 					)}
-				</button>
+					{WORKSPACE_GROUP.map(railButton)}
+				</div>
+
+				<div className="flex flex-col gap-0.5 border-t border-border/60 pt-2">
+					{!collapsed && (
+						<p className="px-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/70">
+							API Tools
+						</p>
+					)}
+					{API_TOOLS_GROUP.map(railButton)}
+				</div>
+
+				<div className="flex flex-col gap-0.5 border-t border-border/60 pt-2">
+					{!collapsed && (
+						<p className="px-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/70">
+							Realtime
+						</p>
+					)}
+					{REALTIME_GROUP.map(railButton)}
+				</div>
 			</div>
-		</nav>
+
+			<div className="flex flex-col gap-1 border-t border-border/60 pt-2">
+				<div
+					className={cn(
+						"flex items-center",
+						collapsed ? "flex-col gap-1" : "justify-between px-1",
+					)}
+				>
+					<ThemeToggle />
+					<button
+						type="button"
+						onClick={onToggleCollapse}
+						aria-label={collapsed ? "Expand tool rail" : "Collapse tool rail"}
+						title={collapsed ? "Expand rail" : "Collapse rail"}
+						className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+					>
+						{collapsed ? (
+							<PanelLeftOpen className="size-4" aria-hidden />
+						) : (
+							<PanelLeftClose className="size-4" aria-hidden />
+						)}
+					</button>
+				</div>
+			</div>
+		</aside>
 	);
 }

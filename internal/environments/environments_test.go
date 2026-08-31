@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -234,15 +235,88 @@ func TestSaveWritesEnvironmentFileRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(got.Variables, env.Variables) {
 		t.Fatalf("variables = %v, want %v", got.Variables, env.Variables)
 	}
-	if !reflect.DeepEqual(got.Secrets, env.Secrets) {
-		t.Fatalf("secrets = %v, want %v", got.Secrets, env.Secrets)
+	wantSecrets := map[string]string{"API_KEY": ""}
+	if !reflect.DeepEqual(got.Secrets, wantSecrets) {
+		t.Fatalf("secrets = %v, want %v", got.Secrets, wantSecrets)
 	}
 }
 
-func TestSaveWithoutEnvironmentsDirErrors(t *testing.T) {
-	dir := t.TempDir() // no environments/ subdir
-	env := &Environment{Name: "dev", Variables: map[string]string{}}
-	if err := Save(env, dir); err == nil {
-		t.Fatal("expected error without environments/ directory, got nil")
+func TestSaveWithoutEnvironmentsDirCreatesDirectory(t *testing.T) {
+	dir := t.TempDir() // no environments/ subdir initially
+	env := &Environment{Name: "dev", Description: "New env", Variables: map[string]string{"A": "1"}}
+	if err := Save(env, dir); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := Load(filepath.Join(dir, "environments", "dev.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.Name != "dev" || got.Variables["A"] != "1" {
+		t.Fatalf("got: %+v", got)
+	}
+}
+
+func TestLoadParsesSecretsList(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "staging.yaml")
+	if err := os.WriteFile(path, []byte(`
+description: Staging environment
+variables:
+  REGION: ap-south-1
+secrets:
+  - API_KEY
+  - DB_PASSWORD
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	env, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if env.Name != "staging" {
+		t.Fatalf("name: got %q, want staging", env.Name)
+	}
+	wantSecrets := map[string]string{"API_KEY": "", "DB_PASSWORD": ""}
+	if !reflect.DeepEqual(env.Secrets, wantSecrets) {
+		t.Fatalf("secrets: got %v, want %v", env.Secrets, wantSecrets)
+	}
+}
+
+func TestSaveWritesSecretsAsListWithoutValues(t *testing.T) {
+	dir := t.TempDir()
+	envDir := filepath.Join(dir, "environments")
+	if err := os.MkdirAll(envDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	env := &Environment{
+		Name:        "prod",
+		Description: "Production",
+		Variables:   map[string]string{"REGION": "us-east-1"},
+		Secrets:     map[string]string{"API_KEY": "supersecretvalue", "DB_PASSWORD": "secretpassword"},
+	}
+	if err := Save(env, dir); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(envDir, "prod.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(raw)
+	// Check that secret values are NEVER written into the YAML file
+	if strings.Contains(content, "supersecretvalue") || strings.Contains(content, "secretpassword") {
+		t.Fatalf("secret values leaked into YAML file on disk:\n%s", content)
+	}
+
+	got, err := Load(filepath.Join(envDir, "prod.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := got.Secrets["API_KEY"]; !ok {
+		t.Fatalf("expected API_KEY in secrets map, got: %v", got.Secrets)
+	}
+	if _, ok := got.Secrets["DB_PASSWORD"]; !ok {
+		t.Fatalf("expected DB_PASSWORD in secrets map, got: %v", got.Secrets)
 	}
 }

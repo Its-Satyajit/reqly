@@ -142,6 +142,15 @@ export function AuthPanel() {
 					/>
 				</label>
 
+				{flow === "device_code" && (
+					<div className="rounded border border-primary/30 bg-primary/5 p-2.5 text-xs text-foreground">
+						<p className="font-semibold text-primary">Device Authorization Flow</p>
+						<p className="mt-1 text-[11px] text-muted-foreground">
+							After initiating login, copy your verification code and visit the IdP authorization URL to complete sign-in.
+						</p>
+					</div>
+				)}
+
 				{configError ? (
 					<p className="text-xs text-destructive">{configError}</p>
 				) : null}
@@ -149,7 +158,7 @@ export function AuthPanel() {
 
 				<div className="flex gap-2">
 					<Button type="submit" disabled={loading} className="flex-1">
-						{flow === "device_code" ? "Log in with device code" : "Log in"}
+						{flow === "device_code" ? "Initiate Device Login" : "Log in"}
 					</Button>
 					<Button
 						type="button"

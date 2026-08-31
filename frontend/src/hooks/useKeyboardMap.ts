@@ -5,7 +5,17 @@ import { tabIsDirty, useRequestStore } from "#stores/useRequestStore";
 import { useBottomPanelStore } from "#stores/useBottomPanelStore";
 import { notifyWarning } from "#lib/notify";
 
-const RAIL_VIEWS = ["home", "requests", "environments", "history", "mocks", "diff", "jwt", "graphql"] as const;
+const RAIL_VIEWS = [
+  "home",
+  "requests",
+  "environments",
+  "history",
+  "mocks",
+  "diff",
+  "jwt",
+  "graphql",
+  "runners",
+] as const;
 
 function isTypingTarget(target: HTMLElement | null): boolean {
   if (!target) return false;
@@ -86,7 +96,7 @@ export function useKeyboardMap(onToggleSidebar?: () => void) {
         else useBottomPanelStore.getState().setCollapsed(true);
         return;
       }
-      if (/^[1-8]$/.test(e.key)) {
+      if (/^[1-9]$/.test(e.key)) {
         if (isTypingTarget(target)) return;
         e.preventDefault();
         const idx = Number(e.key) - 1;

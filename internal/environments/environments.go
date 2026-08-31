@@ -41,7 +41,7 @@ type Environment struct {
 type fileSchema struct {
 	Description string            `yaml:"description,omitempty"`
 	Variables   map[string]string `yaml:"variables,omitempty"`
-	Secrets     map[string]string `yaml:"secrets,omitempty"`
+	Secrets     any               `yaml:"secrets,omitempty"`
 }
 
 // Load parses an environment file, deriving the environment name from the
@@ -59,11 +59,30 @@ func Load(path string) (*Environment, error) {
 	if name == "" {
 		return nil, fmt.Errorf("invalid environment file %q: empty name", path)
 	}
+
+	secrets := make(map[string]string)
+	switch v := schema.Secrets.(type) {
+	case []any:
+		for _, item := range v {
+			if s, ok := item.(string); ok && s != "" {
+				secrets[s] = ""
+			}
+		}
+	case map[string]any:
+		for k, val := range v {
+			if str, ok := val.(string); ok {
+				secrets[k] = str
+			} else {
+				secrets[k] = ""
+			}
+		}
+	}
+
 	return &Environment{
 		Name:        name,
 		Description: schema.Description,
 		Variables:   schema.Variables,
-		Secrets:     schema.Secrets,
+		Secrets:     secrets,
 	}, nil
 }
 
@@ -159,13 +178,28 @@ func Save(env *Environment, dir string) error {
 		return err
 	}
 	if envDir == "" {
-		return fmt.Errorf("save environment %q: no environments/ directory found", env.Name)
+		if dir == "" {
+			return fmt.Errorf("save environment %q: no environments/ directory found", env.Name)
+		}
+		// In a workspace without an environments/ folder yet, auto-create it
+		envDir = filepath.Join(dir, "environments")
+		if err := os.MkdirAll(envDir, 0o755); err != nil {
+			return fmt.Errorf("create environments directory %q: %w", envDir, err)
+		}
 	}
 	path := filepath.Join(envDir, env.Name+".yaml")
+	var secretNames []string
+	if len(env.Secrets) > 0 {
+		secretNames = make([]string, 0, len(env.Secrets))
+		for k := range env.Secrets {
+			secretNames = append(secretNames, k)
+		}
+		sort.Strings(secretNames)
+	}
 	schema := fileSchema{
 		Description: env.Description,
 		Variables:   env.Variables,
-		Secrets:     env.Secrets,
+		Secrets:     secretNames,
 	}
 	data, err := yaml.Marshal(&schema)
 	if err != nil {

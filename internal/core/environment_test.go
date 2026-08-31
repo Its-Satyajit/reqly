@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
+	"github.com/Its-Satyajit/reqly/internal/secrets"
 )
 
 func writeEnvWorkspace(t *testing.T, root string) {
@@ -301,28 +302,39 @@ func TestEnvironmentServiceUpdateSecretsSetsAndRemoves(t *testing.T) {
 	dir := t.TempDir()
 	writeEnvWorkspace(t, dir) // dev.yaml has secret API_KEY=dev-secret
 
-	svc := NewEnvironmentService(dir)
-	// Change API_KEY, add DB_PASSWORD, remove LOGIN_TOKEN (not present: no-op).
-	err := svc.UpdateSecrets("dev", map[string]string{"API_KEY": "new-key", "DB_PASSWORD": "hunter2"}, []string{"LOGIN_TOKEN"})
+	store, err := secrets.NewFileStore(filepath.Join(dir, ".reqly", "tokens.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Secret values are never read back through the service, so verify the
-	// file on disk directly.
+	svc := NewEnvironmentServiceWithStore(dir, store)
+	// Change API_KEY, add DB_PASSWORD, remove LOGIN_TOKEN (not present: no-op).
+	err = svc.UpdateSecrets("dev", map[string]string{"API_KEY": "new-key", "DB_PASSWORD": "hunter2"}, []string{"LOGIN_TOKEN"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Secret values must be stored in the secrets.Store
+	apiKeyVal, err := store.Get("env:dev:API_KEY")
+	if err != nil || apiKeyVal != "new-key" {
+		t.Fatalf("expected API_KEY in store to be new-key, got %q, err: %v", apiKeyVal, err)
+	}
+	dbPassVal, err := store.Get("env:dev:DB_PASSWORD")
+	if err != nil || dbPassVal != "hunter2" {
+		t.Fatalf("expected DB_PASSWORD in store to be hunter2, got %q, err: %v", dbPassVal, err)
+	}
+
+	// Secret values must NOT be in the YAML file on disk
 	data, err := os.ReadFile(filepath.Join(dir, "environments", "dev.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	content := string(data)
-	if !strings.Contains(content, "API_KEY: new-key") {
-		t.Fatalf("API_KEY not updated:\n%s", content)
+	if strings.Contains(content, "new-key") || strings.Contains(content, "hunter2") || strings.Contains(content, "dev-secret") {
+		t.Fatalf("secret values leaked into YAML:\n%s", content)
 	}
-	if !strings.Contains(content, "DB_PASSWORD: hunter2") {
-		t.Fatalf("DB_PASSWORD not added:\n%s", content)
-	}
-	if strings.Contains(content, "dev-secret") {
-		t.Fatalf("old API_KEY value leaked:\n%s", content)
+	if !strings.Contains(content, "API_KEY") || !strings.Contains(content, "DB_PASSWORD") {
+		t.Fatalf("secret names missing from YAML:\n%s", content)
 	}
 }
 
@@ -424,8 +436,12 @@ func TestEnvironmentServiceUpdateSecretsOnEnvWithoutSecrets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "NEW_KEY: v") {
-		t.Fatalf("new secret not written:\n%s", data)
+	content := string(data)
+	if strings.Contains(content, "NEW_KEY: v") {
+		t.Fatalf("secret value leaked into YAML:\n%s", content)
+	}
+	if !strings.Contains(content, "NEW_KEY") {
+		t.Fatalf("new secret name not written:\n%s", content)
 	}
 }
 

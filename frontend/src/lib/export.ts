@@ -1,4 +1,4 @@
-export type ExportFormat = "postman" | "openapi" | "har" | "workspace";
+export type ExportFormat = "postman" | "openapi" | "har" | "workspace" | "environment";
 
 export interface ExportOutcome {
   format: ExportFormat;
@@ -26,6 +26,7 @@ export const EXPORT_FORMAT_OPTIONS = [
   { value: "openapi", label: "OpenAPI 3.x" },
   { value: "har", label: "HAR 1.2 (history)" },
   { value: "workspace", label: "Workspace copy" },
+  { value: "environment", label: "Environment YAML" },
 ];
 
 const FORMAT_LABELS = new Map<string, string>([
@@ -33,6 +34,7 @@ const FORMAT_LABELS = new Map<string, string>([
   ["openapi", "OpenAPI 3.x"],
   ["har", "HAR 1.2"],
   ["workspace", "Workspace copy"],
+  ["environment", "Environment YAML"],
 ]);
 
 export function exportFormatLabel(format: string): string {

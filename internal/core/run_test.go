@@ -29,6 +29,7 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
+	"github.com/Its-Satyajit/reqly/internal/secrets"
 	"github.com/Its-Satyajit/reqly/internal/testsupport"
 	"github.com/Its-Satyajit/reqly/internal/variables"
 )
@@ -39,7 +40,7 @@ func newRunWS(t *testing.T) string {
 	t.Helper()
 	return testsupport.Workspace(t, map[string]string{
 		"reqly.yaml":            "name: ws\nenvironment: dev\n",
-		"environments/dev.yaml": "name: dev\nvariables:\n  base: example\ndescription: \"\"\nsecrets:\n  api_key: supersecret\n",
+		"environments/dev.yaml": "name: dev\nvariables:\n  base: example\ndescription: \"\"\nsecrets:\n  - api_key\n",
 	})
 }
 
@@ -57,7 +58,13 @@ func TestRun_MasksSecretsInBodyAndHeaders(t *testing.T) {
 		fmt.Fprint(w, `{"key":"supersecret"}`)
 	})
 
-	svc := NewRunService(dir)
+	store, err := secrets.NewFileStore(filepath.Join(dir, ".reqly", "tokens.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = store.Set("env:dev:api_key", "supersecret")
+
+	svc := NewRunServiceWithTokenStore(dir, store)
 	defer svc.Close()
 	res, err := svc.Run(context.Background(), request.Request{
 		Method: request.MethodGet,
@@ -70,6 +77,40 @@ func TestRun_MasksSecretsInBodyAndHeaders(t *testing.T) {
 	if strings.Contains(out, "supersecret") {
 		t.Fatalf("secret leaked into result: %q", out)
 	}
+}
+
+func TestRun_InterpolatesEnvironmentSecretsFromStore(t *testing.T) {
+	dir := newRunWS(t)
+	store, err := secrets.NewFileStore(filepath.Join(dir, ".reqly", "tokens.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set("env:dev:api_key", "my-secret-token"); err != nil {
+		t.Fatal(err)
+	}
+
+	var gotAuth atomic.Value
+	srv := echoServer(t, func(w http.ResponseWriter, r *http.Request) {
+		gotAuth.Store(r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+	})
+
+	svc := NewRunServiceWithTokenStore(dir, store)
+	defer svc.Close()
+	res, err := svc.Run(context.Background(), request.Request{
+		Method: request.MethodGet,
+		URL:    srv.URL,
+		Headers: []request.Header{
+			{Key: "Authorization", Value: "Bearer {{api_key}}"},
+		},
+	}, RunRequestOptions{FileEnv: "dev"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p := gotAuth.Load(); p == nil || p.(string) != "Bearer my-secret-token" {
+		t.Fatalf("expected secret token in server request, got %v", gotAuth.Load())
+	}
+	_ = res
 }
 
 func TestRun_InterpolatesEnvironmentVariables(t *testing.T) {

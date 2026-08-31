@@ -42,7 +42,7 @@ import { BottomPanel } from "../components/shell/BottomPanel";
 import { registerDefaultPaletteProviders } from "../lib/paletteProviders";
 import { RequestEditor } from "../features/request-editor/RequestEditor";
 import { ResponseViewer } from "../features/response-viewer/ResponseViewer";
-import { useWorkspaceStore } from "../stores";
+import { useWorkspaceStore, useShellStore } from "../stores";
 import { useWorkspaceBootstrapStore } from "../stores/useWorkspaceBootstrap";
 import { WorkspaceEmptyState } from "../features/workspace-bootstrap/WorkspaceEmptyState";
 import { NEW_REQUEST_TAB_ID } from "../stores/useRequestStore";
@@ -88,7 +88,8 @@ export function App() {
 	const [toolRailCollapsed, setToolRailCollapsed] = useState(false);
 	const toggleToolRail = () => setToolRailCollapsed((prev) => !prev);
 
-	const [splitOrientation, setSplitOrientation] = useState<"horizontal" | "vertical">("horizontal");
+	const splitOrientation = useShellStore((s) => s.responseMode);
+	const toggleSplitOrientation = useShellStore((s) => s.toggleResponseMode);
 	const splitLayout = useDefaultLayout({
 		id: "reqly-shell-split",
 		storage: shellStorage,
@@ -118,14 +119,26 @@ export function App() {
 			<Toaster />
 			<CrashOverlay />
 			<AppShell
-				topBar={<TopBar />}
-				toolRail={<ToolRail collapsed={toolRailCollapsed} onToggleCollapse={toggleToolRail} />}
+				topBar={
+					<ErrorBoundary label="Top bar">
+						<TopBar />
+					</ErrorBoundary>
+				}
+				toolRail={
+					<ErrorBoundary label="Tool rail">
+						<ToolRail collapsed={toolRailCollapsed} onToggleCollapse={toggleToolRail} />
+					</ErrorBoundary>
+				}
 				sidebar={
 					<ErrorBoundary label="Context sidebar">
 						<ContextSidebar />
 					</ErrorBoundary>
 				}
-				bottom={<BottomPanel />}
+				bottom={
+					<ErrorBoundary label="Bottom panel">
+						<BottomPanel />
+					</ErrorBoundary>
+				}
 				statusBar={
 					<ErrorBoundary label="Status bar">
 						<StatusBar />
@@ -215,7 +228,9 @@ export function App() {
 						</section>
 					) : (
 						<section className="flex h-full min-h-0 flex-col">
-							<RequestTabs />
+							<ErrorBoundary label="Request tabs">
+								<RequestTabs />
+							</ErrorBoundary>
 							{activeTab?.kind === "test" ? (
 								<div className="min-h-0 min-w-0 flex-1">
 									<ErrorBoundary label="Test runner">
@@ -239,7 +254,7 @@ export function App() {
 									<div className="flex shrink-0 justify-end border-b border-border px-1 py-0.5">
 										<button
 											type="button"
-											onClick={() => setSplitOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
+											onClick={toggleSplitOrientation}
 											className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
 											title="Toggle Request/Response split orientation"
 										>
@@ -281,7 +296,9 @@ export function App() {
 					)}
 				</div>
 			</AppShell>
-			<CommandPalette />
+			<ErrorBoundary label="Command palette">
+				<CommandPalette />
+			</ErrorBoundary>
 			<AlertDialog
 				open={pendingView != null}
 				onOpenChange={(open) => {

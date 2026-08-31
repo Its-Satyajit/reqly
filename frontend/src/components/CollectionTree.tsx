@@ -118,8 +118,12 @@ function RequestRow({ request }: { request: WorkspaceRequest }) {
 	const openRequest = useWorkspaceStore((s) => s.openRequest);
 	const duplicateRequestPath = useWorkspaceStore((s) => s.duplicateRequestPath);
 	const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+
+	// Heuristic method detection or default GET for collection display
+	const methodGuess = request.name.match(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)/i)?.[0]?.toUpperCase() ?? "REQ";
+
 	return (
-		<div style={{ paddingLeft: "1.5rem" }}>
+		<div className="group/row flex items-center justify-between pl-5 pr-1 hover:bg-muted/50 rounded">
 			<button
 				type="button"
 				data-tree-row
@@ -130,20 +134,40 @@ function RequestRow({ request }: { request: WorkspaceRequest }) {
 					setMenu({ x: e.clientX, y: e.clientY });
 				}}
 				onClick={() => void openRequest(request.path)}
-				title={`Open ${request.name}`}
-				className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+				title={`Open ${request.name} (${request.path})`}
+				className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
 			>
-				<span className="size-3 shrink-0" aria-hidden />
-				<span className="truncate">{request.name}</span>
+				<span className="font-mono text-[9px] font-bold tracking-tight text-primary/80 uppercase">
+					{methodGuess}
+				</span>
+				<span className="truncate font-mono text-[11px]">{request.name}</span>
 			</button>
+
+			<button
+				type="button"
+				onClick={() => void openRequest(request.path)}
+				title={`Run ${request.name}`}
+				className="size-5 shrink-0 rounded p-1 text-muted-foreground/40 opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover/row:opacity-100"
+			>
+				<Play className="size-3" aria-hidden />
+			</button>
+
 			{menu && (
 				<SharedContextMenu
 					x={menu.x}
 					y={menu.y}
 					items={[
 						{
+							label: "Open request",
+							onSelect: () => void openRequest(request.path),
+						},
+						{
 							label: "Duplicate request",
 							onSelect: () => void duplicateRequestPath(request.path),
+						},
+						{
+							label: "Copy path",
+							onSelect: () => void navigator.clipboard.writeText(request.path),
 						},
 					]}
 					onClose={() => setMenu(null)}
@@ -268,18 +292,18 @@ export function CollectionTree() {
 	}
 
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="relative px-2">
-				<Search className="pointer-events-none absolute left-4 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" aria-hidden />
+		<div className="flex flex-col gap-1.5 p-1 select-none">
+			<div className="relative px-1">
+				<Search className="pointer-events-none absolute left-3.5 top-1/2 size-3 -translate-y-1/2 text-muted-foreground/70" aria-hidden />
 				<input
 					value={filter}
 					onChange={(e) => setFilter(e.target.value)}
 					placeholder="Filter collections…"
 					aria-label="Filter collections"
-					className="w-full rounded-md border border-input bg-background py-1 pl-7 pr-2 text-xs placeholder:text-muted-foreground"
+					className="h-7 w-full rounded border border-input bg-background/80 py-1 pl-7 pr-2 font-mono text-[11px] placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none"
 				/>
 			</div>
-			<div role="tree" aria-label="Collections" onKeyDown={treeKeyDown} className="flex flex-col gap-0.5">
+			<div role="tree" aria-label="Collections" onKeyDown={treeKeyDown} className="flex flex-col gap-0.5 px-0.5">
 				{openError && (
 					<p role="alert" className="px-2 text-xs text-destructive">
 						{openError}
@@ -294,22 +318,22 @@ export function CollectionTree() {
 							onDragStart={(e) => e.dataTransfer.setData("text/plain", collection.path)}
 							onDragOver={(e) => e.preventDefault()}
 						>
-							<div className="flex w-full items-center gap-1 rounded-md px-2 py-1 hover:bg-muted/50">
+							<div className="flex w-full items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/60">
 								<button
 									type="button"
 									data-tree-row
 									aria-expanded={isOpen}
 									onClick={() => toggleExpanded(collection.path)}
 									onContextMenu={(e) => e.preventDefault()}
-									className="flex min-w-0 flex-1 items-center gap-1 text-left text-xs font-medium text-foreground"
+									className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold text-foreground"
 								>
-									<ChevronRight className={cn("size-3 shrink-0 transition-transform", isOpen && "rotate-90")} aria-hidden />
+									<ChevronRight className={cn("size-3 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-90 text-primary")} aria-hidden />
 									<span className="truncate">{collection.name}</span>
 								</button>
 								<RunControl path={collection.path} name={collection.name} />
 							</div>
 							{isOpen && (
-								<div className="ml-1 border-l border-border pl-1">
+								<div className="ml-2 border-l border-border/70 pl-1.5">
 									<CollectionBranch folders={collection.folders} requests={collection.requests} filter={filter} />
 								</div>
 							)}
@@ -317,14 +341,14 @@ export function CollectionTree() {
 					);
 				})}
 			</div>
-			<div className="flex gap-1 border-t border-border px-2 pt-2">
-				<button type="button" className="flex-1 rounded border border-border px-2 py-1 text-xs hover:bg-muted" title="New Collection">
+			<div className="flex gap-1 border-t border-border/70 px-1 pt-2">
+				<button type="button" className="flex-1 rounded border border-border/80 bg-background/50 px-1.5 py-1 text-[11px] font-mono text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="New Collection">
 					<Plus className="mr-1 inline size-3" />Collection
 				</button>
-				<button type="button" className="flex-1 rounded border border-border px-2 py-1 text-xs hover:bg-muted" title="New Folder">
+				<button type="button" className="flex-1 rounded border border-border/80 bg-background/50 px-1.5 py-1 text-[11px] font-mono text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="New Folder">
 					<Plus className="mr-1 inline size-3" />Folder
 				</button>
-				<button type="button" className="flex-1 rounded border border-border px-2 py-1 text-xs hover:bg-muted" title="New Request">
+				<button type="button" className="flex-1 rounded border border-border/80 bg-background/50 px-1.5 py-1 text-[11px] font-mono text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="New Request">
 					<Plus className="mr-1 inline size-3" />Request
 				</button>
 			</div>

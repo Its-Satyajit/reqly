@@ -37,6 +37,7 @@ type RequestService struct {
 	// resolution and history storage.
 	root    string
 	warning string
+	store   secrets.Store
 
 	histOnce   sync.Once
 	historySvc *HistoryService

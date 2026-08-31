@@ -166,16 +166,16 @@ export function ImportDialog({ onImported }: { onImported?: () => void }) {
                 if (file) void readFile(file);
               }}
               className={cn(
-                "flex flex-col items-center gap-1 rounded-md border border-dashed px-4 py-6 text-center transition-colors",
-                dragging ? "border-primary bg-primary/5" : "border-border",
+                "flex flex-col items-center gap-1.5 rounded border border-dashed px-4 py-6 text-center transition-colors select-none",
+                dragging ? "border-primary bg-primary/5" : "border-border/80 bg-muted/20 hover:bg-muted/40",
               )}
             >
-              <Upload className="size-4 text-muted-foreground" aria-hidden />
-              <p className="text-xs text-muted-foreground">
-                Drag a file here, or{" "}
+              <Upload className="size-4 text-primary" aria-hidden />
+              <p className="font-mono text-xs text-muted-foreground">
+                Drop OpenAPI, Postman, HAR, or cURL file here, or{" "}
                 <button
                   type="button"
-                  className="underline underline-offset-2 hover:text-foreground"
+                  className="text-primary underline underline-offset-2 hover:text-primary/80 font-semibold"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   browse

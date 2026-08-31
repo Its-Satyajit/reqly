@@ -2,11 +2,14 @@ import { cn } from "#lib/utils";
 import { methodTint } from "#lib/methodTint";
 import { AuthPanel } from "../../features";
 import { CollectionTree } from "../CollectionTree";
-import { useWorkspaceStore, type WorkspaceView } from "../../stores";
+import { useWorkspaceStore } from "../../stores";
 import { useHistoryStore } from "../../stores/useHistoryStore";
 import { useTestStore } from "../../stores/useTestStore";
 import { useRealtimeRecentsStore } from "../../stores/useRealtimeRecentsStore";
 import { useRealtimeStore } from "../../stores/useRealtimeStore";
+import { useMockStore } from "../../stores/useMockStore";
+import { useDocsStore } from "../../stores/useDocsStore";
+import { useSpecEditorStore } from "../../stores/useSpecEditorStore";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
 	return (
@@ -143,30 +146,230 @@ function HistoryContext() {
 	);
 }
 
-/** Blurb shown for tools whose working set lives entirely in the main pane. */
-function ToolContext({ description }: { description: string }) {
+function MocksContext() {
+	const routes = useMockStore((s) => s.routes);
+	const scenarios = useMockStore((s) => s.scenarios);
+	const status = useMockStore((s) => s.status);
+	const port = useMockStore((s) => s.port);
+	const activeScenarioId = useMockStore((s) => s.activeScenarioId);
+	const setActiveScenario = useMockStore((s) => s.setActiveScenario);
+	const addRoute = useMockStore((s) => s.addRoute);
+
 	return (
-		<p className="px-3 pt-3 text-xs leading-relaxed text-muted-foreground">
-			{description}
-		</p>
+		<div className="flex flex-col gap-3 p-2">
+			<div className="flex items-center justify-between border-b border-border/60 pb-2 px-1">
+				<div className="flex items-center gap-1.5 font-mono text-[11px]">
+					<span
+						className={cn(
+							"size-2 rounded-full",
+							status.running ? "bg-status-ok animate-pulse" : "bg-muted-foreground/40",
+						)}
+					/>
+					<span className="font-semibold">{status.running ? `Port :${port}` : "Offline"}</span>
+				</div>
+				<button
+					type="button"
+					onClick={addRoute}
+					className="rounded border border-border/80 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
+				>
+					+ Route
+				</button>
+			</div>
+
+			<div>
+				<SectionLabel>Routes ({routes.length})</SectionLabel>
+				{routes.length === 0 ? (
+					<p className="px-2 text-xs text-muted-foreground">No mock routes defined.</p>
+				) : (
+					<ul className="flex flex-col gap-0.5">
+						{routes.map((r, i) => {
+							// SAFETY: Unknown mock HTTP methods fallback to muted tint
+							const tintClass = methodTint[r.method as keyof typeof methodTint] ?? "text-muted-foreground";
+							return (
+								<li key={r.id ?? i} className="flex items-center gap-1.5 rounded px-2 py-1 text-xs hover:bg-muted/40 font-mono">
+									<span className={cn("text-[10px] font-bold", tintClass)}>
+										{r.method}
+									</span>
+									<span className="truncate text-foreground/90">{r.path}</span>
+									<span className="ml-auto text-[10px] text-muted-foreground">{r.status}</span>
+								</li>
+							);
+						})}
+					</ul>
+				)}
+			</div>
+
+			{scenarios.length > 0 && (
+				<div className="border-t border-border/60 pt-2">
+					<SectionLabel>Scenarios ({scenarios.length})</SectionLabel>
+					<ul className="flex flex-col gap-0.5">
+						{scenarios.map((sc) => (
+							<li key={sc.id}>
+								<button
+									type="button"
+									onClick={() => setActiveScenario(sc.id === activeScenarioId ? null : sc.id)}
+									className={cn(
+										"flex w-full items-center justify-between rounded px-2 py-1 text-xs font-mono transition-colors",
+										sc.id === activeScenarioId
+											? "bg-primary/10 font-semibold text-primary"
+											: "text-muted-foreground hover:bg-muted hover:text-foreground",
+									)}
+								>
+									<span className="truncate">{sc.name}</span>
+									<span className="text-[10px] opacity-70">{sc.routes?.length ?? 0} routes</span>
+								</button>
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
+		</div>
 	);
 }
 
-const TOOL_BLURBS = {
-	mocks:
-		"Stand-in servers that answer while the real API is down or unfinished.",
-	diff: "Compare two OpenAPI documents and see what changed for consumers.",
-	jwt: "Paste a token to decode its claims, timing, and expiry.",
-	graphql: "Introspect a GraphQL endpoint and browse its schema.",
-	grpc: "Call gRPC methods against a reflected or protoset-backed server.",
-	runners: "Run collections, paginate through lists, or fire bulk requests.",
-	explorer: "Browse any OpenAPI document as a navigable reference.",
-	docs: "Generate REST documentation from the workspace collections.",
-	"spec-editor": "Edit the OpenAPI spec with live tree navigation.",
-} satisfies Partial<Record<WorkspaceView, string>>;
+function DocsContext() {
+	const collections = useWorkspaceStore((s) => s.workspaceTree?.collections ?? []);
+	const selected = useDocsStore((s) => s.selected);
+	const toggleCollection = useDocsStore((s) => s.toggleCollection);
+	const result = useDocsStore((s) => s.result);
+	const activeFile = useDocsStore((s) => s.activeFile);
+	const setActiveFile = useDocsStore((s) => s.setActiveFile);
+
+	return (
+		<div className="flex flex-col gap-3 p-2">
+			<div>
+				<SectionLabel>Collections to Document</SectionLabel>
+				<ul className="flex flex-col gap-0.5">
+					{collections.map((c) => {
+						const isSelected = selected.length === 0 || selected.includes(c.name);
+						return (
+							<li key={c.name}>
+								<label className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-muted/40 cursor-pointer">
+									<input
+										type="checkbox"
+										checked={isSelected}
+										onChange={() => toggleCollection(c.name)}
+										className="size-3.5 rounded border-border accent-primary"
+									/>
+									<span className="truncate font-mono">{c.name}</span>
+								</label>
+							</li>
+						);
+					})}
+				</ul>
+			</div>
+
+			{result && result.files.length > 0 && (
+				<div className="border-t border-border/60 pt-2">
+					<SectionLabel>Generated Files ({result.files.length})</SectionLabel>
+					<ul className="flex flex-col gap-0.5">
+						{result.files.map((f) => (
+							<li key={f.name}>
+								<button
+									type="button"
+									onClick={() => setActiveFile(f.name)}
+									className={cn(
+										"w-full truncate rounded px-2 py-1 text-left font-mono text-xs transition-colors",
+										activeFile === f.name
+											? "bg-primary/10 font-medium text-primary"
+											: "text-muted-foreground hover:bg-muted hover:text-foreground",
+									)}
+								>
+									{f.name}
+								</button>
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function SpecEditorContext() {
+	const filePath = useSpecEditorStore((s) => s.filePath);
+	const diagnostics = useSpecEditorStore((s) => s.diagnostics);
+	const dirty = useSpecEditorStore((s) => s.dirty);
+	const selectedId = useSpecEditorStore((s) => s.selectedId);
+	const setSelected = useSpecEditorStore((s) => s.setSelected);
+
+	return (
+		<div className="flex flex-col gap-3 p-2">
+			<div className="border-b border-border/60 pb-2 px-1">
+				<p className="font-mono text-[11px] font-semibold text-foreground truncate">{filePath}</p>
+				<p className="font-mono text-[10px] text-muted-foreground">
+					{dirty ? "Unsaved changes" : "Synchronized"} · {diagnostics.length} issues
+				</p>
+			</div>
+
+			<div>
+				<SectionLabel>Navigation Quick Links</SectionLabel>
+				<ul className="flex flex-col gap-0.5 font-mono text-xs">
+					{[
+						{ id: "info", label: "API Info & Metadata" },
+						{ id: "servers", label: "Target Servers" },
+						{ id: "paths", label: "Path Endpoints" },
+						{ id: "components", label: "Components & Schemas" },
+					].map((sec) => (
+						<li key={sec.id}>
+							<button
+								type="button"
+								onClick={() => setSelected(sec.id)}
+								className={cn(
+									"w-full rounded px-2 py-1 text-left transition-colors",
+									selectedId === sec.id
+										? "bg-primary/10 font-semibold text-primary"
+										: "text-muted-foreground hover:bg-muted hover:text-foreground",
+								)}
+							>
+								{sec.label}
+							</button>
+						</li>
+					))}
+				</ul>
+			</div>
+		</div>
+	);
+}
+
+function DiffContext() {
+	return (
+		<div className="flex flex-col gap-3 p-2">
+			<SectionLabel>OpenAPI Compare</SectionLabel>
+			<p className="px-2 text-xs leading-relaxed text-muted-foreground font-mono">
+				Compare live endpoints, revisions, and OpenAPI specifications to detect breaking changes before shipping.
+			</p>
+		</div>
+	);
+}
+
+function RunnersContext() {
+	const collections = useWorkspaceStore((s) => s.workspaceTree?.collections ?? []);
+	const requestView = useWorkspaceStore((s) => s.requestView);
+
+	return (
+		<div className="flex flex-col gap-3 p-2">
+			<SectionLabel>Collections ({collections.length})</SectionLabel>
+			<ul className="flex flex-col gap-0.5 font-mono text-xs">
+				{collections.map((c) => (
+					<li key={c.name}>
+						<button
+							type="button"
+							onClick={() => requestView("runners")}
+							className="w-full truncate rounded px-2 py-1 text-left text-muted-foreground hover:bg-muted hover:text-foreground"
+						>
+							▶ {c.name}
+						</button>
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
 
 function RealtimeRecents({ kind }: { kind: "ws" | "sse" }) {
-	const recents = useRealtimeRecentsStore((s) => s.recents.filter((r) => r.kind === kind).slice(0, 12));
+	const allRecents = useRealtimeRecentsStore((s) => s.recents);
+	const recents = allRecents.filter((r) => r.kind === kind).slice(0, 12);
 	const update = useRealtimeStore((s) => s.update);
 	const pageId = kind === "ws" ? "realtime-websocket-page" : "realtime-sse-page";
 	if (recents.length === 0) {
@@ -190,12 +393,6 @@ export function ContextSidebar({ className }: { className?: string }) {
 	const activeView = useWorkspaceStore((s) => s.activeView);
 
 	if (activeView === "home") return null;
-	if (activeView === "websocket")
-		return <aside className={cn("flex h-full w-full flex-col overflow-y-auto border-r border-border bg-card/30", className)}><RealtimeRecents kind="ws" /></aside>;
-	if (activeView === "sse")
-		return <aside className={cn("flex h-full w-full flex-col overflow-y-auto border-r border-border bg-card/30", className)}><RealtimeRecents kind="sse" /></aside>;
-	if (activeView === "settings")
-		return <aside className={cn("flex h-full w-full flex-col overflow-y-auto border-r border-border bg-card/30", className)}><p className="px-3 pt-3 text-xs text-muted-foreground">Settings — see main pane.</p></aside>;
 
 	let content: React.ReactNode;
 	switch (activeView) {
@@ -208,13 +405,43 @@ export function ContextSidebar({ className }: { className?: string }) {
 		case "history":
 			content = <HistoryContext />;
 			break;
+		case "mocks":
+			content = <MocksContext />;
+			break;
+		case "docs":
+			content = <DocsContext />;
+			break;
+		case "spec-editor":
+			content = <SpecEditorContext />;
+			break;
+		case "diff":
+			content = <DiffContext />;
+			break;
+		case "runners":
+			content = <RunnersContext />;
+			break;
+		case "websocket":
+			content = <RealtimeRecents kind="ws" />;
+			break;
+		case "sse":
+			content = <RealtimeRecents kind="sse" />;
+			break;
+		case "settings":
+			content = (
+				<div className="p-3">
+					<SectionLabel>Preferences</SectionLabel>
+					<p className="px-2 text-xs text-muted-foreground">General, Themes, CI/CD and TLS settings.</p>
+				</div>
+			);
+			break;
 		default:
 			content = (
-				<ToolContext
-					description={
-						TOOL_BLURBS[activeView] ?? "Select a tool from the rail to begin."
-					}
-				/>
+				<div className="p-3">
+					<SectionLabel>{activeView}</SectionLabel>
+					<p className="px-2 text-xs leading-relaxed text-muted-foreground">
+						Select a tool from the rail to begin.
+					</p>
+				</div>
 			);
 	}
 

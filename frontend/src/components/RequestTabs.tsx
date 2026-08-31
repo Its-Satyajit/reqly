@@ -62,10 +62,10 @@ function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; on
 				if (!Number.isNaN(from) && from !== index) onReorder(from, index);
 			}}
 			className={cn(
-				"group flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors",
+				"group relative flex h-7 shrink-0 items-center gap-1.5 rounded-t border-t border-x px-2.5 text-xs transition-colors select-none",
 				active
-					? "border-border bg-muted text-foreground"
-					: "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+					? "border-border bg-background font-medium text-foreground -mb-px z-10"
+					: "border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
 			)}
 		>
 			<button
@@ -74,49 +74,48 @@ function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; on
 				aria-selected={active}
 				tabIndex={active ? 0 : -1}
 				onClick={() => setActiveTab(tab.id)}
-				className="max-w-40 truncate"
+				className="flex items-center max-w-44 truncate text-left font-mono text-[11px]"
 				title={tab.title}
 			>
-				{pinned && <Pin className="mr-1 size-3 shrink-0 text-muted-foreground" aria-label="Pinned" />}
+				{pinned && <Pin className="mr-1 size-2.5 shrink-0 text-muted-foreground" aria-label="Pinned" />}
 				{dirty && (
 					<span
 						title="Unsaved changes"
 						aria-label="Unsaved changes"
-						className="mr-1 inline-block size-1.5 rounded-full bg-warning"
+						className="mr-1.5 inline-block size-1.5 rounded-full bg-status-warn"
 					/>
 				)}
-				{tab.title}
+				<span className="truncate">{tab.title}</span>
 			</button>
-			<button
-				type="button"
-				onClick={() => setPinned((v) => !v)}
-				title={pinned ? "Unpin" : "Pin"}
-				aria-label={pinned ? "Unpin tab" : "Pin tab"}
-				className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
-			>
-				<Pin className="size-3" aria-hidden />
-			</button>
-			<button
-				type="button"
-				onClick={duplicate}
-				title="Duplicate tab"
-				aria-label={`Duplicate ${tab.title}`}
-				className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
-			>
-				<Copy className="size-3" aria-hidden />
-			</button>
-			<button
-				type="button"
-				onClick={requestClose}
-				onAuxClick={(e) => {
-					if (e.button === 1) requestClose();
-				}}
-				title="Close tab (middle-click)"
-				aria-label={`Close ${tab.title}`}
-				className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
-			>
-				<X className="size-3" aria-hidden />
-			</button>
+			<div className="flex items-center gap-0.5 ml-1">
+				<button
+					type="button"
+					onClick={() => setPinned((v) => !v)}
+					title={pinned ? "Unpin" : "Pin"}
+					aria-label={pinned ? "Unpin tab" : "Pin tab"}
+					className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
+				>
+					<Pin className="size-2.5" aria-hidden />
+				</button>
+				<button
+					type="button"
+					onClick={duplicate}
+					title="Duplicate tab"
+					aria-label={`Duplicate ${tab.title}`}
+					className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
+				>
+					<Copy className="size-2.5" aria-hidden />
+				</button>
+				<button
+					type="button"
+					onClick={requestClose}
+					title="Close tab"
+					aria-label={`Close ${tab.title}`}
+					className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-destructive"
+				>
+					<X className="size-3" aria-hidden />
+				</button>
+			</div>
 			<AlertDialog open={confirming} onOpenChange={setConfirming}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
@@ -193,7 +192,7 @@ export function RequestTabs() {
 			role="tablist"
 			aria-label="Open requests"
 			onKeyDown={(e) => handleTabArrowKeys(e)}
-			className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-2 py-1"
+			className="flex h-9 shrink-0 items-end gap-1 overflow-x-auto border-b border-border bg-card/20 px-2 pt-1"
 		>
 			{openTabs.map((t, i) => (
 				<TabItem key={t.id} tab={t} index={i} onReorder={reorder} />
@@ -204,7 +203,7 @@ export function RequestTabs() {
 					openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" })
 				}
 				title="New request"
-				className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+				className="mb-1 shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 			>
 				<Plus className="size-3.5" aria-hidden />
 				<span className="sr-only">New request</span>

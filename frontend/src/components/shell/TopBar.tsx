@@ -28,64 +28,75 @@ export function TopBar() {
 	const requestView = useWorkspaceStore((s) => s.requestView);
 
 	return (
-		<header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-3">
+		<header className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-background px-3 select-none">
 			<div className="flex min-w-0 items-center gap-2">
 				<img
 					src={resolvedTheme === "atlas-dark" ? logoDark : logoLight}
 					alt="Reqly"
-					className="size-5 shrink-0"
+					className="size-4 shrink-0"
 				/>
 				<button
 					type="button"
 					onClick={() => void switchWorkspace()}
 					title="Switch workspace folder"
-					className="flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-muted"
+					className="group flex min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 text-xs transition-colors hover:bg-muted"
 				>
-					<span className="truncate font-semibold">{workspaceName ?? "Reqly"}</span>
-					<FolderSearch className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+					<span className="truncate font-mono font-medium text-foreground">
+						{workspaceName ?? "Reqly"}
+					</span>
+					<FolderSearch className="size-3 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" aria-hidden />
 				</button>
 			</div>
 
-			<div className="mx-auto flex items-center gap-1">
-				<Button variant="ghost" size="sm" onClick={() => useCommandPaletteStore.getState().setOpen(true)} title="Search commands (⌘K)" aria-label="Search">
-					<Search className="size-4" aria-hidden />
-					<span className="hidden sm:inline">Search</span>
-					<kbd className="hidden sm:inline ml-1 rounded bg-muted px-1 text-[11px]">⌘K</kbd>
-				</Button>
+			<div className="flex items-center gap-1.5">
+				<button
+					type="button"
+					onClick={() => useCommandPaletteStore.getState().setOpen(true)}
+					title="Search commands (⌘K)"
+					aria-label="Search"
+					className="flex h-7 items-center gap-2 rounded border border-input bg-card/60 px-2.5 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-muted/80 hover:text-foreground"
+				>
+					<Search className="size-3.5" aria-hidden />
+					<span className="hidden sm:inline text-[11px]">Search commands…</span>
+					<kbd className="hidden sm:inline rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground border border-border/70">⌘K</kbd>
+				</button>
 				<Button
 					variant="ghost"
-					size="sm"
+					size="xs"
 					onClick={() => setImportOpen(true)}
 					title="Import from cURL, OpenAPI, HAR, Postman, Insomnia, or Bruno"
+					className="gap-1 text-xs text-muted-foreground hover:text-foreground"
 				>
-					<SquareArrowOutDownLeft className="size-4" aria-hidden />
-					Import
+					<SquareArrowOutDownLeft className="size-3.5" aria-hidden />
+					<span>Import</span>
 				</Button>
 				<Button
 					variant="ghost"
-					size="sm"
+					size="xs"
 					onClick={() => setExportOpen(true)}
 					title="Export as Postman, OpenAPI, HAR, or a workspace copy"
+					className="gap-1 text-xs text-muted-foreground hover:text-foreground"
 				>
-					<FileDown className="size-4" aria-hidden />
-					Export
+					<FileDown className="size-3.5" aria-hidden />
+					<span>Export</span>
 				</Button>
 			</div>
 
-			<div className="flex items-center gap-1.5">
+			<div className="flex items-center gap-2">
 				<EnvironmentSelector />
-				<div className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] text-muted-foreground" title="Local-first Git storage (all files up-to-date)">
+				<div className="hidden md:flex items-center gap-1.5 border-l border-border pl-2 pr-1 text-[11px] font-mono text-muted-foreground">
 					<span className="size-1.5 rounded-full bg-status-ok" aria-hidden />
-					<span>Saved</span>
+					<span>Local</span>
 				</div>
 				<Button
 					variant="ghost"
-					size="sm"
+					size="icon-sm"
 					onClick={() => requestView("settings")}
 					title="Settings"
 					aria-label="Settings"
+					className="text-muted-foreground hover:text-foreground"
 				>
-					<Settings className="size-4" aria-hidden />
+					<Settings className="size-3.5" aria-hidden />
 				</Button>
 			</div>
 

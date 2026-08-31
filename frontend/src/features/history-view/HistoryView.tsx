@@ -48,6 +48,7 @@ export function HistoryView() {
 
 	const [query, setQuery] = useState("");
 	const [status, setStatus] = useState("");
+	const [methodFilter, setMethodFilter] = useState("");
 	const [page, setPage] = useState(0);
 	const [confirmingClear, setConfirmingClear] = useState(false);
 	const [replayVarsId, setReplayVarsId] = useState<string | null>(null);
@@ -59,10 +60,21 @@ export function HistoryView() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [load]);
 
-	// Fuse.js fuzzy search over the recent pool — punctuation-safe and
-	// typo-tolerant; the plain list renders when the query is blank.
+	// Fuse.js fuzzy search over the recent pool
 	const searched = useFuseSearch(pool, query, HISTORY_FUSE_OPTIONS);
-	const displayEntries = query.trim() === "" ? entries : searched.slice(0, PAGE_SIZE);
+	const rawDisplay = query.trim() === "" ? entries : searched.slice(0, PAGE_SIZE);
+
+	const displayEntries = rawDisplay.filter((entry) => {
+		if (methodFilter && entry.method.toUpperCase() !== methodFilter.toUpperCase()) return false;
+		if (status) {
+			const s = entry.status;
+			if (status === "2xx" && (s < 200 || s >= 300)) return false;
+			if (status === "3xx" && (s < 300 || s >= 400)) return false;
+			if (status === "4xx" && (s < 400 || s >= 500)) return false;
+			if (status === "5xx" && s < 500) return false;
+		}
+		return true;
+	});
 
 	const search = () => {
 		setPage(0);
@@ -90,32 +102,44 @@ export function HistoryView() {
 	const pageFull = entries.length === PAGE_SIZE;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col p-4">
-			<div className="flex shrink-0 flex-col gap-3 pb-3">
+		<div className="flex h-full min-h-0 flex-col p-4 bg-background">
+			<div className="flex shrink-0 flex-col gap-2.5 pb-3">
 				<div>
 					<h2 className="text-sm font-semibold">History</h2>
 					<p className="text-xs text-muted-foreground">
-						Local request history for this workspace — stored on disk, never
-						sent anywhere.
+						Local request history for this workspace — stored on disk, never sent anywhere.
 					</p>
 				</div>
-				<div className="flex items-center gap-1">
-					<input
-						value={query}
-						onChange={(e) => setQuery(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") search();
-						}}
-						placeholder="Search URL or path…"
-						aria-label="Search history"
-						className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
+				<div className="flex items-center gap-1.5">
+					<div className="flex flex-1 items-center rounded border border-input bg-background focus-within:border-ring">
+						<input
+							value={query}
+							onChange={(e) => setQuery(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") search();
+							}}
+							placeholder="Filter by URL or path…"
+							aria-label="Search history"
+							className="min-w-0 flex-1 border-0 bg-transparent px-2.5 py-1 font-mono text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+						/>
+						<Button size="xs" variant="ghost" onClick={search} disabled={loading} className="mr-1 h-6 px-2">
+							<Search className="size-3" aria-hidden />
+						</Button>
+					</div>
+					<CompactSelect
+						value={methodFilter}
+						onChange={(m) => setMethodFilter(m)}
+						ariaLabel="Method filter"
+						className="h-7 w-24 font-mono text-[11px]"
+						options={[
+							{ value: "", label: "All methods" },
+							{ value: "GET", label: "GET" },
+							{ value: "POST", label: "POST" },
+							{ value: "PUT", label: "PUT" },
+							{ value: "PATCH", label: "PATCH" },
+							{ value: "DELETE", label: "DELETE" },
+						]}
 					/>
-					<Button size="sm" variant="outline" onClick={search} disabled={loading}>
-						<Search className="size-3.5" aria-hidden />
-						<span className="sr-only">Search</span>
-					</Button>
-				</div>
-				<div className="flex items-center gap-2">
 					<CompactSelect
 						value={status}
 						onChange={(next) => {
@@ -124,17 +148,19 @@ export function HistoryView() {
 							void load({ offset: 0, status: next, query });
 						}}
 						ariaLabel="Status filter"
+						className="h-7 w-28 font-mono text-[11px]"
 						options={[
 							{ value: "", label: "All statuses" },
-							{ value: "2xx", label: "2xx" },
-							{ value: "4xx", label: "4xx" },
-							{ value: "5xx", label: "5xx" },
+							{ value: "2xx", label: "2xx Success" },
+							{ value: "3xx", label: "3xx Redirect" },
+							{ value: "4xx", label: "4xx Client Err" },
+							{ value: "5xx", label: "5xx Server Err" },
 						]}
 					/>
-					<span className="font-data text-xs tabular-nums text-muted-foreground">
-						page {page + 1}
-					</span>
 					<span className="ml-auto flex items-center gap-1">
+						<span className="font-mono text-xs tabular-nums text-muted-foreground mr-1">
+							page {page + 1}
+						</span>
 						<Button
 							size="icon-sm"
 							variant="ghost"
@@ -154,12 +180,12 @@ export function HistoryView() {
 							<ChevronRight className="size-3.5" aria-hidden />
 						</Button>
 						<Button
-							size="sm"
+							size="xs"
 							variant="ghost"
-							className="text-destructive hover:bg-destructive/10"
+							className="h-7 text-destructive hover:bg-destructive/10 font-mono text-[11px] gap-1"
 							onClick={() => setConfirmingClear(true)}
 						>
-							<Trash2 className="size-3.5" aria-hidden />
+							<Trash2 className="size-3" aria-hidden />
 							Clear
 						</Button>
 					</span>
@@ -205,48 +231,52 @@ export function HistoryView() {
 							: "Nothing matches this search."}
 					</p>
 				) : (
-					<table className="w-full border-separate border-spacing-0 text-left text-xs">
+					<table className="w-full border-separate border-spacing-0 text-left text-xs select-none">
 						<thead>
-							<tr>
-								<th className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1.5 font-medium">Time</th>
-								<th className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1.5 font-medium">Method</th>
-								<th className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1.5 font-medium">URL / path</th>
-								<th className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1.5 font-medium">Status</th>
-								<th className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1.5 font-medium">Duration</th>
-								<th className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1.5 font-medium">Env</th>
-								<th className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1.5" />
+							<tr className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+								<th className="sticky top-0 z-10 border-b border-border bg-card/80 px-3 py-2 font-medium">Time</th>
+								<th className="sticky top-0 z-10 border-b border-border bg-card/80 px-2 py-2 font-medium">Method</th>
+								<th className="sticky top-0 z-10 border-b border-border bg-card/80 px-3 py-2 font-medium">URL / Path</th>
+								<th className="sticky top-0 z-10 border-b border-border bg-card/80 px-2 py-2 font-medium">Status</th>
+								<th className="sticky top-0 z-10 border-b border-border bg-card/80 px-2 py-2 font-medium">Duration</th>
+								<th className="sticky top-0 z-10 border-b border-border bg-card/80 px-2 py-2 font-medium">Env</th>
+								<th className="sticky top-0 z-10 border-b border-border bg-card/80 px-3 py-2 text-right font-medium">Actions</th>
 							</tr>
 						</thead>
 						<tbody>
 							{displayEntries.map((entry) => (
-								<tr key={entry.id} className="hover:bg-muted/40">
-									<td className="border-b border-border/50 px-2 py-1.5 font-data tabular-nums text-muted-foreground">
+								<tr key={entry.id} className="transition-colors hover:bg-muted/40">
+									<td className="border-b border-border/50 px-3 py-1.5 font-mono text-[11px] tabular-nums text-muted-foreground">
 										{formatTime(entry.createdAt)}
 									</td>
 									<td className="border-b border-border/50 px-2 py-1.5">
 										<MethodLabel method={entry.method} />
 									</td>
-									<td className="max-w-[280px] border-b border-border/50 px-2 py-1.5">
-										<span className="block truncate font-mono" title={entry.url}>
+									<td className="max-w-[340px] border-b border-border/50 px-3 py-1.5">
+										<span className="block truncate font-mono text-[11px] text-foreground/90" title={entry.url}>
 											{entry.url || entry.requestPath || "—"}
 										</span>
 									</td>
 									<td className="border-b border-border/50 px-2 py-1.5">
 										<StatusPill status={entry.status} />
 									</td>
-									<td className="border-b border-border/50 px-2 py-1.5 font-data tabular-nums text-muted-foreground">
+									<td className="border-b border-border/50 px-2 py-1.5 font-mono text-[11px] tabular-nums text-muted-foreground">
 										{formatDuration(entry.durationMs)}
 									</td>
-									<td className="border-b border-border/50 px-2 py-1.5 font-mono text-muted-foreground">
-										{entry.env || "—"}
+									<td className="border-b border-border/50 px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
+										{entry.env ? (
+											<span className="rounded bg-muted/60 px-1 py-0.5 text-[10px]">{entry.env}</span>
+										) : (
+											"—"
+										)}
 									</td>
-									<td className="border-b border-border/50 px-2 py-1.5 text-right">
+									<td className="border-b border-border/50 px-3 py-1.5 text-right">
 										<div className="flex justify-end gap-1">
-											<Button size="xs" variant="ghost" onClick={() => onReplay(entry)} title={`Replay ${entry.method} ${entry.url}`}>
-												<RotateCcw className="size-3" aria-hidden />
+											<Button size="xs" variant="ghost" onClick={() => onReplay(entry)} title={`Replay ${entry.method} ${entry.url}`} className="gap-1 font-mono text-[10px]">
+												<RotateCcw className="size-2.5" aria-hidden />
 												Replay
 											</Button>
-											<Button size="xs" variant="ghost" onClick={() => { setReplayVarsId(entry.id); setReplayVars([{ key: "", value: "", enabled: true }]); }} title="Replay with vars">
+											<Button size="xs" variant="ghost" onClick={() => { setReplayVarsId(entry.id); setReplayVars([{ key: "", value: "", enabled: true }]); }} title="Replay with vars" className="font-mono text-[10px]">
 												Vars
 											</Button>
 										</div>

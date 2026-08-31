@@ -11,12 +11,12 @@ import { ProxyTlsPanel } from "./ProxyTlsPanel";
 import { CicdPanel } from "./CicdPanel";
 
 const SHORTCUTS: [string, string][] = [
-  ["⌘K", "Command palette"],
-  ["⌘B", "Toggle sidebar"],
-  ["⌘J", "Toggle bottom panel"],
-  ["⌘W", "Close tab"],
-  ["⌘1–8", "Jump to tool (Home, Requests, Envs, History, then API tools in rail order)"],
-  ["⌘⏎", "Send active request"],
+  ["⌘K", "Toggle Command Palette"],
+  ["⌘B", "Toggle Workspace Sidebar"],
+  ["⌘J", "Toggle Bottom Panel (Console/Network)"],
+  ["⌘W", "Close Active Tab (guarded against unsaved edits)"],
+  ["⌘1–9", "Switch Tool View (Home, Requests, Envs, History, Mocks, Diff, JWT, GraphQL, Runners)"],
+  ["⌘⏎", "Send Active Request"],
 ];
 
 const RETENTION_OPTIONS = [
@@ -42,56 +42,62 @@ export function SettingsView() {
     localStorage.setItem("reqly:historyRetention", v);
   };
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto" aria-label="Settings">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background" aria-label="Settings">
       <PageHeader
         icon={Settings}
         title="Settings"
         description="Preferences, workspace configurations, proxy/TLS rules, and CI/CD generators"
       />
-      <div className="mx-auto max-w-3xl w-full p-6 space-y-6">
-      <section className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold">Appearance</h2>
-        <p className="mt-1 text-xs text-muted-foreground">Atlas themes are pure CSS-variable sets; adding a theme is one stylesheet.</p>
+      <div className="mx-auto max-w-3xl w-full p-4 space-y-4">
+      <section className="rounded border border-border/80 bg-card/40 p-4">
+        <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">Appearance</h2>
+        <p className="mt-1 text-xs text-muted-foreground">Atlas themes are pure CSS-variable sets; switching themes updates design tokens instantly.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {THEMES.map((t) => (
-            <button key={t.id} onClick={() => setTheme(t.id)} className={`rounded-md border px-3 py-1.5 text-xs ${theme === t.id ? "border-primary bg-primary/10 font-medium text-primary" : "border-border hover:bg-muted"}`}>{t.label}</button>
+            <button key={t.id} onClick={() => setTheme(t.id)} className={`rounded border px-3 py-1.5 font-mono text-xs transition-colors ${theme === t.id ? "border-primary bg-primary/10 font-bold text-primary" : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"}`}>{t.label}</button>
           ))}
-          <button onClick={() => setTheme("system")} className={`rounded-md border px-3 py-1.5 text-xs ${theme === "system" ? "border-primary bg-primary/10 font-medium text-primary" : "border-border hover:bg-muted"}`}>System</button>
+          <button onClick={() => setTheme("system")} className={`rounded border px-3 py-1.5 font-mono text-xs transition-colors ${theme === "system" ? "border-primary bg-primary/10 font-bold text-primary" : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"}`}>System</button>
         </div>
       </section>
 
       <ProxyTlsPanel />
       <CicdPanel />
-      <section className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold">Workspace</h2>
-        <p className="mt-1 text-xs text-muted-foreground">{workspace?.name ?? "No workspace"} — {workspace?.path ?? "—"}</p>
-        <button onClick={() => void openFolder()} className="mt-2 text-xs underline">Switch folder</button>
+
+      <section className="rounded border border-border/80 bg-card/40 p-4">
+        <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">Workspace</h2>
+        <p className="mt-1 font-mono text-xs text-foreground">{workspace?.name ?? "No workspace"} <span className="text-muted-foreground">({workspace?.path ?? "—"})</span></p>
+        <button onClick={() => void openFolder()} className="mt-2 font-mono text-xs text-primary hover:underline">Switch folder →</button>
       </section>
-      <section className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold">Storage — History Retention</h2>
-        <p className="mt-1 text-xs text-muted-foreground">{pool.length} recent entries (capped at 500) — retention cleanup runs on app start.</p>
-        <div className="mt-3 flex gap-2">
+
+      <section className="rounded border border-border/80 bg-card/40 p-4">
+        <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">Storage & History Retention</h2>
+        <p className="mt-1 font-mono text-xs text-muted-foreground">{pool.length} recent entries recorded in local SQLite database.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
           {RETENTION_OPTIONS.map((o) => (
             <button
               key={o.value}
               onClick={() => saveRetention(o.value)}
-              className={`rounded-md border px-3 py-1.5 text-xs ${retention === o.value ? "border-primary bg-primary/10 font-medium text-primary" : "border-border hover:bg-muted"}`}
+              className={`rounded border px-3 py-1.5 font-mono text-xs transition-colors ${retention === o.value ? "border-primary bg-primary/10 font-bold text-primary" : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"}`}
             >
               {o.label}
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Setting stored locally; history entries older than retention are cleaned up on next launch.</p>
+        <p className="mt-2 text-[11px] text-muted-foreground">Stored locally in <code className="font-mono">.reqly/history.db</code>. Older records are automatically cleaned up on launch.</p>
       </section>
-      <section className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold">About</h2>
-        <p className="mt-1 text-xs text-muted-foreground">Reqly — local-first, zero telemetry.</p>
-        <p className="mt-1 text-xs text-muted-foreground">Version <span className="font-mono font-medium text-foreground">{APP_VERSION}</span> — report bugs with this version.</p>
-        <div className="mt-3 rounded-md border border-border bg-muted/30 p-3">
-          <p className="text-xs font-medium">Keyboard shortcuts</p>
-          <ul className="mt-2 grid gap-1">
+
+      <section className="rounded border border-border/80 bg-card/40 p-4">
+        <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">About & Diagnostics</h2>
+        <p className="mt-1 text-xs text-muted-foreground">Reqly — Local-first, Git-native API client. Zero telemetry.</p>
+        <p className="mt-1 font-mono text-xs text-muted-foreground">Version <span className="font-bold text-foreground">{APP_VERSION}</span></p>
+        <div className="mt-3 rounded border border-border bg-background/50 p-3">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Configured Keyboard Shortcuts</p>
+          <ul className="mt-2 grid gap-1.5 font-mono text-xs">
             {SHORTCUTS.map(([k, d]) => (
-              <li key={k} className="flex justify-between text-xs"><span className="font-mono text-muted-foreground">{k}</span><span>{d}</span></li>
+              <li key={k} className="flex items-center justify-between border-b border-border/40 pb-1">
+                <span className="rounded bg-muted px-1.5 py-0.5 font-bold text-primary">{k}</span>
+                <span className="text-muted-foreground">{d}</span>
+              </li>
             ))}
           </ul>
         </div>

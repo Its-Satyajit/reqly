@@ -13,6 +13,7 @@ import {
 	AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 import { useWorkspaceStore } from "../../stores";
+import { cn } from "#lib/utils";
 import { notifySuccess } from "../../lib/notify";
 import { inputClass } from "../../lib/ui";
 import { EnvironmentEditor } from "./EnvironmentEditor";
@@ -227,59 +228,70 @@ export function EnvironmentsView() {
 						}
 						return null;
 					})()}
-					<ul className="flex flex-col gap-2">
+					<ul className="flex flex-col gap-1.5">
 						{environments.map((env) => {
 							const active = env.id === activeEnvironmentId;
+							const varCount = Object.keys(env.variables).length;
+							const secretCount = env.secrets.length;
 							return (
 								<li
 									key={env.id}
-									className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2"
+									className={cn(
+										"flex items-center justify-between gap-3 rounded border bg-card/60 px-3 py-2 transition-colors select-none",
+										active ? "border-primary/50 bg-primary/[0.02]" : "border-border hover:border-border/80",
+									)}
 								>
 									<button
 										type="button"
 										onClick={() => onEdit(env.name)}
 										className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
 									>
-										<span className="flex items-center gap-2 text-sm font-medium">
-											<span className="font-mono">{env.name}</span>
+										<div className="flex items-center gap-2">
+											<span className="font-mono text-xs font-semibold text-foreground">{env.name}</span>
 											{active && (
-												<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+												<span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-primary">
 													active
 												</span>
 											)}
-										</span>
-										<span className="truncate text-xs text-muted-foreground">
-											{env.description ||
-												`${Object.keys(env.variables).length} variable(s)`}
-										</span>
-									</button>
-									<div className="flex items-center gap-2">
-										{editingName === env.name && (
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => onEdit(env.name)}
-											>
-												Editing…
-											</Button>
+											<span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+												{varCount} var{varCount === 1 ? "" : "s"}
+												{secretCount > 0 ? ` · ${secretCount} secret${secretCount === 1 ? "" : "s"}` : ""}
+											</span>
+										</div>
+										{env.description && (
+											<p className="truncate text-xs text-muted-foreground">
+												{env.description}
+											</p>
 										)}
+									</button>
+									<div className="flex items-center gap-1.5">
 										{!active && (
 											<Button
+												size="xs"
 												variant="outline"
-												size="sm"
 												onClick={() => void onSetActive(env.name)}
+												className="font-mono text-[11px]"
 											>
-												Use
+												Set active
 											</Button>
 										)}
-									<Button
-										variant="ghost"
-										size="sm"
-										className="text-destructive hover:bg-destructive/10"
-										onClick={() => setDeletingName(env.name)}
-									>
-										Delete
-									</Button>
+										<Button
+											size="xs"
+											variant="ghost"
+											onClick={() => onEdit(env.name)}
+											className="font-mono text-[11px]"
+										>
+											{editingName === env.name ? "Editing" : "Edit"}
+										</Button>
+										<Button
+											size="xs"
+											variant="ghost"
+											onClick={() => setDeletingName(env.name)}
+											aria-label={`Delete ${env.name}`}
+											className="text-destructive hover:bg-destructive/10"
+										>
+											Delete
+										</Button>
 									</div>
 								</li>
 							);
