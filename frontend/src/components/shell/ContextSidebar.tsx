@@ -1,5 +1,15 @@
 import { cn } from "#lib/utils";
 import { methodTint } from "#lib/methodTint";
+import {
+	Palette,
+	FolderGit2,
+	Database,
+	Globe,
+	Lock,
+	Terminal,
+	Keyboard,
+	Info,
+} from "lucide-react";
 import { AuthPanel } from "../../features";
 import { CollectionTree } from "../CollectionTree";
 import { useWorkspaceStore } from "../../stores";
@@ -10,6 +20,7 @@ import { useRealtimeStore } from "../../stores/useRealtimeStore";
 import { useMockStore } from "../../stores/useMockStore";
 import { useDocsStore } from "../../stores/useDocsStore";
 import { useSpecEditorStore } from "../../stores/useSpecEditorStore";
+import { useSettingsStore, type SettingsTabId } from "../../stores/useSettingsStore";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
 	return (
@@ -389,6 +400,51 @@ function RealtimeRecents({ kind }: { kind: "ws" | "sse" }) {
 	);
 }
 
+function SettingsContext() {
+	const activeTab = useSettingsStore((s) => s.activeTab);
+	const setActiveTab = useSettingsStore((s) => s.setActiveTab);
+
+	const items: { id: SettingsTabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+		{ id: "appearance", label: "Appearance", icon: Palette },
+		{ id: "workspace", label: "Workspace", icon: FolderGit2 },
+		{ id: "storage", label: "Storage & Retention", icon: Database },
+		{ id: "network", label: "Network & Proxy", icon: Globe },
+		{ id: "security", label: "TLS & Security", icon: Lock },
+		{ id: "cicd", label: "CI / CD", icon: Terminal },
+		{ id: "shortcuts", label: "Shortcuts", icon: Keyboard },
+		{ id: "about", label: "About", icon: Info },
+	];
+
+	return (
+		<div className="flex flex-col gap-1 p-2">
+			<SectionLabel>Settings</SectionLabel>
+			<ul className="flex flex-col gap-1 mt-1">
+				{items.map((item) => {
+					const Icon = item.icon;
+					const selected = activeTab === item.id;
+					return (
+						<li key={item.id}>
+							<button
+								type="button"
+								onClick={() => setActiveTab(item.id)}
+								className={cn(
+									"flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-mono transition-colors text-left",
+									selected
+										? "bg-primary/10 text-primary font-semibold border border-primary/30"
+										: "text-muted-foreground hover:bg-muted/70 hover:text-foreground border border-transparent",
+								)}
+							>
+								<Icon className={cn("size-3.5 shrink-0", selected ? "text-primary" : "text-muted-foreground")} />
+								<span className="truncate">{item.label}</span>
+							</button>
+						</li>
+					);
+				})}
+			</ul>
+		</div>
+	);
+}
+
 export function ContextSidebar({ className }: { className?: string }) {
 	const activeView = useWorkspaceStore((s) => s.activeView);
 
@@ -427,12 +483,7 @@ export function ContextSidebar({ className }: { className?: string }) {
 			content = <RealtimeRecents kind="sse" />;
 			break;
 		case "settings":
-			content = (
-				<div className="p-3">
-					<SectionLabel>Preferences</SectionLabel>
-					<p className="px-2 text-xs text-muted-foreground">General, Themes, CI/CD and TLS settings.</p>
-				</div>
-			);
+			content = <SettingsContext />;
 			break;
 		default:
 			content = (

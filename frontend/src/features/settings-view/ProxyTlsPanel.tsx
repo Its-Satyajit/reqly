@@ -17,27 +17,21 @@ const TLS_VERSION_OPTIONS = [
   { value: "1.3", label: "TLS 1.3" },
 ];
 
-export function ProxyTlsPanel() {
+export function ProxyPanel() {
   const proxy = useProxyTlsStore((s) => s.proxy);
-  const tls = useProxyTlsStore((s) => s.tls);
   const setProxy = useProxyTlsStore((s) => s.setProxy);
-  const setTls = useProxyTlsStore((s) => s.setTls);
   const resetProxy = useProxyTlsStore((s) => s.resetProxy);
-  const resetTls = useProxyTlsStore((s) => s.resetTls);
-
   const proxyErrors = useProxyTlsStore((s) => s.validateProxy)();
-  const tlsErrors = useProxyTlsStore((s) => s.validateTls)();
 
   return (
     <section className="rounded-lg border border-border bg-card p-4 space-y-4">
       <div>
-        <h2 className="text-sm font-semibold">Network & Security (Proxy / TLS)</h2>
+        <h2 className="text-sm font-semibold">Network & Proxy Routing</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Configure global proxy routes and TLS / certificate validation behaviors.
+          Configure global upstream proxy routing for HTTP, HTTPS, and SOCKS5 traffic.
         </p>
       </div>
 
-      {/* Proxy Config */}
       <div className="rounded-md border border-border/80 bg-background/50 p-3 space-y-3">
         <div className="flex items-center justify-between">
           <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
@@ -154,11 +148,28 @@ export function ProxyTlsPanel() {
           </Alert>
         )}
       </div>
+    </section>
+  );
+}
 
-      {/* TLS Config */}
+export function TlsSecurityPanel() {
+  const tls = useProxyTlsStore((s) => s.tls);
+  const setTls = useProxyTlsStore((s) => s.setTls);
+  const resetTls = useProxyTlsStore((s) => s.resetTls);
+  const tlsErrors = useProxyTlsStore((s) => s.validateTls)();
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold">TLS & Security Validation</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Configure SSL / TLS certificate validation, minimum TLS version, and mTLS client certificates.
+        </p>
+      </div>
+
       <div className="rounded-md border border-border/80 bg-background/50 p-3 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">TLS & SSL Verification</span>
+          <span className="text-xs font-medium">Certificate Rules & Handshake</span>
           <button
             type="button"
             onClick={resetTls}
@@ -242,5 +253,14 @@ export function ProxyTlsPanel() {
         )}
       </div>
     </section>
+  );
+}
+
+export function ProxyTlsPanel() {
+  return (
+    <div className="space-y-4">
+      <ProxyPanel />
+      <TlsSecurityPanel />
+    </div>
   );
 }

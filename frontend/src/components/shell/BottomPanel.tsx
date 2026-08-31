@@ -19,6 +19,7 @@ const LABELS = {
 
 function PanelContent({ active }: { active: BottomPanelId }) {
   const pool = useHistoryStore((s) => s.pool);
+  const clearHistory = useHistoryStore((s) => s.clear);
   const envs = useWorkspaceStore((s) => s.environments);
   const activeEnvId = useWorkspaceStore((s) => s.activeEnvironmentId);
   const activeTabId = useWorkspaceStore((s) => s.activeTabId);
@@ -29,6 +30,7 @@ function PanelContent({ active }: { active: BottomPanelId }) {
 
   if (active === "console") {
     const logs = pool.slice(0, 20).map((e) => ({
+      id: e.id || `${e.createdAt}-${e.url}`,
       time: e.createdAt,
       level: "INFO",
       message: `Sending ${e.method} ${e.url}`,
@@ -59,11 +61,11 @@ function PanelContent({ active }: { active: BottomPanelId }) {
         </div>
         <div className="p-3 font-mono text-xs leading-relaxed overflow-y-auto">
           {logs.length === 0 ? (
-            <p className="text-muted-foreground">No logs yet — send a request to see the trace.</p>
+            <p className="text-muted-foreground italic">No console logs recorded.</p>
           ) : (
             <ul className="space-y-1">
-              {logs.map((l, idx) => (
-                <li key={idx} className="flex gap-2">
+              {logs.map((l) => (
+                <li key={l.id} className="flex gap-2">
                   <span className="text-muted-foreground">{new Date(l.time).toLocaleTimeString()}</span>
                   <span className="text-status-info font-bold">INFO</span>
                   <span>{l.message}</span>
@@ -76,7 +78,6 @@ function PanelContent({ active }: { active: BottomPanelId }) {
     );
   }
   if (active === "network") {
-    const clearHistory = useHistoryStore.getState().clear;
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between border-b border-border/50 px-3 py-1 bg-background/50">

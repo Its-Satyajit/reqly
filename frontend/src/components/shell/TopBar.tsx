@@ -1,14 +1,29 @@
 import {
 	FileDown,
-	FolderSearch,
+	FolderOpen,
+	FolderPlus,
+	History,
+	RefreshCw,
+	ChevronDown,
 	Search,
 	Settings,
 	SquareArrowOutDownLeft,
+	Trash2,
 } from "lucide-react";
 import logoDark from "../../assets/logo-dark.svg";
 import logoLight from "../../assets/logo-light.svg";
 import { Button } from "../ui/button";
+import {
+	Menubar,
+	MenubarMenu,
+	MenubarTrigger,
+	MenubarContent,
+	MenubarItem,
+	MenubarSeparator,
+	MenubarShortcut,
+} from "../ui/menubar";
 import { ImportDialog, ExportDialog } from "../../features";
+import { CreateWorkspaceModal } from "../CreateWorkspaceModal";
 import {
 	useCommandPaletteStore,
 	useExportStore,
@@ -22,9 +37,15 @@ import { EnvironmentSelector } from "./EnvironmentSelector";
 export function TopBar() {
 	const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
 	const workspaceName = useWorkspaceStore((s) => s.workspaceTree?.name);
+	const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
+	const refreshWorkspace = useWorkspaceStore((s) => s.refreshWorkspace);
 	const setImportOpen = useImportStore((s) => s.setOpen);
 	const setExportOpen = useExportStore((s) => s.setOpen);
-	const switchWorkspace = useWorkspaceBootstrapStore((s) => s.openFolder);
+	const openFolder = useWorkspaceBootstrapStore((s) => s.openFolder);
+	const openDirect = useWorkspaceBootstrapStore((s) => s.openDirect);
+	const setCreateModalOpen = useWorkspaceBootstrapStore((s) => s.setCreateModalOpen);
+	const recentWorkspaces = useWorkspaceBootstrapStore((s) => s.recentWorkspaces);
+	const clearRecentWorkspaces = useWorkspaceBootstrapStore((s) => s.clearRecentWorkspaces);
 	const requestView = useWorkspaceStore((s) => s.requestView);
 
 	return (
@@ -35,17 +56,89 @@ export function TopBar() {
 					alt="Reqly"
 					className="size-4 shrink-0"
 				/>
-				<button
-					type="button"
-					onClick={() => void switchWorkspace()}
-					title="Switch workspace folder"
-					className="group flex min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 text-xs transition-colors hover:bg-muted"
-				>
-					<span className="truncate font-mono font-medium text-foreground">
-						{workspaceName ?? "Reqly"}
-					</span>
-					<FolderSearch className="size-3 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" aria-hidden />
-				</button>
+
+				<Menubar className="border-0 bg-transparent p-0 h-auto">
+					<MenubarMenu>
+						<MenubarTrigger className="group flex min-w-0 items-center gap-1.5 rounded px-2 py-1 text-xs font-mono font-medium text-foreground transition-colors hover:bg-muted data-popup-open:bg-muted cursor-pointer">
+							<span className="truncate max-w-40 font-semibold">
+								{workspaceName ?? "Reqly Workspace"}
+							</span>
+							<ChevronDown className="size-3 shrink-0 text-muted-foreground transition-transform group-hover:text-foreground" aria-hidden />
+						</MenubarTrigger>
+
+						<MenubarContent align="start" className="min-w-64">
+							<div className="px-2 py-1.5 text-[11px] text-muted-foreground border-b border-border/50 mb-1">
+								<div className="font-semibold text-foreground truncate">{workspaceName ?? "No workspace open"}</div>
+								<div className="font-mono text-[10px] text-muted-foreground truncate">{currentWorkspace?.path ?? "—"}</div>
+							</div>
+
+							<MenubarItem onClick={() => void openFolder()}>
+								<FolderOpen className="size-3.5" />
+								<span>Open Folder…</span>
+								<MenubarShortcut>⌘O</MenubarShortcut>
+							</MenubarItem>
+
+							<MenubarItem onClick={() => setCreateModalOpen(true)}>
+								<FolderPlus className="size-3.5" />
+								<span>Create Workspace…</span>
+								<MenubarShortcut>⌘N</MenubarShortcut>
+							</MenubarItem>
+
+							<MenubarItem onClick={() => void refreshWorkspace()}>
+								<RefreshCw className="size-3.5" />
+								<span>Reload Workspace</span>
+								<MenubarShortcut>⌘R</MenubarShortcut>
+							</MenubarItem>
+
+							<MenubarSeparator />
+
+							<div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+								<span className="flex items-center gap-1.5">
+									<History className="size-3" />
+									Recent Workspaces
+								</span>
+								{recentWorkspaces.length > 0 && (
+									<button
+										type="button"
+										onClick={(e) => {
+											e.stopPropagation();
+											clearRecentWorkspaces();
+										}}
+										className="text-[10px] lowercase text-muted-foreground hover:text-destructive flex items-center gap-0.5"
+										title="Clear recent workspaces history"
+									>
+										<Trash2 className="size-2.5" />
+										clear
+									</button>
+								)}
+							</div>
+
+							{recentWorkspaces.length === 0 ? (
+								<div className="px-2 py-1.5 text-[11px] text-muted-foreground italic">
+									No recent workspaces
+								</div>
+							) : (
+								recentWorkspaces.map((ws) => (
+									<MenubarItem
+										key={ws.path}
+										onClick={() => void openDirect(ws.path)}
+										className="flex flex-col items-start gap-0.5 py-1.5"
+									>
+										<div className="flex w-full items-center justify-between">
+											<span className="font-medium text-foreground truncate">{ws.name}</span>
+											{currentWorkspace?.path === ws.path && (
+												<span className="text-[9px] bg-primary/20 text-primary px-1 rounded">active</span>
+											)}
+										</div>
+										<span className="text-[10px] text-muted-foreground font-mono truncate w-full">
+											{ws.path}
+										</span>
+									</MenubarItem>
+								))
+							)}
+						</MenubarContent>
+					</MenubarMenu>
+				</Menubar>
 			</div>
 
 			<div className="flex items-center gap-1.5">
@@ -102,6 +195,7 @@ export function TopBar() {
 
 			<ImportDialog onImported={() => void useWorkspaceStore.getState().refreshEnvironments()} />
 			<ExportDialog />
+			<CreateWorkspaceModal />
 		</header>
 	);
 }
