@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.0](https://github.com/Its-Satyajit/reqly/compare/v1.10.0...v1.11.0) (2026-08-31)
+
+
+### Features
+
+* **installer:** desktop install and robust download logicAdd desktop install support and improve argument parsing and downloadresilience in.sh. ([c662d24](https://github.com/Its-Satyajit/reqly/commit/c662d24b2dde7e0b0f013f799675590860c8d381))
+* **installer:** desktop install and robust download logicAdd desktop install support and improve argument parsing and downloadresilience in.sh. ([8adce65](https://github.com/Its-Satyajit/reqly/commit/8adce65cd72b5dabc7ac51ef1af4bf6ae9ddc504))
+
 ## [1.10.0](https://github.com/Its-Satyajit/reqly/compare/v1.9.0...v1.10.0) (2026-08-31)
 
 
