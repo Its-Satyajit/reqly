@@ -107,6 +107,30 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 ---
 
+## Redesign Gate — anti `find → see exists → tick` (so agents really redesign)
+
+> **Problem this gates:** `agent start to resesing -> find the file -> check the contain -> see everything is there -> didnot edit anything -> give tick and move on` — a superficial tick where the file exists so the agent claims the milestone without changing the design.
+
+**For every `UI-NN.T` sub-ticket, a tick is valid only if all 5 hold; `git diff` existence is not enough:**
+
+1. **`git diff` non-empty for its `Files`** — `git diff main...HEAD --stat` must list each `Files` entry with `+`/`-` (not `0` or file-existence). `git status --short` `M`/`A` for those paths. **Fail if:** `ls frontend/src/styles/tokens.css` exists but `git diff --stat` is empty → not redesigned. Check: `git diff --numstat -- frontend/src/styles/tokens.css` `added >0` + `deleted >0` or new file `A`.
+2. **Design delta is real, not a re-tick** — `frontend-design` `palette`/`type`/`layout`/`signature` must have at least one **opinionated change** from `main`’s prior chrome: a new `hex` in `tokens.css`/`index.css`, a new `font` role in `index.css` `@fontsource`, a new `ASCII wireframe` in the ticket, or a new `signature` element. **Fail if:** `grep -r "background #fbfbfa" frontend/src/styles/tokens.css` is unchanged from `ae70f07a` and no new `hex` added → copy-paste, not redesign.
+3. **Before/after is observable** — ticket must include either (a) `frontend/src/styles/tokens.css:1` diff + screenshot `docs/internal/ui-demos/screenshots/*` before/after, or (b) type-level proof: `npx tsc --noEmit` still green **and** `grep -r "hardcoded.*#[0-9a-fA-F]" frontend/src --include="*.tsx" --include="*.ts" | wc -l` `==0` (no scattered hex, via `tokens.css` only) + `oxlint` 0. **Fail if:** `npx tsc` green but `git diff` shows only `ROADMAP.md` tick, no `frontend/src/` change.
+4. **Behavior still holds via the gate, not via file existence** — the milestone’s `Verify` commands must be run and their **output** pasted in the PR (not “exists”): `nub run typecheck` `Done`, `npx oxlint` `0`, `go vet ./...` `0`, `vitest run frontend/src/...` `185` pass where applicable, plus manual `⌘K`/`⌘B`/`⌘J` or `Send GET {{var}}` as per `Accept`. **Fail if:** `ls` shows file but `vitest` not run.
+5. **One-line design rationale is required** — PR body must state the single `Risk` choice for that milestone (e.g., “`Risk: density — keep 13px + hairline, one `StatusPill` pulse via `motion`”`) and why it fits the subject (Git-native, HTTP legible). **Fail if:** PR is `feat: ui-03` with no rationale.
+
+**Reviewer checklist (human or `code-review` agent) before ticking `[ ]` → `[x]`:**
+
+- [ ] `git diff main...HEAD --stat` shows that milestone’s `Files` with insertions
+- [ ] `git diff` shows at least one new `hex`/`font`/`layout` token vs `ae70f07a` (not just reformat)
+- [ ] `Verify` commands output pasted (typecheck/oxlint/vet/vitest) — not “file exists”
+- [ ] Screenshot or type-proof pasted (before/after or `grep` hex ==0)
+- [ ] One-line `Risk` rationale in PR body
+
+*This gate is the `DoD` for every `UI-NN.T` — it vetoes `frontend-design` if the design is a no-op. Keep `ROADMAP.md:7` ticks honest: `[x]` means redesigned and verified, not found.*
+
+---
+
 ## Milestones — by panel & page (each is a tracer bullet)
 
 ### UI-01 — Shell & Design System (foundational — rebuild from scratch)
