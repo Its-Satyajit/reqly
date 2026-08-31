@@ -46,6 +46,35 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 ---
 
+## Design Principles — `design-principles` skill (priority order is absolute)
+
+> **Source:** `~/.agents/skills/design-principles` (`skill: design-principles`) — `visual hierarchy`, `color`, `typography`, `spacing`, `layout`, `responsiveness`, `consistency`, `accessibility`, `usability`, `navigation`. Rules in `rules/principles.md`/`quality.md`/`best-practices.md`/`safety.md`/`anti-patterns.md`.
+
+**Priority (highest → lowest):** 1. **Functionality** (core purpose) → 2. **Usability** (minimal friction) → 3. **Accessibility** (all users) → 4. **Clarity** (hierarchy/state readable) → 5. **Consistency** (patterns/spacing/type predictable) → 6. **Responsiveness** (adapts across sizes) → 7. **Visual Polish** (aesthetics never override above).
+
+| Clash | Resolution |
+|-------|------------|
+| Dense data vs whitespace | Density for productivity; whitespace for marketing |
+| Animation vs performance | Performance wins — motion only where it communicates (`Motion` `motion@13.1.1` for `StatusPill` pulse, panel `0.15s ease` only) |
+| Simplicity vs discoverability | Start simple; progressive disclosure (`overflowTabs`, `More`, `Advanced` in `Settings`) |
+| Platform conventions vs design system | Conventions for core interactions (`⌘K`/`⌘W`/`Enter`), design system for identity (`StatusPill`, `methodTint`) |
+| Density vs cognitive load | Group + hierarchy (`ContextSidebar` per-tool nav, `BottomPanel` tabs, `StatusPill` dot+code) — never dump everything at once |
+| Aesthetics vs clarity | Clarity wins — `13px` dense, hairline `border-border`, `prefers-reduced-motion`/`prefers-contrast: more` |
+
+**Core principle:** Users must: understand purpose, identify what matters, find what they need, see available actions, complete tasks minimally, recover without losing work (`tabIsDirty`/`changedOnDisk`/`pendingView` guard), navigate confidently (`ToolRail` + `ContextSidebar` + `⌘1-8`), adapt across sizes (`min-w-0`, `ResizablePanel`), meet a11y, build familiarity via consistency. **Clarity, usability, accessibility, consistency, efficiency > visual novelty.**
+
+**Review checklist — every UI milestone ships only when all pass:**
+
+- [ ] Purpose immediately understandable · [ ] Most important info visually obvious · [ ] All interactive elements clearly identifiable
+- [ ] Navigation predictable; current location clear (`activeView` + `aria-expanded`/`aria-selected`) · [ ] Common tasks minimal steps (`Send` `⌘⏎`, `Save` `⌘S`, `Duplicate` right-click)
+- [ ] Sensible defaults (`GET`, `No environment`, `Default (follow)`) · [ ] Errors explain + recover (`changedOnDisk` `Reload`/`Overwrite`, `Save` `saveWarnings`, `Console` `Copy`) · [ ] Input never silently lost (`dirtyEditors`, `pendingView` confirm)
+- [ ] Works narrow/standard/wide (`280→220px` sidebar, `48→56px` rail, `ResizablePanel` `200–42%`/`6–42%`) · [ ] Keyboard functional (`TREE_KEYS` `ArrowDown/Up/Home/End`, `handleTabArrowKeys`, `useKeyboardMap`) · [ ] Focus visible (`:focus-visible` `ring`, `roving tabindex`)
+- [ ] Color never sole carrier (`StatusPill` dot+code `never color alone`, method tints + `methodTint` class) · [ ] Realistic content handled (long `requestPath` `truncate`, empty `Connect to an endpoint…`, `No commands match`) · [ ] No decoration competes (`hairline` borders, no shadows except `popover`/`select`/`toast`, `Motion` one orchestrated moment) · [ ] Similar elements look/behave similarly (`CompactSelect` everywhere, `AlertDialog` for destructive, `cn`/`cva` variants)
+
+*This checklist is the `DoD` for every `UI-NN` tracer bullet below — `frontend-design` handles aesthetics, `design-principles` is the quality gate that can veto it.*
+
+---
+
 ## Milestones — by panel & page (each is a tracer bullet)
 
 ### UI-01 — Shell & Design System (foundational — rebuild from scratch)
