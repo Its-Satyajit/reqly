@@ -11,12 +11,19 @@ export function WebSocketPage() {
   const newTab = useRealtimeStore((s) => s.newTab);
   const addRecent = useRealtimeRecentsStore((s) => s.addRecent);
   const tab = tabs[WS_PAGE_ID];
+
   useEffect(() => {
-    if (!tabs[WS_PAGE_ID]) newTab(WS_PAGE_ID, "ws");
+    if (!tabs[WS_PAGE_ID]) {
+      newTab(WS_PAGE_ID, "ws");
+    }
   }, [tabs, newTab]);
+
   useEffect(() => {
-    if (tab?.url) addRecent(tab.url, "ws");
-  }, [tab?.url, addRecent]);
+    if (tab?.status === "connected" && tab?.url?.trim()) {
+      addRecent(tab.url.trim(), "ws");
+    }
+  }, [tab?.status, tab?.url, addRecent]);
+
   if (!tabs[WS_PAGE_ID]) return null;
   return <RealtimeTab tabId={WS_PAGE_ID} />;
 }
@@ -26,12 +33,19 @@ export function SSEPage() {
   const newTab = useRealtimeStore((s) => s.newTab);
   const addRecent = useRealtimeRecentsStore((s) => s.addRecent);
   const tab = tabs[SSE_PAGE_ID];
+
   useEffect(() => {
-    if (!tabs[SSE_PAGE_ID]) newTab(SSE_PAGE_ID, "sse");
+    if (!tabs[SSE_PAGE_ID]) {
+      newTab(SSE_PAGE_ID, "sse");
+    }
   }, [tabs, newTab]);
+
   useEffect(() => {
-    if (tab?.url) addRecent(tab.url, "sse");
-  }, [tab?.url, addRecent]);
+    if (tab?.status === "connected" && tab?.url?.trim()) {
+      addRecent(tab.url.trim(), "sse");
+    }
+  }, [tab?.status, tab?.url, addRecent]);
+
   if (!tabs[SSE_PAGE_ID]) return null;
   return <RealtimeTab tabId={SSE_PAGE_ID} />;
 }

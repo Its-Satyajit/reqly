@@ -1,24 +1,30 @@
 import { create } from 'zustand'
 
 export type InspectorTabId = string
+export type ResponseMode = 'horizontal' | 'vertical'
 
 interface ShellState {
   /** Right-hand inspector mount point; views populate content per tab. */
   inspectorOpen: boolean
   inspectorTab: InspectorTabId | null
+  responseMode: ResponseMode
   openInspector: (tab?: InspectorTabId) => void
   closeInspector: () => void
   toggleInspector: () => void
+  setResponseMode: (mode: ResponseMode) => void
+  toggleResponseMode: () => void
 }
 
 const OPEN_KEY = 'reqly-shell-inspector-open'
 const TAB_KEY = 'reqly-shell-inspector-tab'
+const RESPONSE_MODE_KEY = 'reqly-shell-response-mode'
 
 /** Seed for the store's initial state, so persistence is testable directly. */
-export function initialShellState(): Pick<ShellState, 'inspectorOpen' | 'inspectorTab'> {
+export function initialShellState(): Pick<ShellState, 'inspectorOpen' | 'inspectorTab' | 'responseMode'> {
   return {
     inspectorOpen: readOpen(),
     inspectorTab: readTab(),
+    responseMode: readResponseMode(),
   }
 }
 
@@ -38,6 +44,15 @@ function readTab(): InspectorTabId | null {
   }
 }
 
+function readResponseMode(): ResponseMode {
+  try {
+    const val = localStorage.getItem(RESPONSE_MODE_KEY)
+    return val === 'vertical' ? 'vertical' : 'horizontal'
+  } catch {
+    return 'horizontal'
+  }
+}
+
 function writeOpen(open: boolean) {
   try {
     if (open) localStorage.setItem(OPEN_KEY, '1')
@@ -51,6 +66,14 @@ function writeTab(tab: InspectorTabId | null) {
   try {
     if (tab === null) localStorage.removeItem(TAB_KEY)
     else localStorage.setItem(TAB_KEY, tab)
+  } catch {
+    // storage unavailable — in-memory only
+  }
+}
+
+function writeResponseMode(mode: ResponseMode) {
+  try {
+    localStorage.setItem(RESPONSE_MODE_KEY, mode)
   } catch {
     // storage unavailable — in-memory only
   }
@@ -73,5 +96,14 @@ export const useShellStore = create<ShellState>()((set, get) => ({
     set({ inspectorOpen: open })
     writeOpen(open)
     if (open) writeTab(get().inspectorTab)
+  },
+  setResponseMode: (mode) => {
+    set({ responseMode: mode })
+    writeResponseMode(mode)
+  },
+  toggleResponseMode: () => {
+    const next: ResponseMode = get().responseMode === 'horizontal' ? 'vertical' : 'horizontal'
+    set({ responseMode: next })
+    writeResponseMode(next)
   },
 }))

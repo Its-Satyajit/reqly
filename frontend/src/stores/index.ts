@@ -17,3 +17,4 @@ export * from "./useRealtimeRecentsStore";
 export * from "./useBottomPanelStore";
 export * from "./useSpecEditorStore";
 export * from "./useShellStore";
+export * from "./useSettingsStore";

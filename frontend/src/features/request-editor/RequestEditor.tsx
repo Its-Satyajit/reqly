@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CodeMirrorEditor } from '../../editors'
+import { CodeMirrorEditor } from '../../editors/CodeMirrorEditor'
 import { Button } from '../../components/ui/button'
 import { CompactSelect } from '../../components/CompactSelect'
 import { KeyValueEditor } from '../../components/KeyValueEditor'
@@ -7,9 +7,8 @@ import { ChevronRight, Loader2, SlidersHorizontal, Sparkles } from 'lucide-react
 import { RequestSettingsDialog } from './RequestSettingsDialog'
 import { AuthEditor } from '../auth-editor/AuthEditor'
 import { authWarnings } from '../../lib/authSchemes'
-import { useRequestStore, useWorkspaceStore } from '../../stores'
-import { tabIsDirty } from '../../stores/useRequestStore'
-import { effectiveUrlFor } from '../../stores/useWorkspaceStore'
+import { useRequestStore, tabIsDirty } from '../../stores/useRequestStore'
+import { useWorkspaceStore, effectiveUrlFor } from '../../stores/useWorkspaceStore'
 import { sentRows } from '../../lib/request'
 import { bodyTypes, type BodyType } from '../../lib/body'
 import type { KeyValueRow, RequestAuth, RequestRetry } from '../../lib/request'
@@ -20,6 +19,7 @@ import { generateCode } from '../../lib/codegen'
 import { copyText } from '../../lib/response'
 import { notifyError } from '../../lib/notify'
 import { handleTabArrowKeys, tabClass } from '../../lib/ui'
+import { cn } from '../../lib/utils'
 import { TemplatePickerSheet } from './TemplatePickerSheet'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE'] as const
@@ -217,131 +217,134 @@ export function RequestEditor() {
           ))}
         </div>
       )}
-      <div className="flex min-w-0 items-center gap-2 p-2">
-        <CompactSelect
-          value={draft.method}
-          onChange={(method) => patch({ method })}
-          ariaLabel="HTTP method"
-          className="w-24 shrink-0 font-mono font-semibold"
-          options={methods.map((m) => ({ value: m, label: m }))}
-        />
-        <input
-          value={draft.url}
-          onChange={(e) => patch({ url: e.target.value })}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-              e.preventDefault()
-              if (!loading) handleSend()
-            }
-          }}
-          placeholder="https://reqly-test-api.vercel.app/api/users?page=1 — mock API for testing"
-          spellCheck={false}
-          aria-label="Request URL"
-          className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground"
-        />
-        <span
-          title={meta?.env ? 'Environment pinned by the request file' : 'Environment from the app header'}
-          className="shrink-0 rounded-full border border-border bg-muted/50 px-2 py-1 text-[10px] font-medium text-muted-foreground"
-        >
-          {envPill ?? 'No environment'}
-          {meta?.env ? ' • file' : ''}
-        </span>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setTemplatePickerOpen(true)}
-          title="Use Template"
-          aria-label="Use Template"
-          className="h-8 gap-1 px-2 text-xs"
-        >
-          <Sparkles className="size-3.5 text-primary" aria-hidden />
-          <span className="hidden sm:inline">Templates</span>
-        </Button>
-        {requestPath && (
-          <Button size="sm" variant="outline" onClick={() => void saveRequest(activeTabId)} disabled={!canSave}>
-            {dirty ? 'Save' : 'Saved'}
-          </Button>
-        )}
-        {loading ? (
-          <Button size="sm" variant="destructive" onClick={() => void cancel(activeTabId)}>
-            <Loader2 className="size-3.5 animate-spin" aria-hidden />
-            Stop
-          </Button>
-        ) : (
-          <Button size="sm" onClick={handleSend}>
-            Send
-          </Button>
-        )}
-        <CompactSelect
-          value={codeLang}
-          onChange={(v) => {
-            if (v === "curl" || v === "js" || v === "python" || v === "go") setCodeLang(v)
-          }}
-          ariaLabel="Snippet language"
-          className="shrink-0"
-          options={[
-            { value: "curl", label: "cURL" },
-            { value: "js", label: "JS" },
-            { value: "python", label: "Python" },
-            { value: "go", label: "Go" },
-          ]}
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            const code = generateCode(
-              {
-                method: draft.method,
-                url: draft.url,
-                headers: sentRows(draft.headers).map(({ key, value }) => ({ key, value })),
-                query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
-                body: draft.body,
-                auth: draft.auth,
-              },
-              codeLang,
-            )
-            void copyText(code).then((ok) => {
-              if (ok) {
-                setCopiedCode(true)
-                setTimeout(() => setCopiedCode(false), 1500)
-              } else {
-                notifyError('Copy failed', 'Clipboard access was denied — copy the snippet manually.')
-              }
-            })
-          }}
-        >
-          {copiedCode ? 'Copied' : 'Copy as'}
-        </Button>
-      </div>
+      <div className="flex flex-col gap-2 border-b border-border/80 bg-background p-2.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 items-center rounded border border-input bg-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+            <CompactSelect
+              value={draft.method}
+              onChange={(method) => patch({ method })}
+              ariaLabel="HTTP method"
+              className="w-24 shrink-0 rounded-r-none border-0 border-r border-input bg-muted/40 font-mono text-xs font-bold tracking-wide"
+              options={methods.map((m) => ({ value: m, label: m }))}
+            />
+            <input
+              value={draft.url}
+              onChange={(e) => patch({ url: e.target.value })}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault()
+                  if (!loading) handleSend()
+                }
+              }}
+              placeholder="https://api.example.com/v1/resource or {{baseUrl}}/users"
+              spellCheck={false}
+              aria-label="Request URL"
+              className="min-w-0 flex-1 border-0 bg-transparent px-2.5 py-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+            />
+            <div className="flex shrink-0 items-center pr-1.5">
+              <span
+                title={meta?.env ? 'Environment pinned by the request file' : 'Environment from the app header'}
+                className="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+              >
+                {envPill ?? 'No env'}
+              </span>
+            </div>
+          </div>
 
-      {requestPath && (
-        <div className="flex items-center gap-1 px-2 pb-1">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            Effective URL
-          </span>
-          <code className="min-w-0 flex-1 truncate rounded bg-muted/40 px-1.5 py-0.5 text-[11px] text-muted-foreground">
-            {effectiveUrlFor(draft.url, meta?.baseUrl ?? '')}
-          </code>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setTemplatePickerOpen(true)}
+            title="Insert template snippet"
+            aria-label="Insert template"
+            className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <Sparkles className="size-3 text-primary" aria-hidden />
+            <span className="hidden sm:inline text-[11px]">Templates</span>
+          </Button>
+
+          {requestPath && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void saveRequest(activeTabId)}
+              disabled={!canSave}
+              className="h-8 px-2.5 text-xs font-mono"
+            >
+              {dirty ? 'Save' : 'Saved'}
+            </Button>
+          )}
+
+          {loading ? (
+            <Button size="sm" variant="destructive" onClick={() => void cancel(activeTabId)} className="h-8 gap-1.5 px-3 text-xs font-semibold">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              <span>Cancel</span>
+            </Button>
+          ) : (
+            <Button size="sm" onClick={handleSend} className="h-8 gap-1 px-3.5 text-xs font-semibold tracking-wide">
+              <span>Send</span>
+              <kbd className="hidden sm:inline font-mono text-[10px] opacity-70">⌘⏎</kbd>
+            </Button>
+          )}
+
+          <div className="hidden lg:flex items-center gap-1 border-l border-border/70 pl-1.5">
+            <CompactSelect
+              value={codeLang}
+              onChange={(v) => {
+                if (v === "curl" || v === "js" || v === "python" || v === "go") setCodeLang(v)
+              }}
+              ariaLabel="Snippet language"
+              className="h-8 w-16 text-[11px] font-mono"
+              options={[
+                { value: "curl", label: "cURL" },
+                { value: "js", label: "JS" },
+                { value: "python", label: "Python" },
+                { value: "go", label: "Go" },
+              ]}
+            />
+            <Button
+              size="xs"
+              variant="ghost"
+              className="h-8 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                const code = generateCode(
+                  {
+                    method: draft.method,
+                    url: draft.url,
+                    headers: sentRows(draft.headers).map(({ key, value }) => ({ key, value })),
+                    query: sentRows(draft.params).map(({ key, value }) => ({ key, value })),
+                    body: draft.body,
+                    auth: draft.auth,
+                  },
+                  codeLang,
+                )
+                void copyText(code).then((ok) => {
+                  if (ok) {
+                    setCopiedCode(true)
+                    setTimeout(() => setCopiedCode(false), 1500)
+                  } else {
+                    notifyError('Copy failed', 'Clipboard access was denied — copy the snippet manually.')
+                  }
+                })
+              }}
+            >
+              {copiedCode ? 'Copied' : 'Copy'}
+            </Button>
+          </div>
         </div>
-      )}
-      <div className="px-2 pb-1">
-        <TagPicker onInsert={(tag) => patch({ url: draft.url + tag })} />
+
+        {requestPath && (
+          <div className="flex items-center gap-1.5 px-0.5 text-[11px]">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              Resolved:
+            </span>
+            <code className="min-w-0 flex-1 truncate font-mono text-muted-foreground">
+              {effectiveUrlFor(draft.url, meta?.baseUrl ?? '')}
+            </code>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center gap-1 px-2 pb-1">
-        <RetrySection retry={draft.retry} onChange={(retry) => patch({ retry })} />
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          title="Request settings…"
-          aria-label="Request settings"
-          className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-        >
-          <SlidersHorizontal className="size-3" aria-hidden />
-          {settingsSummary(draft)}
-        </button>
-      </div>
       {settingsOpen && (
         <RequestSettingsDialog
           settings={{ timeout: draft.timeout, followRedirects: draft.followRedirects }}
@@ -350,56 +353,106 @@ export function RequestEditor() {
         />
       )}
 
-      <div
-        className="flex items-center gap-1 px-2"
-        role="tablist"
-        aria-label="Request sections"
-        onKeyDown={(e) => handleTabArrowKeys(e)}
-      >
-        {tabs.map((t) => (
+      {/* Clean single tab bar with indicators and secondary action bar */}
+      <div className="flex items-center justify-between border-b border-border/80 bg-muted/10 px-2 py-1">
+        <div
+          className="flex items-center gap-1"
+          role="tablist"
+          aria-label="Request sections"
+          onKeyDown={(e) => handleTabArrowKeys(e)}
+        >
+          {tabs.map((t) => {
+            const count =
+              t.id === 'params'
+                ? draft.params.filter((p) => p.enabled && p.key.trim()).length
+                : t.id === 'headers'
+                ? draft.headers.filter((h) => h.enabled && h.key.trim()).length
+                : t.id === 'body' && draft.bodyType !== 'none'
+                ? 1
+                : t.id === 'auth' && draft.auth && draft.auth.type !== 'none' && draft.auth.type !== 'inherit'
+                ? 1
+                : 0
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                tabIndex={tab === t.id ? 0 : -1}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "relative flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors select-none",
+                  tab === t.id
+                    ? "bg-background text-foreground shadow-xs font-semibold"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                )}
+              >
+                {t.label}
+                {count > 0 && (
+                  <span className="flex size-1.5 rounded-full bg-primary" />
+                )}
+              </button>
+            )
+          })}
+          <div className="relative ml-0.5">
+            <button
+              type="button"
+              aria-label="More request sections"
+              aria-haspopup="menu"
+              onClick={() => setTab((prev) => (overflowTabs.some((o) => o.id === prev) ? prev : overflowTabs[0].id))}
+              className={cn(
+                "rounded px-2 py-1 text-xs transition-colors select-none",
+                overflowTabs.some((o) => o.id === tab)
+                  ? "bg-background text-foreground font-semibold shadow-xs"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              )}
+              title="More: Pre-request, Tests, Docs, Settings, Variables"
+            >
+              ⋮ More
+            </button>
+          </div>
+          {overflowTabs.some((o) => o.id === tab) && (
+            <div className="flex items-center gap-1 pl-1 border-l border-border/60">
+              {overflowTabs.map((t) => {
+                if (t.id === 'variables' && !showVariables) return null;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === t.id}
+                    tabIndex={tab === t.id ? 0 : -1}
+                    onClick={() => setTab(t.id)}
+                    className={cn(
+                      "rounded px-2 py-0.5 text-xs transition-colors",
+                      tab === t.id
+                        ? "bg-background text-foreground font-medium shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right side contextual shortcuts: Tag picker & settings */}
+        <div className="flex items-center gap-2">
+          <TagPicker onInsert={(tag) => patch({ url: draft.url + tag })} />
+          <div className="h-3.5 w-px bg-border/80" />
           <button
-            key={t.id}
             type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            tabIndex={tab === t.id ? 0 : -1}
-            onClick={() => setTab(t.id)}
-            className={tabClass(tab === t.id)}
+            onClick={() => setSettingsOpen(true)}
+            title="Request settings…"
+            aria-label="Request settings"
+            className="flex items-center gap-1 rounded border border-border/80 bg-background/50 px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground font-mono"
           >
-            {t.label}
-          </button>
-        ))}
-        <div className="relative ml-1">
-          <button
-            type="button"
-            aria-label="More request sections"
-            aria-haspopup="menu"
-            onClick={() => setTab((prev) => (overflowTabs.some((o) => o.id === prev) ? prev : overflowTabs[0].id))}
-            className={tabClass(overflowTabs.some((o) => o.id === tab))}
-            title="More: Pre-request, Tests, Docs, Settings, Variables"
-          >
-            ⋮ More
+            <SlidersHorizontal className="size-3" aria-hidden />
+            {settingsSummary(draft)}
           </button>
         </div>
-        {overflowTabs.some((o) => o.id === tab) && (
-          <div className="flex items-center gap-1">
-            {overflowTabs
-              .filter((t) => t.id !== 'variables' || showVariables)
-              .map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === t.id}
-                  tabIndex={tab === t.id ? 0 : -1}
-                  onClick={() => setTab(t.id)}
-                  className={tabClass(tab === t.id)}
-                >
-                  {t.label}
-                </button>
-              ))}
-          </div>
-        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -462,18 +515,27 @@ export function RequestEditor() {
             </p>
           </div>
         ) : tab === 'settings' ? (
-          <div className="flex flex-col gap-3 p-2">
-            <label className="flex flex-col gap-1 text-xs">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Proxy URL</span>
-              <input value={draft.proxy ?? ''} onChange={(e) => patch({ proxy: e.target.value || undefined })} placeholder="http://proxy:8080" spellCheck={false} className="rounded-md border border-input bg-background px-2 py-1.5 text-xs" />
-            </label>
-            <label className="flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={Boolean(draft.tls?.insecureSkipVerify)} onChange={(e) => patch({ tls: { ...draft.tls, insecureSkipVerify: e.target.checked } })} /> Insecure skip verify
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">CA file (workspace-relative PEM)</span>
-              <input value={draft.tls?.caFile ?? ''} onChange={(e) => patch({ tls: { ...draft.tls, caFile: e.target.value || undefined } })} placeholder="./certs/ca.pem" spellCheck={false} className="rounded-md border border-input bg-background px-2 py-1.5 text-xs" />
-            </label>
+          <div className="flex flex-col gap-4 p-3 max-w-lg">
+            <div className="flex flex-col gap-2 rounded border border-border/80 bg-muted/10 p-3">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground">Proxy & TLS</span>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Proxy URL</span>
+                <input value={draft.proxy ?? ''} onChange={(e) => patch({ proxy: e.target.value || undefined })} placeholder="http://proxy:8080" spellCheck={false} className="rounded border border-input bg-background px-2 py-1.5 font-mono text-xs" />
+              </label>
+              <label className="flex items-center gap-2 text-xs pt-1">
+                <input type="checkbox" checked={Boolean(draft.tls?.insecureSkipVerify)} onChange={(e) => patch({ tls: { ...draft.tls, insecureSkipVerify: e.target.checked } })} className="size-3.5 rounded" />
+                <span>Insecure skip TLS certificate verification</span>
+              </label>
+              <label className="flex flex-col gap-1 text-xs pt-1">
+                <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">CA certificate file (workspace-relative PEM)</span>
+                <input value={draft.tls?.caFile ?? ''} onChange={(e) => patch({ tls: { ...draft.tls, caFile: e.target.value || undefined } })} placeholder="./certs/ca.pem" spellCheck={false} className="rounded border border-input bg-background px-2 py-1.5 font-mono text-xs" />
+              </label>
+            </div>
+
+            <div className="flex flex-col gap-2 rounded border border-border/80 bg-muted/10 p-3">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground">Automatic Retries</span>
+              <RetrySection retry={draft.retry} onChange={(retry) => patch({ retry })} />
+            </div>
           </div>
         ) : (
           <div className="flex h-full flex-col gap-1">

@@ -132,8 +132,11 @@ func TestCollectionRunServiceFailFast(t *testing.T) {
 func TestCollectionRunServiceSingleFlight(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
+	var startOnce sync.Once
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		close(started)
+		startOnce.Do(func() {
+			close(started)
+		})
 		<-release
 		w.WriteHeader(http.StatusNoContent)
 	}))

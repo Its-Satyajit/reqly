@@ -13,18 +13,59 @@ interface PendingCreate {
   suggestedName: string;
 }
 
+interface RecentWorkspace {
+  name: string;
+  path: string;
+  lastOpened: number;
+}
+
 interface WorkspaceBootstrapState {
-  adapter: WorkspaceBootstrapAdapter
-  status: WorkspaceStatus | null
-  checked: boolean
-  pendingCreate: PendingCreate | null
-  busy: boolean
-  error: string | null
-  setAdapter(adapter: WorkspaceBootstrapAdapter): void
-  init(): Promise<void>
-  openFolder(): Promise<void>
-  createPending(name?: string): Promise<void>
-  cancelPendingCreate(): void
+  adapter: WorkspaceBootstrapAdapter;
+  status: WorkspaceStatus | null;
+  checked: boolean;
+  pendingCreate: PendingCreate | null;
+  createModalOpen: boolean;
+  busy: boolean;
+  error: string | null;
+  recentWorkspaces: RecentWorkspace[];
+  setAdapter(adapter: WorkspaceBootstrapAdapter): void;
+  setCreateModalOpen(open: boolean): void;
+  init(): Promise<void>;
+  openFolder(): Promise<void>;
+  openDirect(dir: string): Promise<void>;
+  createInFolder(dir: string, name?: string): Promise<void>;
+  createPending(name?: string): Promise<void>;
+  cancelPendingCreate(): void;
+  clearRecentWorkspaces(): void;
+}
+
+const RECENT_WORKSPACES_KEY = "reqly:recentWorkspaces";
+
+function getStoredRecentWorkspaces(): RecentWorkspace[] {
+  try {
+    const raw = localStorage.getItem(RECENT_WORKSPACES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function saveRecentWorkspace(path: string, name?: string) {
+  try {
+    const list = getStoredRecentWorkspaces().filter((item) => item.path !== path);
+    const inferredName = name || path.split(/[\\/]/).filter(Boolean).pop() || "Workspace";
+    const updated: RecentWorkspace[] = [
+      { name: inferredName, path, lastOpened: Date.now() },
+      ...list,
+    ].slice(0, 8);
+    localStorage.setItem(RECENT_WORKSPACES_KEY, JSON.stringify(updated));
+    return updated;
+  } catch {
+    return [];
+  }
 }
 
 function resetTabsForWorkspaceSwitch() {
@@ -44,11 +85,26 @@ export const useWorkspaceBootstrapStore = create<WorkspaceBootstrapState>(
     status: null,
     checked: false,
     pendingCreate: null,
+    createModalOpen: false,
     busy: false,
     error: null,
+    recentWorkspaces: typeof window !== "undefined" ? getStoredRecentWorkspaces() : [],
 
     setAdapter(adapter) {
       set({ adapter });
+    },
+
+    setCreateModalOpen(createModalOpen) {
+      set({ createModalOpen });
+    },
+
+    clearRecentWorkspaces() {
+      try {
+        localStorage.removeItem(RECENT_WORKSPACES_KEY);
+      } catch {
+        // ignore
+      }
+      set({ recentWorkspaces: [] });
     },
 
     async init() {
@@ -109,6 +165,52 @@ export const useWorkspaceBootstrapStore = create<WorkspaceBootstrapState>(
       }
     },
 
+    async openDirect(dir: string) {
+      const { adapter } = get();
+      if (!dir) return;
+      set({ busy: true, error: null });
+      try {
+        try {
+          await adapter.open(dir);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (message.includes(CREATE_HINT)) {
+            set({
+              busy: false,
+              pendingCreate: {
+                dir,
+                suggestedName: dir.split(/[\\/]/).filter(Boolean).pop() ?? "",
+              },
+            });
+            return;
+          }
+          throw err;
+        }
+        await finishSwitch(set);
+      } catch (err) {
+        set({
+          error: err instanceof Error ? err.message : String(err),
+          busy: false,
+        });
+      }
+    },
+
+    async createInFolder(dir: string, name?: string) {
+      const { adapter } = get();
+      if (!dir) return;
+      set({ busy: true, error: null });
+      try {
+        await adapter.create(dir, name);
+        set({ createModalOpen: false, pendingCreate: null });
+        await finishSwitch(set);
+      } catch (err) {
+        set({
+          error: err instanceof Error ? err.message : String(err),
+          busy: false,
+        });
+      }
+    },
+
     async createPending(name) {
       const { adapter, pendingCreate } = get();
       if (!pendingCreate) return;
@@ -137,10 +239,21 @@ async function finishSwitch(
   const status = await useWorkspaceBootstrapStore
     .getState()
     .adapter.status();
+  if (status.found && status.path) {
+    const treeName = useWorkspaceStore.getState().workspaceTree?.name;
+    const recents = saveRecentWorkspace(status.path, treeName);
+    set({ recentWorkspaces: recents });
+  }
   resetTabsForWorkspaceSwitch();
   await Promise.all([
     useWorkspaceStore.getState().refreshWorkspace(),
     useWorkspaceStore.getState().refreshEnvironments(),
   ]);
+  const treeName = useWorkspaceStore.getState().workspaceTree?.name;
+  if (status.found && status.path) {
+    const recents = saveRecentWorkspace(status.path, treeName);
+    set({ recentWorkspaces: recents });
+  }
   set({ status, checked: true, busy: false });
 }
+

@@ -3,7 +3,8 @@ import { JsonTree } from "../../components/JsonTree";
 import { StatusPill } from "../../components/status";
 import { Button } from "../../components/ui/button";
 import { CodeMirrorEditor } from "../../editors";
-import { formatBytes, handleTabArrowKeys, tabClass } from "../../lib/ui";
+import { formatBytes, handleTabArrowKeys } from "../../lib/ui";
+import { cn } from "#lib/utils";
 import { type JSONPathMatch, queryJSONPath } from "../../lib/jsonpath";
 import { isRecord, type JsonValue } from "../../lib/typeGuards";
 import {
@@ -138,66 +139,51 @@ export function ResponseViewer() {
 			: cookies;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex items-center justify-between gap-2 px-2 pb-1 pt-2">
-				<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-					Response
-				</p>
-				{cancelled ? (
-					<p className="font-data text-xs text-muted-foreground">Request cancelled</p>
-				) : response ? (
-					<p className="flex min-w-0 items-center gap-2 font-data text-xs tabular-nums text-muted-foreground">
+		<div className="flex h-full min-h-0 flex-col bg-background">
+			<div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-card/20 px-3 select-none">
+				<div className="flex items-center gap-2">
+					<span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+						Response
+					</span>
+					{cancelled ? (
+						<span className="font-mono text-xs text-status-warn">Request cancelled</span>
+					) : response ? (
 						<StatusPill status={response.statusCode} />
-						<span className="truncate">
-							{response.proto ? `${response.proto} · ` : ""}
-							{response.statusText}
-						</span>
-						<span aria-hidden>·</span>
+					) : null}
+				</div>
+
+				{response && (
+					<div className="flex items-center gap-2.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+						<span className="text-foreground/80">{response.statusText}</span>
+						<span className="text-border">|</span>
 						<span>{response.durationMs}ms</span>
-						{(response.attempts ?? 1) > 1 ? (
-							<>
-								<span aria-hidden>·</span>
-								<span title="Sends including automatic retries">
-									{response.attempts} attempts
-								</span>
-							</>
-						) : null}
-						<span aria-hidden>·</span>
+						<span className="text-border">|</span>
 						<span>{formatBytes(response.size)}</span>
-						{ct.includes("xml") ? (
+						{ct && (
 							<>
-								<span aria-hidden>·</span>
-								<span className="inline-flex items-center gap-1 font-data text-xs text-status-ok" title="XML/XSD Ready">
-									<span className="h-1.5 w-1.5 rounded-full bg-status-ok" />
-									XSD
-								</span>
+								<span className="text-border">|</span>
+								<span className="truncate max-w-32">{ct.split(";")[0]}</span>
 							</>
-						) : null}
-						{ct ? (
-							<>
-								<span aria-hidden>·</span>
-								<span className="truncate">{ct.split(";")[0]}</span>
-							</>
-						) : null}
-					</p>
-				) : null}
+						)}
+					</div>
+				)}
 			</div>
 
 			{response && binaryType !== "none" ? (
-				<div className="mx-2 mb-1 shrink-0 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs">
+				<div className="mx-2 my-1 shrink-0 rounded border border-border bg-muted/20 px-2 py-1 text-xs">
 					{binaryType === "image" ? (
 						<div className="flex flex-col gap-1">
-							<p className="text-muted-foreground">Image preview</p>
-							<img src={imageDataUrl} alt="response" className="max-h-64 rounded" />
+							<p className="text-muted-foreground font-mono text-[11px]">Image preview</p>
+							<img src={imageDataUrl} alt="response" className="max-h-64 rounded border border-border/50" />
 						</div>
 					) : binaryType === "pdf" ? (
-						<p className="text-muted-foreground">PDF response — use Download.</p>
+						<p className="text-muted-foreground font-mono text-[11px]">PDF response — use Download.</p>
 					) : (
 						<div className="flex flex-col gap-1">
-							<p className="text-muted-foreground">
+							<p className="text-muted-foreground font-mono text-[11px]">
 								Binary ({formatBytes(response.size)}) — first 4KB + Download.
 							</p>
-							<pre className="max-h-40 overflow-auto whitespace-pre rounded bg-background p-2 font-mono text-[11px] leading-snug text-muted-foreground">
+							<pre className="max-h-40 overflow-auto whitespace-pre rounded bg-background p-2 font-mono text-[11px] leading-snug text-muted-foreground border border-border/50">
 								{hexPreview}
 							</pre>
 						</div>
@@ -207,111 +193,103 @@ export function ResponseViewer() {
 
 			{response ? (
 				<div
-					className="flex shrink-0 items-center gap-1 px-2 pb-1"
+					className="flex shrink-0 items-center justify-between border-b border-border/70 bg-muted/10 px-2.5 py-1 select-none"
 					role="tablist"
 					aria-label="Response views"
 					onKeyDown={(e) => handleTabArrowKeys(e)}
 				>
-					{views.map((v) => (
-						<button
-							key={v.id}
-							type="button"
-							role="tab"
-							aria-selected={view === v.id}
-							tabIndex={view === v.id ? 0 : -1}
-							onClick={() => setView(v.id)}
-							disabled={v.id === "table" && !tabular}
-							title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
-							className={`${tabClass(view === v.id)} ${v.id === "table" && !tabular ? "opacity-50" : ""}`}
-						>
-							{v.label}
-						</button>
-					))}
-					<input
-						value={query}
-						onChange={(e) => setQuery(e.target.value)}
-						placeholder="Search response…"
-						aria-label="Search response"
-						className="ml-auto w-44 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
-					/>
-					{searchResult && searchResult.count > 0 ? (
-						<span className="shrink-0 font-data text-xs tabular-nums text-muted-foreground">
-							{searchResult.count} matches
-						</span>
-					) : null}
-				</div>
-			) : null}
+					<div className="flex items-center gap-1">
+						{views.map((v) => (
+							<button
+								key={v.id}
+								type="button"
+								role="tab"
+								aria-selected={view === v.id}
+								tabIndex={view === v.id ? 0 : -1}
+								onClick={() => setView(v.id)}
+								disabled={v.id === "table" && !tabular}
+								title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
+								className={cn(
+									"rounded px-2 py-0.5 font-mono text-[11px] transition-colors",
+									view === v.id
+										? "bg-background font-semibold text-primary shadow-xs"
+										: "text-muted-foreground hover:bg-muted hover:text-foreground",
+									v.id === "table" && !tabular ? "opacity-40 cursor-not-allowed" : "",
+								)}
+							>
+								{v.label}
+							</button>
+						))}
+					</div>
 
-			{response ? (
-				<div className="flex shrink-0 items-center gap-1 border-t border-border/50 px-2 py-1">
-					<Button
-						size="xs"
-						variant="ghost"
-						onClick={() => {
-							const text =
-								view === "headers"
-									? headersText
-									: view === "cookies"
-										? cookiesText
-										: bodyView;
-							void copyText(text).then((ok) => {
-								if (!ok) {
-									notifyError("Copy failed", "Clipboard access was denied.");
-									return;
-								}
-								setCopied(true);
-								setTimeout(() => setCopied(false), 1500);
-							});
-						}}
-					>
-						{copied ? "Copied" : "Copy"}
-					</Button>
-					<Button
-						size="xs"
-						variant="ghost"
-						onClick={() => {
-							void copyText(headersText).then((ok) => {
-								if (ok) {
+					<div className="flex items-center gap-1.5">
+						{parsed !== null && (
+							<input
+								value={jsonPath}
+								onChange={(e) => setJsonPath(e.target.value)}
+								placeholder="JSONPath (e.g. $.data[*])"
+								aria-label="JSONPath query"
+								spellCheck={false}
+								className="h-6 w-32 lg:w-44 rounded border border-input bg-background px-2 font-mono text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none"
+							/>
+						)}
+						<input
+							value={query}
+							onChange={(e) => setQuery(e.target.value)}
+							placeholder="Filter body…"
+							aria-label="Search response"
+							className="h-6 w-24 lg:w-32 rounded border border-input bg-background px-2 font-mono text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none"
+						/>
+						{searchResult && searchResult.count > 0 ? (
+							<span className="font-mono text-[10px] tabular-nums text-primary font-medium">
+								{searchResult.count}
+							</span>
+						) : null}
+
+						<div className="h-3.5 w-px bg-border/80 mx-0.5" />
+
+						<Button
+							size="xs"
+							variant="ghost"
+							className="h-6 px-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground"
+							onClick={() => {
+								const text =
+									view === "headers"
+										? headersText
+										: view === "cookies"
+											? cookiesText
+											: bodyView;
+								void copyText(text).then((ok) => {
+									if (!ok) {
+										notifyError("Copy failed", "Clipboard access was denied.");
+										return;
+									}
 									setCopied(true);
 									setTimeout(() => setCopied(false), 1500);
-								}
-							});
-						}}
-					>
-						Copy headers
-					</Button>
-					<Button
-						size="xs"
-						variant="ghost"
-						onClick={() => {
-							const blob = new Blob([raw], {
-								type: ct || "application/octet-stream",
-							});
-							const url = URL.createObjectURL(blob);
-							const a = document.createElement("a");
-							a.href = url;
-							a.download = filename;
-							a.click();
-							URL.revokeObjectURL(url);
-						}}
-					>
-						Download
-					</Button>
-					<Button size="xs" variant="ghost" onClick={() => setView("pretty")}>
-						Format
-					</Button>
-					<span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-						<span>JSONPath</span>
-						<input
-							value={jsonPath}
-							onChange={(e) => setJsonPath(e.target.value)}
-							placeholder="$.users[*].name"
-							aria-label="JSONPath query"
-							disabled={parsed === null}
-							spellCheck={false}
-							className="w-48 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs text-foreground placeholder:text-muted-foreground disabled:opacity-50"
-						/>
-					</span>
+								});
+							}}
+						>
+							{copied ? "Copied" : "Copy"}
+						</Button>
+						<Button
+							size="xs"
+							variant="ghost"
+							className="h-6 px-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground"
+							onClick={() => {
+								const blob = new Blob([raw], {
+									type: ct || "application/octet-stream",
+								});
+								const url = URL.createObjectURL(blob);
+								const a = document.createElement("a");
+								a.href = url;
+								a.download = filename;
+								a.click();
+								URL.revokeObjectURL(url);
+							}}
+						>
+							Download
+						</Button>
+					</div>
 				</div>
 			) : null}
 

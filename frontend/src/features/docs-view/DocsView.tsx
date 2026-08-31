@@ -7,7 +7,7 @@ import { Input } from "#components/ui/input";
 import { Spinner } from "#components/ui/spinner";
 import { CodeMirrorEditor } from "../../editors/CodeMirrorEditor";
 import { copyText } from "#lib/response";
-import { handleTabArrowKeys, tabClass } from "#lib/ui";
+import { handleTabArrowKeys } from "#lib/ui";
 import { useDocsStore } from "#stores/useDocsStore";
 import { useWorkspaceStore } from "#stores/useWorkspaceStore";
 
@@ -42,135 +42,142 @@ export function DocsView() {
 	const active = result?.files.find((f) => f.name === activeFile) ?? null;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col overflow-y-auto">
+		<div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background">
 			<PageHeader
 				icon={FileText}
 				title="API Docs"
 				description="Generate Markdown documentation from workspace collections with cURL snippets"
 			/>
-			<div className="flex flex-col gap-2 p-3">
-			<div className="flex flex-col gap-1">
-				<div className="flex items-center justify-between">
-					<p className="text-xs text-muted-foreground">
-						Collections {selected.length === 0 && "(all)"}
-					</p>
-					{selected.length > 0 && (
-						<button
-							type="button"
-							onClick={selectAll}
-							className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-						>
-							Reset to all
-						</button>
-					)}
-				</div>
-				{collections.length > 0 ? (
-					<ul className="flex flex-wrap gap-x-3 gap-y-1">
-						{collections.map((c) => (
-							<li key={c.name}>
-								<label className="flex items-center gap-1 text-xs text-foreground">
-									<input
-										type="checkbox"
-										checked={selectedSet.has(c.name)}
-										onChange={() => toggleCollection(c.name)}
-										aria-label={`Include collection ${c.name}`}
-										className="size-3.5 accent-(--primary)"
-									/>
-									{c.name}
-								</label>
-							</li>
-						))}
-					</ul>
-				) : (
-					<p className="text-xs text-muted-foreground">No collections yet.</p>
-				)}
-			</div>
-
-			<div className="flex items-center gap-1.5">
-				<Input
-					value={outName}
-					onChange={(e) => setOutName(e.target.value)}
-					placeholder="Output folder name (default: docs-<timestamp>)"
-					spellCheck={false}
-					aria-label="Output folder name"
-					className="w-72 font-mono text-xs"
-				/>
-				<Button size="sm" onClick={() => void generate()} disabled={busy}>
-					{busy ? <Spinner data-icon="inline-start" /> : <FileText data-icon="inline-start" />}
-					Generate
-				</Button>
-			</div>
-
-			{error && (
-				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
-			)}
-
-			{result && (
-				<>
-					<p className="font-data text-[11px] text-muted-foreground" title={result.path}>
-						Saved to <span className="font-mono">{result.path}</span> ·{" "}
-						{result.requestCount} requests · {result.files.length} files
-					</p>
-					<div
-						className="flex shrink-0 items-center gap-1"
-						role="tablist"
-						aria-label="Generated doc files"
-						onKeyDown={(e) => handleTabArrowKeys(e)}
-					>
-						{result.files.map((f) => (
+			<div className="flex flex-col gap-3 p-4">
+				<div className="flex flex-col gap-1.5 rounded border border-border/80 bg-card/30 p-3">
+					<div className="flex items-center justify-between">
+						<span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+							Collections {selected.length === 0 ? "(All selected)" : `(${selected.length} selected)`}
+						</span>
+						{selected.length > 0 && (
 							<button
-								key={f.name}
 								type="button"
-								role="tab"
-								aria-selected={activeFile === f.name}
-								tabIndex={activeFile === f.name ? 0 : -1}
-								onClick={() => setActiveFile(f.name)}
-								className={tabClass(activeFile === f.name)}
+								onClick={selectAll}
+								className="font-mono text-[11px] text-primary hover:underline"
 							>
-								{f.name}
+								Select all
 							</button>
-						))}
-					</div>
-					<div className="flex min-h-0 flex-1 flex-col rounded-md border border-border">
-						{active ? (
-							<>
-								<div className="flex shrink-0 items-center justify-between border-b border-border px-2 py-1">
-									<span className="text-xs text-muted-foreground">
-										Markdown preview — {active.name}
-									</span>
-									<Button
-										size="sm"
-										variant="outline"
-										onClick={() =>
-											void copyText(active.content).then((ok) => setCopied(ok))
-										}
-									>
-										{copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
-										{copied ? "Copied" : "Copy"}
-									</Button>
-								</div>
-								<CodeMirrorEditor
-									value={active.content}
-									language="markdown"
-									readOnly
-									className="min-h-0 flex-1 overflow-hidden"
-								/>
-							</>
-						) : (
-							<p className="p-2 text-xs text-muted-foreground">No file selected.</p>
 						)}
 					</div>
-				</>
-			)}
+					{collections.length > 0 ? (
+						<ul className="flex flex-wrap gap-2 pt-1">
+							{collections.map((c) => (
+								<li key={c.name}>
+									<label className="flex cursor-pointer items-center gap-1.5 rounded border border-border bg-background px-2 py-1 text-xs text-foreground transition-colors hover:bg-muted select-none">
+										<input
+											type="checkbox"
+											checked={selectedSet.has(c.name)}
+											onChange={() => toggleCollection(c.name)}
+											aria-label={`Include collection ${c.name}`}
+											className="size-3.5 accent-(--primary)"
+										/>
+										<span className="font-mono text-[11px] font-medium">{c.name}</span>
+									</label>
+								</li>
+							))}
+						</ul>
+					) : (
+						<p className="font-mono text-xs text-muted-foreground">No collections found in workspace.</p>
+					)}
+				</div>
 
-			{!result && !error && (
-				<p className="text-xs text-muted-foreground">
-					Generate Markdown documentation for the workspace — one page per collection with methods,
-					URLs, headers, bodies, and ready-to-run cURL snippets.
-				</p>
-			)}
+				<div className="flex items-center gap-2">
+					<Input
+						value={outName}
+						onChange={(e) => setOutName(e.target.value)}
+						placeholder="Output folder name (default: docs-<timestamp>)"
+						spellCheck={false}
+						aria-label="Output folder name"
+						className="w-80 font-mono text-xs"
+					/>
+					<Button size="sm" onClick={() => void generate()} disabled={busy} className="h-8 gap-1.5 px-3 font-mono text-xs font-semibold">
+						{busy ? <Spinner data-icon="inline-start" /> : <FileText className="size-3.5" aria-hidden />}
+						<span>Generate Docs</span>
+					</Button>
+				</div>
+
+				{error && (
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+
+				{result && (
+					<div className="flex flex-col gap-2 pt-2">
+						<div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+							<span>Saved to <strong className="text-foreground">{result.path}</strong></span>
+							<span>|</span>
+							<span className="tabular-nums">{result.requestCount} requests</span>
+							<span>|</span>
+							<span className="tabular-nums">{result.files.length} files generated</span>
+						</div>
+						<div
+							className="flex shrink-0 items-center gap-1 border-b border-border/70 pb-1"
+							role="tablist"
+							aria-label="Generated doc files"
+							onKeyDown={(e) => handleTabArrowKeys(e)}
+						>
+							{result.files.map((f) => (
+								<button
+									key={f.name}
+									type="button"
+									role="tab"
+									aria-selected={activeFile === f.name}
+									tabIndex={activeFile === f.name ? 0 : -1}
+									onClick={() => setActiveFile(f.name)}
+									className={`rounded px-2.5 py-1 font-mono text-[11px] transition-colors ${
+										activeFile === f.name
+											? "bg-primary/10 font-bold text-primary"
+											: "text-muted-foreground hover:bg-muted hover:text-foreground"
+									}`}
+								>
+									{f.name}
+								</button>
+							))}
+						</div>
+						<div className="flex min-h-[350px] flex-col rounded border border-border bg-card/20">
+							{active ? (
+								<>
+									<div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-1.5 bg-background/50">
+										<span className="font-mono text-xs text-muted-foreground">
+											{active.name}
+										</span>
+										<Button
+											size="xs"
+											variant="ghost"
+											onClick={() =>
+												void copyText(active.content).then((ok) => setCopied(ok))
+											}
+											className="gap-1 font-mono text-[11px]"
+										>
+											{copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+											{copied ? "Copied" : "Copy Markdown"}
+										</Button>
+									</div>
+									<CodeMirrorEditor
+										value={active.content}
+										language="markdown"
+										readOnly
+										className="min-h-[300px] flex-1 overflow-hidden"
+									/>
+								</>
+							) : (
+								<p className="p-4 font-mono text-xs text-muted-foreground">No file selected.</p>
+							)}
+						</div>
+					</div>
+				)}
+
+				{!result && !error && (
+					<p className="font-mono text-xs text-muted-foreground">
+						Select collections and click Generate to produce GitHub-flavored Markdown docs with cURL snippets.
+					</p>
+				)}
 			</div>
 		</div>
 	);

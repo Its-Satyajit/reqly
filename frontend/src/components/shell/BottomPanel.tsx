@@ -19,6 +19,7 @@ const LABELS = {
 
 function PanelContent({ active }: { active: BottomPanelId }) {
   const pool = useHistoryStore((s) => s.pool);
+  const clearHistory = useHistoryStore((s) => s.clear);
   const envs = useWorkspaceStore((s) => s.environments);
   const activeEnvId = useWorkspaceStore((s) => s.activeEnvironmentId);
   const activeTabId = useWorkspaceStore((s) => s.activeTabId);
@@ -28,36 +29,77 @@ function PanelContent({ active }: { active: BottomPanelId }) {
   const runReport = useCollectionRunStore((s) => s.report);
 
   if (active === "console") {
+    const logs = pool.slice(0, 20).map((e) => ({
+      id: e.id || `${e.createdAt}-${e.url}`,
+      time: e.createdAt,
+      level: "INFO",
+      message: `Sending ${e.method} ${e.url}`,
+      status: e.status,
+      durationMs: e.durationMs,
+    }));
+
     return (
-      <div className="p-3 font-mono text-xs leading-relaxed">
-        {pool.length === 0 ? (
-          <p className="text-muted-foreground">No logs yet — send a request to see the trace.</p>
-        ) : (
-          <ul className="space-y-1">
-            {pool.slice(0, 8).map((e) => (
-              <li key={e.id} className="flex gap-2">
-                <span className="text-muted-foreground">{new Date(e.createdAt).toLocaleTimeString()}</span>
-                <span className="text-status-info">INFO</span>
-                <span>Sending {e.method} {e.url}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between border-b border-border/50 px-3 py-1 bg-background/50">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Trace Log ({logs.length})</span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => void navigator.clipboard.writeText(JSON.stringify(logs, null, 2))}
+              className="rounded px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground border border-border/60"
+            >
+              Copy JSON
+            </button>
+            <button
+              type="button"
+              onClick={() => void navigator.clipboard.writeText(logs.map(l => `[${l.time}] [${l.level}] ${l.message}`).join("\n"))}
+              className="rounded px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground border border-border/60"
+            >
+              Copy Text
+            </button>
+          </div>
+        </div>
+        <div className="p-3 font-mono text-xs leading-relaxed overflow-y-auto">
+          {logs.length === 0 ? (
+            <p className="text-muted-foreground italic">No console logs recorded.</p>
+          ) : (
+            <ul className="space-y-1">
+              {logs.map((l) => (
+                <li key={l.id} className="flex gap-2">
+                  <span className="text-muted-foreground">{new Date(l.time).toLocaleTimeString()}</span>
+                  <span className="text-status-info font-bold">INFO</span>
+                  <span>{l.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     );
   }
   if (active === "network") {
     return (
-      <div className="p-2">
-        {pool.length === 0 ? (
-          <p className="px-1 text-xs text-muted-foreground">No network activity in this workspace.</p>
-        ) : (
-          <table className="w-full text-xs">
-            <thead className="text-left text-muted-foreground">
-              <tr><th className="px-2 py-1 font-medium">Time</th><th className="px-2 py-1 font-medium">Method</th><th className="px-2 py-1 font-medium">URL</th><th className="px-2 py-1 font-medium">Status</th></tr>
-            </thead>
-            <tbody className="font-mono">
-              {pool.slice(0, 10).map((e) => (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between border-b border-border/50 px-3 py-1 bg-background/50">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Network Requests ({pool.length})</span>
+          <button
+            type="button"
+            onClick={() => void clearHistory(null)}
+            className="rounded px-1.5 py-0.5 font-mono text-[10px] text-destructive transition-colors hover:bg-destructive/10 border border-destructive/30"
+          >
+            Clear Activity
+          </button>
+        </div>
+        <div className="p-2 overflow-y-auto">
+          {pool.length === 0 ? (
+            <p className="px-1 text-xs text-muted-foreground">No network activity in this workspace.</p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="text-left text-muted-foreground font-mono text-[11px]">
+                <tr><th className="px-2 py-1 font-medium">Time</th><th className="px-2 py-1 font-medium">Method</th><th className="px-2 py-1 font-medium">URL</th><th className="px-2 py-1 font-medium">Status</th></tr>
+              </thead>
+              <tbody className="font-mono">
+                {pool.slice(0, 20).map((e) => (
                 <tr key={e.id} className="border-t border-border/50">
                   <td className="px-2 py-1 text-muted-foreground">{new Date(e.createdAt).toLocaleTimeString()}</td>
                   <td className="px-2 py-1">{e.method}</td>
@@ -68,6 +110,7 @@ function PanelContent({ active }: { active: BottomPanelId }) {
             </tbody>
           </table>
         )}
+        </div>
       </div>
     );
   }

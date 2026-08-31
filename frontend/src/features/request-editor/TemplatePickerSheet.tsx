@@ -15,6 +15,7 @@ import {
   instantiateTemplate,
   type RequestTemplate,
 } from "#lib/templates";
+import { useTemplateStore } from "#stores/useTemplateStore";
 
 interface TemplatePickerSheetProps {
   open: boolean;
@@ -29,11 +30,16 @@ export function TemplatePickerSheet({
 }: TemplatePickerSheetProps) {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const customTemplates = useTemplateStore((s) => s.customTemplates);
+
+  const allAvailable = [...CATEGORIES.flatMap((c) => c.templates), ...customTemplates];
 
   const filteredTemplates = query.trim()
     ? searchTemplates(query)
     : selectedCategory === "all"
-    ? CATEGORIES.flatMap((c) => c.templates)
+    ? allAvailable
+    : selectedCategory === "custom"
+    ? customTemplates
     : CATEGORIES.find((c) => c.id === selectedCategory)?.templates ?? [];
 
   const handlePick = (t: RequestTemplate) => {
@@ -78,6 +84,19 @@ export function TemplatePickerSheet({
             >
               All
             </button>
+            {customTemplates.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("custom")}
+                className={`rounded px-2 py-1 text-xs transition-colors ${
+                  selectedCategory === "custom"
+                    ? "bg-primary/10 font-medium text-primary"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                Custom ({customTemplates.length})
+              </button>
+            )}
             {CATEGORIES.map((c) => (
               <button
                 key={c.id}

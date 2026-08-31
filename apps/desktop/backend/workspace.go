@@ -98,6 +98,10 @@ func (s *AppService) WorkspaceOpen(dir string) (*core.WorkspaceTree, error) {
 	if !collections.IsWorkspace(abs) {
 		return nil, fmt.Errorf("%q is not a Reqly workspace yet: create one to start using it here", filepath.Base(abs))
 	}
+	// Ensure standard workspace folders exist so features (collections, environments, tests, .reqly) operate smoothly
+	for _, folder := range []string{"collections", "environments", "tests", ".reqly"} {
+		_ = os.MkdirAll(filepath.Join(abs, folder), 0o755)
+	}
 	s.rebuildServices(abs)
 	if err := s.persistLastWorkspace(abs); err != nil {
 		return nil, fmt.Errorf("save last workspace: %w", err)
@@ -106,8 +110,8 @@ func (s *AppService) WorkspaceOpen(dir string) (*core.WorkspaceTree, error) {
 }
 
 // WorkspaceCreate scaffolds a minimal Git-native workspace (descriptor plus
-// empty collections/) at dir — deriving the name from the folder when empty —
-// then opens it. An existing descriptor is never touched.
+// standard directories: collections/, environments/, tests/, .reqly/) at dir —
+// deriving the name from the folder when empty — then opens it. An existing descriptor is never touched.
 func (s *AppService) WorkspaceCreate(dir string, name string) (*core.WorkspaceTree, error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
@@ -116,8 +120,10 @@ func (s *AppService) WorkspaceCreate(dir string, name string) (*core.WorkspaceTr
 	if collections.IsWorkspace(abs) {
 		return nil, fmt.Errorf("%q already contains a Reqly workspace: open it instead", filepath.Base(abs))
 	}
-	if err := os.MkdirAll(filepath.Join(abs, "collections"), 0o755); err != nil {
-		return nil, fmt.Errorf("create collections folder: %w", err)
+	for _, folder := range []string{"collections", "environments", "tests", ".reqly"} {
+		if err := os.MkdirAll(filepath.Join(abs, folder), 0o755); err != nil {
+			return nil, fmt.Errorf("create %s folder: %w", folder, err)
+		}
 	}
 	if strings.TrimSpace(name) == "" {
 		name = filepath.Base(abs)
@@ -153,7 +159,7 @@ func (s *AppService) rebuildServices(root string) {
 	opened := secrets.OpenForWorkspace(root, "keychain")
 	s.requests = core.NewRunServiceWithTokenStore(root, opened.Store)
 	s.authBackend = opened.Backend
-	s.environments = core.NewEnvironmentService(root)
+	s.environments = core.NewEnvironmentServiceWithStore(root, opened.Store)
 	s.workspace = core.NewWorkspaceService(root)
 	s.runs = core.NewCollectionRunService(root)
 	s.root = root

@@ -25,6 +25,7 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
 	"github.com/Its-Satyajit/reqly/internal/environments"
+	"github.com/Its-Satyajit/reqly/internal/secrets"
 )
 
 // Environment is the bridge-friendly view of an environment: its variables
@@ -50,13 +51,21 @@ type EnvListResponse struct {
 // the active selection. The service is UI-agnostic and never exposes secret
 // values to callers.
 type EnvironmentService struct {
-	root string
+	root  string
+	store secrets.Store
 }
 
 // NewEnvironmentService returns an EnvironmentService rooted at the given
 // workspace root ("" means no workspace; listing then returns empty).
 func NewEnvironmentService(root string) *EnvironmentService {
-	return &EnvironmentService{root: root}
+	opened := secrets.OpenForWorkspace(root, "file")
+	return NewEnvironmentServiceWithStore(root, opened.Store)
+}
+
+// NewEnvironmentServiceWithStore returns an EnvironmentService with an explicit
+// secrets.Store (such as OS Keychain or FileStore).
+func NewEnvironmentServiceWithStore(root string, store secrets.Store) *EnvironmentService {
+	return &EnvironmentService{root: root, store: store}
 }
 
 // List returns the workspace's environments (name, description, variables,
@@ -118,7 +127,7 @@ func (s *EnvironmentService) Create(name, description string, variables map[stri
 	if s == nil {
 		return fmt.Errorf("no workspace found: open a reqly workspace to create an environment")
 	}
-	if s.root == "" {
+	if s.root == "" || !collections.IsWorkspace(s.root) {
 		return fmt.Errorf("no workspace found: open a reqly workspace to create an environment")
 	}
 	if _, err := environments.Read(name, s.root); err == nil {
@@ -162,9 +171,10 @@ func (s *EnvironmentService) Update(name, description string, variables map[stri
 }
 
 // UpdateSecrets changes an environment's secrets without ever reading their
-// values back to the caller. `values` holds only the secrets the user changed
-// (existing ones keep their on-disk values); `remove` lists secret names to
-// delete. A missing environment or workspace is an error.
+// values back to the caller. `values` holds only the secrets the user changed;
+// `remove` lists secret names to delete. Secret values are stored securely in
+// the secrets.Store (OS Keychain or FileStore) rather than on disk in the
+// YAML file. A missing environment or workspace is an error.
 func (s *EnvironmentService) UpdateSecrets(name string, values map[string]string, remove []string) error {
 	if s == nil {
 		return fmt.Errorf("no workspace found: open a reqly workspace to edit secrets")
@@ -181,28 +191,36 @@ func (s *EnvironmentService) UpdateSecrets(name string, values map[string]string
 			return fmt.Errorf("key %q is defined in both variables and secrets", key)
 		}
 	}
-	secrets := existing.Secrets
-	if secrets == nil {
-		secrets = make(map[string]string, len(values)+len(remove))
+	secretsMap := existing.Secrets
+	if secretsMap == nil {
+		secretsMap = make(map[string]string, len(values)+len(remove))
 	}
 	for key, value := range values {
-		secrets[key] = value
+		secretsMap[key] = ""
+		if s.store != nil {
+			if err := s.store.Set(fmt.Sprintf("env:%s:%s", name, key), value); err != nil {
+				return fmt.Errorf("store secret %q: %w", key, err)
+			}
+		}
 	}
 	for _, key := range remove {
-		delete(secrets, key)
+		delete(secretsMap, key)
+		if s.store != nil {
+			_ = s.store.Delete(fmt.Sprintf("env:%s:%s", name, key))
+		}
 	}
 	env := &environments.Environment{
 		Name:        existing.Name,
 		Description: existing.Description,
 		Variables:   existing.Variables,
-		Secrets:     secrets,
+		Secrets:     secretsMap,
 	}
 	return environments.Save(env, s.root)
 }
 
-// Delete removes an environment's file. If the deleted environment is the
-// workspace's active one, the descriptor's selection is cleared. A missing
-// environment or workspace is an error.
+// Delete removes an environment's file and clears its secrets from the store.
+// If the deleted environment is the workspace's active one, the descriptor's
+// selection is cleared. A missing environment or workspace is an error.
 func (s *EnvironmentService) Delete(name string) error {
 	if s == nil {
 		return fmt.Errorf("no workspace found: open a reqly workspace to delete an environment")
@@ -210,8 +228,14 @@ func (s *EnvironmentService) Delete(name string) error {
 	if s.root == "" {
 		return fmt.Errorf("no workspace found: open a reqly workspace to delete an environment")
 	}
-	if _, err := environments.Read(name, s.root); err != nil {
+	existing, err := environments.Read(name, s.root)
+	if err != nil {
 		return err
+	}
+	if s.store != nil {
+		for key := range existing.Secrets {
+			_ = s.store.Delete(fmt.Sprintf("env:%s:%s", name, key))
+		}
 	}
 	envDir, err := environments.Discover(s.root)
 	if err != nil {

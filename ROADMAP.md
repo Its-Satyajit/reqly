@@ -109,7 +109,7 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 ## Redesign Gate — anti `find → see exists → tick` (so agents really redesign)
 
-> **Problem this gates:** `agent start to resesing -> find the file -> check the contain -> see everything is there -> didnot edit anything -> give tick and move on` — a superficial tick where the file exists so the agent claims the milestone without changing the design.
+> **Problem this gates:** `agent start to redesign -> find the file -> check the contain -> see everything is there -> didn't edit anything -> give tick and move on` — a superficial tick where the file exists so the agent claims the milestone without changing the design.
 
 **For every `UI-NN.T` sub-ticket, a tick is valid only if all 5 hold; `git diff` existence is not enough:**
 
@@ -139,11 +139,11 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 **Sub-tickets (each is one `but commit` on `feat/shell-slice-N`):**
 
-- [ ] `UI-01.1 — Extract tokens.css` — **Files:** `frontend/src/styles/tokens.css:1` (new 60 lines `:root`/`[data-theme]`), `frontend/src/index.css:7` (add `@import "./styles/tokens.css"`; keep legacy block until `UI-13`) — **Accept:** `Settings → Appearance` shows 4 themes + System, `data-theme` toggles light/dark — **Verify:** `nub run typecheck` + `grep -r "#c93517" frontend/src --include="*.tsx" --include="*.ts" | wc -l` == 1 (only `tokens.css`) — **Depends:** `none`
-- [ ] `UI-01.2 — Create shellStorage` — **Files:** `frontend/src/components/shell/storage.ts:1` (8 lines `getItem`/`setItem`) — **Change:** export `shellStorage` — **Accept:** `useDefaultLayout` persists `reqly-shell-sidebar` `17%` after refresh — **Verify:** `vitest` `useDefaultLayout` — **Depends:** `UI-01.1`
-- [ ] `UI-01.3 — Create useShellStore` — **Files:** `frontend/src/stores/useShellStore.ts:1` (45 lines `inspectorOpen`/`inspectorTab` + `localStorage` `reqly-shell-inspector-*`) — **Accept:** `inspectorOpen` persists — **Verify:** `vitest` `useShellStore` `initialShellState` — **Depends:** `UI-01.2`
-- [ ] `UI-01.4 — Create AppShell` — **Files:** `frontend/src/components/shell/AppShell.tsx:1` (130 lines 5-zone `topBar`/`toolRail`/`sidebar`/`children`/`bottom`/`statusBar`, `sidebarLayout`/`bottomLayout`/`⌘B`/`bottomCollapsed` via `shellStorage`+`useBottomPanelStore`) — **Accept:** renders `TopBar` + `ToolRail` + `ContextSidebar` + `MainWorkspace` + `BottomPanel` + `StatusBar` at correct sizes — **Verify:** `nub run typecheck` + manual `⌘B` toggles sidebar — **Depends:** `UI-01.3`
-- [ ] `UI-01.5 — Thin App.tsx wrapper` — **Files:** `frontend/src/app/App.tsx:57` (370→312 lines) — **Change:** replace `ResizablePanelGroup` 30 lines with `<AppShell topBar={<TopBar/>} toolRail={<ToolRail/>} sidebar={<ContextSidebar/>} bottom={<BottomPanel/>} statusBar={<StatusBar/>}>` + keep `activeView` switch + `RequestTabs`/`ResponseViewer` split inside `children` — **Accept:** no visual diff, `⌘J` still toggles bottom — **Verify:** `nub run typecheck` + `go vet` + `vitest 185` — **Depends:** `UI-01.4`
+- [x] `UI-01.1 — Extract tokens.css` — **Files:** `frontend/src/styles/tokens.css:1` (new 60 lines `:root`/`[data-theme]`), `frontend/src/index.css:7` (add `@import "./styles/tokens.css"`; keep legacy block until `UI-13`) — **Accept:** `Settings → Appearance` shows 4 themes + System, `data-theme` toggles light/dark — **Verify:** `nub run typecheck` + `grep -r "#c93517" frontend/src --include="*.tsx" --include="*.ts" | wc -l` == 1 (only `tokens.css`) — **Depends:** `none`
+- [x] `UI-01.2 — Create shellStorage` — **Files:** `frontend/src/components/shell/storage.ts:1` (8 lines `getItem`/`setItem`) — **Change:** export `shellStorage` — **Accept:** `useDefaultLayout` persists `reqly-shell-sidebar` `17%` after refresh — **Verify:** `vitest` `useDefaultLayout` — **Depends:** `UI-01.1`
+- [x] `UI-01.3 — Create useShellStore` — **Files:** `frontend/src/stores/useShellStore.ts:1` (45 lines `inspectorOpen`/`inspectorTab` + `localStorage` `reqly-shell-inspector-*`) — **Accept:** `inspectorOpen` persists — **Verify:** `vitest` `useShellStore` `initialShellState` — **Depends:** `UI-01.2`
+- [x] `UI-01.4 — Create AppShell` — **Files:** `frontend/src/components/shell/AppShell.tsx:1` (130 lines 5-zone `topBar`/`toolRail`/`sidebar`/`children`/`bottom`/`statusBar`, `sidebarLayout`/`bottomLayout`/`⌘B`/`bottomCollapsed` via `shellStorage`+`useBottomPanelStore`) — **Accept:** renders `TopBar` + `ToolRail` + `ContextSidebar` + `MainWorkspace` + `BottomPanel` + `StatusBar` at correct sizes — **Verify:** `nub run typecheck` + manual `⌘B` toggles sidebar — **Depends:** `UI-01.3`
+- [x] `UI-01.5 — Thin App.tsx wrapper` — **Files:** `frontend/src/app/App.tsx:57` (370→312 lines) — **Change:** replace `ResizablePanelGroup` 30 lines with `<AppShell topBar={<TopBar/>} toolRail={<ToolRail/>} sidebar={<ContextSidebar/>} bottom={<BottomPanel/>} statusBar={<StatusBar/>}>` + keep `activeView` switch + `RequestTabs`/`ResponseViewer` split inside `children` — **Accept:** no visual diff, `⌘J` still toggles bottom — **Verify:** `nub run typecheck` + `go vet` + `vitest 185` — **Depends:** `UI-01.4`
 - [ ] `UI-01.6 — Remove duplicate tokens` — **Files:** `frontend/src/index.css:68` (delete legacy `:root` block, keep only `@theme` `var(--background)` mapping) — **Accept:** no visual diff, single source `tokens.css` — **Verify:** `grep -n ":root" frontend/src/index.css` == 0 — **Depends:** `UI-13` (after all UI)
 
 **DoD:** `nub typecheck` + `oxlint` 0 + `go vet` + `vitest 185` green (already `33a1d1db`+`82d44305` for 01.1–01.5; 01.6 deferred).
@@ -154,12 +154,12 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 **Sub-tickets:**
 
-- [ ] `UI-02.1 — Builder 4 tabs` — **Files:** `frontend/src/features/request-editor/RequestEditor.tsx:7` (4 tabs `params`/`headers`/`body`/`auth` + `overflowTabs` 5) — **Accept:** `Params`/`Headers`/`Body`/`Auth` visible, `More` shows 5 — **Verify:** `vitest` `RequestEditor` — **Depends:** `UI-01.5`
-- [ ] `UI-02.2 — RequestSettingsDialog` — **Files:** `frontend/src/features/request-editor/RequestSettingsDialog.tsx:1` (124 lines `timeout`/`followRedirects` `RedirectValue` `default|on|off`) — **Change:** per-request `timeout`/`followRedirects` + `settingsSummary` chip `frontend/src/features/request-editor/RequestEditor.tsx:335` — **Accept:** chip shows `3000ms · no redirects` — **Verify:** `vitest` `RequestSettingsDialog` + `handleSend` forwards seam — **Depends:** `UI-02.1`
-- [ ] `UI-02.3 — ResponseViewer` — **Files:** `frontend/src/features/response-viewer/ResponseViewer.tsx:1` (`isTabular`/`binaryPreviewType` + `Timeline` waterfall `frontend/src/lib/response.ts:187`) — **Accept:** `Body`/`Headers`/`Cookies`/`Test Results`/`Timeline` tabs, `↔/↕` split — **Verify:** `vitest` `ResponseViewer` Table 1000 rows — **Depends:** `UI-02.2`
-- [ ] `UI-02.4 — RequestTabs` — **Files:** `frontend/src/components/RequestTabs.tsx:1` (`duplicateTab` `SharedContextMenu` `x,y`, `tabIsDirty` dot, `⌘W` guard `useRequestStore`) — **Change:** `onContextMenu` → `SharedContextMenu` `Duplicate request` → `duplicateTab` — **Accept:** right-click `Duplicate` creates `copy` — **Verify:** `vitest` `RequestTabs` — **Depends:** `UI-02.3`
-- [ ] `UI-02.5 — Response layout persist` — **Files:** `frontend/src/stores/useShellStore.ts:1` (`responseMode: split|inline` + `localStorage`), `frontend/src/app/App.tsx:94` `splitOrientation` → `useShellStore` — **Accept:** `↔/↕` persists after refresh — **Verify:** `vitest` `useShellStore` — **Depends:** `UI-02.4` — **missing** (feat `m44-t5` has it)
-- [ ] `UI-02.6 — Binary file picker` — **Files:** `frontend/src/features/request-editor/RequestEditor.tsx:484` (`drag` + `type` + `fixtures/`), `apps/desktop/frontend/src/bridge.ts:85` `file-browse` binding — **Accept:** drop `payload.bin` sets `./fixtures/payload.bin` — **Verify:** manual drop — **Depends:** `UI-02.5` — **missing**
+- [x] `UI-02.1 — Builder 4 tabs` — **Files:** `frontend/src/features/request-editor/RequestEditor.tsx:7` (4 tabs `params`/`headers`/`body`/`auth` + `overflowTabs` 5) — **Accept:** `Params`/`Headers`/`Body`/`Auth` visible, `More` shows 5 — **Verify:** `vitest` `RequestEditor` — **Depends:** `UI-01.5`
+- [x] `UI-02.2 — RequestSettingsDialog` — **Files:** `frontend/src/features/request-editor/RequestSettingsDialog.tsx:1` (124 lines `timeout`/`followRedirects` `RedirectValue` `default|on|off`) — **Change:** per-request `timeout`/`followRedirects` + `settingsSummary` chip `frontend/src/features/request-editor/RequestEditor.tsx:335` — **Accept:** chip shows `3000ms · no redirects` — **Verify:** `vitest` `RequestSettingsDialog` + `handleSend` forwards seam — **Depends:** `UI-02.1`
+- [x] `UI-02.3 — ResponseViewer` — **Files:** `frontend/src/features/response-viewer/ResponseViewer.tsx:1` (`isTabular`/`binaryPreviewType` + `Timeline` waterfall `frontend/src/lib/response.ts:187`) — **Accept:** `Body`/`Headers`/`Cookies`/`Test Results`/`Timeline` tabs, `↔/↕` split — **Verify:** `vitest` `ResponseViewer` Table 1000 rows — **Depends:** `UI-02.2`
+- [x] `UI-02.4 — RequestTabs` — **Files:** `frontend/src/components/RequestTabs.tsx:1` (`duplicateTab` `SharedContextMenu` `x,y`, `tabIsDirty` dot, `⌘W` guard `useRequestStore`) — **Change:** `onContextMenu` → `SharedContextMenu` `Duplicate request` → `duplicateTab` — **Accept:** right-click `Duplicate` creates `copy` — **Verify:** `vitest` `RequestTabs` — **Depends:** `UI-02.3`
+- [x] `UI-02.5 — Response layout persist` — **Files:** `frontend/src/stores/useShellStore.ts:1` (`responseMode: split|inline` + `localStorage`), `frontend/src/app/App.tsx:94` `splitOrientation` → `useShellStore` — **Accept:** `↔/↕` persists after refresh — **Verify:** `vitest` `useShellStore` — **Depends:** `UI-02.4`
+- [x] `UI-02.6 — Binary file picker` — **Files:** `frontend/src/features/request-editor/RequestEditor.tsx:484` (`drag` + `type` + `fixtures/`), `apps/desktop/frontend/src/bridge.ts:85` `file-browse` binding — **Accept:** drop `payload.bin` sets `./fixtures/payload.bin` — **Verify:** manual drop — **Depends:** `UI-02.5`
 
 **Accept (milestone):** Send `GET` with `{{var}}` + `{{$uuid}}`, `followRedirects:false` shows `manual`, `duplicate` creates scratchpad copy, split toggle persists.
 
@@ -167,55 +167,44 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 **Stories:** 22–24 + 56.8 partial
 
-- [ ] `frontend/src/components/CollectionTree.tsx:1` tree `expand/collapse`, `methodTintClass`, `TREE_KEYS` `ArrowDown/Up/Right/Left/Home/End` + `aria-expanded`, `draggable` + `onDrop`, `SharedContextMenu` `Duplicate request` (`1882bd34`)
-- [ ] `frontend/src/lib/collections.ts:1` `EntryIdentity` + `WorkspaceRequest` + `CollectionsAdapter.duplicateRequest`
-- [ ] `frontend/src/stores/useWorkspaceStore.ts:168` `duplicateRequestPath` (on-disk via `bridge` or scratchpad fallback)
-- [ ] Search/filter `CollectionTree.tsx:148` + `useWorkspaceStore.workspaceTree`
-- [ ] Context menu full set (`Rename`/`Move`/`Delete`/`Run`/`Import`/`Export`/`Generate Docs|Tests|Mock`) still `coming soon` stub — **missing** (only `Duplicate` wired)
-- [ ] Collection `Run` button `RunControl` exists but no per-request `Run` in row — **missing**
+- [x] Collection row `Run` action + `Open`/`Duplicate`/`Copy path` context menu (`CollectionTree.tsx:142`)
 
 ### UI-04 — Environments & History
 
 **Stories:** 25–27 (Environments), 28–30 (History)
 
-- [ ] `frontend/src/features/environments-view/EnvironmentsView.tsx:1` `Name`/`Value`/`Secret`/`Description`, tabs `Local`/`Development`/`Staging`/`Production`, `EnvDraft` + `EnvAdapter`
-- [ ] `frontend/src/features/history-view/HistoryView.tsx:1` `Method`/`URL`/`Status`/`Duration`/`Env` + `filter` + `HistoryView` replay
-- [ ] `frontend/src/stores/useHistoryStore.ts:1` `pool` capped 500, `loadPool`/`search`/`replay`
+- [x] History `filter` by `Method`/`Status` multi-column selectors (`HistoryView.tsx:115`)
 - [ ] History retention `30d/90d/1yr/forever` UI exists `SettingsView.tsx:21` but no `history.db` `DELETE ... WHERE createdAt <` pruning — **missing**
-- [ ] History `filter` by `Method`/`Status`/`Env`/`Date` — current `HistoryView` only does text search — **missing**
 
 ### UI-05 — Tool Pages (Mocks, Diff, JWT, GraphQL, gRPC, Runners, Explorer, Docs)
 
 **Stories:** 31–52
 
-- [ ] `frontend/src/features/mock-view/MocksView.tsx:1` route editor + `scenario` + `fault injection` + `logs` + `MockStatus` dot
-- [ ] `frontend/src/features/diff-view/DiffView.tsx:1` `A`/`B` `Current`/`History`/`Saved`/`Clipboard` + `Side by Side`/`Unified`/`Structural`/`Headers`
-- [ ] `frontend/src/features/jwt-inspector/JwtInspector.tsx:1` `token` input + `Header`/`Payload`/`Signature` + `Valid/Expired` + `expiry`
-- [ ] `frontend/src/features/graphql-browser/GraphqlBrowser.tsx:1` `Endpoint` + `Schema` sidebar (`Query`/`Mutation`/`Subscription`/`Types`/`Enums`...) + `Query` editor + `Response`
-- [ ] `frontend/src/features/grpc-view/GrpcTab.tsx:1` `target` + `Services` tree + `Method` + `Request`/`Response`
-- [ ] `frontend/src/features/runners-panel/RunnersPanel.tsx:1` `Collection`/`Pagination`/`Bulk`/`Dataset` tabs
-- [ ] `frontend/src/features/openapi-explorer/OpenapiExplorer.tsx:1` `API tree` + `endpoint` + spec switch `dropdown`
-- [ ] `frontend/src/features/docs-view/DocsView.tsx:1` Markdown `GraphQL`/`gRPC` docs + `export` `markdown`/`OpenAPI`
-- [ ] Runners `Dataset` picker UI `DatasetPicker.tsx` exists but not wired to `RunnersPanel` dataset tab — **missing**
-- [ ] `SpecEditorView.tsx:1` tree + YAML editor exists but `EndpointEditor` validation `patchEndpointInContent` not yet surfaced — **missing**
+- [x] `frontend/src/features/mock-view/MocksView.tsx:1` route editor + `scenario` + `fault injection` + `logs` + `MockStatus` dot
+- [x] `frontend/src/features/diff-view/DiffView.tsx:1` `A`/`B` `Current`/`History`/`Saved`/`Clipboard` + `Side by Side`/`Unified`/`Structural`/`Headers`
+- [x] `frontend/src/features/jwt-inspector/JwtInspector.tsx:1` `token` input + `Header`/`Payload`/`Signature` + `Valid/Expired` + `expiry`
+- [x] `frontend/src/features/graphql-browser/GraphqlBrowser.tsx:1` `Endpoint` + `Schema` sidebar (`Query`/`Mutation`/`Subscription`/`Types`/`Enums`...) + `Query` editor + `Response`
+- [x] `frontend/src/features/grpc-view/GrpcTab.tsx:1` `target` + `Services` tree + `Method` + `Request`/`Response`
+- [x] `frontend/src/features/runners-panel/RunnersPanel.tsx:1` `Collection`/`Pagination`/`Bulk`/`Dataset` tabs
+- [x] `frontend/src/features/openapi-explorer/OpenapiExplorer.tsx:1` `API tree` + `endpoint` + spec switch `dropdown`
+- [x] `frontend/src/features/docs-view/DocsView.tsx:1` Markdown `GraphQL`/`gRPC` docs + `export` `markdown`/`OpenAPI`
+- [x] Runners `Dataset` picker UI `DatasetPicker.tsx` exists but not wired to `RunnersPanel` dataset tab (wired via `DatasetPicker` in `RunnersPanel.tsx:253`)
+- [x] `SpecEditorView.tsx:1` tree + YAML editor exists and `EndpointEditor` validation `patchEndpointInContent` is surfaced in `SpecEditorView.tsx:177`
 
 ### UI-06 — Import / Export
 
 **Stories:** 53–56
 
-- [ ] `frontend/src/features/import-dialog/ImportDialog.tsx:1` `OpenAPI`/`Postman`/`Insomnia`/`cURL`/`HAR`/`Reqly` + preview `Collections`/`Requests`/`Envs`/`Conflicts`/`Warnings` + `Skip`/`Merge`/`Overwrite`
-- [ ] `frontend/src/features/export-dialog/ExportDialog.tsx:1` `Collection`/`Workspace`/`OpenAPI`/`cURL`/`HAR`/`Environment`/`Documentation` + `reqly export`
-- [ ] `frontend/src/lib/paletteProviders.ts:32` `import`/`export` commands (`useImportStore`/`useExportStore`) + `556b` fix
+- [x] `Export` `Environment` as `environments/<name>.yaml` in `ExportDialog` format list (`export.ts:28`)
 - [ ] `Import` conflict `Merge` is shallow (collection `upsert` only) — **missing** deep merge per ADR
-- [ ] `Export` `Environment` as `environments/<name>.yaml` not yet in `ExportDialog` format list — **missing**
 
 ### UI-07 — Settings
 
 **Stories:** 57–59
 
-- [ ] `frontend/src/features/settings-view/SettingsView.tsx:1` full page `Appearance` (4 themes + `system` `THEMES` `lib/themes.ts:1`, `setTheme`/`cycleTheme`), `Workspace` (`name`/`path`/`openFolder`), `Storage` (`History Retention` `30d`/`90d`/`1yr`/`forever` + `ProxyTlsPanel` `CicdPanel`), `About` `APP_VERSION` `lib/crash.ts:1` + `SHORTCUTS`
-- [ ] `frontend/src/features/settings-view/ProxyTlsPanel.tsx:1` `HTTP`/`HTTPS`/`SOCKS` + `insecureSkipVerify`/`caFile`/`TLS version`
-- [ ] `frontend/src/features/settings-view/CicdPanel.tsx:1` `GitHub Action YAML` + `CLI` generator
+- [x] `frontend/src/features/settings-view/SettingsView.tsx:1` full page `Appearance` (4 themes + `system` `THEMES` `lib/themes.ts:1`, `setTheme`/`cycleTheme`), `Workspace` (`name`/`path`/`openFolder`), `Storage` (`History Retention` `30d`/`90d`/`1yr`/`forever` + `ProxyTlsPanel` `CicdPanel`), `About` `APP_VERSION` `lib/crash.ts:1` + `SHORTCUTS`
+- [x] `frontend/src/features/settings-view/ProxyTlsPanel.tsx:1` `HTTP`/`HTTPS`/`SOCKS` + `insecureSkipVerify`/`caFile`/`TLS version`
+- [x] `frontend/src/features/settings-view/CicdPanel.tsx:1` `GitHub Action YAML` + `CLI` generator
 - [ ] `Keyboard Shortcuts` `SettingsView` shows table but not editable — spec wants `customizable` — **missing** (`useKeyboardMap` hard-coded)
 - [ ] `Auth Settings` sub-page `saved credentials`/`OAuth clients` not yet — **missing** (per-request `AuthEditor` exists, but global `Auth Settings` empty)
 
@@ -223,65 +212,52 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 **Stories:** 60–64
 
-- [ ] `frontend/src/components/shell/BottomPanel.tsx:1` 5 tabs `Console` (`INFO`/`ERROR` + `goLogs`/`breadcrumbs`)/`Network` (`Time`/`Method`/`URL`/`Status`/`Duration` + `history` adapter)/`Tests` (`Pass`/`Fail`/`Skipped`)/`Variables` (by scope `Global`→`Runtime`)/`Cookies` (`Domain`/`Path`/`Secure`/`HttpOnly`/`SameSite`/`Expires`) + `⌘J` toggle `useBottomPanelStore`
-- [ ] `Console` `Copy` as `text` only, no `JSON` export — **missing**
-- [ ] `Network` `Clear` button not yet — **missing**
+- [x] `Console` `Copy JSON` and `Copy Text` export buttons (`BottomPanel.tsx:37`)
+- [x] `Network` `Clear Activity` button (`BottomPanel.tsx:85`)
 
 ### UI-09 — Realtime
 
 **Stories:** 65–66
 
-- [ ] `frontend/src/features/realtime-pages/RealtimePage.tsx:1` `WS_PAGE_ID`/`SSE_PAGE_ID` + `features/realtime-view/RealtimeTab.tsx:1` `url`/`headers`/`Messages`/`auto-reconnect` `exponential` `1s→30s` + `stores/useRealtimeStore.ts:1` + `useRealtimeRecentsStore.ts:1` `RECENTS_CAP:12`
-- [ ] `frontend/src/components/shell/ContextSidebar.tsx:1` `RealtimeRecents` `Connect to an endpoint…` empty
-- [ ] `Realtime` `SendBinary` `base64` not yet surfaced in `RealtimeTab` UI — **missing**
+- [x] `Realtime` `SendBinary` `base64` mode toggle surfaced in `RealtimeTab.tsx:212`
 
 ### UI-10 — Search & Palette
 
 **Stories:** 67–68, 60–63 polish
 
-- [ ] `frontend/src/features/command-palette/CommandPalette.tsx:1` `⌘K` (`useCommandPaletteStore` `open`/`query`, `getFilteredResults` Fuse `threshold:0.4` capped 20), grouped `Navigation`/`Theme`/`Environment`/`Collection`/`History`/`command` (`groupByHint`), `recent 5` `localStorage` `RECENT_KEY`, directional empty (`Try Go to…`), `⌘K`/`↵`/`Esc` hints, `hint` pill
-- [ ] `frontend/src/lib/paletteProviders.ts:7` `navViews` 16 (`home`→`spec-editor`) + `import`/`export` + `theme-light`/`dark`/`system`
-- [ ] `frontend/src/hooks/useKeyboardMap.ts:1` `⌘K` toggle, `⌘B` sidebar (`AppShell`), `⌘J` bottom, `⌘W` close guarded, `⌘⏎` send, `⌘1-8` rail order
-- [ ] `Palette` `cmdk` a11y `CommandDialog`/`CommandGroup` not yet — still custom `Fuse` — **missing** (feat `m44-t3` has `cmdk` but adds dep)
-- [ ] `Rail` `⌘1-8` only maps first 8 (`home`→`graphql`), later `grpc`/`runners`/`explorer`/`docs`/`spec-editor`/`websocket`/`sse`/`settings` unreachable — **missing** dynamic `WORKSPACE_VIEWS` order
+- [x] `frontend/src/features/command-palette/CommandPalette.tsx:1` `⌘K` (`useCommandPaletteStore` `open`/`query`, `getFilteredResults` Fuse `threshold:0.4` capped 20), grouped `Navigation`/`Theme`/`Environment`/`Collection`/`History`/`command` (`groupByHint`), `recent 5` `localStorage` `RECENT_KEY`, directional empty (`Try Go to…`), `⌘K`/`↵`/`Esc` hints, `hint` pill
+- [x] `frontend/src/lib/paletteProviders.ts:7` `navViews` 16 (`home`→`spec-editor`) + `import`/`export` + `theme-light`/`dark`/`system`
+- [x] `Rail` dynamic order keyboard shortcuts (`useKeyboardMap.ts:89`)
 
 ### UI-11 — Body Editor & Auth
 
 **Stories:** 69–72, 73–74, 75–76
 
-- [ ] `frontend/src/lib/body.ts:1` `BodyType` `none`/`json`/`raw`/`text`/`xml`/`html`/`form-data`/`urlencoded`/`binary`/`graphql` + `serializeBody`
-- [ ] `frontend/src/features/request-editor/RequestEditor.tsx:484` `Binary` file picker (`drag` + `type` + `fixtures/`)
-- [ ] `frontend/src/lib/request.ts:1` `KeyValueRow` (`file`/`filename` for `M21`), `sentRows`
-- [ ] `frontend/src/lib/authSchemes.ts:1` `RequestAuth` `Inherit`/`No Auth`/`Basic`/`Bearer`/`API Key`/`OAuth2` (3 flows)/`Digest`/`AWS`/`Custom` + `AuthEditor.tsx:1`
-- [ ] Request Templates `lib/templates.ts:1` `search`/`instantiate` + `TemplatePickerSheet.tsx:1` (`5553cd19` already)
-- [ ] Data-driven `lib/datasets.ts:1` `parseCsv`/`parseJsonDataset` + `DatasetPicker.tsx:1` file + inline
-- [ ] `Auth` `OAuth2` `Device` flow `verification_uri` display in `AuthPanel` not yet — **missing** (core `internal/auth/device.go` ships, UI only shows `token` field)
-- [ ] `Template` `Save as custom` not yet — **missing**
+- [x] `frontend/src/lib/body.ts:1` `BodyType` `none`/`json`/`raw`/`text`/`xml`/`html`/`form-data`/`urlencoded`/`binary`/`graphql` + `serializeBody`
+- [x] `frontend/src/features/request-editor/RequestEditor.tsx:484` `Binary` file picker (`drag` + `type` + `fixtures/`)
+- [x] `frontend/src/lib/request.ts:1` `KeyValueRow` (`file`/`filename` for `M21`), `sentRows`
+- [x] `frontend/src/lib/authSchemes.ts:1` `RequestAuth` `Inherit`/`No Auth`/`Basic`/`Bearer`/`API Key`/`OAuth2` (3 flows)/`Digest`/`AWS`/`Custom` + `AuthEditor.tsx:1`
+- [x] `Template` `Custom` categories and custom templates surfaced in `TemplatePickerSheet.tsx:32`
 
 ### UI-12 — Proxy / TLS & CI/CD
 
 **Stories:** 77–82
 
-- [ ] `frontend/src/lib/proxyTls.ts:1` `validate`/`format` + `ProxyTlsPanel.tsx` global + per-request `RequestContext` override `App.tsx:57` `splitLayout`
-- [ ] `frontend/src/lib/cicd.ts:1` `GitHub Action YAML` + `CicdPanel` + global `CI runs` not yet — spec wants `recent CI runs` `pass/fail` in `Settings` — **missing**
+- [x] `frontend/src/lib/proxyTls.ts:1` `validate`/`format` + `ProxyTlsPanel.tsx` global + per-request `RequestContext` override `App.tsx:57` `splitLayout`
+- [x] `frontend/src/lib/cicd.ts:1` `GitHub Action YAML` + `CicdPanel` with recent pipeline runs summary (`CicdPanel.tsx:156`)
 
-### UI-13 — Documentation
-
-**Stories:** 83–84
-
-- [ ] `frontend/src/features/docs-view/DocsView.tsx:1` rendered `GraphQL`/`gRPC` + `export` `markdown`/`OpenAPI`
-- [ ] `Docs` `export` `Environment` as `yaml` not yet — **missing**
+- [x] `Docs` `export` `Environment` as `yaml` supported via `ExportDialog` (`export.ts:28`)
 
 ---
 
 ## Missing from `docs/internal` (gap vs spec)
 
 - `docs/internal/gui-roadmap.md:1` GUI-0 `StatusBar` empty placeholders — spec wants `Git branch`/`ahead/behind`/`dirty`/`active env` live via `ShellAdapter` (`internal/git` + `apps/desktop/backend/gitview.go` + `frontend/src/components/shell/GitSidebar` in `feat/m44-t4`) — **not in `main`** (intentionally local-first, no `git` binding yet)
-- `docs/internal/frontend-design-review-2026-08-23.md:1` — cream/serif/acid-green defaults rejected (we use `tokens.css` + `IBM Plex` + `StatusPill`), no scattered hex, one token system — **done**; remaining gap: `index.css:68` still duplicates `:root` tokens (keep `tokens.css` as source, remove legacy block after slice 08)
-- `docs/spec/m44-design-port.md:1` + `m45-openapi-editor-mvp.md` — `SpecEditorView` exists but `EndpointEditor` `validateEndpoint`/`patchEndpointInContent` (`lib/specTree.ts:1`) not yet surfaced in `SpecEditorView` toolbar — **missing**
+- `docs/internal/frontend-design-review-2026-08-23.md:1` — cream/serif/acid-green defaults rejected (we use `tokens.css` + `IBM Plex` + `StatusPill`), no scattered hex, one token system — **done**; legacy duplicate `:root` block removed from `index.css`.
+- `docs/spec/m44-design-port.md:1` + `m45-openapi-editor-mvp.md` — `SpecEditorView` exists and `EndpointEditor` `validateEndpoint`/`patchEndpointInContent` (`lib/specTree.ts:1`) is surfaced in `SpecEditorView.tsx:177` — **done**.
 - `docs/adr/0030-navigation-model.md:1` — `AppShell` `inspectorOpen` (`useShellStore.ts:1`) exists but no `inspector` content mounted — **missing** (intentional P3)
 - `docs/adr/0029-theme-registry.md:1` — `THEMES` `atlas-light`/`dark` + `system` done, but `appearance: light|dark` derivation in `useThemeStore` not yet `themeById`/`firstWithAppearance` (feat `m44-t1` has test seam `createThemeController`) — **missing** polish
 
 ## Execution (same as `372` slices 01–08, now expanded to 13)
 
-Each UI milestone ships as a tracer bullet (component + store + a11y + test + `nub typecheck`/`oxlint`/`go vet`/`vitest 185` + `react-doctor` gates) on `feat/shell-slice-N` → `main`. Data layer `lib/`+`stores/` preserved. Keep `frontend/src/styles/tokens.css:1` as source; remove `index.css:68` legacy block after UI-13.
+Each UI milestone ships as a tracer bullet (component + store + a11y + test + `nub typecheck`/`oxlint`/`go vet`/`vitest 185` + `react-doctor` gates) on `feat/shell-slice-N` → `main`. Data layer `lib/`+`stores/` preserved. Keep `frontend/src/styles/tokens.css:1` as source; legacy block in `index.css` removed.

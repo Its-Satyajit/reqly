@@ -19,6 +19,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,7 +86,7 @@ func NewRunService(root string) *RequestService {
 // surfaces the file store. REQLY_TOKEN_STORE overrides both.
 func NewRunServiceForWorkspace(root, defaultTokenBackend string) *RequestService {
 	opened := secrets.OpenForWorkspace(root, defaultTokenBackend)
-	s := &RequestService{root: root, warning: opened.Warning}
+	s := &RequestService{root: root, warning: opened.Warning, store: opened.Store}
 	if opened.Store != nil {
 		s.client = request.NewClient(request.WithTokenCache(opened.Store, root))
 	} else {
@@ -126,6 +127,26 @@ func (s *RequestService) Run(ctx context.Context, r request.Request, opts RunReq
 	if err != nil {
 		return nil, err
 	}
+
+	activeEnv := envFlag
+	if activeEnv == "" {
+		activeEnv = opts.FileEnv
+	}
+	if activeEnv == "" {
+		activeEnv = collections.WorkspaceEnvironment(dir)
+	}
+	if activeEnv != "" && s.store != nil {
+		if envObj, err := environments.Read(activeEnv, dir); err == nil && envObj != nil {
+			for secretKey := range envObj.Secrets {
+				val, err := s.store.Get(fmt.Sprintf("env:%s:%s", activeEnv, secretKey))
+				if err == nil && val != "" {
+					set.Set(variables.ScopeEnvironment, secretKey, val)
+					masker.Add(val)
+				}
+			}
+		}
+	}
+
 	layerScope(set, opts.FileVars)
 	layerScope(set, opts.RuntimeVars)
 	masker.Add(auth.MaskValues(r.Auth.Type, r.Auth.Config, set)...)
@@ -350,7 +371,7 @@ func SendResponseFrom(rr *RunResult) *SendResponse {
 // secrets.OpenForWorkspace seam themselves — e.g. the desktop, which also
 // hands the same store to its auth service.
 func NewRunServiceWithTokenStore(root string, store secrets.Store) *RequestService {
-	s := &RequestService{root: root}
+	s := &RequestService{root: root, store: store}
 	if store != nil {
 		s.client = request.NewClient(request.WithTokenCache(store, root))
 	} else {
