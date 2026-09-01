@@ -139,7 +139,7 @@ Secrets render as [SECRET]. The request is resolved through the workspace/env ch
 				root = collections.FindWorkspaceRoot(filepath.Dir(path))
 			}
 			if root != "" {
-				if env, err := environments.Load(root, exportCodeEnv); err == nil {
+				if env, err := environments.Read(exportCodeEnv, root); err == nil {
 					for k, v := range env.Variables {
 						vars.Set(variables.ScopeEnvironment, k, v)
 					}
