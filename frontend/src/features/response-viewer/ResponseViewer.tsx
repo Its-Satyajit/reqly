@@ -23,7 +23,8 @@ import {
 	suggestedFilename,
 } from "../../lib/response";
 import { notifyError } from "../../lib/notify";
-import { useRequestStore, useWorkspaceStore } from "../../stores";
+import { useRequestStore } from "../../stores/useRequestStore";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 
 type View = "raw" | "pretty" | "headers" | "tree" | "cookies" | "table" | "tests" | "timeline";
 
@@ -379,10 +380,10 @@ export function ResponseViewer() {
 									</thead>
 									<tbody>
 										{tableData.rows.map((row, i) => (
-											<tr key={i}>
+											<tr key={`row-${row[0] ?? ''}-${i}`}>
 												{row.map((cell, j) => (
 													<td
-														key={j}
+														key={`cell-${tableData.columns[j] ?? j}-${j}`}
 														className="break-all border-b border-border/50 px-2 py-1 font-mono"
 													>
 														{cell}

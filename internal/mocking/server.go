@@ -250,8 +250,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.maybeLog("→ %d (%s)", status, time.Since(start))
 }
 
-type failureCountKey struct{}
-
 type requestCounter struct {
 	n int
 }

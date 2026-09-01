@@ -16,7 +16,7 @@ interface EndpointEditorProps {
 
 export function EndpointEditor({ initial, onSave, onCancel }: EndpointEditorProps) {
   const [path, setPath] = useState(initial.path);
-  const [method, setMethod] = useState(initial.method.toUpperCase());
+  const [method, setMethod] = useState(() => initial.method.toUpperCase());
   const [summary, setSummary] = useState(initial.summary ?? "");
   const [operationId, setOperationId] = useState(initial.operationId ?? "");
   const [touched, setTouched] = useState(false);
@@ -110,8 +110,8 @@ export function EndpointEditor({ initial, onSave, onCancel }: EndpointEditorProp
             Validation
           </p>
           <ul className="mt-1 list-disc pl-4 text-xs text-destructive">
-            {errors.map((e, i) => (
-              <li key={i}>{e}</li>
+            {errors.map((e) => (
+              <li key={e}>{e}</li>
             ))}
           </ul>
         </div>

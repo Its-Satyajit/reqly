@@ -5,6 +5,7 @@ import { Input } from "#components/ui/input";
 import { Button } from "#components/ui/button";
 import { Copy, Check } from "lucide-react";
 import { copyText } from "#lib/response";
+import { Label } from "#components/ui/field";
 
 export function CicdPanel() {
   const pipeline = useCicdStore((s) => s.pipeline);
@@ -86,9 +87,11 @@ export function CicdPanel() {
 
       {/* Secrets mapping */}
       <div className="space-y-2">
-        <label className="text-xs font-medium">Mapped GitHub Secrets</label>
+        <Label htmlFor="github-secret-input" className="text-xs font-medium">Mapped GitHub Secrets</Label>
         <form onSubmit={handleAddSecret} className="flex gap-2">
           <Input
+            id="github-secret-input"
+            aria-label="GitHub Secret Name"
             value={newSecret}
             onChange={(e) => setNewSecret(e.target.value)}
             placeholder="e.g. API_KEY"
@@ -109,6 +112,7 @@ export function CicdPanel() {
                 {sec}
                 <button
                   type="button"
+                  aria-label={`Remove secret ${sec}`}
                   onClick={() => removeSecret(sec)}
                   className="text-muted-foreground hover:text-foreground"
                 >

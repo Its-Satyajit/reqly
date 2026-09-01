@@ -52,7 +52,7 @@ export function AppShell({
 	useEffect(() => {
 		if (bottomCollapsed) bottomPanelRef.current?.collapse();
 		else bottomPanelRef.current?.expand();
-	}, [bottomCollapsed]);
+	}, [bottomCollapsed, bottomPanelRef]);
 
 	return (
 		<div className="flex h-screen flex-col overflow-hidden">

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "../../components";
-import type { Environment } from "../../stores";
-import { useWorkspaceStore } from "../../stores";
+import { Button } from "../../components/ui/button";
+import { useWorkspaceStore, type Environment } from "../../stores/useWorkspaceStore";
 import { inputClass } from "../../lib/ui";
 
 interface VariableRow {
@@ -97,9 +96,9 @@ export function EnvironmentEditor({
 			await refreshEnvironments();
 			setEditorDirty(`vars:${env.name}`, false);
 			onCancel();
+			setSaving(false);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
-		} finally {
 			setSaving(false);
 		}
 	};
@@ -143,7 +142,7 @@ export function EnvironmentEditor({
 				)}
 				<div className="flex flex-col gap-1.5">
 					{rows.map((row, i) => (
-						<div key={i} className="flex items-center gap-1.5">
+						<div key={`${row.key || 'var'}-${i}`} className="flex items-center gap-1.5">
 							<input
 								value={row.key}
 								onChange={(e) => setRow(i, { key: e.target.value })}

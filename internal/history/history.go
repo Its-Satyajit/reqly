@@ -561,45 +561,6 @@ func boolToInt(b bool) int {
 	return 0
 }
 
-func scanEntries(rows *sql.Rows) ([]Entry, error) {
-	var out []Entry
-	for rows.Next() {
-		var e Entry
-		var reqH, respH string
-		var reqBody, respBody []byte
-		var reqPath, respPath sql.NullString
-		var createdStr string
-		if err := rows.Scan(&e.ID, &e.RequestPath, &e.Method, &e.URL, &e.Env, &e.Status, &e.DurationMS, &e.Size, &reqH, &reqBody, &reqPath, &respH, &respBody, &respPath, &e.Attempts, &createdStr); err != nil {
-			return nil, err
-		}
-		_ = json.Unmarshal([]byte(reqH), &e.ReqHeaders)
-		_ = json.Unmarshal([]byte(respH), &e.RespHeaders)
-		if reqPath.Valid && reqPath.String != "" {
-			if b, err := os.ReadFile(reqPath.String); err == nil {
-				e.ReqBody = b
-			} else {
-				e.ReqBody = reqBody
-			}
-		} else {
-			e.ReqBody = reqBody
-		}
-		if respPath.Valid && respPath.String != "" {
-			if b, err := os.ReadFile(respPath.String); err == nil {
-				e.RespBody = b
-			} else {
-				e.RespBody = respBody
-			}
-		} else {
-			e.RespBody = respBody
-		}
-		if t, err := time.Parse(time.RFC3339Nano, createdStr); err == nil {
-			e.CreatedAt = t
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
-}
-
 // maxAttempts floors persisted attempt counts at 1 so legacy rows and
 // zero-valued entries read back as a single send.
 func maxAttempts(n int) int {

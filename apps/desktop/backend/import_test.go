@@ -108,7 +108,7 @@ func dirEntries(t *testing.T, dir string) []string {
 func TestImportCommitWritesWorkspaceFolder(t *testing.T) {
 	svc, wsDir := newServiceInWorkspace(t)
 
-	res, err := svc.Import(ImportRequest{
+	_, err := svc.Import(ImportRequest{
 		Content:   fixture(t, "bruno", "fixtures", "bruno-testbench.json"),
 		DryRun:    true,
 		TargetDir: "my-import",
@@ -116,7 +116,7 @@ func TestImportCommitWritesWorkspaceFolder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dry-run: %v", err)
 	}
-	res, err = svc.Import(ImportRequest{
+	res, err := svc.Import(ImportRequest{
 		Content:   fixture(t, "bruno", "fixtures", "bruno-testbench.json"),
 		TargetDir: "my-import",
 	})

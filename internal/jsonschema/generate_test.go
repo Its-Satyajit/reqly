@@ -200,7 +200,7 @@ func TestGenerateStringConstraintsAndSeed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Generate(seed) error = %v", err)
 	}
-	if seeded == nil || len(seeded) == 0 {
+	if len(seeded) == 0 {
 		t.Fatal("seeded generation produced nothing")
 	}
 }

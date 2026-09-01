@@ -31,7 +31,7 @@ export function KeyValueEditor({
         </div>
       )}
       {rows.map((row, i) => (
-        <div key={i} className="flex items-center gap-1.5 group">
+        <div key={`${row.key || 'row'}-${i}`} className="flex items-center gap-1.5 group">
           <input
             type="checkbox"
             checked={row.enabled}

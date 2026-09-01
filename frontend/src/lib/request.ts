@@ -155,6 +155,10 @@ export const fetchSender: RequestSender = async (req) => {
 				: undefined,
 	});
 
+	if (!res.ok && res.status >= 500) {
+		// Server error response
+	}
+	const status = res.status;
 	const body = await res.text();
 	const responseHeaders: Record<string, string[]> = {};
 	res.headers.forEach((value, key) => {
@@ -162,7 +166,7 @@ export const fetchSender: RequestSender = async (req) => {
 	});
 
 	return {
-		statusCode: res.status,
+		statusCode: status,
 		statusText: res.statusText,
 		proto: "",
 		headers: responseHeaders,

@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // Request defines a single API request. The engine layer (transport, protocol

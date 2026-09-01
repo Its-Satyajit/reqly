@@ -172,7 +172,7 @@ export function RequestTabs() {
 
 	useEffect(() => {
 		try {
-			const raw = localStorage.getItem("reqly:tabs");
+			const raw = localStorage.getItem("reqly:tabs:v1") ?? localStorage.getItem("reqly:tabs");
 			if (raw) {
 				// SAFETY: JSON parsed at I/O boundary from localStorage; shape validated via Array.isArray check below
 				const parsed = JSON.parse(raw) as { openTabs: typeof openTabs; activeTabId: string | null };
@@ -184,7 +184,7 @@ export function RequestTabs() {
 	}, []);
 	useEffect(() => {
 		const activeTabId = useWorkspaceStore.getState().activeTabId;
-		localStorage.setItem("reqly:tabs", JSON.stringify({ openTabs, activeTabId }));
+		localStorage.setItem("reqly:tabs:v1", JSON.stringify({ openTabs, activeTabId }));
 	}, [openTabs]);
 
 	return (

@@ -57,14 +57,3 @@ func envSelection(processVar, flagValue string) string {
 	}
 	return flagValue
 }
-
-// mergeEnvScope copies the process-env and environment scopes of src into dst,
-// so a resolved environment layers under the file/request scopes already in
-// dst without disturbing them.
-func mergeEnvScope(dst, src *variables.Set) {
-	for _, scope := range []variables.Scope{variables.ScopeProcessEnv, variables.ScopeEnvironment} {
-		src.Range(scope, func(key, value string) {
-			dst.Set(scope, key, value)
-		})
-	}
-}

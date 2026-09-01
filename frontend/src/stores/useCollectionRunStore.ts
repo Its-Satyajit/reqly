@@ -6,7 +6,7 @@ import type {
 	RunStep,
 } from "../lib/collections";
 import { addBreadcrumb } from "../lib/crash";
-import { useWorkspaceStore } from "./useWorkspaceStore";
+import { useWorkspaceStore, registerTabCloseListener } from "./useWorkspaceStore";
 
 /** RUN_TAB_ID is the fixed tab id of the Run View (only one run happens at a
  * time, so a single persistent run tab is enough). */
@@ -152,3 +152,9 @@ export const useCollectionRunStore = create<CollectionRunState>((set, get) => ({
 			generation: state.generation + 1,
 		})),
 }));
+
+registerTabCloseListener((tab) => {
+	if (tab.kind === "run") {
+		useCollectionRunStore.getState().reset();
+	}
+});

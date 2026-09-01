@@ -22,20 +22,9 @@ import (
 	"os"
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
-	"github.com/Its-Satyajit/reqly/internal/environments"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/secrets"
 )
-
-// maskAcquiredToken adds a runtime-acquired auth token (e.g. an OAuth access
-// token resolved during Execute) to the output masker so it never renders in
-// responses, headers, errors, or logs. It is a no-op when no token was
-// acquired.
-func maskAcquiredToken(masker *environments.Masker, token string) {
-	if token != "" {
-		masker.Add(token)
-	}
-}
 
 // newRequestClient returns a request engine wired with store-backed OAuth
 // token caching. The store (file by default, keychain when selected and

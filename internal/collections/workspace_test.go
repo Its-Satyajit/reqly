@@ -152,7 +152,6 @@ func TestFindRequestByPath(t *testing.T) {
 
 func TestResolveInheritance(t *testing.T) {
 	w := makeWorkspace(t)
-	coll := w.Collections[0]
 
 	// users/list-users.yaml — collection-level, no folders.
 	coll, chain, entry, ok := w.FindRequest(RequestPath("users/list-users.yaml"))

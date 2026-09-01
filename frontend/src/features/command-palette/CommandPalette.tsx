@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getFilteredResults, groupByHint, useCommandPaletteStore } from "#stores/useCommandPaletteStore";
 
 export function CommandPalette() {
@@ -9,8 +9,8 @@ export function CommandPalette() {
   const setQuery = useCommandPaletteStore((s) => s.setQuery);
   const setOpen = useCommandPaletteStore((s) => s.setOpen);
   const recordRun = useCommandPaletteStore((s) => s.recordRun);
-  const filtered = useMemo(() => getFilteredResults(query, commands, providers), [query, commands, providers]);
-  const grouped = useMemo(() => groupByHint(filtered), [filtered]);
+  const filtered = getFilteredResults(query, commands, providers);
+  const grouped = groupByHint(filtered);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
   const run = (c: (typeof filtered)[number]) => {
@@ -25,6 +25,7 @@ export function CommandPalette() {
         <div className="flex items-center border-b border-border/70 px-2.5 pb-1.5 pt-1">
           <input
             ref={inputRef}
+            aria-label="Type a command or search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Type a command or search… (e.g. 'Theme', 'Env', 'Go to')"

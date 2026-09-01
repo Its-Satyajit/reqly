@@ -177,7 +177,7 @@ export function MonitorView() {
               </thead>
               <tbody className="divide-y divide-border/40">
                 {[...points].reverse().map((p, idx) => (
-                  <tr key={idx} className="hover:bg-muted/40">
+                  <tr key={`${p.at}-${p.status}-${idx}`} className="hover:bg-muted/40">
                     <td className="py-1 px-2 text-muted-foreground">{p.at}</td>
                     <td className="py-1 px-2">{p.status}</td>
                     <td className="py-1 px-2">{p.latencyMs}ms</td>

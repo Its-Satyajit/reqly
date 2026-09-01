@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "../../components";
-import { useWorkspaceStore } from "../../stores";
+import { Button } from "../../components/ui/button";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { inputClass } from "../../lib/ui";
 
 interface SecretRow {
@@ -87,9 +87,9 @@ export function SecretsEditor({
 			await envAdapter.updateSecrets(envName, values, remove);
 			await refreshEnvironments();
 			setEditorDirty(`secrets:${envName}`, false);
+			setSaving(false);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
-		} finally {
 			setSaving(false);
 		}
 	};

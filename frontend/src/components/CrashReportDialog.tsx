@@ -7,7 +7,65 @@ import {
   DialogTitle,
 } from "#components/ui/dialog";
 import { Button } from "#components/ui/button";
-import { CopyReportButton } from "#components/ErrorBoundary";
+import { cn } from "#lib/utils";
+
+async function copyWithFallback(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    area.remove();
+    return ok;
+  }
+}
+
+export function CopyReportButton({
+  report,
+  className,
+}: {
+  report: string;
+  className?: string;
+}) {
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className={cn(className)}
+      onClick={(event) => {
+        const button = event.currentTarget;
+        void copyWithFallback(report).then((ok) => {
+          if (!button || !button.isConnected) return;
+          const previous = button.textContent;
+          button.textContent = ok ? "Copied" : "Select manually";
+          window.setTimeout(() => {
+            button.textContent = previous;
+          }, 1500);
+          if (!ok) {
+            const area = document.createElement("textarea");
+            area.value = report;
+            document.body.appendChild(area);
+            area.select();
+            window.setTimeout(() => area.remove(), 30000);
+          }
+        });
+      }}
+    >
+      Copy report
+    </Button>
+  );
+}
 
 interface CrashReportDialogProps {
   open: boolean;

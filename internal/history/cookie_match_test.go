@@ -20,7 +20,6 @@ func TestCookieMatching(t *testing.T) {
 	if len(got) != 1 { // sess only, secure excluded on http
 		t.Fatalf("http match: got %d %v", len(got), got)
 	}
-	got = FilterCookies(cookies, "https://api.example.com/users", true)
 	// path test
 	cookies2 := []Cookie{{Name: "p", Value: "1", Domain: "example.com", Path: "/api", Env: "dev", ExpiresAt: time.Now().Add(time.Hour)}}
 	got = FilterCookies(cookies2, "https://example.com/other", true)
