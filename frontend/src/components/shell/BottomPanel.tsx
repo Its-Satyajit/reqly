@@ -117,6 +117,7 @@ function PanelContent({ active }: { active: BottomPanelId }) {
   if (active === "variables") {
     const activeEnv = envs.find((e) => e.id === activeEnvId);
     const envVars = activeEnv ? Object.entries(activeEnv.variables) : [];
+    const secretKeys = new Set(activeEnv?.secrets ?? []);
     const resolvedVars = tabMeta?.variables ?? [];
 
     if (envVars.length === 0 && resolvedVars.length === 0) {
@@ -140,7 +141,7 @@ function PanelContent({ active }: { active: BottomPanelId }) {
                   {envVars.map(([k, v]) => (
                     <tr key={k} className="border-b border-border/50 last:border-b-0">
                       <td className="px-2.5 py-1 text-primary w-1/3 truncate">{k}</td>
-                      <td className="px-2.5 py-1 text-muted-foreground truncate">{activeEnv.secrets?.includes(k) ? "••••••••" : v}</td>
+                      <td className="px-2.5 py-1 text-muted-foreground truncate">{secretKeys.has(k) ? "••••••••" : v}</td>
                     </tr>
                   ))}
                 </tbody>

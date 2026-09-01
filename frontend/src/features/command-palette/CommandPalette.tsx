@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getFilteredResults, groupByHint, useCommandPaletteStore } from "#stores/useCommandPaletteStore";
 
 export function CommandPalette() {
@@ -9,8 +9,8 @@ export function CommandPalette() {
   const setQuery = useCommandPaletteStore((s) => s.setQuery);
   const setOpen = useCommandPaletteStore((s) => s.setOpen);
   const recordRun = useCommandPaletteStore((s) => s.recordRun);
-  const filtered = useMemo(() => getFilteredResults(query, commands, providers), [query, commands, providers]);
-  const grouped = useMemo(() => groupByHint(filtered), [filtered]);
+  const filtered = getFilteredResults(query, commands, providers);
+  const grouped = groupByHint(filtered);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
   const run = (c: (typeof filtered)[number]) => {

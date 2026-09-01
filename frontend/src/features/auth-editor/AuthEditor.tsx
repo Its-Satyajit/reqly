@@ -229,9 +229,12 @@ function InheritedAuth({ inherited }: { inherited: RequestAuth | undefined }) {
   const hasSecrets = Object.keys(inherited.config ?? {}).some((k) =>
     isSensitiveKey(schemeId, k),
   )
-  const publicValues = Object.entries(inherited.config ?? {})
-    .filter(([k]) => k !== "grant_type" && !isSensitiveKey(schemeId, k))
-    .map(([k, v]) => `${k}: ${v}`)
+  const publicValues: string[] = []
+  for (const [k, v] of Object.entries(inherited.config ?? {})) {
+    if (k !== "grant_type" && !isSensitiveKey(schemeId, k)) {
+      publicValues.push(`${k}: ${v}`)
+    }
+  }
 
   return (
     <div className="rounded-md border border-border bg-muted/30 p-3">

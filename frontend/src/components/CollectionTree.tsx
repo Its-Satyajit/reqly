@@ -147,7 +147,7 @@ function RequestRow({ request }: { request: WorkspaceRequest }) {
 				type="button"
 				onClick={() => void openRequest(request.path)}
 				title={`Run ${request.name}`}
-				className="size-5 shrink-0 rounded p-1 text-muted-foreground/40 opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover/row:opacity-100"
+				className="size-5 shrink-0 rounded p-1 text-muted-foreground/40 opacity-0 transition-opacity transition-colors hover:bg-muted hover:text-foreground group-hover/row:opacity-100"
 			>
 				<Play className="size-3" aria-hidden />
 			</button>
