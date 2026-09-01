@@ -33,6 +33,8 @@
     "desktop:install:local": "cd apps/desktop/backend && wails3 build && install -Dm755 bin/reqly \"$HOME/.local/bin/reqly-desktop\" && echo \"installed to $HOME/.local/bin/reqly-desktop\"",
     "gui:install": "nub run desktop:install",
     "gui:install:local": "nub run desktop:install:local",
+    "install:all": "nub run cli:install && nub run desktop:install",
+    "install:all:local": "nub run cli:install:local && nub run desktop:install:local",
     "react:doctor": "nubx react-doctor@latest",
     "wails:doctor": "wails3 doctor"
   },
