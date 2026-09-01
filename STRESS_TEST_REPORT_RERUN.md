@@ -207,17 +207,17 @@ nub run lint                          → oxlint 0
 
 **Updated result you posted (2026-09-01 12:47 binary `/usr/local/bin/reqly` 45 MB, 29 history entries, `nub src/index.ts` 3123 + `bun ws-echo.ts` 3124):** 12 sections, 40 `reqly --help` commands hammered against **localhost** (no external httpbin). Sections 1-7,10,12 **PASS** (env, core, bodies, auth/cookies, GraphQL/OpenAPI, realtime SSE/WS/Socket.IO, pagination 4 strategies, bulk/perf/workflow/collection, import/export/docs/history). Section 8 **PARTIAL**, 9 **MIXED**, 11 **7 remaining** (table below) — all with old binary, not server-dependent.
 
-**Remaining table from your updated result (old binary 12:47):**
+**Remaining table from your updated result (old binary 12:47) → FIXED with `f03ad9eb` (`~/.local/bin/reqly` + `/usr/local/bin/reqly` `b9b95410`, both `--verbose`):**
 
-| ID | Command | Local repro (old) | Status (old) |
-|---|---|---|---|
-| B1 | `changelog` YAML | `unmarshal first JSON` `EXIT:0` | **BROKEN** |
-| B2 | `diff` generic YAML | `invalid char 'a'` | **BROKEN** |
-| B3 | typed `body: {type: json,…}` | `cannot unmarshal !!map into string` | **BROKEN** |
-| B4 | `export --help` duplicates | `code/har/postman/workspace` ×2 | **BROKEN** |
-| B5 | `export openapi <dir>` positional | `collection not found` | **BROKEN** |
-| B6 | `test` fail exit | `404 vs 200` → `EXIT:0` | **BROKEN** (was 1 in 12:47 rebuild) |
-| A1 | `export code` secret leak | `Bearer supersecret123` not `[SECRET]` | **BROKEN** |
+| ID | Command | Local repro (old 12:47) | Status (old) | Status (post-fix `f03ad9eb`) |
+|---|---|---|---|---|
+| B1 | `changelog` YAML | `unmarshal first JSON` `EXIT:0` | **BROKEN** | **FIXED** `changelog → minor` `EXIT:0` (`internal/diffing/changelog.go:32`) |
+| B2 | `diff` generic YAML | `invalid char 'a'` | **BROKEN** | **FIXED** `a: 1 -> 2` `EXIT:0` (`internal/diffing/diffing.go:28`) |
+| B3 | typed `body: {type: json,…}` | `cannot unmarshal !!map into string` | **BROKEN** | **FIXED** `export code → --data-raw` `EXIT:0` (`internal/request/request.go:108`) |
+| B4 | `export --help` duplicates | `code/har/postman/workspace` ×2 | **BROKEN** | **FIXED** `5 unique` (`apps/cli/cmd/export.go:316`) |
+| B5 | `export openapi <dir>` positional | `collection not found` | **BROKEN** | **FIXED** `wrote … (1 requests)` (`apps/cli/cmd/export.go:352`) |
+| B6 | `test` fail exit | `404 vs 200` → `EXIT:0` | **BROKEN** | **FIXED** `✗ status 404 == 200 → EXIT:1` (`apps/cli/cmd/test.go:98`) |
+| A1 | `export code` secret leak | `Bearer supersecret123` not `[SECRET]` | **BROKEN** | **FIXED** `Authorization: [SECRET]` (`apps/cli/cmd/export.go:129`) |
 
 **Post-fix verification (current `~/.local/bin/reqly` `f03ad9eb` after `nub run cli:install:local` + `sudo install` / `install.sh:96` cleanup):**
 
