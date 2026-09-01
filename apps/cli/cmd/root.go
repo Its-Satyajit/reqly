@@ -28,8 +28,10 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "reqly",
-	Short: "A local-first API development environment",
+	Use:           "reqly",
+	Short:         "A local-first API development environment",
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	Long: `A local-first, Git-native API development environment.
 
 Requests, tests, schemas, mocks, environments, and documentation live together

@@ -76,8 +76,7 @@ JSON: array of objects (values stringified)
 			return err
 		}
 		if len(rows) == 0 {
-			fmt.Fprintln(cmd.ErrOrStderr(), "warning: no rows in data file")
-			return nil
+			return fmt.Errorf("no data rows in %q", bulkDataPath)
 		}
 
 		svc := core.NewRunService(findWorkspaceRoot(baseDir))

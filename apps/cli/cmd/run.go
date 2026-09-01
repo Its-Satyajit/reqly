@@ -79,7 +79,11 @@ A request file couples a request definition with its variables:
 When a file is used, flags override the file's fields. Use --method, --header,
 and --data to build requests directly on the CLI:
 
-  reqly run -m POST -H 'Content-Type: application/json' -d '{"name":"reqly"}' https://api.example.com/users`,
+  reqly run -m POST -H 'Content-Type: application/json' -d '{"name":"reqly"}' https://api.example.com/users
+
+Variables use {{name}} with 6 scopes (global → process-env → environment → collection → folder → request).
+Strict mode: an undefined {{var}} aborts the send with "undefined variable \"name\"" — it is not sent as a literal.
+This is fail-closed (unlike Postman/Insomnia leniency) so missing secrets are not silently sent as "{{...}}".`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		target := args[0]

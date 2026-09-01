@@ -10,10 +10,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
+	"github.com/Its-Satyajit/reqly/internal/environments"
 	"github.com/Its-Satyajit/reqly/internal/exporter"
 	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
+	"github.com/Its-Satyajit/reqly/internal/variables"
 	"github.com/Its-Satyajit/reqly/internal/version"
 )
 
@@ -123,7 +125,67 @@ Secrets render as [SECRET]. The request is resolved through the workspace/env ch
 		if err != nil {
 			return err
 		}
-		snippet, err := exporter.Generate(req, lang, nil)
+		// Build masker from env secrets and Authorization headers (A1).
+		masker := environments.NewMasker()
+		vars := variables.NewSet()
+		if f, err := requestfile.LoadFile(path); err == nil {
+			for k, v := range f.Variables {
+				vars.Set(variables.ScopeRequest, k, v)
+			}
+		}
+		if exportCodeEnv != "" {
+			root := collections.FindWorkspaceRoot(".")
+			if root == "" {
+				root = collections.FindWorkspaceRoot(filepath.Dir(path))
+			}
+			if root != "" {
+				if env, err := environments.Load(root, exportCodeEnv); err == nil {
+					for k, v := range env.Variables {
+						vars.Set(variables.ScopeEnvironment, k, v)
+					}
+					for k, v := range env.Secrets {
+						vars.Set(variables.ScopeEnvironment, k, v)
+						masker.Add(v)
+					}
+				}
+			}
+			// Interpolate request fields that may contain {{var}} references.
+			for i, h := range req.Headers {
+				if interpolated, err := vars.Interpolate(h.Value); err == nil {
+					req.Headers[i].Value = interpolated
+				}
+			}
+			if interpolated, err := vars.Interpolate(req.URL); err == nil {
+				req.URL = interpolated
+			}
+			if req.Body != "" {
+				if interpolated, err := vars.Interpolate(req.Body); err == nil {
+					req.Body = interpolated
+				}
+			}
+			for k, v := range req.Auth.Config {
+				if interpolated, err := vars.Interpolate(v); err == nil {
+					req.Auth.Config[k] = interpolated
+				}
+			}
+		}
+		// Mask raw Authorization headers even without an env (e.g., Bearer supersecret123).
+		for _, h := range req.Headers {
+			if strings.EqualFold(h.Key, "Authorization") && h.Value != "" {
+				masker.Add(h.Value)
+				parts := strings.Fields(h.Value)
+				if len(parts) == 2 {
+					masker.Add(parts[1])
+				}
+			}
+		}
+		if tok, ok := req.Auth.Config["token"]; ok && tok != "" {
+			masker.Add(tok)
+		}
+		if pw, ok := req.Auth.Config["password"]; ok && pw != "" {
+			masker.Add(pw)
+		}
+		snippet, err := exporter.Generate(req, lang, masker.Mask)
 		if err != nil {
 			return err
 		}

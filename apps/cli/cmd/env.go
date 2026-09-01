@@ -80,6 +80,12 @@ var envShowCmd = &cobra.Command{
 			return err
 		}
 		printEnv(cmd, env)
+		// Surface duplicate-key warnings inline (A4) — validate already errors on them, show should not hide.
+		for k := range env.Variables {
+			if _, dup := env.Secrets[k]; dup {
+				fmt.Fprintf(cmd.OutOrStdout(), "warning: key %q defined in both variables and secrets (secrets wins, variables ignored)\n", k)
+			}
+		}
 		return nil
 	},
 }
