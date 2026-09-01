@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "frontend/src/index.ts",
+    "apps/desktop/frontend/src/main.tsx"
+  ],
+  "ignorePatterns": [
+    "**/bindings/**"
+  ],
+  "rules": {
+    "unused-files": "warn",
+    "unused-exports": "warn",
+    "unused-types": "off"
+  }
+}

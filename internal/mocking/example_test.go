@@ -158,7 +158,7 @@ func TestGenerateExampleOneOf(t *testing.T) {
 
 func TestGenerateExampleRecursiveTerminates(t *testing.T) {
 	node := &openapi3.Schema{Type: &openapi3.Types{"object"}}
-	node.Properties = openapi3.Schemas{"child": {Value: node}}
+	node.Properties = openapi3.Schemas{"child": &openapi3.SchemaRef{Value: node}}
 	got := generateExample(node)
 	// Must not stack overflow; yields something within depth bounds.
 	if got == nil {

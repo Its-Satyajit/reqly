@@ -942,7 +942,7 @@ func TestExecuteOAuth2AuthorizationCodeAutoLogin(t *testing.T) {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return nil
 	})
-	defer auth.SetOAuth2BrowserOpener(prev)
+	defer func() { auth.SetOAuth2BrowserOpener(prev) }()
 
 	dir := t.TempDir()
 	store, err := secrets.NewFileStore(filepath.Join(dir, "tokens.json"))
