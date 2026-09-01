@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.12.0](https://github.com/Its-Satyajit/reqly/compare/v1.11.1...v1.12.0) (2026-09-01)
+
+
+### Features
+
+* add GUI local install scripts + docs ([0b8e4c8](https://github.com/Its-Satyajit/reqly/commit/0b8e4c889d35bdffb7ef41b12e7d7e86c2c532a9))
+* add one-for-all local install (CLI+GUI) ([e6c6506](https://github.com/Its-Satyajit/reqly/commit/e6c65060f361df85179ab09afe0b910e8b9dbca3))
+* add package.json cli:install scripts for local install (no GitHub Release) ([9368bd6](https://github.com/Its-Satyajit/reqly/commit/9368bd65d8eaf7d09fd00d74c256b3f608eae7ff))
+* install scripts cleanup old versions (both paths) ([54dd7fa](https://github.com/Its-Satyajit/reqly/commit/54dd7fa32ccec4cfa74ead3529b6fb5ae1eb3750))
+* validate socketio URL, simulate connect, pagination strategy ([0c5398e](https://github.com/Its-Satyajit/reqly/commit/0c5398efba6035164175d8964c420ba393de9e7e))
+* **workspace:** notify listeners when a tab closes and clean codegen ([e1db99e](https://github.com/Its-Satyajit/reqly/commit/e1db99e6a9ad343d65577029cf1e6dfa6bb60696))
+
+
+### Bug Fixes
+
+* address remaining stress report A1-A10 and docs alignment ([52b2dee](https://github.com/Its-Satyajit/reqly/commit/52b2deefda4cc64115dedb24a2f7ca131584032b))
+* address stress-test P0s B1-B7 ([2086ae6](https://github.com/Its-Satyajit/reqly/commit/2086ae6d92b24b22de756d7ef4f1d3a9acea2e40))
+* address stress-test P0s B1-B7 ([2a13202](https://github.com/Its-Satyajit/reqly/commit/2a1320258df7188e2b5dbd6635d030a0dba49dba))
+* async error handling and UI state updates ([378d3d3](https://github.com/Its-Satyajit/reqly/commit/378d3d349e821c17f7569c96424b06ba773e797f))
+* avoid PATH shadowing in cli:install --verbose check ([33572f3](https://github.com/Its-Satyajit/reqly/commit/33572f30ce73a173979e31b2352148caddc2b9cb))
+* **cli:** add workflow logs and flags ([8ca3642](https://github.com/Its-Satyajit/reqly/commit/8ca364230b07b4fd1d83fdb4dc8d414f4ce47936))
+* **cli:** add workflow logs and flags ([68e10a9](https://github.com/Its-Satyajit/reqly/commit/68e10a9953f28e892cb319026279b1db493a4950))
+* correct environments.Read and jwt test for SilenceErrors ([ee81c9c](https://github.com/Its-Satyajit/reqly/commit/ee81c9cd46818dbc1f0c551c21885fe265da807a))
+* **deps:** update github.com/dop251/goja digest to 43234fa ([cc841fa](https://github.com/Its-Satyajit/reqly/commit/cc841fa10e98b7908765d6e0e36c7ddbdebab926))
+* **deps:** update github.com/dop251/goja digest to 43234fa ([fe99236](https://github.com/Its-Satyajit/reqly/commit/fe992367f2b2681f70406d4dce70b9dd577b5be8))
+* **installer:** prefer native Arch package over Ubuntu AppImage ([ba85234](https://github.com/Its-Satyajit/reqly/commit/ba852348f7193db9601532754c573169b78aa7ed))
+* **installer:** prefer native Arch package over Ubuntu AppImage ([7e35930](https://github.com/Its-Satyajit/reqly/commit/7e359302258ea71a6ea94c424c7eaded79dc553c))
+* restore internal/version.Commit var (lost in rebase) ([bc1d235](https://github.com/Its-Satyajit/reqly/commit/bc1d235eefd75b6d8118482e3ae0a16e52fb374e))
+* restore version --verbose/--commit flags (lost in rebase) ([952bdcc](https://github.com/Its-Satyajit/reqly/commit/952bdccbcd3fcb3a274c615920838cfab8d2f08b))
+* **test:** restore deferred call wrapper to avoid panic ([5838795](https://github.com/Its-Satyajit/reqly/commit/5838795a1425850062834621be1646f693872ffb))
+
 ## [1.11.1](https://github.com/Its-Satyajit/reqly/compare/v1.11.0...v1.11.1) (2026-08-31)
 
 
