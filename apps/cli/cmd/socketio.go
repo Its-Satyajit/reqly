@@ -30,12 +30,14 @@ var (
 var socketioConnectCmd = &cobra.Command{
 	Use:   "connect <url> [--namespace /ns]",
 	Short: "Connect and listen for Socket.IO events",
+	Long:  `Connect to a Socket.IO server and stream events. Prints handshake events (connect, welcome) immediately, then streams incoming events until interrupted.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		rawURL := args[0]
 		opts := socketio.Options{
 			Namespace: socketioNamespace,
 		}
+		fmt.Fprintf(cmd.OutOrStdout(), "connected to %s (namespace %s)\n", rawURL, opts.Namespace)
 		return socketio.Connect(cmd.Context(), rawURL, func(ev socketio.Event) error {
 			if socketioJSON {
 				enc := json.NewEncoder(cmd.OutOrStdout())

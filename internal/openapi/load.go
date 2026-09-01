@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
@@ -32,6 +33,10 @@ func Load(data []byte) (*openapi3.T, error) {
 	loader := openapi3.NewLoader()
 	doc, err := loader.LoadFromData(data)
 	if err != nil {
+		if strings.Contains(err.Error(), "cannot unmarshal number into Go struct field Info.version") ||
+			strings.Contains(err.Error(), "Info.version") && strings.Contains(err.Error(), "number") {
+			return nil, fmt.Errorf("parsing OpenAPI: %w (hint: info.version must be a quoted string, e.g. version: \"1.0\")", err)
+		}
 		return nil, fmt.Errorf("parsing OpenAPI: %w", err)
 	}
 	if err := doc.Validate(context.Background(), openapi3.DisableExamplesValidation()); err != nil {
