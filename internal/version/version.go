@@ -21,3 +21,7 @@ package version
 // Version is the current release version. release-please bumps it on release
 // PRs via the x-release-please-version annotation.
 const Version = "1.2.0" // x-release-please-version
+
+// Commit is the git commit hash, set at build time via ldflags:
+// go build -ldflags "-X github.com/Its-Satyajit/reqly/internal/version.Commit=<sha>"
+var Commit = "unknown"
