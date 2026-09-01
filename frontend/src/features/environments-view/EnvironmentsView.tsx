@@ -86,9 +86,9 @@ export function EnvironmentsView() {
 			await envAdapter.delete(name);
 			if (editingName === name) setEditingName(null);
 			await refreshEnvironments();
+			setDeletingName(null);
 		} catch (err) {
 			setSetActiveError(err instanceof Error ? err.message : String(err));
-		} finally {
 			setDeletingName(null);
 		}
 	};

@@ -21,7 +21,8 @@ export function PerfView() {
         concurrency: rps,
       });
       setResult(res.result);
-    } finally {
+      setLoading(false);
+    } catch {
       setLoading(false);
     }
   };

@@ -96,9 +96,9 @@ export function EnvironmentEditor({
 			await refreshEnvironments();
 			setEditorDirty(`vars:${env.name}`, false);
 			onCancel();
+			setSaving(false);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
-		} finally {
 			setSaving(false);
 		}
 	};

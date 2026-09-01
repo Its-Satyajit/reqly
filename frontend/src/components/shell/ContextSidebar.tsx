@@ -38,7 +38,7 @@ function RequestsContext() {
 	const requestView = useWorkspaceStore((s) => s.requestView);
 
 	const openTestTab = (path: string | null, title: string, fresh: boolean) => {
-		const id = fresh ? `test-new-${Date.now()}` : `test-${path}`;
+		const id = fresh ? `test-new-${crypto.randomUUID()}` : `test-${path}`;
 		if (fresh) newTab(id);
 		else void openPath(id, path ?? "");
 		openTab({ id, title, kind: "test", filePath: path ?? undefined });

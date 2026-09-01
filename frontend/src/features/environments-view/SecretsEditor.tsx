@@ -87,9 +87,9 @@ export function SecretsEditor({
 			await envAdapter.updateSecrets(envName, values, remove);
 			await refreshEnvironments();
 			setEditorDirty(`secrets:${envName}`, false);
+			setSaving(false);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
-		} finally {
 			setSaving(false);
 		}
 	};
