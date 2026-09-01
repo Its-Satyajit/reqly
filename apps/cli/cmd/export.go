@@ -264,19 +264,48 @@ func init() {
 
 var exportOpenAPIOut string
 var exportOpenAPIWorkspace string
+var exportOpenAPICollection string
 
 var exportOpenAPICmd = &cobra.Command{
-	Use:   "openapi [src] [--out <file>]",
+	Use:   "openapi [<workspace>|<collection>] [--workspace <dir>] [--collection <name>] [--out <file>]",
 	Short: "Generate an OpenAPI 3.0 spec from a collection or workspace",
 	Long: `Generate an OpenAPI 3.0 YAML document from every request in a collection
 (or the whole workspace). Paths, parameters, request bodies, and auth schemes
 are derived from the requests; response schemas are not invented.
 
   reqly export openapi users
+  reqly export openapi ./my-ws --out openapi.yaml
+  reqly export openapi --workspace ./my-ws --collection users --out openapi.yaml
   reqly export openapi --workspace . --out openapi.yaml`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		root := exportOpenAPIWorkspace
+		collName := exportOpenAPICollection
+		// Interpret positional arg: workspace dir if --workspace not set and arg is a workspace path, else collection name.
+		if len(args) == 1 {
+			arg := args[0]
+			if collName != "" {
+				// --collection already specifies collection; arg must be workspace
+				if root == "" {
+					root = arg
+				} else {
+					return fmt.Errorf("unexpected argument %q: --collection already set", arg)
+				}
+			} else if root == "" {
+				// No flags: try arg as workspace first, then collection.
+				if isWorkspacePath(arg) {
+					root = arg
+				} else {
+					if _, err := collections.LoadWorkspace(arg); err == nil {
+						root = arg
+					} else {
+						collName = arg
+					}
+				}
+			} else {
+				collName = arg
+			}
+		}
 		if root == "" {
 			root = "."
 		}
@@ -287,10 +316,10 @@ are derived from the requests; response schemas are not invented.
 		var coll *collections.Collection
 		var title string
 		var requests []request.Request
-		if len(args) == 1 {
-			coll = findCollection(ws, args[0])
+		if collName != "" {
+			coll = findCollection(ws, collName)
 			if coll == nil {
-				return fmt.Errorf("collection %q not found in workspace %s", args[0], root)
+				return fmt.Errorf("collection %q not found in workspace %s", collName, root)
 			}
 			title = coll.Config.Name
 		}
@@ -338,8 +367,24 @@ are derived from the requests; response schemas are not invented.
 	},
 }
 
+func isWorkspacePath(p string) bool {
+	info, err := os.Stat(p)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(p, "reqly.yaml")); err == nil {
+		return true
+	}
+	// Also consider nested workspace discovery: if FindWorkspaceRoot succeeds, treat as workspace path.
+	if collections.FindWorkspaceRoot(p) != "" {
+		return true
+	}
+	return false
+}
+
 func init() {
-	exportCmd.AddCommand(exportPostmanCmd, exportCodeCmd, exportWorkspaceCmd, exportHarCmd, exportOpenAPICmd)
+	exportCmd.AddCommand(exportOpenAPICmd)
 	exportOpenAPICmd.Flags().StringVar(&exportOpenAPIOut, "out", "", "write the spec to this file (default stdout)")
 	exportOpenAPICmd.Flags().StringVar(&exportOpenAPIWorkspace, "workspace", "", "workspace directory")
+	exportOpenAPICmd.Flags().StringVar(&exportOpenAPICollection, "collection", "", "collection name to export (defaults to all)")
 }

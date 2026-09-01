@@ -17,6 +17,13 @@
 
 package request
 
+import (
+	"encoding/json"
+	"strings"
+
+	"go.yaml.in/yaml/v3"
+)
+
 // Request defines a single API request. The engine layer (transport, protocol
 // dispatch, authentication, variable interpolation, scripting) builds on this
 // definition.
@@ -137,4 +144,379 @@ type TLSConfig struct {
 type Auth struct {
 	Type   string            `json:"type,omitempty" yaml:"type,omitempty"`
 	Config map[string]string `json:"config,omitempty" yaml:"config,omitempty"`
+}
+
+// UnmarshalJSON supports flexible body shapes for hand-written request files.
+// Body may be a plain string, a typed object {type: json/graphql/binary, data/file/query/variables},
+// an ADR-style object {file} or {query,variables}, or a form-data array.
+func (r *Request) UnmarshalJSON(data []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	bodyRaw, hasBody := raw["body"]
+	if hasBody {
+		delete(raw, "body")
+	}
+	// Decode remaining fields into the receiver via alias to avoid recursion.
+	if len(raw) > 0 {
+		remaining, _ := json.Marshal(raw)
+		type Alias Request
+		var a Alias
+		if err := json.Unmarshal(remaining, &a); err != nil {
+			return err
+		}
+		*r = Request(a)
+	} else {
+		// No remaining fields: zero other fields.
+		type Alias Request
+		var a Alias
+		*r = Request(a)
+	}
+	if !hasBody {
+		r.Body = ""
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(bodyRaw, &s); err == nil {
+		r.Body = s
+		return nil
+	}
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(bodyRaw, &obj); err == nil {
+		var typeStr string
+		if v, ok := obj["type"]; ok {
+			_ = json.Unmarshal(v, &typeStr)
+			typeStr = strings.ToLower(strings.TrimSpace(typeStr))
+		}
+		switch typeStr {
+		case "json":
+			if v, ok := obj["data"]; ok {
+				var dataStr string
+				if err := json.Unmarshal(v, &dataStr); err == nil {
+					r.Body = dataStr
+				} else {
+					r.Body = string(v)
+				}
+				return nil
+			}
+			r.Body = ""
+			return nil
+		case "graphql":
+			var query string
+			if v, ok := obj["query"]; ok {
+				_ = json.Unmarshal(v, &query)
+			}
+			var variables json.RawMessage
+			if v, ok := obj["variables"]; ok {
+				var varsStr string
+				if err := json.Unmarshal(v, &varsStr); err == nil {
+					var parsed interface{}
+					if err := json.Unmarshal([]byte(varsStr), &parsed); err == nil {
+						variables = json.RawMessage(varsStr)
+					} else {
+						variables = json.RawMessage(`"` + varsStr + `"`)
+					}
+				} else {
+					variables = v
+				}
+			}
+			out := map[string]interface{}{"query": query}
+			if len(variables) > 0 && string(variables) != "null" {
+				var vars interface{}
+				if err := json.Unmarshal(variables, &vars); err == nil {
+					out["variables"] = vars
+				} else {
+					out["variables"] = string(variables)
+				}
+			} else {
+				out["variables"] = map[string]interface{}{}
+			}
+			b, _ := json.Marshal(out)
+			r.Body = string(b)
+			return nil
+		case "binary":
+			if v, ok := obj["file"]; ok {
+				var fileStr string
+				if err := json.Unmarshal(v, &fileStr); err == nil {
+					r.Body = fileStr
+					return nil
+				}
+			}
+			if v, ok := obj["data"]; ok {
+				var dataStr string
+				if err := json.Unmarshal(v, &dataStr); err == nil {
+					r.Body = dataStr
+				} else {
+					r.Body = string(v)
+				}
+				return nil
+			}
+			if v, ok := obj["file"]; ok {
+				r.Body = string(v)
+				return nil
+			}
+			r.Body = ""
+			return nil
+		case "":
+			if v, ok := obj["file"]; ok {
+				var fileStr string
+				if err := json.Unmarshal(v, &fileStr); err == nil {
+					r.Body = fileStr
+					return nil
+				}
+				r.Body = string(v)
+				return nil
+			}
+			if _, hasQuery := obj["query"]; hasQuery {
+				var query string
+				_ = json.Unmarshal(obj["query"], &query)
+				var variables json.RawMessage
+				if v, ok := obj["variables"]; ok {
+					variables = v
+					var varsStr string
+					if err := json.Unmarshal(v, &varsStr); err == nil {
+						var parsed interface{}
+						if err := json.Unmarshal([]byte(varsStr), &parsed); err == nil {
+							variables = json.RawMessage(varsStr)
+						}
+					}
+				}
+				out := map[string]interface{}{"query": query}
+				if len(variables) > 0 && string(variables) != "null" {
+					var vars interface{}
+					if err := json.Unmarshal(variables, &vars); err == nil {
+						out["variables"] = vars
+					} else {
+						out["variables"] = string(variables)
+					}
+				} else {
+					out["variables"] = map[string]interface{}{}
+				}
+				b, _ := json.Marshal(out)
+				r.Body = string(b)
+				return nil
+			}
+			r.Body = string(bodyRaw)
+			return nil
+		default:
+			r.Body = string(bodyRaw)
+			return nil
+		}
+	}
+	var arr []json.RawMessage
+	if err := json.Unmarshal(bodyRaw, &arr); err == nil {
+		r.Body = string(bodyRaw)
+		return nil
+	}
+	r.Body = string(bodyRaw)
+	return nil
+}
+
+// UnmarshalYAML supports the same flexible body shapes for YAML files.
+func (r *Request) UnmarshalYAML(node *yaml.Node) error {
+	var raw map[string]yaml.Node
+	if err := node.Decode(&raw); err != nil {
+		return err
+	}
+	bodyNode, hasBody := raw["body"]
+	if hasBody {
+		delete(raw, "body")
+	}
+	// Decode remaining fields.
+	if len(raw) > 0 {
+		// Re-encode remaining map to YAML and decode into alias.
+		b, err := yaml.Marshal(raw)
+		if err != nil {
+			return err
+		}
+		type Alias Request
+		var a Alias
+		if err := yaml.Unmarshal(b, &a); err != nil {
+			return err
+		}
+		// Preserve body for later; copy other fields.
+		body := r.Body
+		*r = Request(a)
+		r.Body = body
+	} else {
+		type Alias Request
+		var a Alias
+		*r = Request(a)
+	}
+	if !hasBody {
+		r.Body = ""
+		return nil
+	}
+	switch bodyNode.Kind {
+	case yaml.ScalarNode:
+		var s string
+		if err := bodyNode.Decode(&s); err == nil {
+			r.Body = s
+			return nil
+		}
+		var raw interface{}
+		if err := bodyNode.Decode(&raw); err == nil {
+			b, _ := json.Marshal(raw)
+			r.Body = string(b)
+			return nil
+		}
+	case yaml.MappingNode:
+		var m map[string]interface{}
+		if err := bodyNode.Decode(&m); err == nil {
+			b, _ := json.Marshal(m)
+			var obj map[string]json.RawMessage
+			if err := json.Unmarshal(b, &obj); err == nil {
+				var typeStr string
+				if v, ok := obj["type"]; ok {
+					_ = json.Unmarshal(v, &typeStr)
+					typeStr = strings.ToLower(strings.TrimSpace(typeStr))
+				}
+				switch typeStr {
+				case "json":
+					if v, ok := obj["data"]; ok {
+						var dataStr string
+						if err := json.Unmarshal(v, &dataStr); err == nil {
+							r.Body = dataStr
+						} else {
+							var dataVal interface{}
+							if err := json.Unmarshal(v, &dataVal); err == nil {
+								bb, _ := json.Marshal(dataVal)
+								r.Body = string(bb)
+							} else {
+								r.Body = string(v)
+							}
+						}
+						return nil
+					}
+					r.Body = ""
+					return nil
+				case "graphql":
+					var query string
+					if v, ok := obj["query"]; ok {
+						_ = json.Unmarshal(v, &query)
+					}
+					var variables json.RawMessage
+					if v, ok := obj["variables"]; ok {
+						var varsStr string
+						if err := json.Unmarshal(v, &varsStr); err == nil {
+							var parsed interface{}
+							if err := json.Unmarshal([]byte(varsStr), &parsed); err == nil {
+								variables = json.RawMessage(varsStr)
+							} else {
+								variables = json.RawMessage(`"` + varsStr + `"`)
+							}
+						} else {
+							variables = v
+						}
+					}
+					out := map[string]interface{}{"query": query}
+					if len(variables) > 0 && string(variables) != "null" {
+						var vars interface{}
+						if err := json.Unmarshal(variables, &vars); err == nil {
+							out["variables"] = vars
+						} else {
+							out["variables"] = string(variables)
+						}
+					} else {
+						out["variables"] = map[string]interface{}{}
+					}
+					bb, _ := json.Marshal(out)
+					r.Body = string(bb)
+					return nil
+				case "binary":
+					if v, ok := obj["file"]; ok {
+						var fileStr string
+						if err := json.Unmarshal(v, &fileStr); err == nil {
+							r.Body = fileStr
+							return nil
+						}
+						r.Body = string(v)
+						return nil
+					}
+					if v, ok := obj["data"]; ok {
+						var dataStr string
+						if err := json.Unmarshal(v, &dataStr); err == nil {
+							r.Body = dataStr
+						} else {
+							var dataVal interface{}
+							if err := json.Unmarshal(v, &dataVal); err == nil {
+								bb, _ := json.Marshal(dataVal)
+								r.Body = string(bb)
+							} else {
+								r.Body = string(v)
+							}
+						}
+						return nil
+					}
+					r.Body = ""
+					return nil
+				case "":
+					if v, ok := obj["file"]; ok {
+						var fileStr string
+						if err := json.Unmarshal(v, &fileStr); err == nil {
+							r.Body = fileStr
+							return nil
+						}
+						r.Body = string(v)
+						return nil
+					}
+					if _, hasQuery := obj["query"]; hasQuery {
+						var query string
+						_ = json.Unmarshal(obj["query"], &query)
+						var variables json.RawMessage
+						if v, ok := obj["variables"]; ok {
+							variables = v
+							var varsStr string
+							if err := json.Unmarshal(v, &varsStr); err == nil {
+								var parsed interface{}
+								if err := json.Unmarshal([]byte(varsStr), &parsed); err == nil {
+									variables = json.RawMessage(varsStr)
+								}
+							}
+						}
+						out := map[string]interface{}{"query": query}
+						if len(variables) > 0 && string(variables) != "null" {
+							var vars interface{}
+							if err := json.Unmarshal(variables, &vars); err == nil {
+								out["variables"] = vars
+							} else {
+								out["variables"] = string(variables)
+							}
+						} else {
+							out["variables"] = map[string]interface{}{}
+						}
+						bb, _ := json.Marshal(out)
+						r.Body = string(bb)
+						return nil
+					}
+					r.Body = string(b)
+					return nil
+				default:
+					r.Body = string(b)
+					return nil
+				}
+			}
+			r.Body = string(b)
+			return nil
+		}
+		var s string
+		if err := bodyNode.Decode(&s); err == nil {
+			r.Body = s
+			return nil
+		}
+	case yaml.SequenceNode:
+		var arr []interface{}
+		if err := bodyNode.Decode(&arr); err == nil {
+			b, _ := json.Marshal(arr)
+			r.Body = string(b)
+			return nil
+		}
+	}
+	var s string
+	if err := bodyNode.Decode(&s); err == nil {
+		r.Body = s
+		return nil
+	}
+	return nil
 }
