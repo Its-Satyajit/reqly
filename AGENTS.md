@@ -9,21 +9,7 @@ Local-first, Git-native API development environment. Go core (`internal/` + `app
 - **Dual parity:** Core features live in Go (`internal/`) and are exposed via CLI (`apps/cli`) and Desktop (`apps/desktop`).
 - **No CGO:** `modernc.org/sqlite` only (WAL + FTS5 history/cookie jar); no `mattn/go-sqlite3`. History queries are sqlc-generated (`internal/history/db`; edit `db/*.sql`, run `sqlc generate`) — see ADR 0027.
 
-## 1. Documentation Branching — _quarantine_
-
-Agent/pipeline docs live on `docs/internal` — never on `main`, never in source-code branches or PRs. This includes: `AGENTS.md`, `GEMINI.md`, `.cursorrules`, `CONTEXT.md`, `NOTES.md`, `DESIGN.md`, `CHANGELOG.md`, `.github/copilot-instructions.md`, `docs/**` (ADRs, specs, references, strategy), `.scratch/**` (tickets), `workflows/**` (playbooks).
-
-`main` carries only `README.md`, `ROADMAP.md`, `LICENSE`, plus source/config. If a doc file shows up in a diff bound for main, move it to `docs/internal` first.
-
-**Never merge `docs/internal`.** It is pushed to GitHub as a permanent standalone archive.
-
-### GitButler gotchas
-
-Use the `but` skill for all GitButler operations — it covers branch ownership, discarding, `.gitignore` visibility, and recovery paths.
-
-**When editing any quarantined file:** check out `docs/internal`, commit there, push that branch only.
-
-## 2. Skill Pipeline — _grill → spec → tickets → implement → review_
+## 1. Skill Pipeline — _grill → spec → tickets → implement → review_
 
 For features or architecture changes, run the 5-stage pipeline in order (`~/.agents/skills/`):
 
@@ -33,7 +19,7 @@ For features or architecture changes, run the 5-stage pipeline in order (`~/.age
 4. `/implement` — execute tickets with strict TDD (tests first). For frontend work (`apps/desktop/backend/frontend`), always follow `/frontend-design`. **Done when:** all tests pass, no dummy fallbacks, no skipped assertions.
 5. `/code-review` — audit against conventions; verify clean test output. **Done when:** all checks pass and the reviewer raises no blocking findings.
 
-## 3. Verification Gates — _all green_
+## 2. Verification Gates — _all green_
 
 A change is done only when every gate below passes. Run each gate; fix failures before proceeding.
 
@@ -52,7 +38,7 @@ A change is done only when every gate below passes. Run each gate; fix failures 
 
 **Release:** `Taskfile.yml` OS matrix + `release.yml` checksums verified on `v*.*.*` tags (ADR 0019). File modes: `0600` for secrets/tokens/history.db, `0644` for request/workspace files.
 
-## 4. Milestone Tracking — _dual-roadmap_
+## 3. Milestone Tracking — _dual-roadmap_
 
 When completing a milestone or shipping a feature, update the relevant roadmap(s) **before committing**.
 
@@ -84,14 +70,14 @@ When completing a milestone or shipping a feature, update the relevant roadmap(s
 - [x] **G-5.1.1** Import dialog — modal with format auto-detection (cURL, OpenAPI, HAR, Postman) — 2026-08-25
 ```
 
-## 5. Layout
+## 4. Layout
 
 - `internal/` — shared domain logic: `auth` (aws/edgegrid/oauth2), `collections`, `core`, `diffing`, `docs`, `environments`, `exporter`, `git`, `graphql`, `grpc`, `history` (SQLite + FTS5 + cookie jar), `importer`, `mcp` (stub), `mocking`, `openapi`, `request`, `requestfile`, `response`, `runner`, `scripting` (Goja), `secrets` (FileStore + KeychainStore), `sse`, `testing` (assertions/JSONPath), `validation`, `variables` (6 scopes + `{{$tag}}` + `.env`), `version`, `websocket`.
 - `apps/cli` — Cobra CLI. One command per file in `apps/cli/cmd/*.go`; `root.go` holds root.
 - `apps/desktop` — Wails v3. Go backend in `backend/` (`AppService`); React frontend in `backend/frontend` (Vite + TS). Bindings: `wails3 generate bindings`.
 - `docs/` — ADRs, specs, references. `CONTEXT.md` is the glossary; `ROADMAP.md` tracks core/CLI; `docs/internal/gui-roadmap.md` tracks desktop GUI.
 
-## 6. Session Memory — _context-mode_
+## 5. Session Memory — _context-mode_
 
 Use the `context-mode` plugin for session continuity across `/clear`/`/compact` (only `ctx purge` wipes it). there is also skills there for `context-mode` tha patten is `ctx-*`.
 
@@ -109,7 +95,7 @@ Before asking the user what was decided or being worked on, search first.
 2. **Harness tools** (Read/Edit/Write/Grep/Glob) — when context-mode has no suitable operation. Read/Edit stay correct for file *mutation*; `ctx_execute_file` for read-only *analysis*.
 3. **Bash** — last resort only. Allowed always: git/but mutations, `mkdir`/`rm`/`mv`, `go build/test/vet`, `npm`. Never bypass context-mode just because Bash is more convenient, especially for outputs that may be large or need processing.
 
-## 7. Context
+## 6. Context
 
 - Consult [`CONTEXT.md`](./CONTEXT.md) before naming entities or creating abstractions.
 
