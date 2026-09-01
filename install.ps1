@@ -63,7 +63,39 @@ function Try-Download {
     return $false
 }
 
+function Cleanup-OldCli {
+    Write-Host "Cleaning up old CLI binaries (both paths)..." -ForegroundColor Gray
+    $oldPaths = @(
+        "$env:LOCALAPPDATA\reqly\reqly.exe",
+        "$env:USERPROFILE\.local\bin\reqly.exe",
+        "$env:LOCALAPPDATA\Programs\Reqly\reqly.exe",
+        "$InstallDir\reqly.exe"
+    )
+    foreach ($p in $oldPaths) {
+        if (Test-Path $p) {
+            try { Remove-Item -Path $p -Force -ErrorAction SilentlyContinue; Write-Host "  removed $p" -ForegroundColor DarkGray } catch {}
+        }
+    }
+}
+
+function Cleanup-OldDesktop {
+    Write-Host "Cleaning up old desktop binaries..." -ForegroundColor Gray
+    $oldPaths = @(
+        "$env:LOCALAPPDATA\Programs\Reqly\Reqly.exe",
+        "$env:LOCALAPPDATA\reqly\Reqly.exe",
+        "$env:ProgramFiles\Reqly\Reqly.exe",
+        "$env:ProgramFiles(x86)\Reqly\Reqly.exe"
+    )
+    foreach ($p in $oldPaths) {
+        if (Test-Path $p) {
+            try { Remove-Item -Path $p -Force -ErrorAction SilentlyContinue; Write-Host "  removed $p" -ForegroundColor DarkGray } catch {}
+        }
+    }
+}
+
 function Install-Desktop {
+    Cleanup-OldDesktop
+    Cleanup-OldCli
     $arch = Get-Arch
     Write-Host "Detected Windows ($arch) - Installing Reqly Desktop..." -ForegroundColor Cyan
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -184,6 +216,7 @@ function Install-Reqly {
         return
     }
 
+    Cleanup-OldCli
     $arch = Get-Arch
     Write-Host "Detected Windows ($arch) - Installing Reqly CLI..." -ForegroundColor Cyan
     # Ensure TLS 1.2

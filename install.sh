@@ -93,6 +93,30 @@ desktop_url() {
   fi
 }
 
+# Cleanup old binaries from both paths to avoid shadowing (fixes A5 dual-binary drift)
+cleanup_old_cli() {
+  echo "Cleaning up old CLI binaries (both paths)..." >&2
+  rm -f "$HOME/.local/bin/reqly" "$HOME/bin/reqly" 2>/dev/null || true
+  rm -f "/usr/local/bin/reqly" 2>/dev/null || sudo rm -f "/usr/local/bin/reqly" 2>/dev/null || true
+  rm -f "/usr/bin/reqly" 2>/dev/null || sudo rm -f "/usr/bin/reqly" 2>/dev/null || true
+  hash -r 2>/dev/null || true
+  echo "  cleaned: ~/.local/bin/reqly, /usr/local/bin/reqly, /usr/bin/reqly" >&2
+}
+
+cleanup_old_desktop() {
+  echo "Cleaning up old desktop binaries (both paths)..." >&2
+  rm -f "$HOME/.local/bin/reqly-desktop" "$HOME/bin/reqly-desktop" 2>/dev/null || true
+  rm -f "/usr/local/bin/reqly-desktop" 2>/dev/null || sudo rm -f "/usr/local/bin/reqly-desktop" 2>/dev/null || true
+  rm -f "/usr/bin/reqly-desktop" 2>/dev/null || sudo rm -f "/usr/bin/reqly-desktop" 2>/dev/null || true
+  hash -r 2>/dev/null || true
+  echo "  cleaned: ~/.local/bin/reqly-desktop, /usr/local/bin/reqly-desktop" >&2
+}
+
+cleanup_old_all() {
+  cleanup_old_cli
+  cleanup_old_desktop
+}
+
 # Try to download first successful URL from list; prints target path on success
 try_download() {
   local target="$1"; shift
@@ -268,6 +292,7 @@ install_desktop_binary_linux() {
 }
 
 install_binary() {
+  cleanup_old_cli
   local os="$1" arch="$2"
   local tmpdir
   tmpdir=$(mktemp -d)
@@ -316,6 +341,7 @@ install_binary() {
 }
 
 install_linux() {
+  cleanup_old_all
   local arch
   arch=$(detect_arch)
 
@@ -397,6 +423,7 @@ install_linux() {
 }
 
 install_darwin_app() {
+  cleanup_old_desktop
   local arch
   arch=$(detect_arch)
   echo "Detected macOS ($arch: $([ "$arch" = "arm64" ] && echo "Apple Silicon" || echo "Intel"))..."
@@ -508,6 +535,7 @@ install_darwin_app() {
 }
 
 install_darwin_cli() {
+  cleanup_old_cli
   local arch
   arch=$(detect_arch)
   echo "Detected macOS ($arch: $([ "$arch" = "arm64" ] && echo "Apple Silicon" || echo "Intel"))..."
