@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "../../components";
-import { useWorkspaceStore } from "../../stores";
+import { Button } from "../../components/ui/button";
+import { useWorkspaceStore } from "../../stores/useWorkspaceStore";
 import { inputClass } from "../../lib/ui";
 
 interface SecretRow {
