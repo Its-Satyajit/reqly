@@ -652,4 +652,3 @@ func (s *AppService) ApplyUpdate() error {
 	}
 	return checker.ApplyBinaryUpdate(context.Background(), asset.DownloadURL, execPath)
 }
-
