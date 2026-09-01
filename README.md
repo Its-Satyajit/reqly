@@ -188,12 +188,35 @@ install -Dm755 /tmp/reqly "$HOME/.local/bin/reqly"
 
 reqly version --verbose
 # version: 1.2.0 / commit: <sha>
+
+# via package.json scripts
+nub run cli:install        # system /usr/local/bin/reqly
+nub run cli:install:local  # user ~/.local/bin/reqly
 ```
 
 One-liner:
 
 ```bash
 go build -ldflags "-X github.com/Its-Satyajit/reqly/internal/version.Commit=$(git rev-parse --short HEAD)" -o /tmp/reqly ./apps/cli && sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly && reqly version --verbose
+```
+
+#### Desktop GUI (local, requires Wails v3 + WebKit)
+
+```bash
+# needs Go 1.27, Node 24, Wails v3, and on Linux: libgtk-4-1 + libwebkitgtk-6.0-4 (Ubuntu/Debian) or gtk4 + webkitgtk6.0 (Fedora/Arch)
+cd apps/desktop/backend
+wails3 build                          # → bin/reqly (linux) / build/bin/Reqly.app (macOS)
+
+# system
+sudo install -Dm755 bin/reqly /usr/local/bin/reqly-desktop
+
+# or user-local
+install -Dm755 bin/reqly "$HOME/.local/bin/reqly-desktop"
+
+# via package.json scripts
+nub run desktop:install        # system
+nub run desktop:install:local  # user
+nub run gui:install            # alias for desktop:install
 ```
 
 The `Makefile` also provides `make frontend`, `make go-test`, `make desktop` and `make install-desktop`. `wails3 dev` builds the frontend and runs the app with hot reload.

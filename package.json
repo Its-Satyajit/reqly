@@ -28,6 +28,11 @@
     "cli:install": "COMMIT=$(git rev-parse --short HEAD) && go build -ldflags \"-X github.com/Its-Satyajit/reqly/internal/version.Commit=$COMMIT\" -o /tmp/reqly ./apps/cli && sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly && reqly version --verbose",
     "cli:install:local": "COMMIT=$(git rev-parse --short HEAD) && go build -ldflags \"-X github.com/Its-Satyajit/reqly/internal/version.Commit=$COMMIT\" -o /tmp/reqly ./apps/cli && install -Dm755 /tmp/reqly \"$HOME/.local/bin/reqly\" && \"$HOME/.local/bin/reqly\" version --verbose",
     "desktop:bindings": "cd apps/desktop/backend && wails3 generate bindings -d ../frontend/bindings -i -ts",
+    "desktop:build": "cd apps/desktop/backend && wails3 build",
+    "desktop:install": "cd apps/desktop/backend && wails3 build && sudo install -Dm755 bin/reqly /usr/local/bin/reqly-desktop && echo \"installed to /usr/local/bin/reqly-desktop\"",
+    "desktop:install:local": "cd apps/desktop/backend && wails3 build && install -Dm755 bin/reqly \"$HOME/.local/bin/reqly-desktop\" && echo \"installed to $HOME/.local/bin/reqly-desktop\"",
+    "gui:install": "nub run desktop:install",
+    "gui:install:local": "nub run desktop:install:local",
     "react:doctor": "nubx react-doctor@latest",
     "wails:doctor": "wails3 doctor"
   },
