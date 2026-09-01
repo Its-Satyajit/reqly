@@ -57,14 +57,18 @@ function OperationGroups({ operations }: { operations: ImportedOperation[] }) {
   const shown = expanded ? total : Math.min(total, OPERATION_CAP);
 
   const visibleGroups = useMemo(() => {
-    let renderedCount = 0;
-    return groups
-      .map(([tag, ops]) => {
-        const visible = expanded ? ops : ops.slice(0, Math.max(0, shown - renderedCount));
-        renderedCount += visible.length;
-        return { tag, totalCount: ops.length, visible };
-      })
-      .filter((g) => g.visible.length > 0);
+    let remaining = shown;
+    const result: { tag: string; totalCount: number; visible: typeof operations }[] = [];
+    for (const [tag, ops] of groups) {
+      if (!expanded && remaining <= 0) break;
+      const count = expanded ? ops.length : Math.min(ops.length, remaining);
+      const visible = expanded ? ops : ops.slice(0, count);
+      if (visible.length > 0) {
+        result.push({ tag, totalCount: ops.length, visible });
+      }
+      remaining -= count;
+    }
+    return result;
   }, [groups, expanded, shown]);
 
   return (

@@ -16,7 +16,7 @@ interface EndpointEditorProps {
 
 export function EndpointEditor({ initial, onSave, onCancel }: EndpointEditorProps) {
   const [path, setPath] = useState(initial.path);
-  const [method, setMethod] = useState(initial.method.toUpperCase());
+  const [method, setMethod] = useState(() => initial.method.toUpperCase());
   const [summary, setSummary] = useState(initial.summary ?? "");
   const [operationId, setOperationId] = useState(initial.operationId ?? "");
   const [touched, setTouched] = useState(false);

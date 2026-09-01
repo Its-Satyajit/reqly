@@ -51,12 +51,10 @@ export function SettingsView() {
   const pool = useHistoryStore((s) => s.pool);
   const openFolder = useWorkspaceBootstrapStore((s) => s.openFolder);
   const activeTab = useSettingsStore((s) => s.activeTab);
-  const [retention, setRetention] = useState("90d");
-
-  useEffect(() => {
-    const v = localStorage.getItem("reqly:historyRetention");
-    if (v) setRetention(v);
-  }, []);
+  const [retention, setRetention] = useState(() => {
+    if (typeof window === "undefined") return "90d";
+    return localStorage.getItem("reqly:historyRetention") || "90d";
+  });
 
   const saveRetention = (v: string) => {
     setRetention(v);

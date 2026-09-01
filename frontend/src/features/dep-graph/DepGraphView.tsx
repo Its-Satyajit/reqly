@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { ZoomIn, ZoomOut, Maximize2, Move } from "lucide-react";
 import { Button } from "#components/ui/button";
 import { nodesForOpenApiContent, edgesForNodes, clampZoom, getTransform } from "../../lib/schemaGraph";
@@ -13,7 +13,7 @@ export function DepGraphView() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
 
   const handleZoomIn = useCallback(() => setZoom((z) => clampZoom(z + 0.2)), []);
   const handleZoomOut = useCallback(() => setZoom((z) => clampZoom(z - 0.2)), []);
@@ -26,16 +26,16 @@ export function DepGraphView() {
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       setIsDragging(true);
-      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
     },
     [pan],
   );
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (!isDragging) return;
-      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+      setPan({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
     },
-    [isDragging, dragStart],
+    [isDragging],
   );
   const handleMouseUp = useCallback(() => setIsDragging(false), []);
 
