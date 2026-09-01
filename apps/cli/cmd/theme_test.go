@@ -17,8 +17,10 @@ func TestThemeList(t *testing.T) {
 		t.Fatalf("theme list: %v", err)
 	}
 	out := buf.String()
-	if !strings.Contains(out, "atlas-light") || !strings.Contains(out, "atlas-dark") {
-		t.Fatalf("unexpected list output: %s", out)
+	for _, expected := range []string{"atlas-light", "atlas-dark", "windows-11-light", "windows-11-dark", "windows-11", "macos-tahoe-light", "macos-tahoe-dark", "macos-tahoe", "linux-kde-light", "linux-kde-dark", "linux-kde", "linux-gnome-light", "linux-gnome-dark", "linux-gnome"} {
+		if !strings.Contains(out, expected) {
+			t.Fatalf("unexpected list output, missing %s: %s", expected, out)
+		}
 	}
 }
 

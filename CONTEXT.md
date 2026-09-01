@@ -456,6 +456,9 @@ The `internal/automation.Scheduler` seam: `NewScheduler(*request.Client)` (nil â
 ### Automation Desktop
 Desktop parity for automation: `AppService.AutomationRun(yamlStr string) (*workflow.WorkflowReport, error)` â€” YAML-unmarshals, forces `interval="0"` to run once (desktop does not schedule background ticks), validates, then `Scheduler.Run` with single-report capture. Exposed to Wails as `AutomationRun` binding, mirroring `WorkflowRun`.
 
+### Theme Registry & Built-In Themes
+The named theme registry (`internal/theme` in Go, `frontend/src/lib/themes.ts` in React) providing native styling tokens. Ships built-in themes: `atlas-dark`, `atlas-light`, `windows-11-light`, `windows-11-dark`, `windows-11`, `macos-tahoe-light`, `macos-tahoe-dark`, `macos-tahoe`, `linux-kde-light`, `linux-kde-dark`, `linux-kde`, `linux-gnome-light`, `linux-gnome-dark`, and `linux-gnome`. Tokens and visual system rules are mapped via `[data-theme='<id>']` in `frontend/src/styles/tokens.css`.
+
 ### Custom Theme
 A shareable UI theme (`Theme{id, label, appearance, tokens}`) validated via `internal/theme.Validate` (kebab-case id, light/dark, hex/hsl) and rendered via `ToCSS` (`[data-theme="id"]`). CLI `reqly theme list/export/import` + desktop `ThemeList/Export/Import` + frontend `CustomTheme`.
 

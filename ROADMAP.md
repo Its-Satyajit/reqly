@@ -202,7 +202,7 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 **Stories:** 57–59
 
-- [x] `frontend/src/features/settings-view/SettingsView.tsx:1` full page `Appearance` (4 themes + `system` `THEMES` `lib/themes.ts:1`, `setTheme`/`cycleTheme`), `Workspace` (`name`/`path`/`openFolder`), `Storage` (`History Retention` `30d`/`90d`/`1yr`/`forever` + `ProxyTlsPanel` `CicdPanel`), `About` `APP_VERSION` `lib/crash.ts:1` + `SHORTCUTS`
+- [x] `frontend/src/features/settings-view/SettingsView.tsx:1` full page `Appearance` (14 built-in themes + `system` `THEMES` `lib/themes.ts:1` — Atlas Light/Dark, Windows 11 Light/Dark, macOS Tahoe Light/Dark, Linux KDE Light/Dark, Linux GNOME Light/Dark, `setTheme`/`cycleTheme`), `Workspace` (`name`/`path`/`openFolder`), `Storage` (`History Retention` `30d`/`90d`/`1yr`/`forever` + `ProxyTlsPanel` `CicdPanel`), `About` `APP_VERSION` `lib/crash.ts:1` + `SHORTCUTS`
 - [x] `frontend/src/features/settings-view/ProxyTlsPanel.tsx:1` `HTTP`/`HTTPS`/`SOCKS` + `insecureSkipVerify`/`caFile`/`TLS version`
 - [x] `frontend/src/features/settings-view/CicdPanel.tsx:1` `GitHub Action YAML` + `CLI` generator
 - [ ] `Keyboard Shortcuts` `SettingsView` shows table but not editable — spec wants `customizable` — **missing** (`useKeyboardMap` hard-coded)
@@ -226,7 +226,7 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 **Stories:** 67–68, 60–63 polish
 
 - [x] `frontend/src/features/command-palette/CommandPalette.tsx:1` `⌘K` (`useCommandPaletteStore` `open`/`query`, `getFilteredResults` Fuse `threshold:0.4` capped 20), grouped `Navigation`/`Theme`/`Environment`/`Collection`/`History`/`command` (`groupByHint`), `recent 5` `localStorage` `RECENT_KEY`, directional empty (`Try Go to…`), `⌘K`/`↵`/`Esc` hints, `hint` pill
-- [x] `frontend/src/lib/paletteProviders.ts:7` `navViews` 16 (`home`→`spec-editor`) + `import`/`export` + `theme-light`/`dark`/`system`
+- [x] `frontend/src/lib/paletteProviders.ts:7` `navViews` 16 (`home`→`spec-editor`) + `import`/`export` + `theme-light`/`dark`/`windows-11-light`/`dark`/`macos-tahoe-light`/`dark`/`linux-kde-light`/`dark`/`linux-gnome-light`/`dark`/`system`
 - [x] `Rail` dynamic order keyboard shortcuts (`useKeyboardMap.ts:89`)
 
 ### UI-11 — Body Editor & Auth
@@ -247,6 +247,14 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 - [x] `frontend/src/lib/cicd.ts:1` `GitHub Action YAML` + `CicdPanel` with recent pipeline runs summary (`CicdPanel.tsx:156`)
 
 - [x] `Docs` `export` `Environment` as `yaml` supported via `ExportDialog` (`export.ts:28`)
+
+### UI-18 — Theme-Adaptive OS Layouts & Headless Primitives
+
+**Milestone:** M68 (OS Theme Suite Refactor)
+
+- [ ] **UI-18.1 Headless & Unstyled UI Primitives:** Decouple `Button`, `Input`, `Tabs`, `Card`, `Select`, `Dialog` from hardcoded utility styles; drive purely via semantic CSS variables and slot classes.
+- [ ] **UI-18.2 Theme-Adaptive Shell Chrome:** Adapt `AppShell`, `TopBar`, `ToolRail`, `WorkspaceSidebar`, and `BottomPanel` layouts to active OS visual DNA (Windows 11 Centered Search + Mica, macOS Tahoe Floating Glass Toolbar + Pill Search, KDE Breeze Solid Desktop Chrome + 1px Dividers, GNOME Adwaita Integrated Headerbar).
+- [ ] **UI-18.3 Theme-Adaptive Feature Views:** Refactor `SettingsView`, `HomeView`, `RequestEditor`, and `RealtimeTab` into OS-authentic layout patterns (GNOME boxed-list preference groups, macOS grouped glass containers, Windows 11 Fluent settings cards, KDE Breeze geometric desktop tables).
 
 ---
 

@@ -8,7 +8,7 @@ The approved ui-demos prototype themes orthogonally to layout: every shell rende
 
 ## Decision
 
-1. **Named-theme registry** (`frontend/src/lib/themes.ts`): open list of `{ id, label, appearance }`; ships `atlas-dark`, `atlas-light`. Preference is `'system' | ThemeId`; a pure `resolveTheme()` maps preference + OS dark to a theme id.
+1. **Named-theme registry** (`frontend/src/lib/themes.ts`): open list of `{ id, label, appearance }`; ships `atlas-dark`, `atlas-light`, `windows-11`, `macos-tahoe`, `linux-kde`, `linux-gnome`. Preference is `'system' | ThemeId`; a pure `resolveTheme()` maps preference + OS dark to a theme id.
 2. **Token contract in one file** (`frontend/src/styles/tokens.css`): per-theme blocks selected by `[data-theme='<id>']`; `.dark` is kept as an appearance mirror so Tailwind's `@custom-variant dark` works for any number of dark themes without per-theme variants. Components consume tokens only; hex values live nowhere else (grep gate).
 3. **Controller/store split** (`useThemeStore.ts`): framework-agnostic `createThemeController()` (DOM application, persistence, live OS tracking via `matchMedia('change')`) with the zustand store as a thin reactive wrapper. This keeps theme behavior testable without React and jsdom-free in principle.
 

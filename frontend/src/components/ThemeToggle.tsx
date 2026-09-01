@@ -8,22 +8,18 @@ export function ThemeToggle() {
   const theme = useThemeStore((s) => s.theme);
   const cycleTheme = useThemeStore((s) => s.cycleTheme);
 
-  const label =
-    theme === "atlas-light"
-      ? "Switch to dark mode"
-      : theme === "atlas-dark"
-        ? "Switch to system mode"
-        : "Switch to light mode";
+  const isLight = theme === "atlas-light";
+  const isSystem = theme === "system";
+
+  const label = isLight
+    ? "Switch to dark mode"
+    : isSystem
+      ? "Switch to light mode"
+      : "Switch to system mode";
 
   return (
     <Button variant="ghost" size="icon-sm" onClick={cycleTheme} aria-label={label} title={label}>
-      {theme === "atlas-light" ? (
-        <Moon />
-      ) : theme === "atlas-dark" ? (
-        <Monitor />
-      ) : (
-        <Sun />
-      )}
+      {isLight ? <Moon /> : isSystem ? <Sun /> : <Monitor />}
     </Button>
   );
 }
