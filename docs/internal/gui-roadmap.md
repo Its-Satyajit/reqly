@@ -107,7 +107,7 @@
 
 ## GUI-6 Theme-Adaptive OS Layouts & Headless Primitives (spec §3, M68)
 
-- [ ] **G-6.1** Headless & Unstyled UI Primitives — decouple `Button`, `Input`, `Tabs`, `Card`, `Select`, `Dialog` from hardcoded utility styles; drive purely via semantic CSS variables and slot classes.
-- [ ] **G-6.2** Theme-Adaptive Shell Chrome — adapt `AppShell`, `TopBar`, `ToolRail`, `WorkspaceSidebar`, and `BottomPanel` layouts to active OS visual DNA (Windows 11 Centered Search + Mica, macOS Tahoe Floating Glass Toolbar + Pill Search, KDE Breeze Solid Desktop Chrome + 1px Dividers, GNOME Adwaita Integrated Headerbar).
-- [ ] **G-6.3** Theme-Adaptive Feature Views — refactor `SettingsView`, `HomeView`, `RequestEditor`, and `RealtimeTab` into OS-authentic layout patterns (GNOME boxed-list preference groups, macOS grouped glass containers, Windows 11 Fluent settings cards, KDE Breeze geometric desktop tables).
+- [x] **G-6.1** Headless & Unstyled UI Primitives — decouple `Button`, `Input`, `Tabs`, `Card`, `Select`, `Dialog` from hardcoded utility styles; drive purely via semantic CSS variables and slot classes — 2026-09-01
+- [x] **G-6.2** Theme-Adaptive Shell Chrome — adapt `AppShell`, `TopBar`, `ToolRail`, `WorkspaceSidebar`, and `BottomPanel` layouts to active OS visual DNA (Windows 11 Centered Search + Mica, macOS Tahoe Floating Glass Toolbar + Pill Search, KDE Breeze Solid Desktop Chrome + 1px Dividers, GNOME Adwaita Integrated Headerbar) — 2026-09-01
+- [x] **G-6.3** Theme-Adaptive Feature Views — refactor `SettingsView`, `HomeView`, `RequestEditor`, and `RealtimeTab` into OS-authentic layout patterns (GNOME boxed-list preference groups, macOS grouped glass containers, Windows 11 Fluent settings cards, KDE Breeze geometric desktop tables) — 2026-09-01
 

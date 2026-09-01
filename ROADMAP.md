@@ -252,9 +252,9 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 **Milestone:** M68 (OS Theme Suite Refactor)
 
-- [ ] **UI-18.1 Headless & Unstyled UI Primitives:** Decouple `Button`, `Input`, `Tabs`, `Card`, `Select`, `Dialog` from hardcoded utility styles; drive purely via semantic CSS variables and slot classes.
-- [ ] **UI-18.2 Theme-Adaptive Shell Chrome:** Adapt `AppShell`, `TopBar`, `ToolRail`, `WorkspaceSidebar`, and `BottomPanel` layouts to active OS visual DNA (Windows 11 Centered Search + Mica, macOS Tahoe Floating Glass Toolbar + Pill Search, KDE Breeze Solid Desktop Chrome + 1px Dividers, GNOME Adwaita Integrated Headerbar).
-- [ ] **UI-18.3 Theme-Adaptive Feature Views:** Refactor `SettingsView`, `HomeView`, `RequestEditor`, and `RealtimeTab` into OS-authentic layout patterns (GNOME boxed-list preference groups, macOS grouped glass containers, Windows 11 Fluent settings cards, KDE Breeze geometric desktop tables).
+- [x] **UI-18.1 Headless & Unstyled UI Primitives:** Decouple `Button`, `Input`, `Tabs`, `Card`, `Select`, `Dialog` from hardcoded utility styles; drive purely via semantic CSS variables and slot classes — 2026-09-01
+- [x] **UI-18.2 Theme-Adaptive Shell Chrome:** Adapt `AppShell`, `TopBar`, `ToolRail`, `WorkspaceSidebar`, and `BottomPanel` layouts to active OS visual DNA (Windows 11 Centered Search + Mica, macOS Tahoe Floating Glass Toolbar + Pill Search, KDE Breeze Solid Desktop Chrome + 1px Dividers, GNOME Adwaita Integrated Headerbar) — 2026-09-01
+- [x] **UI-18.3 Theme-Adaptive Feature Views:** Refactor `SettingsView`, `HomeView`, `RequestEditor`, and `RealtimeTab` into OS-authentic layout patterns (GNOME boxed-list preference groups, macOS grouped glass containers, Windows 11 Fluent settings cards, KDE Breeze geometric desktop tables) — 2026-09-01
 
 ---
 
