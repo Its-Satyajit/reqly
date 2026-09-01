@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/Its-Satyajit/reqly/internal/openapi"
 )
 
 // ChangelogItem describes a single categorized change.
@@ -22,8 +24,19 @@ type Changelog struct {
 	Info            []ChangelogItem `json:"info"`
 }
 
-// GenerateChangelog parses two JSON API specs and returns a structured Changelog.
+// GenerateChangelog parses two JSON/YAML API specs and returns a structured Changelog.
+// It supports both JSON and YAML OpenAPI specs; for generic YAML it falls back to structural diff.
 func GenerateChangelog(oldBytes, newBytes []byte) (*Changelog, error) {
+	// Try OpenAPI-aware diff first when both inputs are valid OpenAPI documents (JSON or YAML).
+	if docA, errA := openapi.Load(oldBytes); errA == nil {
+		if docB, errB := openapi.Load(newBytes); errB == nil {
+			if docA != nil && docB != nil && (docA.OpenAPI != "" || docA.Paths != nil) && (docB.OpenAPI != "" || docB.Paths != nil) {
+				if d, err := OpenAPI(docA, docB); err == nil {
+					return buildChangelog(WithSeverity(d)), nil
+				}
+			}
+		}
+	}
 	diff, err := JSON(oldBytes, newBytes)
 	if err != nil {
 		return nil, fmt.Errorf("diff: %w", err)
@@ -77,6 +90,50 @@ func GenerateChangelog(oldBytes, newBytes []byte) (*Changelog, error) {
 	}
 
 	return cl, nil
+}
+
+func buildChangelog(classified *DiffResult) *Changelog {
+	cl := &Changelog{
+		SuggestedSemver: "none",
+		Breaking:        []ChangelogItem{},
+		Additions:       []ChangelogItem{},
+		Info:            []ChangelogItem{},
+	}
+	if classified == nil || len(classified.Changes) == 0 {
+		return cl
+	}
+	for _, c := range classified.Changes {
+		pathStr := strings.Join(c.Path, ".")
+		item := ChangelogItem{
+			Type:     c.Type,
+			Path:     pathStr,
+			Severity: c.Severity,
+		}
+		switch c.Type {
+		case "create":
+			item.Summary = fmt.Sprintf("Added `%s`", pathStr)
+		case "delete":
+			item.Summary = fmt.Sprintf("Removed `%s`", pathStr)
+		default:
+			item.Summary = fmt.Sprintf("Modified `%s` (%v -> %v)", pathStr, c.From, c.To)
+		}
+		switch c.Severity {
+		case SeverityBreaking:
+			cl.Breaking = append(cl.Breaking, item)
+		case SeverityNonBreaking:
+			cl.Additions = append(cl.Additions, item)
+		default:
+			cl.Info = append(cl.Info, item)
+		}
+	}
+	if len(cl.Breaking) > 0 {
+		cl.SuggestedSemver = "major"
+	} else if len(cl.Additions) > 0 {
+		cl.SuggestedSemver = "minor"
+	} else if len(cl.Info) > 0 {
+		cl.SuggestedSemver = "patch"
+	}
+	return cl
 }
 
 // ToMarkdown formats the changelog as standard GitHub-flavored Markdown.

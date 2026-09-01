@@ -10,10 +10,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Its-Satyajit/reqly/internal/collections"
+	"github.com/Its-Satyajit/reqly/internal/environments"
 	"github.com/Its-Satyajit/reqly/internal/exporter"
 	"github.com/Its-Satyajit/reqly/internal/history"
 	"github.com/Its-Satyajit/reqly/internal/request"
 	"github.com/Its-Satyajit/reqly/internal/requestfile"
+	"github.com/Its-Satyajit/reqly/internal/variables"
 	"github.com/Its-Satyajit/reqly/internal/version"
 )
 
@@ -123,7 +125,67 @@ Secrets render as [SECRET]. The request is resolved through the workspace/env ch
 		if err != nil {
 			return err
 		}
-		snippet, err := exporter.Generate(req, lang, nil)
+		// Build masker from env secrets and Authorization headers (A1).
+		masker := environments.NewMasker()
+		vars := variables.NewSet()
+		if f, err := requestfile.LoadFile(path); err == nil {
+			for k, v := range f.Variables {
+				vars.Set(variables.ScopeRequest, k, v)
+			}
+		}
+		if exportCodeEnv != "" {
+			root := collections.FindWorkspaceRoot(".")
+			if root == "" {
+				root = collections.FindWorkspaceRoot(filepath.Dir(path))
+			}
+			if root != "" {
+				if env, err := environments.Read(exportCodeEnv, root); err == nil {
+					for k, v := range env.Variables {
+						vars.Set(variables.ScopeEnvironment, k, v)
+					}
+					for k, v := range env.Secrets {
+						vars.Set(variables.ScopeEnvironment, k, v)
+						masker.Add(v)
+					}
+				}
+			}
+			// Interpolate request fields that may contain {{var}} references.
+			for i, h := range req.Headers {
+				if interpolated, err := vars.Interpolate(h.Value); err == nil {
+					req.Headers[i].Value = interpolated
+				}
+			}
+			if interpolated, err := vars.Interpolate(req.URL); err == nil {
+				req.URL = interpolated
+			}
+			if req.Body != "" {
+				if interpolated, err := vars.Interpolate(req.Body); err == nil {
+					req.Body = interpolated
+				}
+			}
+			for k, v := range req.Auth.Config {
+				if interpolated, err := vars.Interpolate(v); err == nil {
+					req.Auth.Config[k] = interpolated
+				}
+			}
+		}
+		// Mask raw Authorization headers even without an env (e.g., Bearer supersecret123).
+		for _, h := range req.Headers {
+			if strings.EqualFold(h.Key, "Authorization") && h.Value != "" {
+				masker.Add(h.Value)
+				parts := strings.Fields(h.Value)
+				if len(parts) == 2 {
+					masker.Add(parts[1])
+				}
+			}
+		}
+		if tok, ok := req.Auth.Config["token"]; ok && tok != "" {
+			masker.Add(tok)
+		}
+		if pw, ok := req.Auth.Config["password"]; ok && pw != "" {
+			masker.Add(pw)
+		}
+		snippet, err := exporter.Generate(req, lang, masker.Mask)
 		if err != nil {
 			return err
 		}
@@ -264,19 +326,48 @@ func init() {
 
 var exportOpenAPIOut string
 var exportOpenAPIWorkspace string
+var exportOpenAPICollection string
 
 var exportOpenAPICmd = &cobra.Command{
-	Use:   "openapi [src] [--out <file>]",
+	Use:   "openapi [<workspace>|<collection>] [--workspace <dir>] [--collection <name>] [--out <file>]",
 	Short: "Generate an OpenAPI 3.0 spec from a collection or workspace",
 	Long: `Generate an OpenAPI 3.0 YAML document from every request in a collection
 (or the whole workspace). Paths, parameters, request bodies, and auth schemes
 are derived from the requests; response schemas are not invented.
 
   reqly export openapi users
+  reqly export openapi ./my-ws --out openapi.yaml
+  reqly export openapi --workspace ./my-ws --collection users --out openapi.yaml
   reqly export openapi --workspace . --out openapi.yaml`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		root := exportOpenAPIWorkspace
+		collName := exportOpenAPICollection
+		// Interpret positional arg: workspace dir if --workspace not set and arg is a workspace path, else collection name.
+		if len(args) == 1 {
+			arg := args[0]
+			if collName != "" {
+				// --collection already specifies collection; arg must be workspace
+				if root == "" {
+					root = arg
+				} else {
+					return fmt.Errorf("unexpected argument %q: --collection already set", arg)
+				}
+			} else if root == "" {
+				// No flags: try arg as workspace first, then collection.
+				if isWorkspacePath(arg) {
+					root = arg
+				} else {
+					if _, err := collections.LoadWorkspace(arg); err == nil {
+						root = arg
+					} else {
+						collName = arg
+					}
+				}
+			} else {
+				collName = arg
+			}
+		}
 		if root == "" {
 			root = "."
 		}
@@ -287,10 +378,10 @@ are derived from the requests; response schemas are not invented.
 		var coll *collections.Collection
 		var title string
 		var requests []request.Request
-		if len(args) == 1 {
-			coll = findCollection(ws, args[0])
+		if collName != "" {
+			coll = findCollection(ws, collName)
 			if coll == nil {
-				return fmt.Errorf("collection %q not found in workspace %s", args[0], root)
+				return fmt.Errorf("collection %q not found in workspace %s", collName, root)
 			}
 			title = coll.Config.Name
 		}
@@ -338,8 +429,24 @@ are derived from the requests; response schemas are not invented.
 	},
 }
 
+func isWorkspacePath(p string) bool {
+	info, err := os.Stat(p)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(p, "reqly.yaml")); err == nil {
+		return true
+	}
+	// Also consider nested workspace discovery: if FindWorkspaceRoot succeeds, treat as workspace path.
+	if collections.FindWorkspaceRoot(p) != "" {
+		return true
+	}
+	return false
+}
+
 func init() {
-	exportCmd.AddCommand(exportPostmanCmd, exportCodeCmd, exportWorkspaceCmd, exportHarCmd, exportOpenAPICmd)
+	exportCmd.AddCommand(exportOpenAPICmd)
 	exportOpenAPICmd.Flags().StringVar(&exportOpenAPIOut, "out", "", "write the spec to this file (default stdout)")
 	exportOpenAPICmd.Flags().StringVar(&exportOpenAPIWorkspace, "workspace", "", "workspace directory")
+	exportOpenAPICmd.Flags().StringVar(&exportOpenAPICollection, "collection", "", "collection name to export (defaults to all)")
 }

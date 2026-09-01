@@ -207,9 +207,14 @@ func ParseBruno(data []byte) (*BrunoResult, *ImportReport, error) {
 }
 
 // collectBrunoItems walks the items tree; unknown item types warn+skip.
+// Empty type defaults to "http" for minimal valid exports that omit the field.
 func collectBrunoItems(items []brItem, dst *PostmanFolder, res *BrunoResult, rep *ImportReport) {
 	for _, it := range items {
-		switch it.Type {
+		effective := it.Type
+		if effective == "" {
+			effective = "http"
+		}
+		switch effective {
 		case "folder":
 			folder := &PostmanFolder{Name: it.Name}
 			collectBrunoItems(it.Items, folder, res, rep)
