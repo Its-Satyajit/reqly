@@ -121,16 +121,13 @@ func TestJWTDecode_Malformed(t *testing.T) {
 	rootCmd.SetOut(&out)
 	rootCmd.SetErr(&errBuf)
 	rootCmd.SetArgs([]string{"jwt", "decode", "bad.token"})
-	if err := rootCmd.Execute(); err == nil {
+	err := rootCmd.Execute()
+	if err == nil {
 		t.Fatalf("expected error for malformed token")
 	}
-	if !strings.Contains(errBuf.String(), "expected 3 segments") && !strings.Contains(out.String(), "expected 3 segments") {
-		// Cobra prints error to stderr via errBuf or returned err
-		// Check combined
-		combined := errBuf.String() + out.String()
-		if !strings.Contains(combined, "expected 3 segments") {
-			t.Fatalf("error message: got %q errBuf %q", out.String(), errBuf.String())
-		}
+	combined := errBuf.String() + out.String() + err.Error()
+	if !strings.Contains(combined, "expected 3 segments") {
+		t.Fatalf("error message: got %q errBuf %q err %q", out.String(), errBuf.String(), err.Error())
 	}
 }
 

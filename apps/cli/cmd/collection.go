@@ -142,6 +142,11 @@ Use --workspace to point at a workspace directory other than the current one.`,
 		}
 		sort.Strings(colls)
 
+		if len(colls) == 0 {
+			fmt.Fprintln(cmd.OutOrStdout(), "  (no collections)")
+			fmt.Fprintln(cmd.OutOrStdout(), "  hint: reqly import <file> --output <dir> or create collections/<name>/")
+			return nil
+		}
 		for _, name := range colls {
 			c := findCollection(ws, name)
 			fmt.Fprintf(cmd.OutOrStdout(), "  %s/\n", c.Name)

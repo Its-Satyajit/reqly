@@ -27,6 +27,7 @@ import (
 func main() {
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, "hint: reqly --help or reqly <command> --help")
 		os.Exit(1)
 	}
 }

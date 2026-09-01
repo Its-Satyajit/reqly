@@ -1,8 +1,9 @@
 # Reqly — Feature Set
 
-> **Status:** Draft
+> **Status:** Draft — Alpha, not stable. See `README.md` Alpha disclaimer.
 > **Product Name:** TBD
 > **Positioning:** A local-first, developer-focused API client built around privacy, Git-native workflows, extensibility, API testing, API contracts, and support for modern API protocols.
+> **Planned but not shipped:** gRPC (bidi/client-streaming, reflection is partial), SOAP (WSDL import only, no XML builder/runtime), OpenAPI Editor, Contract Testing / API Dependency Graph, API Monitoring (`monitor run` stub), Network Interceptor / Browser Integration, UI Customization (theme registry only, 2 built-ins), OS Keychain desktop picker, MCP Server (stub). Sections below marked **Planned** are not yet shipped — see `ROADMAP.md` for shipped status.
 
 ---
 
@@ -100,7 +101,9 @@ Dedicated tooling for GraphQL APIs.
 
 ---
 
-## 2.3 gRPC
+## 2.3 gRPC — **Planned** (partial)
+
+> **Status:** Planned — CLI has `grpc services`/`invoke` (reflection + unary/server-streaming partial), desktop surface and bidi/client-streaming not shipped. See `README.md` Alpha disclaimer.
 
 Native gRPC request and service tooling.
 
@@ -150,7 +153,9 @@ Support APIs that continuously stream server-generated events over HTTP.
 
 ---
 
-## 2.6 SOAP
+## 2.6 SOAP — **Planned** (WSDL import only)
+
+> **Status:** Planned — WSDL import (`reqly import wsdl`) generates SOAP envelopes (POST with `Content-Type`/`SOAPAction`) but no XML builder UI or SOAP runtime beyond plain POST. See `README.md` Alpha disclaimer.
 
 Support SOAP-based enterprise and legacy services.
 
@@ -294,7 +299,9 @@ Support:
 * OpenAPI 3.x
 * OpenAPI 3.1
 
-## 5.2 OpenAPI Editor
+## 5.2 OpenAPI Editor — **Planned**
+
+> **Status:** Planned — not shipped. `reqly openapi` has `explore`/`generate`/`convert-v2`/`validate` but no `edit` command or desktop editor. See `README.md` Alpha disclaimer.
 
 Provide an editor for creating and modifying OpenAPI specifications.
 
@@ -353,7 +360,9 @@ Support XML schema validation where applicable.
 
 Visualize relationships between types, objects, endpoints, and schemas.
 
-## 6.6 Contract Testing
+## 6.6 Contract Testing — **Planned**
+
+> **Status:** Planned — `diff` works for specs, `changelog` now supports YAML, but no `contract` subcommand or API dependency graph yet. See `README.md` Alpha disclaimer.
 
 Validate API responses against an API contract.
 
@@ -743,9 +752,11 @@ Provide dedicated JWT inspection and debugging tools.
 
 Encrypt sensitive values at rest.
 
-## 19.2 OS Keychain
+## 19.2 OS Keychain — **Planned** (CLI only)
 
-Use the operating system's secure credential storage — shipped (KeychainStore behind `secrets.Store` via go-keyring: Secret Service / Keychain / WinCred; 0600 key index for enumeration; `--store keychain` / `REQLY_TOKEN_STORE` selection with file-store fallback).
+> **Status:** Planned — CLI supports `--store file|keychain` and `REQLY_TOKEN_STORE`; desktop picker not shipped (CLI only). See `README.md` Alpha disclaimer.
+
+Use the operating system's secure credential storage — CLI supports `KeychainStore` behind `secrets.Store` via `go-keyring` (Secret Service / Keychain / WinCred; 0600 key index; `--store keychain` / `REQLY_TOKEN_STORE` with file fallback); desktop picker deferred.
 
 ## 19.3 Secret Variables
 
@@ -1024,7 +1035,9 @@ Provide local API mocking capabilities.
 
 ---
 
-# 31. API Monitoring
+# 31. API Monitoring — **Planned** (stub)
+
+> **Status:** Planned — `reqly monitor run --help` exists as a stub (no scheduling/interval config). Use `automation`/`workflow` for scripting. See `README.md` Alpha disclaimer.
 
 Allow requests and tests to be executed on a schedule.
 
@@ -1158,7 +1171,9 @@ Import and export HTTP Archive files.
 
 ---
 
-# 38. Browser Integration
+# 38. Browser Integration — **Planned**
+
+> **Status:** Planned — HAR import is the only browser seam; no direct DevTools capture. See `README.md` Alpha disclaimer.
 
 Allow requests to be imported from browser developer tools.
 
@@ -1368,7 +1383,9 @@ Inspect:
 
 ---
 
-# 46. Network Interceptor
+# 46. Network Interceptor — **Planned**
+
+> **Status:** Planned — no `intercept` command. HAR import (`reqly import har`) is the only browser traffic seam. See `README.md` Alpha disclaimer.
 
 Capture or intercept supported network traffic for debugging and request reproduction.
 
@@ -1466,7 +1483,9 @@ Plugins may extend:
 
 ---
 
-# 51. UI Customization
+# 51. UI Customization — **Planned** (partial)
+
+> **Status:** Planned — `theme list` shows 2 built-ins, `theme import`/`export` exist; full registry and UI customization deferred. See `README.md` Alpha disclaimer.
 
 ## Built-in Themes
 
