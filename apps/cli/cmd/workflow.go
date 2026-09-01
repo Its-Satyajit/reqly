@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"go.yaml.in/yaml/v3"
@@ -16,13 +17,16 @@ import (
 	"github.com/Its-Satyajit/reqly/internal/workflow"
 )
 
+var workflowVerbose bool
+
 var workflowCmd = &cobra.Command{
 	Use:   "workflow <workflow.yaml>",
 	Short: "Execute a visual/programmatic multi-step API workflow",
 	Long: `Execute a multi-step API workflow with variable extraction, condition evaluation,
 and step reporting.
 
-  reqly workflow auth-flow.yaml`,
+  reqly workflow auth-flow.yaml
+  reqly workflow auth-flow.yaml --verbose`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		data, err := os.ReadFile(args[0])
@@ -49,6 +53,30 @@ and step reporting.
 				status = "FAILED"
 			}
 			fmt.Fprintf(out, "  [%s] %s: %s\n", status, s.Name, s.RequestPath)
+			if !s.Passed {
+				if s.RequestError != "" {
+					fmt.Fprintf(out, "    Error: %s\n", s.RequestError)
+				} else if s.Response != nil {
+					statusInfo := fmt.Sprintf("%d", s.Response.StatusCode)
+					if s.Response.StatusText != "" {
+						statusInfo += " " + s.Response.StatusText
+					}
+					bodySnippet := strings.TrimSpace(string(s.Response.Body))
+					if len(bodySnippet) > 200 {
+						bodySnippet = bodySnippet[:200] + "..."
+					}
+					if bodySnippet != "" {
+						fmt.Fprintf(out, "    Status: %s (Body: %s)\n", statusInfo, bodySnippet)
+					} else {
+						fmt.Fprintf(out, "    Status: %s\n", statusInfo)
+					}
+				}
+			}
+			if workflowVerbose && len(s.Logs) > 0 {
+				for _, l := range s.Logs {
+					fmt.Fprintf(out, "    Log: %s\n", l)
+				}
+			}
 		}
 		if len(report.ExtractedVars) > 0 {
 			fmt.Fprintln(out, "Extracted Variables:")
@@ -65,5 +93,6 @@ and step reporting.
 }
 
 func init() {
+	workflowCmd.Flags().BoolVarP(&workflowVerbose, "verbose", "v", false, "print verbose execution logs for workflow steps")
 	rootCmd.AddCommand(workflowCmd)
 }

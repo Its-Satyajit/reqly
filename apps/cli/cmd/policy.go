@@ -20,14 +20,23 @@ var policyCmd = &cobra.Command{
 	Long:  `Show or validate the local policy file at .reqly/policy.yaml (0600).`,
 }
 
+func getPolicyPath(cmd *cobra.Command) string {
+	path, _ := cmd.Flags().GetString("file")
+	if path != "" {
+		return path
+	}
+	ws, _ := cmd.Flags().GetString("workspace")
+	if ws == "" {
+		ws = "."
+	}
+	return policy.DefaultPath(ws)
+}
+
 var policyShowCmd = &cobra.Command{
-	Use:   "show",
+	Use:   "show [--workspace <dir>]",
 	Short: "Show the current policy",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		path, _ := cmd.Flags().GetString("file")
-		if path == "" {
-			path = policy.DefaultPath(".")
-		}
+		path := getPolicyPath(cmd)
 		p, err := policy.Load(path)
 		if err != nil {
 			return err
@@ -42,11 +51,11 @@ var policyShowCmd = &cobra.Command{
 }
 
 var policyValidateCmd = &cobra.Command{
-	Use:   "validate [file]",
+	Use:   "validate [file] [--workspace <dir>]",
 	Short: "Validate a policy file",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		path := policy.DefaultPath(".")
+		path := getPolicyPath(cmd)
 		if len(args) > 0 {
 			path = args[0]
 		}
@@ -63,7 +72,7 @@ var policyValidateCmd = &cobra.Command{
 }
 
 var policyEnforceCmd = &cobra.Command{
-	Use:   "enforce --action <action> --resource <resource>",
+	Use:   "enforce --action <action> --resource <resource> [--workspace <dir>]",
 	Short: "Check if an action is allowed by the policy",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		action, _ := cmd.Flags().GetString("action")
@@ -71,10 +80,7 @@ var policyEnforceCmd = &cobra.Command{
 		if action == "" || resource == "" {
 			return fmt.Errorf("--action and --resource are required")
 		}
-		path, _ := cmd.Flags().GetString("file")
-		if path == "" {
-			path = policy.DefaultPath(".")
-		}
+		path := getPolicyPath(cmd)
 		p, err := policy.Load(path)
 		if err != nil {
 			return err
@@ -88,6 +94,7 @@ var policyEnforceCmd = &cobra.Command{
 }
 
 func init() {
+	policyCmd.PersistentFlags().StringP("workspace", "w", "", "workspace directory (default .)")
 	policyShowCmd.Flags().String("file", "", "policy file path (default .reqly/policy.yaml)")
 	policyValidateCmd.Flags().String("file", "", "policy file path")
 	policyEnforceCmd.Flags().String("action", "", "action to check (e.g. request.send)")

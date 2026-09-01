@@ -19,14 +19,23 @@ var rbacCmd = &cobra.Command{
 	Long:  `Show roles or check if a user can perform an action via .reqly/rbac.yaml (0600).`,
 }
 
+func getRBACPath(cmd *cobra.Command) string {
+	path, _ := cmd.Flags().GetString("file")
+	if path != "" {
+		return path
+	}
+	ws, _ := cmd.Flags().GetString("workspace")
+	if ws == "" {
+		ws = "."
+	}
+	return rbac.DefaultPath(ws)
+}
+
 var rbacListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   "list [--workspace <dir>]",
 	Short: "List roles and their permissions",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		path, _ := cmd.Flags().GetString("file")
-		if path == "" {
-			path = rbac.DefaultPath(".")
-		}
+		path := getRBACPath(cmd)
 		r, err := rbac.Load(path)
 		if err != nil {
 			return err
@@ -41,7 +50,7 @@ var rbacListCmd = &cobra.Command{
 }
 
 var rbacCheckCmd = &cobra.Command{
-	Use:   "check --user <user> --action <action> --resource <resource>",
+	Use:   "check --user <user> --action <action> --resource <resource> [--workspace <dir>]",
 	Short: "Check if a user can perform an action",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		user, _ := cmd.Flags().GetString("user")
@@ -50,10 +59,7 @@ var rbacCheckCmd = &cobra.Command{
 		if user == "" || action == "" || resource == "" {
 			return fmt.Errorf("--user, --action and --resource are required")
 		}
-		path, _ := cmd.Flags().GetString("file")
-		if path == "" {
-			path = rbac.DefaultPath(".")
-		}
+		path := getRBACPath(cmd)
 		r, err := rbac.Load(path)
 		if err != nil {
 			return err
@@ -67,6 +73,7 @@ var rbacCheckCmd = &cobra.Command{
 }
 
 func init() {
+	rbacCmd.PersistentFlags().StringP("workspace", "w", "", "workspace directory (default .)")
 	rbacListCmd.Flags().String("file", "", "rbac file path (default .reqly/rbac.yaml)")
 	rbacCheckCmd.Flags().String("user", "", "user to check")
 	rbacCheckCmd.Flags().String("action", "", "action to check")

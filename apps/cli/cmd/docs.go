@@ -41,11 +41,20 @@ var docsGenerateCmd = &cobra.Command{
 		if len(args) > 0 {
 			src = args[0]
 		}
-		out, _ := cmd.Flags().GetString("out")
+		out := docsOut
+		if out == "" {
+			out, _ = cmd.Flags().GetString("out")
+		}
+		if out == "" {
+			out, _ = cmd.Flags().GetString("output")
+		}
 		if out == "" {
 			return fmt.Errorf("--out <dir> is required")
 		}
-		env, _ := cmd.Flags().GetString("env")
+		env := docsEnv
+		if env == "" {
+			env, _ = cmd.Flags().GetString("env")
+		}
 		ws, err := collections.LoadWorkspace(src)
 		if err != nil {
 			return err
@@ -64,5 +73,6 @@ var docsEnv string
 func init() {
 	docsCmd.AddCommand(docsGenerateCmd)
 	docsGenerateCmd.Flags().StringVar(&docsOut, "out", "", "output directory")
+	docsGenerateCmd.Flags().StringVar(&docsOut, "output", "", "output directory")
 	docsGenerateCmd.Flags().StringVar(&docsEnv, "env", "", "environment for resolved curl examples")
 }

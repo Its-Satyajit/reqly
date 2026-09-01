@@ -20,10 +20,14 @@
 package testing
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	"go.yaml.in/yaml/v3"
 
 	"github.com/Its-Satyajit/reqly/internal/jsonschema"
 	"github.com/Its-Satyajit/reqly/internal/response"
@@ -51,25 +55,107 @@ const (
 
 // Assertion is a single check evaluated against a response.
 type Assertion struct {
-	Kind AssertionKind `json:"kind"`
+	Kind AssertionKind `json:"kind" yaml:"kind"`
 
 	// Path is a JSONPath for AssertJSONPath, or a header name for AssertHeader.
-	Path string `json:"path,omitempty"`
+	Path string `json:"path,omitempty" yaml:"path,omitempty"`
 
 	// Value is the expected string value (header value, body substring, or the
 	// JSON value rendered as text when StringEquals is set).
-	Value string `json:"value,omitempty"`
+	Value string `json:"value,omitempty" yaml:"value,omitempty"`
 
 	// Expected is the expected number for status / response_time assertions,
 	// and the expected JSON value (when JSON is used as a number).
-	Expected int64 `json:"expected,omitempty"`
+	Expected int64 `json:"expected,omitempty" yaml:"expected,omitempty"`
 
 	// Exact makes AssertJSONPath compare the extracted value as a string
 	// instead of only checking presence.
-	Exact bool `json:"exact,omitempty"`
+	Exact bool `json:"exact,omitempty" yaml:"exact,omitempty"`
 
 	// Not inverts the assertion result.
-	Not bool `json:"not,omitempty"`
+	Not bool `json:"not,omitempty" yaml:"not,omitempty"`
+}
+
+type rawAssertion struct {
+	Kind      AssertionKind `json:"kind" yaml:"kind"`
+	Path      string        `json:"path,omitempty" yaml:"path,omitempty"`
+	Header    string        `json:"header,omitempty" yaml:"header,omitempty"`
+	Name      string        `json:"name,omitempty" yaml:"name,omitempty"`
+	Key       string        `json:"key,omitempty" yaml:"key,omitempty"`
+	Value     string        `json:"value,omitempty" yaml:"value,omitempty"`
+	Expected  any           `json:"expected,omitempty" yaml:"expected,omitempty"`
+	Max       any           `json:"max,omitempty" yaml:"max,omitempty"`
+	Threshold any           `json:"threshold,omitempty" yaml:"threshold,omitempty"`
+	MaxMs     any           `json:"maxMs,omitempty" yaml:"maxMs,omitempty"`
+	Status    any           `json:"status,omitempty" yaml:"status,omitempty"`
+	Exact     bool          `json:"exact,omitempty" yaml:"exact,omitempty"`
+	Not       bool          `json:"not,omitempty" yaml:"not,omitempty"`
+}
+
+func (a *Assertion) applyRaw(raw *rawAssertion) {
+	a.Kind = raw.Kind
+	a.Path = raw.Path
+	if a.Path == "" {
+		if raw.Header != "" {
+			a.Path = raw.Header
+		} else if raw.Name != "" {
+			a.Path = raw.Name
+		} else if raw.Key != "" {
+			a.Path = raw.Key
+		}
+	}
+	a.Value = raw.Value
+	a.Exact = raw.Exact
+	a.Not = raw.Not
+
+	a.Expected = parseExpectedInt64(raw.Expected)
+	if a.Expected == 0 {
+		if v := parseExpectedInt64(raw.Max); v != 0 {
+			a.Expected = v
+		} else if v := parseExpectedInt64(raw.Threshold); v != 0 {
+			a.Expected = v
+		} else if v := parseExpectedInt64(raw.MaxMs); v != 0 {
+			a.Expected = v
+		} else if v := parseExpectedInt64(raw.Status); v != 0 {
+			a.Expected = v
+		}
+	}
+}
+
+// UnmarshalJSON unmarshals an Assertion, resolving aliases like header/name for Path, and max/threshold/maxMs/status for Expected.
+func (a *Assertion) UnmarshalJSON(data []byte) error {
+	var raw rawAssertion
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	a.applyRaw(&raw)
+	return nil
+}
+
+// UnmarshalYAML unmarshals an Assertion from YAML, resolving aliases like header/name for Path, and max/threshold/maxMs/status for Expected.
+func (a *Assertion) UnmarshalYAML(node *yaml.Node) error {
+	var raw rawAssertion
+	if err := node.Decode(&raw); err != nil {
+		return err
+	}
+	a.applyRaw(&raw)
+	return nil
+}
+
+func parseExpectedInt64(val any) int64 {
+	switch v := val.(type) {
+	case int:
+		return int64(v)
+	case int64:
+		return v
+	case float64:
+		return int64(v)
+	case string:
+		if n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil {
+			return n
+		}
+	}
+	return 0
 }
 
 // Result records the outcome of a single assertion.

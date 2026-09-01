@@ -268,3 +268,53 @@ func TestExecuteWorkflow_EnvironmentVars(t *testing.T) {
 		t.Fatalf("want prod, got %q", gotHeader)
 	}
 }
+
+func TestExecuteWorkflow_ExtractJSONPath(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"data": {
+				"id": "12345",
+				"user": {"name": "alice"}
+			},
+			"tags": ["alpha", "beta"]
+		}`))
+	}))
+	defer srv.Close()
+
+	wf := &Workflow{
+		Name: "JSONPath Extraction",
+		Steps: []WorkflowStep{
+			{
+				ID:   "s1",
+				Name: "S1",
+				Request: request.Request{
+					Method: "GET",
+					URL:    srv.URL,
+				},
+				Extract: map[string]string{
+					"extractedID":   "$.data.id",
+					"extractedUser": "data.user.name",
+					"firstTag":      "$.tags[0]",
+				},
+			},
+		},
+	}
+	exec := NewWorkflowExecutor(nil)
+	report, err := exec.Execute(context.Background(), wf, WorkflowOptions{})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !report.Passed {
+		t.Fatalf("expected pass, got %+v", report)
+	}
+	if report.ExtractedVars["extractedID"] != "12345" {
+		t.Fatalf("extractedID: got %q, want '12345'", report.ExtractedVars["extractedID"])
+	}
+	if report.ExtractedVars["extractedUser"] != "alice" {
+		t.Fatalf("extractedUser: got %q, want 'alice'", report.ExtractedVars["extractedUser"])
+	}
+	if report.ExtractedVars["firstTag"] != "alpha" {
+		t.Fatalf("firstTag: got %q, want 'alpha'", report.ExtractedVars["firstTag"])
+	}
+}

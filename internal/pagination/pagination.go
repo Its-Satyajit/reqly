@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -223,6 +224,22 @@ func Run(ctx context.Context, req request.Request, opts Options, sendFn SendFunc
 
 func withQuery(req request.Request, key, value string) request.Request {
 	out := req
+	tmpl := "{{" + key + "}}"
+	if strings.Contains(out.URL, tmpl) {
+		out.URL = strings.ReplaceAll(out.URL, tmpl, value)
+		return out
+	}
+	if strings.Contains(out.URL, "?") {
+		if u, err := url.Parse(out.URL); err == nil {
+			q := u.Query()
+			if q.Has(key) {
+				q.Set(key, value)
+				u.RawQuery = q.Encode()
+				out.URL = u.String()
+				return out
+			}
+		}
+	}
 	// copy slice first to avoid mutating shared backing array
 	out.Query = append([]request.Parameter(nil), req.Query...)
 	found := false

@@ -176,3 +176,56 @@ tests:
 		t.Fatalf("environment: got %q, want %q", tf.Environment, "staging")
 	}
 }
+
+func TestParseTestFile_AssertionAliases(t *testing.T) {
+	data := `
+name: users
+request:
+  method: GET
+  url: https://api.example.com/users
+  headers:
+    Accept: application/json
+tests:
+  - name: aliases
+    assertions:
+      - kind: header
+        header: Content-Type
+        value: application/json
+      - kind: header
+        name: X-Custom-Header
+        value: custom
+      - kind: response_time
+        max: 5000
+      - kind: response_time
+        threshold: 3000
+      - kind: status
+        status: 200
+`
+	tf, err := ParseTestFile([]byte(data))
+	if err != nil {
+		t.Fatalf("failed to parse test file with aliases: %v", err)
+	}
+	if len(tf.Tests[0].Assertions) != 5 {
+		t.Fatalf("expected 5 assertions, got %d", len(tf.Tests[0].Assertions))
+	}
+	a0 := tf.Tests[0].Assertions[0]
+	if a0.Kind != AssertHeader || a0.Path != "Content-Type" || a0.Value != "application/json" {
+		t.Fatalf("assertion 0 alias mismatch: %+v", a0)
+	}
+	a1 := tf.Tests[0].Assertions[1]
+	if a1.Kind != AssertHeader || a1.Path != "X-Custom-Header" || a1.Value != "custom" {
+		t.Fatalf("assertion 1 alias mismatch: %+v", a1)
+	}
+	a2 := tf.Tests[0].Assertions[2]
+	if a2.Kind != AssertResponseTime || a2.Expected != 5000 {
+		t.Fatalf("assertion 2 alias mismatch: %+v", a2)
+	}
+	a3 := tf.Tests[0].Assertions[3]
+	if a3.Kind != AssertResponseTime || a3.Expected != 3000 {
+		t.Fatalf("assertion 3 alias mismatch: %+v", a3)
+	}
+	a4 := tf.Tests[0].Assertions[4]
+	if a4.Kind != AssertStatus || a4.Expected != 200 {
+		t.Fatalf("assertion 4 alias mismatch: %+v", a4)
+	}
+}
