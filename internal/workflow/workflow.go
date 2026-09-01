@@ -7,7 +7,6 @@ package workflow
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -169,14 +168,11 @@ func (we *WorkflowExecutor) Execute(ctx context.Context, wf *Workflow, opts Work
 
 		// 4. Extract variables from JSON response body
 		if resp != nil && len(resp.Body) > 0 && len(step.Extract) > 0 {
-			var parsed map[string]any
-			if jsonErr := json.Unmarshal(resp.Body, &parsed); jsonErr == nil {
-				for varName, jsonKey := range step.Extract {
-					if val, ok := parsed[jsonKey]; ok {
-						strVal := fmt.Sprintf("%v", val)
-						varStore.Set(variables.ScopeGlobal, varName, strVal)
-						report.ExtractedVars[varName] = strVal
-					}
+			for varName, jsonKey := range step.Extract {
+				if val := resp.JSONValue(jsonKey); val != nil {
+					strVal := fmt.Sprintf("%v", val)
+					varStore.Set(variables.ScopeGlobal, varName, strVal)
+					report.ExtractedVars[varName] = strVal
 				}
 			}
 		}

@@ -447,3 +447,68 @@ request:
 		t.Fatalf("retry block did not survive round trip:\n%+v\n%+v", orig.Request.Retry, reloaded.Request.Retry)
 	}
 }
+
+func TestParseYAMLHeadersMap(t *testing.T) {
+	src := `request:
+  method: GET
+  url: https://api.example.com/health
+  headers:
+    Content-Type: application/json
+    Authorization: Bearer token123
+`
+	f, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatalf("expected map headers to parse, got: %v", err)
+	}
+	if len(f.Request.Headers) != 2 {
+		t.Fatalf("expected 2 headers, got: %+v", f.Request.Headers)
+	}
+	foundCT := false
+	foundAuth := false
+	for _, h := range f.Request.Headers {
+		if h.Key == "Content-Type" && h.Value == "application/json" {
+			foundCT = true
+		}
+		if h.Key == "Authorization" && h.Value == "Bearer token123" {
+			foundAuth = true
+		}
+	}
+	if !foundCT || !foundAuth {
+		t.Fatalf("headers not properly parsed from map: %+v", f.Request.Headers)
+	}
+}
+
+func TestParseJSONHeadersMap(t *testing.T) {
+	src := `{
+		"request": {
+			"method": "GET",
+			"url": "https://api.example.com/health",
+			"headers": {
+				"Accept": "application/json",
+				"X-Custom": "custom-val"
+			}
+		}
+	}`
+	f, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatalf("expected JSON object headers to parse, got: %v", err)
+	}
+	if len(f.Request.Headers) != 2 {
+		t.Fatalf("expected 2 headers, got: %+v", f.Request.Headers)
+	}
+}
+
+func TestParseFlatRequestErrorMessage(t *testing.T) {
+	src := `method: GET
+url: https://api.example.com/health
+headers:
+  Content-Type: application/json
+`
+	_, err := Parse([]byte(src))
+	if err == nil {
+		t.Fatal("expected error for flat request file")
+	}
+	if !strings.Contains(err.Error(), "request file requires 'request.url'") && !strings.Contains(err.Error(), "nested under") {
+		t.Fatalf("expected informative nested error message, got: %v", err)
+	}
+}

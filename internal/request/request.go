@@ -18,7 +18,9 @@
 package request
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -36,7 +38,7 @@ type Request struct {
 	Method Method `json:"method,omitempty" yaml:"method,omitempty"`
 	URL    string `json:"url,omitempty" yaml:"url,omitempty"`
 
-	Headers []Header    `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Headers Headers     `json:"headers,omitempty" yaml:"headers,omitempty"`
 	Query   []Parameter `json:"query,omitempty" yaml:"query,omitempty"`
 	Body    string      `json:"body,omitempty" yaml:"body,omitempty"`
 
@@ -125,6 +127,80 @@ const (
 type Header struct {
 	Key   string `json:"key" yaml:"key,omitempty"`
 	Value string `json:"value" yaml:"value,omitempty"`
+}
+
+// Headers is a slice of Header values supporting flexible JSON and YAML unmarshaling (sequence or mapping).
+type Headers []Header
+
+// UnmarshalJSON supports unmarshaling from either a JSON array of Header objects or a JSON object of key-value pairs.
+func (h *Headers) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || string(data) == "null" {
+		*h = nil
+		return nil
+	}
+	if data[0] == '[' {
+		var list []Header
+		type rawHeader Header
+		var rawList []rawHeader
+		if err := json.Unmarshal(data, &rawList); err != nil {
+			return err
+		}
+		for _, item := range rawList {
+			list = append(list, Header(item))
+		}
+		*h = list
+		return nil
+	}
+	if data[0] == '{' {
+		var m map[string]any
+		if err := json.Unmarshal(data, &m); err != nil {
+			return err
+		}
+		var list []Header
+		for k, v := range m {
+			list = append(list, Header{Key: k, Value: fmt.Sprintf("%v", v)})
+		}
+		*h = list
+		return nil
+	}
+	return fmt.Errorf("cannot unmarshal %s into Headers", string(data))
+}
+
+// UnmarshalYAML supports unmarshaling from either a YAML sequence of Header objects or a YAML mapping of key-value pairs.
+func (h *Headers) UnmarshalYAML(node *yaml.Node) error {
+	if node == nil {
+		*h = nil
+		return nil
+	}
+	switch node.Kind {
+	case yaml.SequenceNode:
+		var list []Header
+		type rawHeader Header
+		for _, item := range node.Content {
+			var hdr rawHeader
+			if err := item.Decode(&hdr); err != nil {
+				return err
+			}
+			list = append(list, Header(hdr))
+		}
+		*h = list
+		return nil
+	case yaml.MappingNode:
+		var list []Header
+		for i := 0; i < len(node.Content); i += 2 {
+			k := node.Content[i].Value
+			var v string
+			if err := node.Content[i+1].Decode(&v); err != nil {
+				v = node.Content[i+1].Value
+			}
+			list = append(list, Header{Key: k, Value: v})
+		}
+		*h = list
+		return nil
+	default:
+		return fmt.Errorf("cannot unmarshal YAML kind %d into Headers", node.Kind)
+	}
 }
 
 // Parameter is a query or path parameter.

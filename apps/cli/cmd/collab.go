@@ -20,14 +20,23 @@ var collabCmd = &cobra.Command{
 	Long:  `Manage collaborators for a shared workspace via .reqly/collab.yaml (0600).`,
 }
 
+func getCollabPath(cmd *cobra.Command) string {
+	path, _ := cmd.Flags().GetString("file")
+	if path != "" {
+		return path
+	}
+	ws, _ := cmd.Flags().GetString("workspace")
+	if ws == "" {
+		ws = "."
+	}
+	return collab.DefaultPath(ws)
+}
+
 var collabListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   "list [--workspace <dir>]",
 	Short: "List collaborators",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		path, _ := cmd.Flags().GetString("file")
-		if path == "" {
-			path = collab.DefaultPath(".")
-		}
+		path := getCollabPath(cmd)
 		ws, err := collab.Load(path)
 		if err != nil {
 			return err
@@ -45,7 +54,7 @@ var collabListCmd = &cobra.Command{
 }
 
 var collabAddCmd = &cobra.Command{
-	Use:   "add --user <user> --role <viewer|editor|admin>",
+	Use:   "add --user <user> --role <viewer|editor|admin> [--workspace <dir>]",
 	Short: "Add a collaborator",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		user, _ := cmd.Flags().GetString("user")
@@ -53,10 +62,7 @@ var collabAddCmd = &cobra.Command{
 		if user == "" || role == "" {
 			return fmt.Errorf("--user and --role are required")
 		}
-		path, _ := cmd.Flags().GetString("file")
-		if path == "" {
-			path = collab.DefaultPath(".")
-		}
+		path := getCollabPath(cmd)
 		ws, err := collab.Load(path)
 		if err != nil {
 			return err
@@ -76,17 +82,14 @@ var collabAddCmd = &cobra.Command{
 }
 
 var collabRemoveCmd = &cobra.Command{
-	Use:   "remove --user <user>",
+	Use:   "remove --user <user> [--workspace <dir>]",
 	Short: "Remove a collaborator",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		user, _ := cmd.Flags().GetString("user")
 		if user == "" {
 			return fmt.Errorf("--user is required")
 		}
-		path, _ := cmd.Flags().GetString("file")
-		if path == "" {
-			path = collab.DefaultPath(".")
-		}
+		path := getCollabPath(cmd)
 		ws, err := collab.Load(path)
 		if err != nil {
 			return err
@@ -119,6 +122,7 @@ var collabServeCmd = &cobra.Command{
 }
 
 func init() {
+	collabCmd.PersistentFlags().StringP("workspace", "w", "", "workspace directory (default .)")
 	collabListCmd.Flags().String("file", "", "collab file path (default .reqly/collab.yaml)")
 	collabAddCmd.Flags().String("user", "", "user to add")
 	collabAddCmd.Flags().String("role", "", "role (viewer|editor|admin)")

@@ -83,7 +83,7 @@ func Parse(data []byte) (*File, error) {
 
 func validate(f *File) (*File, error) {
 	if f.Request.URL == "" {
-		return nil, fmt.Errorf("request file requires a request.url")
+		return nil, fmt.Errorf("request file requires 'request.url'; ensure fields are nested under the 'request:' key")
 	}
 	return f, nil
 }

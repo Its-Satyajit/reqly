@@ -297,3 +297,31 @@ func TestRun_LinkHeaderMultiple(t *testing.T) {
 		t.Fatalf("next: got %q", next)
 	}
 }
+
+func TestRun_PageStrategy_URLTemplateVariable(t *testing.T) {
+	req := request.Request{
+		Method: "GET",
+		URL:    "https://api.example.com/items?page={{page}}",
+		Pagination: &request.Pagination{
+			Strategy: "page",
+			MaxPages: 2,
+		},
+	}
+	var steps []Step
+	sendFn := func(_ context.Context, r request.Request) (*response.Response, error) {
+		return makeResp(200, `[{"id":1}]`, nil), nil
+	}
+	err := Run(context.Background(), req, Options{}, sendFn, func(s Step) { steps = append(steps, s) })
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(steps) != 2 {
+		t.Fatalf("expected 2 steps, got %d", len(steps))
+	}
+	if steps[0].Request.URL != "https://api.example.com/items?page=1" {
+		t.Fatalf("step 1 URL: got %q, want 'https://api.example.com/items?page=1'", steps[0].Request.URL)
+	}
+	if steps[1].Request.URL != "https://api.example.com/items?page=2" {
+		t.Fatalf("step 2 URL: got %q, want 'https://api.example.com/items?page=2'", steps[1].Request.URL)
+	}
+}

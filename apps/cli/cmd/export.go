@@ -315,11 +315,15 @@ secrets masked to [SECRET]). Without --out, HAR JSON is printed to stdout.`,
 func init() {
 	exportCmd.AddCommand(exportPostmanCmd, exportCodeCmd, exportWorkspaceCmd, exportHarCmd)
 	exportPostmanCmd.Flags().StringVar(&exportOutput, "output", "", "write the collection to this file")
+	exportPostmanCmd.Flags().StringVar(&exportOutput, "out", "", "write the collection to this file")
 	exportCodeCmd.Flags().StringVar(&exportCodeLang, "lang", "", "target language (cURL, js, python, go)")
 	exportCodeCmd.Flags().StringVar(&exportCodeOut, "out", "", "write snippet to this file")
+	exportCodeCmd.Flags().StringVar(&exportCodeOut, "output", "", "write snippet to this file")
 	exportCodeCmd.Flags().StringVar(&exportCodeEnv, "env", "", "environment to resolve variables")
 	exportWorkspaceCmd.Flags().StringVar(&exportWorkspaceOut, "out", "", "destination directory")
+	exportWorkspaceCmd.Flags().StringVar(&exportWorkspaceOut, "output", "", "destination directory")
 	exportHarCmd.Flags().StringVar(&exportHarOut, "out", "", "write HAR to this file (default stdout)")
+	exportHarCmd.Flags().StringVar(&exportHarOut, "output", "", "write HAR to this file (default stdout)")
 	exportHarCmd.Flags().StringVar(&exportHarEnv, "env", "", "filter history by environment")
 	exportHarCmd.Flags().IntVar(&exportHarLimit, "limit", 500, "maximum history entries to export")
 }
@@ -447,6 +451,7 @@ func isWorkspacePath(p string) bool {
 func init() {
 	exportCmd.AddCommand(exportOpenAPICmd)
 	exportOpenAPICmd.Flags().StringVar(&exportOpenAPIOut, "out", "", "write the spec to this file (default stdout)")
+	exportOpenAPICmd.Flags().StringVar(&exportOpenAPIOut, "output", "", "write the spec to this file (default stdout)")
 	exportOpenAPICmd.Flags().StringVar(&exportOpenAPIWorkspace, "workspace", "", "workspace directory")
 	exportOpenAPICmd.Flags().StringVar(&exportOpenAPICollection, "collection", "", "collection name to export (defaults to all)")
 }

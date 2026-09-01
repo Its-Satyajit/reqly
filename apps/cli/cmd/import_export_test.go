@@ -400,3 +400,111 @@ func TestImportFetch(t *testing.T) {
 		t.Fatalf("unexpected import fetch output: %s", output)
 	}
 }
+
+func TestImportCurl_OutFlagAlias(t *testing.T) {
+	resetImportExportFlags()
+	path := filepath.Join(t.TempDir(), "req.yaml")
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"import", "curl", "curl https://api.example.com/items", "--out", path})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("import curl with --out failed: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "items") {
+		t.Fatalf("expected items in file, got:\n%s", data)
+	}
+}
+
+func TestExportPostman_OutFlagAlias(t *testing.T) {
+	resetImportExportFlags()
+	root := makeTestWorkspace(t, "http://example.com")
+	outPath := filepath.Join(t.TempDir(), "collection.json")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"export", "postman", root, "--out", outPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("export postman with --out failed: %v", err)
+	}
+	if _, err := os.Stat(outPath); err != nil {
+		t.Fatalf("expected outPath %s to exist: %v", outPath, err)
+	}
+}
+
+func TestExportOpenAPI_OutputFlagAlias(t *testing.T) {
+	resetImportExportFlags()
+	root := makeTestWorkspace(t, "http://example.com")
+	outPath := filepath.Join(t.TempDir(), "openapi.yaml")
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs([]string{"export", "openapi", "--workspace", root, "--output", outPath})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("export openapi with --output failed: %v", err)
+	}
+	if _, err := os.Stat(outPath); err != nil {
+		t.Fatalf("expected outPath %s to exist: %v", outPath, err)
+	}
+}
+
+func TestGovernanceCommands_WorkspaceFlag(t *testing.T) {
+	dir := t.TempDir()
+	reqlyDir := filepath.Join(dir, ".reqly")
+	if err := os.MkdirAll(reqlyDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "reqly.yaml"), []byte("name: test-ws\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(reqlyDir, "rbac.yaml"), []byte("roles:\n  admin:\n    name: admin\n    permissions: ['*']\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(reqlyDir, "policy.yaml"), []byte("requireAudit: true\nmaxWorkflowSteps: 5\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(reqlyDir, "collab.yaml"), []byte("path: .\ncollaborators:\n  - user: alice\n    role: admin\n    addedAt: 2026-01-01T00:00:00Z\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. RBAC list with --workspace
+	var rbacOut bytes.Buffer
+	rootCmd.SetOut(&rbacOut)
+	rootCmd.SetErr(&rbacOut)
+	rootCmd.SetArgs([]string{"rbac", "list", "--workspace", dir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("rbac list --workspace failed: %v", err)
+	}
+	if !strings.Contains(rbacOut.String(), "admin") {
+		t.Fatalf("rbac list missing admin: %s", rbacOut.String())
+	}
+
+	// 2. Policy show with --workspace
+	var policyOut bytes.Buffer
+	rootCmd.SetOut(&policyOut)
+	rootCmd.SetErr(&policyOut)
+	rootCmd.SetArgs([]string{"policy", "show", "--workspace", dir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("policy show --workspace failed: %v", err)
+	}
+	if !strings.Contains(policyOut.String(), "requireAudit: true") {
+		t.Fatalf("policy show missing rule: %s", policyOut.String())
+	}
+
+	// 3. Collab list with --workspace
+	var collabOut bytes.Buffer
+	rootCmd.SetOut(&collabOut)
+	rootCmd.SetErr(&collabOut)
+	rootCmd.SetArgs([]string{"collab", "list", "--workspace", dir})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("collab list --workspace failed: %v", err)
+	}
+	if !strings.Contains(collabOut.String(), "alice") {
+		t.Fatalf("collab list missing alice: %s", collabOut.String())
+	}
+}
