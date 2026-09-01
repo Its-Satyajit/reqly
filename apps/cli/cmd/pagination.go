@@ -52,7 +52,23 @@ Pagination is declared on the request file via a "pagination" block:
       strategy: page
       maxPages: 10
 
-Strategies: page, offset, cursor (needs nextPath: $.nextCursor), link-header.
+Strategies:
+  page        - increments ?page=1,2,... until empty body
+  offset      - increments ?offset=0,20,40... until empty body (use limit/limitParam)
+  cursor      - follows JSON cursor via nextPath (e.g. nextPath: $.nextCursor, cursorParam: cursor)
+  link-header - follows Link header rel="next" (also accepted as "link")
+
+Cursor example:
+
+  pagination:
+    strategy: cursor
+    nextPath: $.nextCursor
+    cursorParam: cursor
+
+Link-header example (server emits Link: <url>; rel="next"):
+
+  pagination:
+    strategy: link-header   # "link" is also accepted
 
   reqly pagination run ./collections/items/list.yaml --max-pages 5`,
 	Args: cobra.ExactArgs(1),

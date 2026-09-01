@@ -52,7 +52,12 @@ func Run(ctx context.Context, req request.Request, opts Options, sendFn SendFunc
 		return fmt.Errorf("pagination: missing pagination config")
 	}
 	pg := req.Pagination
-	strategy := strings.ToLower(pg.Strategy)
+	strategy := strings.ToLower(strings.TrimSpace(pg.Strategy))
+	// Alias "link" to "link-header" for user convenience (R5); server emits
+	// `Link: <url>; rel="next"` per src/index.ts:182.
+	if strategy == "link" {
+		strategy = "link-header"
+	}
 	if strategy == "" {
 		return fmt.Errorf("pagination: strategy required")
 	}
@@ -90,7 +95,7 @@ func Run(ctx context.Context, req request.Request, opts Options, sendFn SendFunc
 	}
 	// cursor strategy requires nextPath
 	if strategy == "cursor" && pg.NextPath == "" {
-		return fmt.Errorf("pagination: cursor strategy requires nextPath")
+		return fmt.Errorf("pagination: cursor strategy requires nextPath (e.g. nextPath: $.nextCursor)")
 	}
 
 	curReq := req
