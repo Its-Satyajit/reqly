@@ -172,6 +172,30 @@ wails3 generate bindings -d frontend/bindings -i -ts
 wails3 dev
 ```
 
+### Install current checkout locally (no GitHub Release)
+
+Builds the CLI at `internal/version/version.go:12` with the current commit and installs it without hitting GitHub Releases:
+
+```bash
+COMMIT=$(git rev-parse --short HEAD)
+go build -ldflags "-X github.com/Its-Satyajit/reqly/internal/version.Commit=$COMMIT" -o /tmp/reqly ./apps/cli
+
+# system (needs sudo)
+sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly
+
+# or user-local (no sudo, ensure ~/.local/bin is in PATH)
+install -Dm755 /tmp/reqly "$HOME/.local/bin/reqly"
+
+reqly version --verbose
+# version: 1.2.0 / commit: <sha>
+```
+
+One-liner:
+
+```bash
+go build -ldflags "-X github.com/Its-Satyajit/reqly/internal/version.Commit=$(git rev-parse --short HEAD)" -o /tmp/reqly ./apps/cli && sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly && reqly version --verbose
+```
+
 The `Makefile` also provides `make frontend`, `make go-test`, `make desktop` and `make install-desktop`. `wails3 dev` builds the frontend and runs the app with hot reload.
 
 ## Docs
