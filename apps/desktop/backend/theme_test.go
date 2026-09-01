@@ -13,8 +13,8 @@ import (
 func TestThemeList_Desktop(t *testing.T) {
 	svc := NewAppService()
 	themes := svc.ThemeList()
-	if len(themes) != 2 {
-		t.Fatalf("want 2 themes, got %d", len(themes))
+	if len(themes) != 14 {
+		t.Fatalf("want 14 themes, got %d", len(themes))
 	}
 }
 

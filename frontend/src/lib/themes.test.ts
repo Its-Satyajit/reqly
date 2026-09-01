@@ -15,23 +15,64 @@ import {
 
 describe("themes lib", () => {
   describe("built-ins", () => {
-    it("has two atlas themes", () => {
-      expect(THEMES).toHaveLength(2);
+    it("has 14 built-in themes", () => {
+      expect(THEMES).toHaveLength(14);
       expect(THEMES.map((t) => t.id)).toContain("atlas-light");
       expect(THEMES.map((t) => t.id)).toContain("atlas-dark");
+      expect(THEMES.map((t) => t.id)).toContain("windows-11-light");
+      expect(THEMES.map((t) => t.id)).toContain("windows-11-dark");
+      expect(THEMES.map((t) => t.id)).toContain("windows-11");
+      expect(THEMES.map((t) => t.id)).toContain("macos-tahoe-light");
+      expect(THEMES.map((t) => t.id)).toContain("macos-tahoe-dark");
+      expect(THEMES.map((t) => t.id)).toContain("macos-tahoe");
+      expect(THEMES.map((t) => t.id)).toContain("linux-kde-light");
+      expect(THEMES.map((t) => t.id)).toContain("linux-kde-dark");
+      expect(THEMES.map((t) => t.id)).toContain("linux-kde");
+      expect(THEMES.map((t) => t.id)).toContain("linux-gnome-light");
+      expect(THEMES.map((t) => t.id)).toContain("linux-gnome-dark");
+      expect(THEMES.map((t) => t.id)).toContain("linux-gnome");
     });
     it("validates theme ids", () => {
       expect(isThemeId("atlas-light")).toBe(true);
+      expect(isThemeId("windows-11-light")).toBe(true);
+      expect(isThemeId("windows-11-dark")).toBe(true);
+      expect(isThemeId("windows-11")).toBe(true);
+      expect(isThemeId("macos-tahoe-light")).toBe(true);
+      expect(isThemeId("macos-tahoe-dark")).toBe(true);
+      expect(isThemeId("macos-tahoe")).toBe(true);
+      expect(isThemeId("linux-kde-light")).toBe(true);
+      expect(isThemeId("linux-kde-dark")).toBe(true);
+      expect(isThemeId("linux-kde")).toBe(true);
+      expect(isThemeId("linux-gnome-light")).toBe(true);
+      expect(isThemeId("linux-gnome-dark")).toBe(true);
+      expect(isThemeId("linux-gnome")).toBe(true);
       expect(isThemeId("custom")).toBe(false);
     });
     it("resolves system preference", () => {
       expect(resolveTheme("system", true)).toBe("atlas-dark");
       expect(resolveTheme("system", false)).toBe("atlas-light");
       expect(resolveTheme("atlas-light", true)).toBe("atlas-light");
+      expect(resolveTheme("windows-11-light", false)).toBe("windows-11-light");
+      expect(resolveTheme("macos-tahoe-light", false)).toBe("macos-tahoe-light");
+      expect(resolveTheme("linux-kde-light", false)).toBe("linux-kde-light");
+      expect(resolveTheme("linux-gnome-light", false)).toBe("linux-gnome-light");
+      expect(resolveTheme("linux-gnome-dark", false)).toBe("linux-gnome-dark");
     });
     it("returns appearance", () => {
       expect(appearanceFor("atlas-light")).toBe("light");
       expect(appearanceFor("atlas-dark")).toBe("dark");
+      expect(appearanceFor("windows-11-light")).toBe("light");
+      expect(appearanceFor("windows-11-dark")).toBe("dark");
+      expect(appearanceFor("windows-11")).toBe("dark");
+      expect(appearanceFor("macos-tahoe-light")).toBe("light");
+      expect(appearanceFor("macos-tahoe-dark")).toBe("dark");
+      expect(appearanceFor("macos-tahoe")).toBe("dark");
+      expect(appearanceFor("linux-kde-light")).toBe("light");
+      expect(appearanceFor("linux-kde-dark")).toBe("dark");
+      expect(appearanceFor("linux-kde")).toBe("dark");
+      expect(appearanceFor("linux-gnome-light")).toBe("light");
+      expect(appearanceFor("linux-gnome-dark")).toBe("dark");
+      expect(appearanceFor("linux-gnome")).toBe("dark");
     });
     it("cycles preferences", () => {
       expect(nextPreference("atlas-light")).toBe("atlas-dark");

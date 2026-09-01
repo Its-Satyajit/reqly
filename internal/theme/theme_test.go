@@ -126,11 +126,13 @@ func TestToCSS(t *testing.T) {
 
 func TestBuiltIn(t *testing.T) {
 	builtins := BuiltInThemes()
-	if len(builtins) != 2 {
-		t.Fatalf("want 2 builtins, got %d", len(builtins))
+	if len(builtins) != 14 {
+		t.Fatalf("want 14 builtins, got %d", len(builtins))
 	}
-	if !IsBuiltIn("atlas-light") || !IsBuiltIn("atlas-dark") {
-		t.Fatalf("expected atlas themes to be built-in")
+	for _, id := range []string{"atlas-light", "atlas-dark", "windows-11-light", "windows-11-dark", "windows-11", "macos-tahoe-light", "macos-tahoe-dark", "macos-tahoe", "linux-kde-light", "linux-kde-dark", "linux-kde", "linux-gnome-light", "linux-gnome-dark", "linux-gnome"} {
+		if !IsBuiltIn(id) {
+			t.Fatalf("expected %s to be built-in", id)
+		}
 	}
 	if IsBuiltIn("custom") {
 		t.Fatalf("custom should not be built-in")

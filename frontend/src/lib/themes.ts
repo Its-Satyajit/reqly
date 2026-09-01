@@ -1,6 +1,18 @@
 export const THEMES = [
   { id: "atlas-light" as const, label: "Atlas Light", appearance: "light" as const },
   { id: "atlas-dark" as const, label: "Atlas Dark", appearance: "dark" as const },
+  { id: "windows-11-light" as const, label: "Windows 11 Light", appearance: "light" as const },
+  { id: "windows-11-dark" as const, label: "Windows 11 Dark", appearance: "dark" as const },
+  { id: "windows-11" as const, label: "Windows 11", appearance: "dark" as const },
+  { id: "macos-tahoe-light" as const, label: "macOS Tahoe Light", appearance: "light" as const },
+  { id: "macos-tahoe-dark" as const, label: "macOS Tahoe Dark", appearance: "dark" as const },
+  { id: "macos-tahoe" as const, label: "macOS Tahoe", appearance: "dark" as const },
+  { id: "linux-kde-light" as const, label: "Linux KDE Light", appearance: "light" as const },
+  { id: "linux-kde-dark" as const, label: "Linux KDE Dark", appearance: "dark" as const },
+  { id: "linux-kde" as const, label: "Linux KDE", appearance: "dark" as const },
+  { id: "linux-gnome-light" as const, label: "Linux GNOME Light", appearance: "light" as const },
+  { id: "linux-gnome-dark" as const, label: "Linux GNOME Dark", appearance: "dark" as const },
+  { id: "linux-gnome" as const, label: "Linux GNOME", appearance: "dark" as const },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];

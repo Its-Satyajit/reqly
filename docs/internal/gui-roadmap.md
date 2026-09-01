@@ -104,3 +104,10 @@
 - [x] **G-5.4** CI/CD integration — zustand store + pure lib (CLI gen, GitHub Action YAML, report parse) + 13 tests — 2026-08-26
 - [x] **G-5.5** Mock server GUI data — extended zustand store + pure lib (scenarios, fault injection, matchers, logs) + 20 tests — 2026-08-26
 - [x] **G-5.6** GraphQL/gRPC docs — zustand store + pure lib (SDL parse, search, Markdown render) + 16 tests — 2026-08-26
+
+## GUI-6 Theme-Adaptive OS Layouts & Headless Primitives (spec §3, M68)
+
+- [ ] **G-6.1** Headless & Unstyled UI Primitives — decouple `Button`, `Input`, `Tabs`, `Card`, `Select`, `Dialog` from hardcoded utility styles; drive purely via semantic CSS variables and slot classes.
+- [ ] **G-6.2** Theme-Adaptive Shell Chrome — adapt `AppShell`, `TopBar`, `ToolRail`, `WorkspaceSidebar`, and `BottomPanel` layouts to active OS visual DNA (Windows 11 Centered Search + Mica, macOS Tahoe Floating Glass Toolbar + Pill Search, KDE Breeze Solid Desktop Chrome + 1px Dividers, GNOME Adwaita Integrated Headerbar).
+- [ ] **G-6.3** Theme-Adaptive Feature Views — refactor `SettingsView`, `HomeView`, `RequestEditor`, and `RealtimeTab` into OS-authentic layout patterns (GNOME boxed-list preference groups, macOS grouped glass containers, Windows 11 Fluent settings cards, KDE Breeze geometric desktop tables).
+

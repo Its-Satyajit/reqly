@@ -26,11 +26,23 @@ type Theme struct {
 var idRe = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 var hexRe = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
 
-// BuiltInThemes returns the two atlas themes that ship with Reqly.
+// BuiltInThemes returns the built-in themes that ship with Reqly.
 func BuiltInThemes() []Theme {
 	return []Theme{
 		{ID: "atlas-light", Label: "Atlas Light", Appearance: "light", Tokens: map[string]string{"primary": "#c93517", "background": "#fbfbfa"}},
 		{ID: "atlas-dark", Label: "Atlas Dark", Appearance: "dark", Tokens: map[string]string{"primary": "#ff6f52", "background": "#0d1015"}},
+		{ID: "windows-11-light", Label: "Windows 11 Light", Appearance: "light", Tokens: map[string]string{"primary": "#0067c0", "background": "#f3f3f3"}},
+		{ID: "windows-11-dark", Label: "Windows 11 Dark", Appearance: "dark", Tokens: map[string]string{"primary": "#4cc2ff", "background": "#202020"}},
+		{ID: "windows-11", Label: "Windows 11", Appearance: "dark", Tokens: map[string]string{"primary": "#4cc2ff", "background": "#202020"}},
+		{ID: "macos-tahoe-light", Label: "macOS Tahoe Light", Appearance: "light", Tokens: map[string]string{"primary": "#007aff", "background": "#f5f5f7"}},
+		{ID: "macos-tahoe-dark", Label: "macOS Tahoe Dark", Appearance: "dark", Tokens: map[string]string{"primary": "#0a84ff", "background": "#1c1c1e"}},
+		{ID: "macos-tahoe", Label: "macOS Tahoe", Appearance: "dark", Tokens: map[string]string{"primary": "#0a84ff", "background": "#1c1c1e"}},
+		{ID: "linux-kde-light", Label: "Linux KDE Light", Appearance: "light", Tokens: map[string]string{"primary": "#3daee9", "background": "#eff0f1"}},
+		{ID: "linux-kde-dark", Label: "Linux KDE Dark", Appearance: "dark", Tokens: map[string]string{"primary": "#3daee9", "background": "#31363b"}},
+		{ID: "linux-kde", Label: "Linux KDE", Appearance: "dark", Tokens: map[string]string{"primary": "#3daee9", "background": "#31363b"}},
+		{ID: "linux-gnome-light", Label: "Linux GNOME Light", Appearance: "light", Tokens: map[string]string{"primary": "#3584e4", "background": "#fafafb"}},
+		{ID: "linux-gnome-dark", Label: "Linux GNOME Dark", Appearance: "dark", Tokens: map[string]string{"primary": "#3584e4", "background": "#222226"}},
+		{ID: "linux-gnome", Label: "Linux GNOME", Appearance: "dark", Tokens: map[string]string{"primary": "#3584e4", "background": "#222226"}},
 	}
 }
 
