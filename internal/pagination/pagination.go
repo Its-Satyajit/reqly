@@ -294,14 +294,8 @@ func extractJSONPath(body []byte, path string) string {
 	if p == "$" {
 		return strings.TrimSpace(string(body))
 	}
-	if strings.HasPrefix(p, "$.") {
-		p = p[2:]
-	} else if strings.HasPrefix(p, "$") {
-		p = p[1:]
-		if strings.HasPrefix(p, ".") {
-			p = p[1:]
-		}
-	}
+	p = strings.TrimPrefix(p, "$")
+	p = strings.TrimPrefix(p, ".")
 	fields := strings.Split(p, ".")
 	var cur any
 	if err := json.Unmarshal(body, &cur); err != nil {

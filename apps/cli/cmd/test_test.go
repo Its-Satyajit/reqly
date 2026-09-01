@@ -225,11 +225,11 @@ tests:
 }
 
 func TestTestCommandRequestError(t *testing.T) {
-	content := fmt.Sprintf(`{
+	content := `{
 		"name": "suite",
 		"request": {"method": "GET", "url": "http://127.0.0.1:1"},
 		"tests": [{"name": "t", "assertions": [{"kind": "status", "expected": 200}]}]
-	}`)
+	}`
 
 	var out bytes.Buffer
 	rootCmd.SetOut(&out)

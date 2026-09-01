@@ -376,8 +376,6 @@ type wsdlPortType struct {
 	operations []*wsdlPortTypeOp
 }
 
-func (n *wsdlNode) text() string { return n.Text }
-
 func collectMessages(targetNS string, root *wsdlNode) map[string]*wsdlMessage {
 	out := map[string]*wsdlMessage{}
 	for _, m := range root.all("message") {
@@ -409,10 +407,6 @@ type wsdlPart struct {
 	element QName
 	typ     QName
 	hasEl   bool
-}
-
-func collectSchemas(root *wsdlNode, rep *ImportReport) map[string]*xsdShape {
-	return collectSchemasWithBase(root, rep, "")
 }
 
 func collectSchemasWithBase(root *wsdlNode, rep *ImportReport, baseDir string) map[string]*xsdShape {

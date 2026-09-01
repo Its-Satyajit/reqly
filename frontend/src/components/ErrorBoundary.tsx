@@ -1,8 +1,9 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { addBreadcrumb, formatReport, type CrashEntry } from "#lib/crash";
-import { cn } from "#lib/utils";
 import { Button } from "#components/ui/button";
-import { CrashReportDialog } from "#components/CrashReportDialog";
+import { CrashReportDialog, CopyReportButton } from "#components/CrashReportDialog";
+
+export { CopyReportButton } from "#components/CrashReportDialog";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -13,28 +14,6 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   entry: CrashEntry | null;
   report: string | null;
-}
-
-async function copyWithFallback(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const area = document.createElement("textarea");
-    area.value = text;
-    area.style.position = "fixed";
-    area.style.opacity = "0";
-    document.body.appendChild(area);
-    area.select();
-    let ok = false;
-    try {
-      ok = document.execCommand("copy");
-    } catch {
-      ok = false;
-    }
-    area.remove();
-    return ok;
-  }
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -95,40 +74,4 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       </div>
     );
   }
-}
-
-export function CopyReportButton({
-  report,
-  className,
-}: {
-  report: string;
-  className?: string;
-}) {
-  return (
-    <Button
-      size="sm"
-      variant="outline"
-      className={cn(className)}
-      onClick={(event) => {
-        const button = event.currentTarget;
-        void copyWithFallback(report).then((ok) => {
-          if (!button || !button.isConnected) return;
-          const previous = button.textContent;
-          button.textContent = ok ? "Copied" : "Select manually";
-          window.setTimeout(() => {
-            button.textContent = previous;
-          }, 1500);
-          if (!ok) {
-            const area = document.createElement("textarea");
-            area.value = report;
-            document.body.appendChild(area);
-            area.select();
-            window.setTimeout(() => area.remove(), 30000);
-          }
-        });
-      }}
-    >
-      Copy report
-    </Button>
-  );
 }

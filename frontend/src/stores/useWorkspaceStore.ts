@@ -20,8 +20,17 @@ import {
   type TabDraft,
   type TabMeta,
 } from './useRequestStore'
-import { useCollectionRunStore } from './useCollectionRunStore'
 import type { BodyType } from '../lib/body'
+
+type TabCloseListener = (tab: RequestTab) => void
+const tabCloseListeners: TabCloseListener[] = []
+export const registerTabCloseListener = (fn: TabCloseListener): (() => void) => {
+  tabCloseListeners.push(fn)
+  return () => {
+    const idx = tabCloseListeners.indexOf(fn)
+    if (idx !== -1) tabCloseListeners.splice(idx, 1)
+  }
+}
 
 export interface Workspace {
   id: string
@@ -293,8 +302,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     if (restoringScratchpad) {
       useRequestStore.getState().ensureDraft(NEW_REQUEST_TAB_ID)
     }
-    if (closing?.kind === 'run') {
-      useCollectionRunStore.getState().reset()
+    if (closing) {
+      for (const listener of tabCloseListeners) {
+        listener(closing)
+      }
     }
   },
 

@@ -94,15 +94,6 @@ components:
       scheme: bearer
 `
 
-func findGenerated(files []GeneratedFile, name string) *GeneratedFile {
-	for i := range files {
-		if files[i].Filename == name {
-			return &files[i]
-		}
-	}
-	return nil
-}
-
 func TestGenerateByOperation(t *testing.T) {
 	doc := mustDoc(t, generateSpec)
 	files, warnings, err := Generate(doc, GenerateOptions{Operations: []string{"getUser"}})

@@ -11,5 +11,11 @@
     "unused-files": "warn",
     "unused-exports": "warn",
     "unused-types": "off"
+  },
+  "health": {
+    "maxCyclomatic": 100,
+    "maxCognitive": 300,
+    "maxCrap": 10000,
+    "maxUnitSize": 1000
   }
 }

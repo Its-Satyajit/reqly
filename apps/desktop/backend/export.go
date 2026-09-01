@@ -120,7 +120,6 @@ func (s *AppService) Export(req ExportRequest) (*ExportResult, error) {
 			return nil, fmt.Errorf("export openapi: %w", err)
 		}
 		path := filepath.Join(outDir, req.outName(defaultExportName(name), ".yaml"))
-		path = filepath.Join(outDir, req.outName(defaultExportName(name), ".yaml"))
 		if err := os.WriteFile(path, append(data, '\n'), 0o600); err != nil {
 			return nil, err
 		}
