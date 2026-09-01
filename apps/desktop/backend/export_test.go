@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yaml.in/yaml/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // seedExportWorkspace writes a collection with one request into the temp

@@ -24,7 +24,7 @@ import (
 
 	"github.com/Its-Satyajit/reqly/internal/diffing"
 	"github.com/Its-Satyajit/reqly/internal/history"
-	"go.yaml.in/yaml/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // SpecDiffResult is the payload for the Specs tab of the diff view.

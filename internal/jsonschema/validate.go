@@ -26,9 +26,9 @@ import (
 	"fmt"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+	"gopkg.in/yaml.v3"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )

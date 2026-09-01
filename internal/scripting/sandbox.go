@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/dop251/goja"
-	"go.yaml.in/yaml/v3"
+	"gopkg.in/yaml.v3"
 
 	"github.com/Its-Satyajit/reqly/internal/ai"
 	"github.com/Its-Satyajit/reqly/internal/diffing"

@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // Theme defines a shareable UI theme. Tokens are CSS variable values
