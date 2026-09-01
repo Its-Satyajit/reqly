@@ -203,4 +203,56 @@ nub run lint                          → oxlint 0
 
 ---
 
-*Generated via `grill → spec → tickets → implement → review` pipeline (`.scratch/stress-test-report-fix/`). Rerun: `reqly --help` + `reqly export --help` + `go test` + `STRESS_TEST_REPORT.md:310` §9. Next: `but commit` on `fix/readme-local-install` (PR #408).*
+## 9. Local Stress Test (reqly-test-api @ localhost:3123) — Updated Result & Post-Fix Verification
+
+**Updated result you posted (2026-09-01 12:47 binary `/usr/local/bin/reqly` 45 MB, 29 history entries, `nub src/index.ts` 3123 + `bun ws-echo.ts` 3124):** 12 sections, 40 `reqly --help` commands hammered against **localhost** (no external httpbin). Sections 1-7,10,12 **PASS** (env, core, bodies, auth/cookies, GraphQL/OpenAPI, realtime SSE/WS/Socket.IO, pagination 4 strategies, bulk/perf/workflow/collection, import/export/docs/history). Section 8 **PARTIAL**, 9 **MIXED**, 11 **7 remaining** (table below) — all with old binary, not server-dependent.
+
+**Remaining table from your updated result (old binary 12:47):**
+
+| ID | Command | Local repro (old) | Status (old) |
+|---|---|---|---|
+| B1 | `changelog` YAML | `unmarshal first JSON` `EXIT:0` | **BROKEN** |
+| B2 | `diff` generic YAML | `invalid char 'a'` | **BROKEN** |
+| B3 | typed `body: {type: json,…}` | `cannot unmarshal !!map into string` | **BROKEN** |
+| B4 | `export --help` duplicates | `code/har/postman/workspace` ×2 | **BROKEN** |
+| B5 | `export openapi <dir>` positional | `collection not found` | **BROKEN** |
+| B6 | `test` fail exit | `404 vs 200` → `EXIT:0` | **BROKEN** (was 1 in 12:47 rebuild) |
+| A1 | `export code` secret leak | `Bearer supersecret123` not `[SECRET]` | **BROKEN** |
+
+**Post-fix verification (current `~/.local/bin/reqly` `f03ad9eb` after `nub run cli:install:local` + `sudo install` / `install.sh:96` cleanup):**
+
+```bash
+$ reqly version --verbose  # now f03ad9eb, was 12:47 old
+version: 1.2.0 / commit: f03ad9eb
+
+$ reqly export --help | grep -E "^  [a-z]"  # was ×2 each
+  code / har / openapi / postman / workspace  → 1 each
+
+$ reqly changelog /tmp/old.yaml /tmp/new.yaml  # was unmarshal error
+# API Changelog minor → EXIT:0
+
+$ reqly diff /tmp/a.yaml /tmp/b.yaml  # a:1 vs a:2
+Found 1 change(s): [update] a: 1 -> 2 → EXIT:0
+
+$ reqly export code /tmp/json-body.yaml --lang curl  # B3 typed bodies
+curl … --data-raw '{"hello":"world"}' → EXIT:0  (graphql → {"query":…, "variables":…} / binary → /tmp/file.bin)
+
+$ reqly export openapi /tmp/ws-local --out /tmp/out.yaml  # B5 positional
+wrote … (1 requests) → EXIT:0
+
+$ reqly test /tmp/assert-fail.json  # B6: 404 vs 200 via localhost:3123/api/status/404
+✗ status 404 == 200 / 0/1 tests passed / test suite "" failed → EXIT:1  (was 0)
+
+$ reqly export code /tmp/secret-req.yaml --lang curl  # A1
+curl … --header 'Authorization: [SECRET]' → not supersecret123
+```
+
+All 7 in §11 now **FIXED** with `f03ad9eb` (same commit as `STRESS_TEST_REPORT_RERUN.md:3`). Your `nub run install:all` log showed `cli:install` → `version: 1.2.0 / commit: d4f1edf5` (old) because `which reqly` was `~/.local/bin/reqly` shadowing `/usr/local/bin/reqly` — fixed by `package.json:28` cleanup both paths (`rm ~/.local/bin` + `sudo rm /usr/local/bin` + `hash -r`) and verifying via `/tmp/reqly` not bare `reqly`. Now `nub run cli:install:local` installs `f03ad9eb` to `~/.local/bin` and `hash -r` clears shadowing.
+
+**Local-only passes (new in your updated result, already green in rerun §1-7):** Pagination (page/offset/cursor/link-header), bulk, retry, SSE (`/api/events?count=3` EOF), WS (`ws://localhost:3124/ws/echo` Bun), Socket.IO emit, GraphQL introspect, XML/CSV/Table/Binary, workflow extract — all deterministic via `nub` 3123 + `bun` 3124, no httpbin flakiness.
+
+**Still correct by design (not bugs):** `*EXIT:0` for `grpc services` unavailable etc. should be 1 is deferred (gRPC stub per `features.md:6` Planned), `scim` in-memory is per-invocation `M73` (not persisted) — as you noted `BY DESIGN`.
+
+---
+
+*Generated via `grill → spec → tickets → implement → review` pipeline (`.scratch/stress-test-report-fix/`). Rerun: `reqly --help` 44 cmds + `reqly export --help` 5 unique + `go test` + `STRESS_TEST_REPORT.md:310` §9 + **local stress test 3123 post-fix verification**. PR #408 `fix/readme-local-install` `c3a3f692` → `bc1d235e` → `zxo` → `54dd7fa3`.*
