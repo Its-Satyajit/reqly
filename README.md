@@ -186,19 +186,21 @@ sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly
 # or user-local (no sudo, ensure ~/.local/bin is in PATH)
 install -Dm755 /tmp/reqly "$HOME/.local/bin/reqly"
 
-reqly version --verbose
+/tmp/reqly version --verbose  # verify build (avoids PATH shadowing)
 # version: 1.2.0 / commit: <sha>
 
 # via package.json scripts
-nub run cli:install        # system /usr/local/bin/reqly
+nub run cli:install        # system /usr/local/bin/reqly (verifies via /tmp/reqly)
 nub run cli:install:local  # user ~/.local/bin/reqly
 ```
 
 One-liner:
 
 ```bash
-go build -ldflags "-X github.com/Its-Satyajit/reqly/internal/version.Commit=$(git rev-parse --short HEAD)" -o /tmp/reqly ./apps/cli && sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly && reqly version --verbose
+go build -ldflags "-X github.com/Its-Satyajit/reqly/internal/version.Commit=$(git rev-parse --short HEAD)" -o /tmp/reqly ./apps/cli && sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly && /tmp/reqly version --verbose
 ```
+
+> If `reqly version --verbose` says `unknown flag`, your shell is hitting an old binary shadowing `/usr/local/bin/reqly` — check `which -a reqly` and `hash -r`, and remove `~/.local/bin/reqly` if it is older than `/usr/local/bin/reqly` (see `STRESS_TEST_REPORT.md:135` A5).
 
 #### Desktop GUI (local, requires Wails v3 + WebKit)
 
