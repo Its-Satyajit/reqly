@@ -11,6 +11,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/r3labs/diff/v3"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/Its-Satyajit/reqly/internal/openapi"
 )
@@ -33,14 +34,19 @@ type Change struct {
 }
 
 // JSON computes structural diffs between two JSON/YAML byte slices.
+// It first tries JSON, then falls back to YAML for generic YAML support.
 func JSON(a, b []byte) (*DiffResult, error) {
 	var objA, objB interface{}
 
 	if err := json.Unmarshal(a, &objA); err != nil {
-		return nil, fmt.Errorf("unmarshal first JSON: %w", err)
+		if yErr := yaml.Unmarshal(a, &objA); yErr != nil {
+			return nil, fmt.Errorf("unmarshal first JSON: %w", err)
+		}
 	}
 	if err := json.Unmarshal(b, &objB); err != nil {
-		return nil, fmt.Errorf("unmarshal second JSON: %w", err)
+		if yErr := yaml.Unmarshal(b, &objB); yErr != nil {
+			return nil, fmt.Errorf("unmarshal second JSON: %w", err)
+		}
 	}
 
 	changelog, err := diff.Diff(objA, objB)
