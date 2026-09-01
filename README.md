@@ -219,6 +219,13 @@ nub run desktop:install:local  # user
 nub run gui:install            # alias for desktop:install
 ```
 
+#### All (CLI + GUI) — one command
+
+```bash
+nub run install:all        # system: CLI → /usr/local/bin/reqly + GUI → /usr/local/bin/reqly-desktop
+nub run install:all:local  # user:  CLI → ~/.local/bin/reqly + GUI → ~/.local/bin/reqly-desktop
+```
+
 The `Makefile` also provides `make frontend`, `make go-test`, `make desktop` and `make install-desktop`. `wails3 dev` builds the frontend and runs the app with hot reload.
 
 ## Docs
