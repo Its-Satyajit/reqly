@@ -73,11 +73,11 @@ export function SettingsView() {
         <div className="mx-auto max-w-4xl w-full">
           {activeTab === "appearance" && (
             <div className="space-y-4">
-              <section className="rounded-lg border border-border/80 bg-card/40 p-5 space-y-4">
+              <section className="card rounded-[var(--radius)] border border-border bg-card p-5 space-y-4">
                 <div>
                   <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">Themes & Colors</h2>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Atlas themes are pure CSS-variable sets. Switching themes updates all application tokens instantly.
+                    Reqly ships built-in OS design systems. Select an OS theme to adapt the full application canvas, layout, and visual DNA.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 pt-2">
@@ -85,7 +85,7 @@ export function SettingsView() {
                     <button
                       key={t.id}
                       onClick={() => setTheme(t.id)}
-                      className={`flex flex-col items-start rounded-md border p-3 font-mono text-xs text-left transition-all ${
+                      className={`flex flex-col items-start rounded-[var(--radius)] border p-3 text-xs text-left transition-all ${
                         theme === t.id
                           ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary"
                           : "border-border hover:bg-muted/60 text-muted-foreground hover:text-foreground"
@@ -97,7 +97,7 @@ export function SettingsView() {
                   ))}
                   <button
                     onClick={() => setTheme("system")}
-                    className={`flex flex-col items-start rounded-md border p-3 font-mono text-xs text-left transition-all ${
+                    className={`flex flex-col items-start rounded-[var(--radius)] border p-3 text-xs text-left transition-all ${
                       theme === "system"
                         ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary"
                         : "border-border hover:bg-muted/60 text-muted-foreground hover:text-foreground"

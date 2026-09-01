@@ -50,14 +50,39 @@
   --color-status-error: var(--status-error);
 
   /* success/warning aliases for non-HTTP semantics (run pass/fail, dirty dots) */
-  --color-success: var(--status-ok);
-  --color-warning: var(--status-warn);
+  --color-success: var(--success, var(--status-ok));
+  --color-warning: var(--warning, var(--status-warn));
 
   /* method tints (GitHub REST-doc convention) */
   --color-method-get: var(--status-ok);
   --color-method-post: var(--status-redirect);
   --color-method-put: var(--status-warn);
   --color-method-delete: var(--status-error);
+
+  /* Extended Fluent / Windows 11 semantic tokens — fall back gracefully on
+   * non-Windows themes so these color utilities work everywhere. */
+  --color-surface-elevated: var(--surface-elevated, var(--card));
+  --color-surface-muted: var(--surface-muted, var(--muted));
+  --color-foreground-muted: var(--foreground-muted, var(--muted-foreground));
+  --color-foreground-subtle: var(--foreground-subtle, var(--muted-foreground));
+  --color-border-strong: var(--border-strong, var(--border));
+  --color-primary-hover: var(--primary-hover, var(--primary));
+  --color-primary-active: var(--primary-active, var(--primary));
+  --color-error: var(--error, var(--destructive));
+  --color-info: var(--info, var(--status-info));
+  --color-focus-ring: var(--focus-ring, var(--ring));
+  --color-selection: var(--selection);
+  --color-disabled-background: var(--disabled-background, var(--muted));
+  --color-disabled-foreground: var(--disabled-foreground, var(--muted-foreground));
+
+  /* Windows 11 Fluent elevation ladder — generates shadow-w11-* utilities.
+   * Tokens resolve to transparent on non-Windows themes (var is unset → empty). */
+  --shadow-w11-xs: var(--shadow-w11-xs);
+  --shadow-w11-sm: var(--shadow-w11-sm);
+  --shadow-w11-md: var(--shadow-w11-md);
+  --shadow-w11-lg: var(--shadow-w11-lg);
+  --shadow-w11-xl: var(--shadow-w11-xl);
+  --shadow-w11-2xl: var(--shadow-w11-2xl);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
