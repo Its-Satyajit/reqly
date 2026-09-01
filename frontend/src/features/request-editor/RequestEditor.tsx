@@ -479,7 +479,7 @@ export function RequestEditor() {
                 <div className="overflow-hidden rounded-md border border-border">
                   {meta!.inheritedHeaders.map((h, i) => (
                     <div
-                      key={`${h.key}:${h.value}:${i}`}
+                      key={`${h.key}:${h.value}`}
                       className={`flex items-center gap-2 px-2 py-1 text-xs ${
                         i % 2 === 0 ? 'bg-muted/30' : ''
                       }`}

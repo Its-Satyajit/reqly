@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { getGitBridge } from "#lib/git";
@@ -10,19 +10,23 @@ export function GitView() {
   const [diff, setDiff] = useState("");
   const [log, setLog] = useState<string[]>([]);
   const [tab, setTab] = useState<"status" | "diff" | "log">("status");
-
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const adapter = getGitBridge();
-      const s = await adapter.status();
+      const [s, d, l] = await Promise.all([
+        adapter.status(),
+        adapter.diff(false),
+        adapter.log(50, 0),
+      ]);
       if (s) setStatus(s);
-      const d = await adapter.diff(false);
       if (d) setDiff(d);
-      const l = await adapter.log(50, 0);
       if (l) setLog(l);
     } catch {}
-  };
-  useEffect(() => { void load(); }, []);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const toggle = (line: string) => {
     const next = new Set(selected);

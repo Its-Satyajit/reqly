@@ -25,6 +25,7 @@ export function CommandPalette() {
         <div className="flex items-center border-b border-border/70 px-2.5 pb-1.5 pt-1">
           <input
             ref={inputRef}
+            aria-label="Type a command or search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Type a command or search… (e.g. 'Theme', 'Env', 'Go to')"

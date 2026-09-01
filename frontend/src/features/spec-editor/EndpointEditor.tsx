@@ -110,8 +110,8 @@ export function EndpointEditor({ initial, onSave, onCancel }: EndpointEditorProp
             Validation
           </p>
           <ul className="mt-1 list-disc pl-4 text-xs text-destructive">
-            {errors.map((e, i) => (
-              <li key={i}>{e}</li>
+            {errors.map((e) => (
+              <li key={e}>{e}</li>
             ))}
           </ul>
         </div>

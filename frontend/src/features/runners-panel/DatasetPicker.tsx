@@ -100,8 +100,8 @@ export function DatasetPicker() {
             Validation
           </p>
           <ul className="mt-1 list-disc pl-4 text-xs text-destructive">
-            {errors.map((err, i) => (
-              <li key={i}>{err}</li>
+            {errors.map((err) => (
+              <li key={err}>{err}</li>
             ))}
           </ul>
         </div>

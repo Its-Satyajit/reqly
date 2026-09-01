@@ -183,12 +183,12 @@ export function SpecEditorView() {
             <p className="px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Problems</p>
             <ul className="px-3 pb-2">
               {diagnostics.map((d, i) => (
-                <li key={i} className={cn("font-mono text-xs", d.severity === "error" ? "text-destructive" : "text-warning")}>
+                <li key={`${d.severity}-${d.message}-${i}`} className={cn("font-mono text-xs", d.severity === "error" ? "text-destructive" : "text-warning")}>
                   {d.severity}: {d.message}
                 </li>
               ))}
               {generateWarnings.map((w, i) => (
-                <li key={`gw-${i}`} className="font-mono text-xs text-muted-foreground">
+                <li key={`gw-${w}-${i}`} className="font-mono text-xs text-muted-foreground">
                   generate: {w}
                 </li>
               ))}

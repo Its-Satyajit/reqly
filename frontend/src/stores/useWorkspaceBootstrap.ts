@@ -39,11 +39,11 @@ interface WorkspaceBootstrapState {
   clearRecentWorkspaces(): void;
 }
 
-const RECENT_WORKSPACES_KEY = "reqly:recentWorkspaces";
+const RECENT_WORKSPACES_KEY = "reqly:recentWorkspaces:v1";
 
 function getStoredRecentWorkspaces(): RecentWorkspace[] {
   try {
-    const raw = localStorage.getItem(RECENT_WORKSPACES_KEY);
+    const raw = localStorage.getItem(RECENT_WORKSPACES_KEY) ?? localStorage.getItem("reqly:recentWorkspaces");
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed;

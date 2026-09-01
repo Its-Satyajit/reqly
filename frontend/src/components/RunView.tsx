@@ -276,7 +276,7 @@ export function RunView() {
 					<div>
 						{steps.map((step, i) => (
 							<StepRow
-								key={`${step.requestPath}-${i}`}
+								key={`${step.requestPath}-${step.name}-${i}`}
 								step={step}
 								onOpenRequest={(p) => void openRequest(p)}
 							/>

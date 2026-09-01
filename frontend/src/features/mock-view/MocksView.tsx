@@ -442,6 +442,7 @@ export function MocksView() {
                 max={1}
                 step={0.05}
                 value={faultInjection.probability}
+                aria-label="Fault probability"
                 onChange={(e) =>
                   setFaultInjection({ probability: Number(e.target.value) })
                 }
@@ -453,11 +454,14 @@ export function MocksView() {
                 <span className="text-[11px] text-muted-foreground">Delay (ms)</span>
                 <Input
                   type="number"
-                  value={faultInjection.delayMs ?? 1000}
+                  min={0}
+                  step={50}
+                  value={faultInjection.delayMs}
+                  aria-label="Fault delay milliseconds"
                   onChange={(e) =>
-                    setFaultInjection({ delayMs: Number(e.target.value) || 0 })
+                    setFaultInjection({ delayMs: Number(e.target.value) })
                   }
-                  className="h-8 font-mono text-xs"
+                  className="font-mono text-xs"
                 />
               </div>
             )}
@@ -509,7 +513,7 @@ export function MocksView() {
                 </thead>
                 <tbody>
                   {logs.map((l, i) => (
-                    <tr key={i} className="border-b border-border/50 last:border-0">
+                    <tr key={`${l.timestamp}-${l.method}-${l.path}-${i}`} className="border-b border-border/50 last:border-0">
                       <td className="px-2.5 py-1 text-muted-foreground">
                         {new Date(l.timestamp).toLocaleTimeString()}
                       </td>

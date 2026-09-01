@@ -158,7 +158,7 @@ function PanelContent({ active }: { active: BottomPanelId }) {
               <table className="w-full text-xs">
                 <tbody>
                   {resolvedVars.map((r: ResolvedVariable, i: number) => (
-                    <tr key={i} className="border-b border-border/50 last:border-b-0">
+                    <tr key={`${r.name}-${r.scope}-${i}`} className="border-b border-border/50 last:border-b-0">
                       <td className="px-2.5 py-1 text-primary w-1/3 truncate">{r.name}</td>
                       <td className="px-2.5 py-1 text-muted-foreground truncate">{r.value}</td>
                       <td className="px-2.5 py-1 text-[10px] text-muted-foreground/60 w-20 text-right">{r.scope}</td>
@@ -187,7 +187,7 @@ function PanelContent({ active }: { active: BottomPanelId }) {
         )}
         <ul className="space-y-1 font-mono text-xs">
           {runSteps.map((st, i) => (
-            <li key={i} className="flex items-center gap-2 border-b border-border/40 py-1 last:border-0">
+            <li key={`${st.name}-${i}`} className="flex items-center gap-2 border-b border-border/40 py-1 last:border-0">
               <span className={st.passed ? "text-status-ok" : "text-destructive font-semibold"}>
                 {st.passed ? "✓ PASS" : "✕ FAIL"}
               </span>
@@ -215,7 +215,7 @@ function PanelContent({ active }: { active: BottomPanelId }) {
           </thead>
           <tbody className="font-mono">
             {cookies.map((c: ResponseCookie, idx: number) => (
-              <tr key={idx} className="border-t border-border/50">
+              <tr key={`${c.name}-${c.domain ?? ''}-${idx}`} className="border-t border-border/50">
                 <td className="px-2 py-1 text-primary">{c.name}</td>
                 <td className="px-2 py-1 truncate max-w-[200px]">{c.value}</td>
                 <td className="px-2 py-1 text-muted-foreground">{c.domain ?? "—"}</td>

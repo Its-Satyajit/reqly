@@ -79,9 +79,9 @@ export function AuthPanel() {
 				</p>
 			) : (
 				<ul className="flex flex-col gap-2">
-					{tokens.map((tok, i) => (
+					{tokens.map((tok) => (
 						<li
-							key={`${tok.endpoint}-${i}`}
+							key={`${tok.endpoint}-${tok.grantType}-${tok.accessToken}`}
 							className="rounded-md border border-border p-2 text-xs"
 						>
 							<p className="truncate text-foreground" title={tok.endpoint}>
