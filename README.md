@@ -172,6 +172,62 @@ wails3 generate bindings -d frontend/bindings -i -ts
 wails3 dev
 ```
 
+### Install current checkout locally (no GitHub Release)
+
+Builds the CLI at `internal/version/version.go:12` with the current commit and installs it without hitting GitHub Releases:
+
+```bash
+COMMIT=$(git rev-parse --short HEAD)
+go build -ldflags "-X github.com/Its-Satyajit/reqly/internal/version.Commit=$COMMIT" -o /tmp/reqly ./apps/cli
+
+# system (needs sudo)
+sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly
+
+# or user-local (no sudo, ensure ~/.local/bin is in PATH)
+install -Dm755 /tmp/reqly "$HOME/.local/bin/reqly"
+
+/tmp/reqly version --verbose  # verify build (avoids PATH shadowing)
+# version: 1.2.0 / commit: <sha>
+
+# via package.json scripts
+nub run cli:install        # system /usr/local/bin/reqly (verifies via /tmp/reqly)
+nub run cli:install:local  # user ~/.local/bin/reqly
+```
+
+One-liner:
+
+```bash
+go build -ldflags "-X github.com/Its-Satyajit/reqly/internal/version.Commit=$(git rev-parse --short HEAD)" -o /tmp/reqly ./apps/cli && sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly && /tmp/reqly version --verbose
+```
+
+> If `reqly version --verbose` says `unknown flag`, your shell is hitting an old binary shadowing `/usr/local/bin/reqly` — check `which -a reqly` and `hash -r`, and remove `~/.local/bin/reqly` if it is older than `/usr/local/bin/reqly` (see `STRESS_TEST_REPORT.md:135` A5).
+
+#### Desktop GUI (local, requires Wails v3 + WebKit)
+
+```bash
+# needs Go 1.27, Node 24, Wails v3, and on Linux: libgtk-4-1 + libwebkitgtk-6.0-4 (Ubuntu/Debian) or gtk4 + webkitgtk6.0 (Fedora/Arch)
+cd apps/desktop/backend
+wails3 build                          # → bin/reqly (linux) / build/bin/Reqly.app (macOS)
+
+# system
+sudo install -Dm755 bin/reqly /usr/local/bin/reqly-desktop
+
+# or user-local
+install -Dm755 bin/reqly "$HOME/.local/bin/reqly-desktop"
+
+# via package.json scripts
+nub run desktop:install        # system
+nub run desktop:install:local  # user
+nub run gui:install            # alias for desktop:install
+```
+
+#### All (CLI + GUI) — one command
+
+```bash
+nub run install:all        # system: CLI → /usr/local/bin/reqly + GUI → /usr/local/bin/reqly-desktop
+nub run install:all:local  # user:  CLI → ~/.local/bin/reqly + GUI → ~/.local/bin/reqly-desktop
+```
+
 The `Makefile` also provides `make frontend`, `make go-test`, `make desktop` and `make install-desktop`. `wails3 dev` builds the frontend and runs the app with hot reload.
 
 ## Docs
