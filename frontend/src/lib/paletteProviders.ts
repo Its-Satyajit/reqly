@@ -24,6 +24,20 @@ export function registerDefaultPaletteProviders() {
     "grpc",
     "websocket",
     "sse",
+    "mqtt",
+    "socketio",
+    "policy",
+    "audit",
+    "sso",
+    "collab",
+    "automation",
+    "workflow",
+    "monitor",
+    "changelog",
+    "ai",
+    "schema",
+    "plugin",
+    "git",
     "settings",
     "spec-editor",
   ];
@@ -42,8 +56,20 @@ export function registerDefaultPaletteProviders() {
   store.registerCommand({ id: "import", title: "Import collection", hint: "Import", keywords: "import openapi postman curl har", run: () => useImportStore.getState().setOpen(true) });
   store.registerCommand({ id: "export", title: "Export collection", hint: "Export", keywords: "export openapi postman curl har", run: () => useExportStore.getState().setOpen(true) });
   // Direct theme picks (story 18) — one palette hit per theme
-  store.registerCommand({ id: "theme-light", title: "Theme: Light", hint: "Appearance", keywords: "theme light atlas-light", run: () => useThemeStore.getState().setTheme("atlas-light") });
-  store.registerCommand({ id: "theme-dark", title: "Theme: Dark", hint: "Appearance", keywords: "theme dark atlas-dark", run: () => useThemeStore.getState().setTheme("atlas-dark") });
+  store.registerCommand({ id: "theme-light", title: "Theme: Atlas Light", hint: "Appearance", keywords: "theme light atlas-light", run: () => useThemeStore.getState().setTheme("atlas-light") });
+  store.registerCommand({ id: "theme-dark", title: "Theme: Atlas Dark", hint: "Appearance", keywords: "theme dark atlas-dark", run: () => useThemeStore.getState().setTheme("atlas-dark") });
+  store.registerCommand({ id: "theme-windows-11-light", title: "Theme: Windows 11 Light", hint: "Appearance", keywords: "theme windows 11 fluent light", run: () => useThemeStore.getState().setTheme("windows-11-light") });
+  store.registerCommand({ id: "theme-windows-11-dark", title: "Theme: Windows 11 Dark", hint: "Appearance", keywords: "theme windows 11 fluent dark", run: () => useThemeStore.getState().setTheme("windows-11-dark") });
+  store.registerCommand({ id: "theme-windows-11", title: "Theme: Windows 11", hint: "Appearance", keywords: "theme windows 11 fluent", run: () => useThemeStore.getState().setTheme("windows-11-dark") });
+  store.registerCommand({ id: "theme-macos-tahoe-light", title: "Theme: macOS Tahoe Light", hint: "Appearance", keywords: "theme macos tahoe apple light", run: () => useThemeStore.getState().setTheme("macos-tahoe-light") });
+  store.registerCommand({ id: "theme-macos-tahoe-dark", title: "Theme: macOS Tahoe Dark", hint: "Appearance", keywords: "theme macos tahoe apple dark", run: () => useThemeStore.getState().setTheme("macos-tahoe-dark") });
+  store.registerCommand({ id: "theme-macos-tahoe", title: "Theme: macOS Tahoe", hint: "Appearance", keywords: "theme macos tahoe apple", run: () => useThemeStore.getState().setTheme("macos-tahoe-dark") });
+  store.registerCommand({ id: "theme-linux-kde-light", title: "Theme: Linux KDE Light", hint: "Appearance", keywords: "theme linux kde plasma breeze light", run: () => useThemeStore.getState().setTheme("linux-kde-light") });
+  store.registerCommand({ id: "theme-linux-kde-dark", title: "Theme: Linux KDE Dark", hint: "Appearance", keywords: "theme linux kde plasma breeze dark", run: () => useThemeStore.getState().setTheme("linux-kde-dark") });
+  store.registerCommand({ id: "theme-linux-kde", title: "Theme: Linux KDE", hint: "Appearance", keywords: "theme linux kde plasma breeze", run: () => useThemeStore.getState().setTheme("linux-kde-dark") });
+  store.registerCommand({ id: "theme-linux-gnome-light", title: "Theme: Linux GNOME Light", hint: "Appearance", keywords: "theme linux gnome adwaita light", run: () => useThemeStore.getState().setTheme("linux-gnome-light") });
+  store.registerCommand({ id: "theme-linux-gnome-dark", title: "Theme: Linux GNOME Dark", hint: "Appearance", keywords: "theme linux gnome adwaita dark", run: () => useThemeStore.getState().setTheme("linux-gnome-dark") });
+  store.registerCommand({ id: "theme-linux-gnome", title: "Theme: Linux GNOME", hint: "Appearance", keywords: "theme linux gnome adwaita", run: () => useThemeStore.getState().setTheme("linux-gnome-dark") });
   store.registerCommand({ id: "theme-system", title: "Theme: System", hint: "Appearance", keywords: "theme system auto", run: () => useThemeStore.getState().setTheme("system") });
 
   // Data providers - capped at 50, graceful degrade
