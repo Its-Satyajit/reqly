@@ -34,10 +34,6 @@ export function registerDefaultPaletteProviders() {
     "workflow",
     "monitor",
     "changelog",
-    "ai",
-    "schema",
-    "plugin",
-    "git",
     "settings",
     "spec-editor",
   ];

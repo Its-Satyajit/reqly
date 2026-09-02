@@ -23,7 +23,6 @@ import type {
 	MockStatus,
 	DocsAdapter,
 	DocsResultView,
-	GitAdapter,
 	GrpcAdapter,
 	GrpcService,
 	RealtimeAdapter,
@@ -53,7 +52,6 @@ import {
 	setEnvToolsBridge,
 	setGqlBridge,
 	setOpenapiBridge,
-	setGitBridge,
 	setRunnerBridge,
 	setJwtBridge,
 	setMqttBridge,
@@ -68,9 +66,6 @@ import {
 	setWorkflowBridge,
 	setChangelogBridge,
 	setMonitorBridge,
-	setAIBridge,
-	setSchemaBridge,
-	setPluginBridge,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
@@ -673,10 +668,6 @@ export const wailsGqlAdapter: GqlAdapter = {
 			),
 		};
 	},
-	parse: async ({ schemaPath, typeFilter }) => {
-		const out = await AppService.GraphqlParse(schemaPath, typeFilter ?? "");
-		return out ?? "";
-	},
 };
 
 // RunnerStepPayload mirrors backend runnerStep JSON.
@@ -772,14 +763,6 @@ export const wailsOpenapiAdapter: OpenapiAdapter = {
 		if (res.warnings) out.warnings = [...res.warnings];
 		return out;
 	},
-	validate: async (specPath) => {
-		const res = await AppService.OpenapiValidate(specPath);
-		return res ?? "Validation passed cleanly.";
-	},
-	convertV2: async (swaggerPath) => {
-		const res = await AppService.OpenapiConvertV2(swaggerPath);
-		return res ?? "";
-	},
 };
 
 export const wailsEnvToolsAdapter: EnvToolsAdapter = {
@@ -824,14 +807,6 @@ export const wailsJwtAdapter: JwtAdapter = {
 				iat: e?.iat ?? undefined,
 			},
 		};
-	},
-	verify: async (token, secret) => {
-		const ok = await AppService.JwtVerify(token, secret);
-		return !!ok;
-	},
-	sign: async (payloadJson, secret, alg) => {
-		const tok = await AppService.JwtSign(payloadJson, secret, alg);
-		return tok ?? "";
 	},
 };
 
@@ -1166,75 +1141,6 @@ export const wailsMonitorAdapter = {
 	},
 };
 
-export const wailsGitAdapter: GitAdapter = {
-	status: async () => {
-		const res = await AppService.GitStatus();
-		return res ?? [];
-	},
-	diff: async (staged?: boolean) => {
-		const res = await AppService.GitDiff(!!staged);
-		return res ?? "";
-	},
-	log: async (limit?: number, offset?: number) => {
-		const res = await AppService.GitLog(limit ?? 50, offset ?? 0);
-		return res ?? [];
-	},
-	commit: async (message: string, files: string[]) => {
-		await AppService.GitCommit(message, files);
-	},
-};
-
-export const wailsAIAdapter = {
-	explain: async (responseJson: string) => {
-		const out = await AppService.AiExplain(responseJson);
-		return out ?? "";
-	},
-	generateTests: async (responseJson: string) => {
-		const out = await AppService.AiGenerateTests(responseJson);
-		return out ?? "";
-	},
-	generateDocs: async (requestJson: string, responseJson: string) => {
-		const out = await AppService.AiGenerateDocs(requestJson, responseJson);
-		return out ?? "";
-	},
-	diagnose: async (responseJson: string, errMsg: string) => {
-		const out = await AppService.AiDiagnose(responseJson, errMsg);
-		return out ?? "";
-	},
-	explainSchema: async (schemaJson: string) => {
-		const out = await AppService.AiExplainSchema(schemaJson);
-		return out ?? "";
-	},
-};
-
-export const wailsSchemaAdapter = {
-	validate: async (schemaJson: string, instanceJson: string, draft: string) => {
-		const res = await AppService.SchemaValidate(schemaJson, instanceJson, draft);
-		if (!res) throw new Error("schema validate returned empty");
-		return { valid: !!res.valid, violations: (res.violations ?? []).map((v) => ({ path: v.path ?? "", message: v.message ?? "" })) };
-	},
-	inspect: async (schemaJson: string) => {
-		const out = await AppService.SchemaInspect(schemaJson);
-		return out ?? "";
-	},
-	generate: async (schemaJson: string, seed: number) => {
-		const out = await AppService.SchemaGenerate(schemaJson, seed);
-		return out ?? "";
-	},
-};
-
-export const wailsPluginAdapter = {
-	list: async () => {
-		const list = await AppService.PluginList();
-		return (list ?? []).map((p) => ({ name: p.name, version: p.version ?? "", capabilities: p.capabilities ?? [], valid: !!p.valid, error: p.error ?? undefined, dir: p.dir }));
-	},
-	validate: async (name: string) => {
-		const p = await AppService.PluginValidate(name);
-		if (!p) throw new Error("plugin validate returned empty");
-		return { name: p.name, version: p.version ?? "", capabilities: p.capabilities ?? [], valid: !!p.valid, error: p.error ?? undefined, dir: p.dir };
-	},
-};
-
 export const wailsDocsAdapter: DocsAdapter = {
 	generate: async (input: { collections?: string[]; outName?: string }) => {
 		const res = await AppService.DocsGenerate({
@@ -1353,10 +1259,6 @@ export function initRequestBridge(): void {
 	setWorkflowBridge(wailsWorkflowAdapter);
 	setChangelogBridge(wailsChangelogAdapter);
 	setMonitorBridge(wailsMonitorAdapter);
-	setAIBridge(wailsAIAdapter);
-	setSchemaBridge(wailsSchemaAdapter);
-	setPluginBridge(wailsPluginAdapter);
-	setGitBridge(wailsGitAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {
