@@ -38,6 +38,7 @@ export * from "./lib/monitor";
 export * from "./lib/ai";
 export * from "./lib/schema";
 export * from "./lib/plugin";
+export * from "./lib/git";
 export * from "./lib/jsonpath";
 export * from "./lib/request";
 export * from "./lib/response";

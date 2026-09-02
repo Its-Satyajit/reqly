@@ -7,6 +7,7 @@ import {
 	Compass,
 	FileCode2,
 	FileDiff,
+	GitBranch,
 	Hexagon,
 	History,
 	House,
@@ -45,6 +46,7 @@ const WORKSPACE_GROUP: RailItem[] = [
 	{ view: "requests", label: "Requests", icon: Zap },
 	{ view: "environments", label: "Environments", icon: Database },
 	{ view: "history", label: "History", icon: History },
+	{ view: "git", label: "Git", icon: GitBranch },
 ];
 
 const API_TOOLS_GROUP: RailItem[] = [

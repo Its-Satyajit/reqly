@@ -47,6 +47,7 @@ import { ChangelogView } from "../features/changelog-view/ChangelogView";
 import { AiView } from "../features/ai-view/AiView";
 import { SchemaView } from "../features/schema-view/SchemaView";
 import { PluginView } from "../features/plugin-view/PluginView";
+import { GitView } from "../features/git-view/GitView";
 import { SpecEditorView } from "../features/spec-editor/SpecEditorView";
 import { CommandPalette } from "../features/command-palette/CommandPalette";
 import { BottomPanel } from "../components/shell/BottomPanel";
@@ -202,6 +203,11 @@ const FULL_VIEW_RENDERERS = {
 	audit: () => (
 		<ErrorBoundary label="Audit">
 			<AuditView />
+		</ErrorBoundary>
+	),
+	git: () => (
+		<ErrorBoundary label="Git">
+			<GitView />
 		</ErrorBoundary>
 	),
 	"spec-editor": () => (
@@ -369,6 +375,7 @@ export function App() {
 		"ai",
 		"schema",
 		"plugin",
+		"git",
 	]);
 	const showSidebar = !isWorkspaceHome && !sidebarHiddenViews.has(activeView);
 

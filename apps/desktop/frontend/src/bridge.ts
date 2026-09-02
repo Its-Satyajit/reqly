@@ -23,6 +23,7 @@ import type {
 	MockStatus,
 	DocsAdapter,
 	DocsResultView,
+	GitAdapter,
 	GrpcAdapter,
 	GrpcService,
 	RealtimeAdapter,
@@ -52,6 +53,7 @@ import {
 	setEnvToolsBridge,
 	setGqlBridge,
 	setOpenapiBridge,
+	setGitBridge,
 	setRunnerBridge,
 	setJwtBridge,
 	setMqttBridge,
@@ -1164,6 +1166,24 @@ export const wailsMonitorAdapter = {
 	},
 };
 
+export const wailsGitAdapter: GitAdapter = {
+	status: async () => {
+		const res = await AppService.GitStatus();
+		return res ?? [];
+	},
+	diff: async (staged?: boolean) => {
+		const res = await AppService.GitDiff(!!staged);
+		return res ?? "";
+	},
+	log: async (limit?: number, offset?: number) => {
+		const res = await AppService.GitLog(limit ?? 50, offset ?? 0);
+		return res ?? [];
+	},
+	commit: async (message: string, files: string[]) => {
+		await AppService.GitCommit(message, files);
+	},
+};
+
 export const wailsAIAdapter = {
 	explain: async (responseJson: string) => {
 		const out = await AppService.AiExplain(responseJson);
@@ -1336,6 +1356,7 @@ export function initRequestBridge(): void {
 	setAIBridge(wailsAIAdapter);
 	setSchemaBridge(wailsSchemaAdapter);
 	setPluginBridge(wailsPluginAdapter);
+	setGitBridge(wailsGitAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {

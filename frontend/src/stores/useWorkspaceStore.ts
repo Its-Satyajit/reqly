@@ -86,6 +86,7 @@ export type WorkspaceView =
 	| 'ai'
 	| 'schema'
 	| 'plugin'
+	| 'git'
 	| 'settings'
 	| 'spec-editor'
 
