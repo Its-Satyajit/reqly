@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs for the same PR/branch so pushes to an open PR don't
+# queue duplicate CI executions back-to-back.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOBIN: /home/runner/go/bin
+  WAILS_VERSION: v3.0.0-beta.16
+
+jobs:
+  frontend:
+    name: Frontend (typecheck + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Make apt archive dir writable for cache restore
+        run: sudo mkdir -p /var/cache/apt/archives && sudo chmod 0777 /var/cache/apt/archives
+      - name: Restore apt package cache
+        id: apt-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: /var/cache/apt/archives
+          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            apt-${{ runner.os }}-
+      - name: Install system dependencies (GTK4 + WebKitGTK 6.0)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgtk-4-dev libwebkitgtk-6.0-dev
+      - name: Save apt package cache
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: /var/cache/apt/archives
+          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
+      - name: Cache wails3 CLI
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ env.GOBIN }}/wails3
+          key: wails3-${{ env.WAILS_VERSION }}-${{ runner.os }}
+          save-always: true
+      - uses: nubjs/setup-nub@47e5e7393d50f4e9544ddaf756aa277972afba2d # v0
+        with:
+          node-version-file: .node-version
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Generate Wails bindings
+        run: |
+          if [ ! -x "$GOBIN/wails3" ]; then
+            go install github.com/wailsapp/wails/v3/cmd/wails3@$WAILS_VERSION
+          fi
+          cd apps/desktop/backend
+          $GOBIN/wails3 generate bindings -d ../frontend/bindings -clean=true -ts -i
+      - run: nub ci
+      - run: nub run -r --if-present typecheck
+      - run: nub run --filter @reqly/desktop build
+
+  go:
+    name: Go core (vet + tests + race)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: go mod tidy
+      - run: gofmt -l internal apps/cli
+      - run: go vet ./internal/... ./apps/cli/...
+      - run: go test -race -cover ./internal/... ./apps/cli/...

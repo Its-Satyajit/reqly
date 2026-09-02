@@ -1,0 +1,378 @@
+# Reqly - A local-first, Git-native API development environment.
+# Copyright (C) 2026 It's Satyajit
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Release
+
+# release-please v4: on every push to main it parses Conventional Commits and
+# maintains a release PR. Merging that release PR creates the semver tag and a
+# GitHub Release with a generated changelog, then this workflow attaches
+# CLI binaries + Desktop app bundles as release assets.
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  WAILS_VERSION: v3.0.0-beta.16
+
+jobs:
+  release-please:
+    name: Release Please (version bump + changelog)
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: go
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+
+  # ---------------------------------------------------------------------------
+  # CLI — cross-compiled static binaries (CGO_ENABLED=0)
+  # ---------------------------------------------------------------------------
+  build-cli:
+    name: Build CLI binaries
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Build CLI binaries
+        run: |
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            os="${target%%/*}"
+            arch="${target##*/}"
+            ext=""
+            [ "$os" = "windows" ] && ext=".exe"
+            echo "Building reqly-${os}-${arch}${ext}..."
+            GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "dist/reqly-${os}-${arch}${ext}" ./apps/cli
+          done
+          cd dist && sha256sum reqly-* > checksums.txt && cat checksums.txt
+
+      - name: Upload CLI assets
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: dist/*
+
+  # ---------------------------------------------------------------------------
+  # Desktop — Linux (AppImage + deb + rpm + binary)
+  # Requires CGO + GTK4 + WebKitGTK 6.0
+  # ---------------------------------------------------------------------------
+  build-desktop-linux:
+    name: Build Desktop (Linux)
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Make apt archive dir writable for cache restore
+        run: sudo mkdir -p /var/cache/apt/archives && sudo chmod 0777 /var/cache/apt/archives
+
+      - name: Restore apt package cache
+        id: apt-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: /var/cache/apt/archives
+          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: |
+            apt-${{ runner.os }}-
+
+      - name: Install system dependencies (GTK4 + WebKitGTK 6.0)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgtk-4-dev libwebkitgtk-6.0-dev
+
+      - name: Save apt package cache
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: /var/cache/apt/archives
+          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/release.yml') }}
+
+      - name: Cache wails3 CLI
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: /home/runner/go/bin/wails3
+          key: wails3-${{ env.WAILS_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+          save-always: true
+
+      - uses: nubjs/setup-nub@47e5e7393d50f4e9544ddaf756aa277972afba2d # v0
+        with:
+          node-version-file: .node-version
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Wails CLI
+        run: |
+          if [ ! -x "$HOME/go/bin/wails3" ]; then
+            go install github.com/wailsapp/wails/v3/cmd/wails3@$WAILS_VERSION
+          fi
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          $HOME/go/bin/wails3 version
+
+      - name: Sync version to Wails config
+        run: |
+          TAG="${{ needs.release-please.outputs.tag_name }}"
+          VERSION="${TAG#v}"
+          echo "Release tag $TAG -> version $VERSION"
+          sed -i "s/^  version: .*/  version: \"$VERSION\"/" apps/desktop/backend/build/config.yml
+          cat apps/desktop/backend/build/config.yml | head -n 20
+          sed -i "s/^version: .*/version: \"$VERSION\"/" apps/desktop/backend/build/linux/nfpm/nfpm.yaml || true
+          # Regenerate platform assets from config.yml (Info.plist, nfpm, etc.)
+          cd apps/desktop/backend
+          $HOME/go/bin/wails3 update build-assets -name "reqly" -binaryname "reqly" -config ./build/config.yml -dir ./build || echo "update build-assets failed (non-fatal)"
+
+      - name: Install frontend deps
+        run: nub ci
+
+      - name: Generate Wails bindings
+        run: |
+          cd apps/desktop/backend
+          $HOME/go/bin/wails3 generate bindings -d ../frontend/bindings -clean=true -ts -i
+
+      - name: Build desktop (Linux)
+        run: |
+          cd apps/desktop/backend
+          # Build + package: produces bin/reqly , bin/*.AppImage , bin/*.deb , bin/*.rpm
+          $HOME/go/bin/wails3 task package
+
+      - name: Prepare dist
+        run: |
+          mkdir -p dist
+          cp -v apps/desktop/backend/bin/* dist/ 2>/dev/null || true
+          # Normalise names for install.sh compatibility:
+          # - Wails/nfpm produces versioned names like reqly_1.2.0_amd64.deb
+          #   install.sh expects reqly-linux-amd64.deb / .rpm / .AppImage
+          # Create arch-specific aliases (amd64 runner) while keeping originals.
+          for f in dist/*.deb; do [ -f "$f" ] && cp -v "$f" dist/reqly-linux-amd64.deb 2>/dev/null || true; break; done
+          for f in dist/*.rpm; do [ -f "$f" ] && cp -v "$f" dist/reqly-linux-amd64.rpm 2>/dev/null || true; break; done
+          for f in dist/*.AppImage; do [ -f "$f" ] && cp -v "$f" dist/reqly-linux-amd64.AppImage 2>/dev/null || true; cp -v "$f" dist/Reqly.AppImage 2>/dev/null || true; break; done
+          # Desktop binary: keep distinct from CLI (cli is reqly-linux-amd64)
+          if [ -f dist/reqly ]; then
+            cp -v dist/reqly dist/reqly-desktop-linux-amd64 2>/dev/null || true
+          fi
+          ls -lh dist/
+          cd dist && sha256sum * > checksums-linux.txt && cat checksums-linux.txt
+
+      - name: Upload Linux Desktop assets
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: dist/*
+
+  # ---------------------------------------------------------------------------
+  # Desktop — macOS (.app + dmg) — needs macos runner for CGO + codesign
+  # Builds universal binary (arm64 + amd64) via lipo
+  # ---------------------------------------------------------------------------
+  build-desktop-macos:
+    name: Build Desktop (macOS)
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - uses: nubjs/setup-nub@47e5e7393d50f4e9544ddaf756aa277972afba2d # v0
+        with:
+          node-version-file: .node-version
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Wails CLI
+        run: |
+          if [ ! -x "$HOME/go/bin/wails3" ]; then
+            go install github.com/wailsapp/wails/v3/cmd/wails3@$WAILS_VERSION
+          fi
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          $HOME/go/bin/wails3 version
+
+      - name: Sync version to Wails config
+        run: |
+          TAG="${{ needs.release-please.outputs.tag_name }}"
+          VERSION="${TAG#v}"
+          echo "Release tag $TAG -> version $VERSION"
+          sed -i '' "s/^  version: .*/  version: \"$VERSION\"/" apps/desktop/backend/build/config.yml
+          cat apps/desktop/backend/build/config.yml | head -n 20
+          cd apps/desktop/backend
+          $HOME/go/bin/wails3 update build-assets -name "reqly" -binaryname "reqly" -config ./build/config.yml -dir ./build || echo "update build-assets failed (non-fatal)"
+
+      - name: Install frontend deps
+        run: nub ci
+
+      - name: Generate Wails bindings
+        run: |
+          cd apps/desktop/backend
+          $HOME/go/bin/wails3 generate bindings -d ../frontend/bindings -clean=true -ts -i
+
+      - name: Build desktop (macOS universal)
+        run: |
+          cd apps/desktop/backend
+          # Universal binary + .app bundle
+          $HOME/go/bin/wails3 task darwin:build:universal
+          $HOME/go/bin/wails3 task darwin:package:universal || $HOME/go/bin/wails3 task darwin:package
+          ls -lh bin/
+
+      - name: Prepare dist (zip .app for upload)
+        run: |
+          mkdir -p dist
+          # Binary + .app bundle -> zip (GitHub Releases cannot store bare directories)
+          if [ -d apps/desktop/backend/bin/Reqly.app ]; then
+            ditto -c -k --sequesterRsrc --keepParent apps/desktop/backend/bin/Reqly.app dist/Reqly-macos-universal.app.zip
+          elif [ -d apps/desktop/backend/bin/reqly.app ]; then
+            ditto -c -k --sequesterRsrc --keepParent apps/desktop/backend/bin/reqly.app dist/reqly-macos-universal.app.zip
+          fi
+          # Also copy raw binary and dmg if present
+          cp -v apps/desktop/backend/bin/reqly dist/reqly-desktop-macos-universal 2>/dev/null || true
+          cp -v apps/desktop/backend/bin/*.dmg dist/ 2>/dev/null || true
+          # Normalise dmg name for install.sh: install.sh can try Reqly.dmg or Reqly-macos-universal.dmg
+          for f in dist/*.dmg; do [ -f "$f" ] && cp -v "$f" dist/Reqly-macos-universal.dmg 2>/dev/null || true; cp -v "$f" dist/Reqly.dmg 2>/dev/null || true; break; done
+          cp -v apps/desktop/backend/bin/*.app.zip dist/ 2>/dev/null || true
+          ls -lh dist/
+          cd dist && sha256sum * > checksums-macos.txt && cat checksums-macos.txt || shasum -a 256 * > checksums-macos.txt && cat checksums-macos.txt
+
+      - name: Upload macOS Desktop assets
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: dist/*
+
+  # ---------------------------------------------------------------------------
+  # Desktop — Windows (.exe + NSIS installer)
+  # CGO_ENABLED=0 -> pure Go cross-compile (WebView2 is runtime)
+  # ---------------------------------------------------------------------------
+  build-desktop-windows:
+    name: Build Desktop (Windows)
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - uses: nubjs/setup-nub@47e5e7393d50f4e9544ddaf756aa277972afba2d # v0
+        with:
+          node-version-file: .node-version
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Wails CLI
+        shell: bash
+        run: |
+          if [ ! -x "$HOME/go/bin/wails3" ]; then
+            go install github.com/wailsapp/wails/v3/cmd/wails3@$WAILS_VERSION
+          fi
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          $HOME/go/bin/wails3 version
+
+      - name: Sync version to Wails config
+        shell: bash
+        run: |
+          TAG="${{ needs.release-please.outputs.tag_name }}"
+          VERSION="${TAG#v}"
+          echo "Release tag $TAG -> version $VERSION"
+          sed -i "s/^  version: .*/  version: \"$VERSION\"/" apps/desktop/backend/build/config.yml
+          cat apps/desktop/backend/build/config.yml | head -n 20
+          cd apps/desktop/backend
+          $HOME/go/bin/wails3 update build-assets -name "reqly" -binaryname "reqly" -config ./build/config.yml -dir ./build || echo "update build-assets failed (non-fatal)"
+
+      - name: Install frontend deps
+        run: nub ci
+
+      - name: Generate Wails bindings
+        shell: bash
+        run: |
+          cd apps/desktop/backend
+          $HOME/go/bin/wails3 generate bindings -d ../frontend/bindings -clean=true -ts -i
+
+      - name: Build desktop (Windows)
+        shell: bash
+        run: |
+          cd apps/desktop/backend
+          $HOME/go/bin/wails3 task windows:build
+          ls -lh bin/
+
+      - name: Package Windows installer (NSIS, best-effort)
+        shell: bash
+        continue-on-error: true
+        run: |
+          cd apps/desktop/backend
+          $HOME/go/bin/wails3 task windows:package 2>&1 | tee package.log
+          ls -lh bin/ build/windows/nsis/*.exe 2>&1 | head -n 50 || true
+
+      - name: Prepare dist
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp -v apps/desktop/backend/bin/*.exe dist/ 2>/dev/null || true
+          cp -v apps/desktop/backend/bin/*.msix dist/ 2>/dev/null || true
+          cp -v apps/desktop/backend/build/windows/nsis/*installer*.exe dist/ 2>/dev/null || true
+          # Normalise for install.ps1: provide arch-specific aliases
+          # Desktop exe (reqly.exe) -> reqly-desktop-windows-amd64.exe
+          if [ -f dist/reqly.exe ]; then
+            cp -v dist/reqly.exe dist/reqly-desktop-windows-amd64.exe 2>/dev/null || true
+            cp -v dist/reqly.exe dist/Reqly.exe 2>/dev/null || true
+          fi
+          # Installer: reqly-amd64-installer.exe -> Reqly-windows-amd64-installer.exe
+          for f in dist/*installer*.exe; do [ -f "$f" ] && cp -v "$f" dist/reqly-windows-amd64-installer.exe 2>/dev/null || true; cp -v "$f" dist/Reqly-windows-amd64-installer.exe 2>/dev/null || true; break; done
+          # MSIX: keep arch-specific
+          for f in dist/*.msix; do [ -f "$f" ] && cp -v "$f" dist/reqly-windows-amd64.msix 2>/dev/null || true; break; done
+          ls -lh dist/ || true
+          cd dist && sha256sum * > checksums-windows.txt 2>/dev/null || sha256sum.exe * > checksums-windows.txt 2>/dev/null || true
+          cat dist/checksums-windows.txt 2>/dev/null || cat dist/checksums-windows.txt || true
+
+      - name: Upload Windows Desktop assets
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: dist/*
