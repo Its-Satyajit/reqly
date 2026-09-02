@@ -159,6 +159,23 @@ export function SpecEditorView() {
                 }}
               />
             </label>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const { AppService } = await import("../../../../apps/desktop/frontend/bindings/github.com/Its-Satyajit/reqly/apps/desktop/backend/index.js");
+                  const res = await AppService.ValidateProject(filePath || ".");
+                  const msg = res?.valid ? "project valid" : `project invalid: ${(res?.errors ?? []).join(", ")}`;
+                  setGenerateWarnings([msg]);
+                } catch (err) {
+                  setGenerateWarnings([err instanceof Error ? err.message : String(err)]);
+                }
+              }}
+              className="mr-1"
+            >
+              Validate project
+            </Button>
             <div className="mr-2 flex rounded-md border border-border p-0.5">
               <button type="button" onClick={() => setTab("editor")} className={cn("rounded px-2 py-0.5 text-xs", tab === "editor" ? "bg-muted font-medium" : "text-muted-foreground")}>
                 Editor

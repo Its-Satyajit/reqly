@@ -50,6 +50,7 @@ export interface GqlAdapter {
     headers?: { key: string; value: string }[];
     timeoutSec?: number;
   }): Promise<GqlSchema>;
+  parse(input: { schemaPath: string; typeFilter?: string }): Promise<string>;
 }
 
 // Bridge registry, same pattern as the other feature adapters.

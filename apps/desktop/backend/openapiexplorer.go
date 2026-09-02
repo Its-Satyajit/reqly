@@ -20,6 +20,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -124,6 +125,35 @@ func (s *AppService) OpenapiExplore(specPath string) (*OpenapiExploreResult, err
 type OpenapiGenerateSelection struct {
 	Method string `json:"method"`
 	Path   string `json:"path"`
+}
+
+// OpenapiValidate validates an OpenAPI spec and returns a status message.
+func (s *AppService) OpenapiValidate(specPath string) (string, error) {
+	abs, err := s.resolveSpecPath(specPath)
+	if err != nil {
+		return "", err
+	}
+	if _, err := openapi.LoadFile(abs); err != nil {
+		return "", err
+	}
+	return "Validation passed cleanly.", nil
+}
+
+// OpenapiConvertV2 converts a Swagger 2.0 spec to OpenAPI 3.0.3 YAML.
+func (s *AppService) OpenapiConvertV2(swaggerPath string) (string, error) {
+	abs, err := s.resolveSpecPath(swaggerPath)
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(abs)
+	if err != nil {
+		return "", fmt.Errorf("read swagger: %w", err)
+	}
+	out, err := openapi.ConvertSwagger2ToOpenAPI3(data)
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
 }
 
 // OpenapiGenerateResult reports where generated request files landed and how

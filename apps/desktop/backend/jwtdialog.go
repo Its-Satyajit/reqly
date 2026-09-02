@@ -102,3 +102,35 @@ func (s *AppService) JwtFromAuthHeader(value string) (string, bool) {
 	}
 	return "", false
 }
+
+// JwtVerify verifies a JWT HMAC signature.
+func (s *AppService) JwtVerify(token, secret string) (bool, error) {
+	if strings.TrimSpace(token) == "" {
+		return false, fmt.Errorf("token is required")
+	}
+	if strings.TrimSpace(secret) == "" {
+		return false, fmt.Errorf("secret is required")
+	}
+	return jwt.Verify(token, []byte(secret))
+}
+
+// JwtSign signs a payload JSON string into a JWT with the given secret and alg.
+func (s *AppService) JwtSign(payloadJSON, secret, alg string) (string, error) {
+	if strings.TrimSpace(secret) == "" {
+		return "", fmt.Errorf("secret is required")
+	}
+	if strings.TrimSpace(alg) == "" {
+		alg = "HS256"
+	}
+	var payload map[string]any
+	if strings.TrimSpace(payloadJSON) != "" {
+		if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
+			return "", fmt.Errorf("invalid payload JSON: %w", err)
+		}
+	}
+	if payload == nil {
+		payload = map[string]any{}
+	}
+	header := map[string]any{"alg": alg, "typ": "JWT"}
+	return jwt.Sign(header, payload, []byte(secret))
+}

@@ -27,6 +27,8 @@ export interface OpenapiAdapter {
     selections: { method: string; path: string }[];
     dirName: string;
   }): Promise<OpenapiGenerateResultView>;
+  validate(specPath: string): Promise<string>;
+  convertV2(swaggerPath: string): Promise<string>;
 }
 
 // Bridge registry, same pattern as the other feature adapters.

@@ -111,10 +111,10 @@
 
 > **Gap:** partial parity — `jwt verify|sign`, `openapi validate|convert-v2`, `graphql parse`, `theme import`, `validate project`, plus stale `ROADMAP` todos.
 
-- [ ] **G-11.1 JWT verify/sign** — `frontend/src/features/jwt-inspector/JwtInspector.tsx:1` extend + `apps/desktop/backend/jwtdialog.go:1` `JwtVerify/JwtSign` via `internal/jwt` — 2026-09-02 gap
-- [ ] **G-11.2 OpenAPI polish** — `frontend/src/features/openapi-explorer/OpenapiExplorer.tsx:1` + `apps/desktop/backend/openapiexplorer.go:1` `OpenapiValidate/ConvertV2` via `internal/openapi` — 2026-09-02 gap
-- [ ] **G-11.3 GraphQL parse + Theme import + Validate project** — `frontend/src/features/graphql-browser/GraphqlBrowser.tsx:1` `GraphqlParse` + `frontend/src/features/settings-view/SettingsView.tsx:1` `ThemeImport` file picker + `frontend/src/features/spec-editor/SpecEditorView.tsx:1` `ValidateProject` — 2026-09-02 gap
-- [ ] **G-11.4 Stale todos closeout** — `frontend/src/features/history-view/HistoryView.tsx:1` retention pruning `DELETE WHERE createdAt <`, `frontend/src/features/import-dialog/ImportDialog.tsx:1` deep merge, `frontend/src/hooks/useKeyboardMap.ts:1` editable shortcuts, `frontend/src/features/settings-view/SettingsView.tsx:1` Auth Settings sub-page — closes `UI-04`/`UI-06`/`UI-07` `[ ]` — 2026-09-02 gap
+- [x] **G-11.1 JWT verify/sign** — `frontend/src/features/jwt-inspector/JwtInspector.tsx:1` extend + `apps/desktop/backend/jwtdialog.go:1` `JwtVerify/JwtSign` via `internal/jwt` — 2026-09-02
+- [x] **G-11.2 OpenAPI polish** — `frontend/src/features/openapi-explorer/OpenapiExplorer.tsx:1` + `apps/desktop/backend/openapiexplorer.go:1` `OpenapiValidate/ConvertV2` via `internal/openapi` — 2026-09-02
+- [x] **G-11.3 GraphQL parse + Theme import + Validate project** — `frontend/src/features/graphql-browser/GraphqlBrowser.tsx:1` `GraphqlParse` + `frontend/src/features/settings-view/SettingsView.tsx:1` `ThemeImport` file picker + `frontend/src/features/spec-editor/SpecEditorView.tsx:1` `ValidateProject` — 2026-09-02
+- [x] **G-11.4 Stale todos closeout** — `frontend/src/features/history-view/HistoryView.tsx:1` retention pruning `DELETE WHERE createdAt <`, `frontend/src/features/import-dialog/ImportDialog.tsx:1` deep merge, `frontend/src/hooks/useKeyboardMap.ts:1` editable shortcuts, `frontend/src/features/settings-view/SettingsView.tsx:1` Auth Settings sub-page — closes `UI-04`/`UI-06`/`UI-07` `[ ]` — 2026-09-02
 
 > **Intentional gap (no GUI):** `apps/cli/cmd/mcp.go:1` `mcp serve` (stdio MCP) — headless, no GUI expected — not tracked as milestone.
 
