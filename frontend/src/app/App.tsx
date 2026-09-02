@@ -47,7 +47,6 @@ import { ChangelogView } from "../features/changelog-view/ChangelogView";
 import { AiView } from "../features/ai-view/AiView";
 import { SchemaView } from "../features/schema-view/SchemaView";
 import { PluginView } from "../features/plugin-view/PluginView";
-import { GitView } from "../features/git-view/GitView";
 import { SpecEditorView } from "../features/spec-editor/SpecEditorView";
 import { CommandPalette } from "../features/command-palette/CommandPalette";
 import { BottomPanel } from "../components/shell/BottomPanel";
@@ -205,11 +204,6 @@ const FULL_VIEW_RENDERERS = {
 			<AuditView />
 		</ErrorBoundary>
 	),
-	git: () => (
-		<ErrorBoundary label="Git">
-			<GitView />
-		</ErrorBoundary>
-	),
 	"spec-editor": () => (
 		<ErrorBoundary label="Spec Editor">
 			<SpecEditorView />
@@ -359,25 +353,6 @@ export function App() {
 	}
 
 	const isWorkspaceHome = activeView === "home";
-	const sidebarHiddenViews: ReadonlySet<WorkspaceView> = new Set([
-		"jwt",
-		"graphql",
-		"grpc",
-		"explorer",
-		"policy",
-		"audit",
-		"sso",
-		"collab",
-		"automation",
-		"workflow",
-		"monitor",
-		"changelog",
-		"ai",
-		"schema",
-		"plugin",
-		"git",
-	]);
-	const showSidebar = !isWorkspaceHome && !sidebarHiddenViews.has(activeView);
 
 	return (
 		<ErrorBoundary variant="root">
@@ -395,11 +370,11 @@ export function App() {
 					</ErrorBoundary>
 				}
 				sidebar={
-					showSidebar ? (
+					isWorkspaceHome ? null : (
 						<ErrorBoundary label="Context sidebar">
 							<ContextSidebar />
 						</ErrorBoundary>
-					) : null
+					)
 				}
 				bottom={
 					<ErrorBoundary label="Bottom panel">

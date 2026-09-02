@@ -37,7 +37,6 @@ export function registerDefaultPaletteProviders() {
     "ai",
     "schema",
     "plugin",
-    "git",
     "settings",
     "spec-editor",
   ];
