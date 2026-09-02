@@ -46,7 +46,7 @@ function RequestsContext() {
 	};
 
 	return (
-		<>
+		<div className="flex flex-col">
 			<CollectionTree />
 			{tests.length > 0 && (
 				<div className="border-t border-border px-2 py-2">
@@ -56,7 +56,7 @@ function RequestsContext() {
 							<li key={t.path}>
 								<button
 									type="button"
-									className="w-full truncate rounded px-2 py-0.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+									className="w-full truncate rounded px-2 py-1 text-left text-xs text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
 									title={t.path}
 									onClick={() => openTestTab(t.path, t.name || t.path, false)}
 								>
@@ -67,8 +67,18 @@ function RequestsContext() {
 					</ul>
 				</div>
 			)}
-			<AuthPanel />
-		</>
+			<div className="border-t border-border bg-muted/20">
+				<details className="group" open>
+					<summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">
+						<span className="font-mono text-[11px] uppercase tracking-wide">Auth</span>
+						<span className="text-[11px] transition-transform group-open:rotate-180">▾</span>
+					</summary>
+					<div className="border-t border-border/60">
+						<AuthPanel />
+					</div>
+				</details>
+			</div>
+		</div>
 	);
 }
 
@@ -501,7 +511,7 @@ export function ContextSidebar({ className }: { className?: string }) {
 	return (
 		<aside
 			className={cn(
-				"flex h-full w-full flex-col overflow-y-auto border-r border-border bg-card/30",
+				"flex h-full w-full flex-col overflow-y-auto border-r border-border bg-card",
 				className,
 			)}
 		>

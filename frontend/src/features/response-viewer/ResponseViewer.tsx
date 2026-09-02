@@ -62,6 +62,7 @@ export function ResponseViewer() {
 	const parsed = useMemo(() => {
 		if (!response) return null;
 		try {
+			// SAFETY: response.body is JSON text from the execution pipeline; parsed as JsonValue for tree/table rendering.
 			return JSON.parse(response.body) as JsonValue;
 		} catch {
 			return null;

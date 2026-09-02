@@ -87,7 +87,7 @@ export function SettingsView() {
                       onClick={() => setTheme(t.id)}
                       className={`flex flex-col items-start rounded-[var(--radius)] border p-3 text-xs text-left transition-all ${
                         theme === t.id
-                          ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary"
+                          ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary/10"
                           : "border-border hover:bg-muted/60 text-muted-foreground hover:text-foreground"
                       }`}
                     >
@@ -99,7 +99,7 @@ export function SettingsView() {
                     onClick={() => setTheme("system")}
                     className={`flex flex-col items-start rounded-[var(--radius)] border p-3 text-xs text-left transition-all ${
                       theme === "system"
-                        ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary"
+                        ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary/10"
                         : "border-border hover:bg-muted/60 text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -154,7 +154,7 @@ export function SettingsView() {
                       onClick={() => saveRetention(o.value)}
                       className={`rounded border px-3.5 py-1.5 font-mono text-xs transition-colors ${
                         retention === o.value
-                          ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary"
+                          ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary/10"
                           : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
                       }`}
                     >
@@ -235,6 +235,3 @@ export function SettingsView() {
     </div>
   );
 }
-
-
-

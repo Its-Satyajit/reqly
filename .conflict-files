@@ -1,3 +1,3 @@
-ancestorEntries = ["frontend/src/app/App.tsx"]
-ourEntries = ["frontend/src/app/App.tsx"]
-theirEntries = ["frontend/src/app/App.tsx"]
+ancestorEntries = ["apps/desktop/frontend/src/bridge.ts", "frontend/src/app/App.tsx", "frontend/src/components/shell/ToolRail.tsx", "frontend/src/hooks/useKeyboardMap.ts", "frontend/src/index.ts", "frontend/src/lib/paletteProviders.ts", "frontend/src/stores/useWorkspaceStore.ts"]
+ourEntries = ["apps/desktop/frontend/src/bridge.ts", "frontend/src/app/App.tsx", "frontend/src/components/shell/ToolRail.tsx", "frontend/src/hooks/useKeyboardMap.ts", "frontend/src/index.ts", "frontend/src/lib/paletteProviders.ts", "frontend/src/stores/useWorkspaceStore.ts"]
+theirEntries = ["apps/desktop/frontend/src/bridge.ts", "frontend/src/app/App.tsx", "frontend/src/components/shell/ToolRail.tsx", "frontend/src/hooks/useKeyboardMap.ts", "frontend/src/index.ts", "frontend/src/lib/paletteProviders.ts", "frontend/src/stores/useWorkspaceStore.ts"]

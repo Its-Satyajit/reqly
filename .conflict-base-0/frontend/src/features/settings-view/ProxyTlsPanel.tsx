@@ -39,7 +39,7 @@ export function ProxyPanel() {
               type="checkbox"
               checked={proxy.enabled}
               onChange={(e) => setProxy({ enabled: e.target.checked })}
-              className="size-3.5 rounded border-border text-primary focus:ring-primary"
+              className="size-3.5 rounded border-border text-primary focus:ring-primary/10"
             />
             Enable Proxy
           </label>
@@ -185,7 +185,7 @@ export function TlsSecurityPanel() {
               type="checkbox"
               checked={tls.verifyPeer}
               onChange={(e) => setTls({ verifyPeer: e.target.checked })}
-              className="size-3.5 rounded border-border text-primary focus:ring-primary"
+              className="size-3.5 rounded border-border text-primary focus:ring-primary/10"
             />
             Verify Server Certificate (Peer Verification)
           </label>
@@ -195,7 +195,7 @@ export function TlsSecurityPanel() {
               type="checkbox"
               checked={tls.verifyHostnames}
               onChange={(e) => setTls({ verifyHostnames: e.target.checked })}
-              className="size-3.5 rounded border-border text-primary focus:ring-primary"
+              className="size-3.5 rounded border-border text-primary focus:ring-primary/10"
             />
             Verify Hostnames
           </label>

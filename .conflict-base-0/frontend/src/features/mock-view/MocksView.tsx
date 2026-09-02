@@ -408,7 +408,7 @@ export function MocksView() {
               type="checkbox"
               checked={faultInjection.enabled}
               onChange={(e) => setFaultInjection({ enabled: e.target.checked })}
-              className="size-3.5 rounded border-border text-primary focus:ring-primary"
+              className="size-3.5 rounded border-border text-primary focus:ring-primary/10"
             />
             Enable Fault Injection
           </label>

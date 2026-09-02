@@ -292,20 +292,20 @@ export function CollectionTree() {
 	}
 
 	return (
-		<div className="flex flex-col gap-1.5 p-1 select-none">
-			<div className="relative px-1">
-				<Search className="pointer-events-none absolute left-3.5 top-1/2 size-3 -translate-y-1/2 text-muted-foreground/70" aria-hidden />
+		<div className="flex flex-col gap-2 p-2 select-none" data-testid="collection-tree">
+			<div className="relative">
+				<Search className="pointer-events-none absolute left-2.5 top-1/2 size-3 -translate-y-1/2 text-muted-foreground/60" aria-hidden />
 				<input
 					value={filter}
 					onChange={(e) => setFilter(e.target.value)}
 					placeholder="Filter collections…"
 					aria-label="Filter collections"
-					className="h-7 w-full rounded border border-input bg-background/80 py-1 pl-7 pr-2 font-mono text-[11px] placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none"
+					className="h-7 w-full rounded-md border border-input bg-background py-1 pl-7 pr-2 font-mono text-xs placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring/20"
 				/>
 			</div>
-			<div role="tree" aria-label="Collections" onKeyDown={treeKeyDown} className="flex flex-col gap-0.5 px-0.5">
+			<div role="tree" aria-label="Collections" onKeyDown={treeKeyDown} className="flex min-h-0 flex-col gap-0.5">
 				{openError && (
-					<p role="alert" className="px-2 text-xs text-destructive">
+					<p role="alert" className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
 						{openError}
 					</p>
 				)}
@@ -317,23 +317,24 @@ export function CollectionTree() {
 							draggable
 							onDragStart={(e) => e.dataTransfer.setData("text/plain", collection.path)}
 							onDragOver={(e) => e.preventDefault()}
+							className="rounded-md"
 						>
-							<div className="flex w-full items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/60">
+							<div className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 transition-colors hover:bg-muted">
 								<button
 									type="button"
 									data-tree-row
 									aria-expanded={isOpen}
 									onClick={() => toggleExpanded(collection.path)}
 									onContextMenu={(e) => e.preventDefault()}
-									className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold text-foreground"
+									className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-medium text-foreground"
 								>
-									<ChevronRight className={cn("size-3 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-90 text-primary")} aria-hidden />
+									<ChevronRight className={cn("size-3 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-90 text-foreground")} aria-hidden />
 									<span className="truncate">{collection.name}</span>
 								</button>
 								<RunControl path={collection.path} name={collection.name} />
 							</div>
 							{isOpen && (
-								<div className="ml-2 border-l border-border/70 pl-1.5">
+								<div className="ml-3 border-l border-border pl-2">
 									<CollectionBranch folders={collection.folders} requests={collection.requests} filter={filter} />
 								</div>
 							)}
@@ -341,16 +342,13 @@ export function CollectionTree() {
 					);
 				})}
 			</div>
-			<div className="flex gap-1 border-t border-border/70 px-1 pt-2">
-				<button type="button" className="flex-1 rounded border border-border/80 bg-background/50 px-1.5 py-1 text-[11px] font-mono text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="New Collection">
-					<Plus className="mr-1 inline size-3" />Collection
-				</button>
-				<button type="button" className="flex-1 rounded border border-border/80 bg-background/50 px-1.5 py-1 text-[11px] font-mono text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="New Folder">
-					<Plus className="mr-1 inline size-3" />Folder
-				</button>
-				<button type="button" className="flex-1 rounded border border-border/80 bg-background/50 px-1.5 py-1 text-[11px] font-mono text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="New Request">
-					<Plus className="mr-1 inline size-3" />Request
-				</button>
+			<div className="flex items-center justify-between border-t border-border pt-2">
+				<span className="font-mono text-[11px] text-muted-foreground">{filteredCollections.length} collections</span>
+				<div className="flex items-center gap-1">
+					<button type="button" className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground" title="New Collection">
+						<Plus className="size-3" aria-hidden /> Collection
+					</button>
+				</div>
 			</div>
 		</div>
 	);

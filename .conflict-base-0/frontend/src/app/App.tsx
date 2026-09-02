@@ -88,7 +88,6 @@ export function App() {
 	const toggleToolRail = () => setToolRailCollapsed((prev) => !prev);
 
 	const splitOrientation = useShellStore((s) => s.responseMode);
-	const toggleSplitOrientation = useShellStore((s) => s.toggleResponseMode);
 	const splitLayout = useDefaultLayout({
 		id: "reqly-shell-split",
 		storage: shellStorage,
@@ -113,6 +112,8 @@ export function App() {
 		);
 	}
 
+	const isWorkspaceHome = activeView === "home";
+
 	return (
 		<ErrorBoundary variant="root">
 			<Toaster />
@@ -129,9 +130,11 @@ export function App() {
 					</ErrorBoundary>
 				}
 				sidebar={
-					<ErrorBoundary label="Context sidebar">
-						<ContextSidebar />
-					</ErrorBoundary>
+					isWorkspaceHome ? null : (
+						<ErrorBoundary label="Context sidebar">
+							<ContextSidebar />
+						</ErrorBoundary>
+					)
 				}
 				bottom={
 					<ErrorBoundary label="Bottom panel">
@@ -250,16 +253,6 @@ export function App() {
 								</div>
 							) : (
 								<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-									<div className="flex shrink-0 justify-end border-b border-border px-1 py-0.5">
-										<button
-											type="button"
-											onClick={toggleSplitOrientation}
-											className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
-											title="Toggle Request/Response split orientation"
-										>
-											{splitOrientation === "horizontal" ? "↔ Split" : "↕ Split"}
-										</button>
-									</div>
 									<ResizablePanelGroup
 										orientation={splitOrientation}
 										defaultLayout={splitLayout.defaultLayout}
@@ -276,7 +269,7 @@ export function App() {
 												</ErrorBoundary>
 											</div>
 										</ResizablePanel>
-										<ResizableHandle />
+										<ResizableHandle withHandle />
 										<ResizablePanel
 											id="viewer"
 											defaultSize="50%"
