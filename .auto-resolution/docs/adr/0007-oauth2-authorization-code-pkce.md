@@ -1,0 +1,27 @@
+# ADR 0007: OAuth 2.0 Authorization Code + PKCE
+
+## Status
+
+Accepted
+
+## Context
+
+Milestone 11 shipped OAuth 2.0 **Client Credentials** on the `TokenSource` + `secrets.Store` seams ([ADR 0006](0006-oauth2-client-credentials.md)): automatic acquisition, store-backed caching, proactive expiry and reactive 401 refresh. Machine-to-machine auth is covered, but user-facing APIs (GitHub, Google, Slack, Notion, …) require the **Authorization Code** grant, where a user approves in their browser. Client Credentials cannot express that flow, and its tokens have no refresh token, so short-lived access tokens break mid-session. Reqly is local-first and Git-native: the flow must work from the CLI without a separate daemon, keep secrets out of descriptors, and recover from expiry without making the user re-approve.
+
+## Decision
+
+1. **Authorization Code + PKCE (RFC 6749 §4.1, RFC 7636)** as a second grant on the existing `oauth2` scheme, dispatched by `grant_type` (default remains `client_credentials`). Config keys (flat `auth.config`, per ADR 0005): `grant_type`, `authorization_url` (required), `token_url` (required), `client_id` (required), `client_secret` (required, `SecretKeys`), `redirect_uri` (optional, loopback default), `scope`, `audience`, `token_name`.
+2. **`AuthorizationCodeSource`** (`internal/auth/oauth2_authcode.go`) implements the existing `TokenSource`. Its `Token()` starts the flow and returns the exchanged token; an injectable `Open` hook launches the browser so the core is testable without one:
+   - **PKCE (RFC 7636):** 32 random bytes base64url → `code_verifier` (43 chars); `code_challenge = S256(verifier)` with `code_challenge_method=S256`. `state` is 16 random bytes, generated per flow and verified against the callback (CSRF protection).
+   - **Loopback callback:** a one-shot `net/http` listener on `127.0.0.1:<ephemeral port>` (default `redirect_uri = http://127.0.0.1:0/callback`); a config-provided `redirect_uri` must be loopback (providers register an exact redirect; custom schemes cannot be received by a local listener). The handler accepts a single GET, verifies `state`, extracts `code` (or surfaces `error`/`error_description`), renders a small page, and shuts down. `WaitCode` blocks with a 10-minute hard cap when the caller's context has no deadline.
+   - **Exchange (RFC 6749 §4.1.3 + RFC 7636 §4.5):** form POST to `token_url` with `grant_type=authorization_code`, `code`, `redirect_uri`, `client_id`, `code_verifier` and HTTP Basic client auth; the response is parsed by the shared token parser, which now captures `refresh_token`.
+3. **Interactive login:** `reqly auth login <config>` (YAML/JSON) drives the flow on demand: it launches the system browser (platform helper — `xdg-open`/`open`/`rundll32`), waits for the callback under a timeout (default 300s) with Ctrl-C/interrupt cancellation, exchanges the code, and persists the token through the milestone-11 `CachedTokenSource` under `TokenCacheKey(workspace root, config)` — the same key a request descriptor computes, so requests reuse it. The login command normalizes `grant_type=authorization_code` before keying. `auth status` now reports the grant type and whether a refresh token is cached; `auth logout` clears both.
+4. **First-request auto-login:** the engine's automatic acquisition path (no cached token) opens the browser for `authorization_code` grants via a package-level browser opener (`SetOAuth2BrowserOpener`), installed by the CLI at startup. The default opener fails fast with a clear error so an unconfigured flow never hangs.
+5. **Refresh-token reuse (RFC 6749 §6):** `Token` and the cached token carry `refresh_token`. `CachedTokenSource` renews an expired entry via the **refresh-token grant** (form POST `grant_type=refresh_token&refresh_token=…` with Basic client auth) when the underlying source implements the new optional `RefreshingTokenSource` capability — never re-running the original grant (no second browser flow). If the refresh response carries a new refresh token it is rotated; if it omits one, the previous refresh token is kept. The reactive 401 path uses `CachedTokenSource.ForceRefresh` — refresh-token grant when available, otherwise drop + re-acquire — and still retries exactly once.
+6. **Defer** the **Password/ROPC grant** (deprecated in OAuth 2.1) and the **OS-keychain backend** (the `secrets.Store` interface keeps it reachable). Refresh-token **rotation policy** beyond "rotate when the server returns a new one" is future work.
+
+## Consequences
+
+- **Positive:** user-approval APIs work end to end from the CLI; PKCE + state make the flow secure without storing client secrets in the authorization request; the one-shot loopback listener needs no port configuration; expiry and 401 recovery never reopen the browser while a refresh token exists; secrets (client secret, access token, refresh token) stay masked everywhere; all of it reuses the milestone-11 seams — the engine's TokenSource pre-flight, cache, and refresh paths are unchanged.
+- **Trade-off:** `redirect_uri` must be loopback for now (custom-scheme capture is future work); automatic acquisition needs a browser available (headless/CI use `reqly auth login` with a manual callback or a future device flow); the package-level browser opener is global state (single-process CLI, acceptable).
+- **Deferred:** Password/ROPC, OS keychain, custom redirect schemes, device flow, refresh-token rotation policy, desktop auth UI.

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "extra-files": [
+        "internal/version/version.go",
+        "apps/desktop/backend/build/config.yml",
+        "apps/desktop/backend/build/linux/nfpm/nfpm.yaml",
+        "frontend/src/lib/crash.ts",
+        "frontend/package.json",
+        "apps/desktop/frontend/package.json",
+        "package.json"
+      ]
+    }
+  }
+}
