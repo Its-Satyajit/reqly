@@ -73,6 +73,12 @@ export type WorkspaceView =
 	| 'grpc'
 	| 'websocket'
 	| 'sse'
+	| 'mqtt'
+	| 'socketio'
+	| 'policy'
+	| 'audit'
+	| 'sso'
+	| 'collab'
 	| 'settings'
 	| 'spec-editor'
 

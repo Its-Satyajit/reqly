@@ -188,6 +188,7 @@ export function RequestTabs() {
 		try {
 			const raw = localStorage.getItem("reqly:tabs:v1") ?? localStorage.getItem("reqly:tabs");
 			if (raw) {
+				// SAFETY: raw is JSON from localStorage written by this app; parsed shape validated by Array.isArray check below.
 				const parsed = JSON.parse(raw) as { openTabs: typeof openTabs; activeTabId: string | null };
 				if (Array.isArray(parsed.openTabs) && parsed.openTabs.length) {
 					useWorkspaceStore.setState({ openTabs: parsed.openTabs, activeTabId: parsed.activeTabId });

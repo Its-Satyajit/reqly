@@ -94,10 +94,10 @@
 
 > **Gap:** `automation run`, `workflow <yaml>`, `changelog <old> <new>`, and `monitor run --interval` (CLI) → GUI `MonitorView.tsx:1` is mock-only.
 
-- [ ] **G-9.1 Automation scheduler** — `frontend/src/features/automation-view/AutomationView.tsx:1` — mounts existing `AutomationRun` (`apps/desktop/backend/automation.go:1`) — 2026-09-02 gap
-- [ ] **G-9.2 Workflow runner** — `frontend/src/features/workflow-view/WorkflowView.tsx:1` + `frontend/src/lib/workflow.ts:1` — `WorkflowRun` multi-step via `RunView` — 2026-09-02 gap
-- [ ] **G-9.3 Monitor wiring (fix stub)** — `frontend/src/features/monitor-view/MonitorView.tsx:1` replace `Math.random()` with `MonitorRun` + `apps/desktop/backend/monitor.go:1` `MonitorRun` — live availability/latency chart — 2026-09-02 gap
-- [ ] **G-9.4 Changelog view** — `frontend/src/features/changelog-view/ChangelogView.tsx:1` + `apps/desktop/backend/changelog.go:1` `ChangelogGenerate` — `changelog <old> <new> --format --fail-on-breaking` + SemVer bump — 2026-09-02 gap
+- [x] **G-9.1 Automation scheduler** — `frontend/src/features/automation-view/AutomationView.tsx:1` — mounts existing `AutomationRun` (`apps/desktop/backend/automation.go:1`) — 2026-09-02
+- [x] **G-9.2 Workflow runner** — `frontend/src/features/workflow-view/WorkflowView.tsx:1` + `frontend/src/lib/workflow.ts:1` — `WorkflowRun` multi-step via `RunView` — 2026-09-02
+- [x] **G-9.3 Monitor wiring (fix stub)** — `frontend/src/features/monitor-view/MonitorView.tsx:1` replace `Math.random()` with `MonitorRun` + `apps/desktop/backend/monitor.go:1` `MonitorRun` — live availability/latency chart — 2026-09-02
+- [x] **G-9.4 Changelog view** — `frontend/src/features/changelog-view/ChangelogView.tsx:1` + `apps/desktop/backend/changelog.go:1` `ChangelogGenerate` — `changelog <old> <new> --format --fail-on-breaking` + SemVer bump — 2026-09-02
 
 ## GUI-10 CLI Parity — Developer Tooling — mirrors `ROADMAP.md:UI-16`
 

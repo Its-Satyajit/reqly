@@ -30,6 +30,10 @@ export function registerDefaultPaletteProviders() {
     "audit",
     "sso",
     "collab",
+    "automation",
+    "workflow",
+    "monitor",
+    "changelog",
     "settings",
     "spec-editor",
   ];

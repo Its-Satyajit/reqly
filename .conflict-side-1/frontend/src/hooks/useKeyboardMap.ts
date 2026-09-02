@@ -26,6 +26,10 @@ const RAIL_VIEWS = [
   "audit",
   "sso",
   "collab",
+  "automation",
+  "workflow",
+  "monitor",
+  "changelog",
 ] as const;
 
 function isTypingTarget(target: HTMLElement | null): boolean {

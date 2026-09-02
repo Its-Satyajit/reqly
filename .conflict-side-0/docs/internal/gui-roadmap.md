@@ -77,18 +77,18 @@
 
 > **Gap:** `apps/cli/cmd/mqtt.go:1` `mqtt pub|sub` + `apps/cli/cmd/socketio.go:1` `socketio connect|emit` have no GUI. `apps/desktop/backend/realtime.go:1` only `ws`/`sse`.
 
-- [ ] **G-7.1 MQTT Pub/Sub page** — `apps/desktop/backend/mqtt.go:1` `MqttPublish/Subscribe/Cancel` via `internal/mqtt` + `frontend/src/features/mqtt-view/MqttView.tsx:1` (broker/topic/QoS/retain + Publish/Subscribe log) + `frontend/src/lib/mqtt.ts:1` — mirrors CLI flags `--topic`/`--message`/`--qos`/`--retain`/`--username`/`--password` — 2026-09-02 gap
-- [ ] **G-7.2 Socket.IO page** — `apps/desktop/backend/socketio.go:1` `SocketIOConnect/Emit/Close` via `internal/socketio` + `frontend/src/features/socketio-view/SocketIOView.tsx:1` (url + namespace + event/data) — mirrors `socketio connect <url> [--namespace]` / `emit <url> --event --data` — 2026-09-02 gap
-- [ ] **G-7.3 Realtime rail unification** — `frontend/src/components/shell/ToolRail.tsx:1` `REALTIME_GROUP` + `frontend/src/app/App.tsx:1` `activeView` + `frontend/src/stores/useWorkspaceStore.ts:1` `WorkspaceView` `mqtt|socketio` — rail shows 4 entries (WS/SSE/MQTT/Socket.IO) — 2026-09-02 gap
+- [x] **G-7.1 MQTT Pub/Sub page** — `apps/desktop/backend/mqtt.go:1` `MqttPublish/Subscribe/Cancel` via `internal/mqtt` + `frontend/src/features/mqtt-view/MqttView.tsx:1` (broker/topic/QoS/retain + Publish/Subscribe log) + `frontend/src/lib/mqtt.ts:1` — mirrors CLI flags `--topic`/`--message`/`--qos`/`--retain`/`--username`/`--password` — 2026-09-02
+- [x] **G-7.2 Socket.IO page** — `apps/desktop/backend/socketio.go:1` `SocketIOConnect/Emit/Close` via `internal/socketio` + `frontend/src/features/socketio-view/SocketIOView.tsx:1` (url + namespace + event/data) — mirrors `socketio connect <url> [--namespace]` / `emit <url> --event --data` — 2026-09-02
+- [x] **G-7.3 Realtime rail unification** — `frontend/src/components/shell/ToolRail.tsx:1` `REALTIME_GROUP` + `frontend/src/app/App.tsx:1` `activeView` + `frontend/src/stores/useWorkspaceStore.ts:1` `WorkspaceView` `mqtt|socketio` — rail shows 4 entries (WS/SSE/MQTT/Socket.IO) — 2026-09-02
 
 ## GUI-8 CLI Parity — Governance & Enterprise — mirrors `ROADMAP.md:UI-14`
 
 > **Gap:** `policy`/`rbac`/`audit`/`sso`/`scim`/`collab` have `apps/desktop/backend/*.go:1` bindings but no frontend view.
 
-- [ ] **G-8.1 Policy & RBAC page** — `frontend/src/features/governance/PolicyRbacView.tsx:1` + `frontend/src/lib/policy.ts:1`/`rbac.ts:1` — `PolicyGet/Save/Enforce` + `RBACList/Check/Get` (0600, Git-native) — 2026-09-02 gap
-- [ ] **G-8.2 Audit Log page** — `frontend/src/features/audit-view/AuditView.tsx:1` + `frontend/src/lib/audit.ts:1` — `AuditList/Clear/Export` (append-only, 0600) — 2026-09-02 gap
-- [ ] **G-8.3 SSO & SCIM page** — `frontend/src/features/sso-view/SsoScimView.tsx:1` + `frontend/src/lib/sso.ts:1` — `SSOValidate` (OIDC) + `SCIMCreateUser/ListUsers` — 2026-09-02 gap
-- [ ] **G-8.4 Collaboration page** — `frontend/src/features/collab-view/CollabView.tsx:1` + `frontend/src/lib/collab.ts:1` — `CollabList/Add/Remove/Serve` (Git-native shared workspaces) — 2026-09-02 gap
+- [x] **G-8.1 Policy & RBAC page** — `frontend/src/features/governance/PolicyRbacView.tsx:1` + `frontend/src/lib/policy.ts:1`/`rbac.ts:1` — `PolicyGet/Save/Enforce` + `RBACList/Check/Get` (0600, Git-native) — 2026-09-02
+- [x] **G-8.2 Audit Log page** — `frontend/src/features/audit-view/AuditView.tsx:1` + `frontend/src/lib/audit.ts:1` — `AuditList/Clear/Export` (append-only, 0600) — 2026-09-02
+- [x] **G-8.3 SSO & SCIM page** — `frontend/src/features/sso-view/SsoScimView.tsx:1` + `frontend/src/lib/sso.ts:1` — `SSOValidate` (OIDC) + `SCIMCreateUser/ListUsers` — 2026-09-02
+- [x] **G-8.4 Collaboration page** — `frontend/src/features/collab-view/CollabView.tsx:1` + `frontend/src/lib/collab.ts:1` — `CollabList/Add/Remove/Serve` (Git-native shared workspaces) — 2026-09-02
 
 ## GUI-9 CLI Parity — Automation & Orchestration — mirrors `ROADMAP.md:UI-15`
 
