@@ -353,6 +353,24 @@ export function App() {
 	}
 
 	const isWorkspaceHome = activeView === "home";
+	const sidebarHiddenViews: ReadonlySet<WorkspaceView> = new Set([
+		"jwt",
+		"graphql",
+		"grpc",
+		"explorer",
+		"policy",
+		"audit",
+		"sso",
+		"collab",
+		"automation",
+		"workflow",
+		"monitor",
+		"changelog",
+		"ai",
+		"schema",
+		"plugin",
+	]);
+	const showSidebar = !isWorkspaceHome && !sidebarHiddenViews.has(activeView);
 
 	return (
 		<ErrorBoundary variant="root">
@@ -370,11 +388,11 @@ export function App() {
 					</ErrorBoundary>
 				}
 				sidebar={
-					isWorkspaceHome ? null : (
+					showSidebar ? (
 						<ErrorBoundary label="Context sidebar">
 							<ContextSidebar />
 						</ErrorBoundary>
-					)
+					) : null
 				}
 				bottom={
 					<ErrorBoundary label="Bottom panel">
