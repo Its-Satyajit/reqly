@@ -62,6 +62,10 @@ import {
 	setSSOBridge,
 	setSCIMBridge,
 	setCollabBridge,
+	setAutomationBridge,
+	setWorkflowBridge,
+	setChangelogBridge,
+	setMonitorBridge,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
@@ -944,7 +948,7 @@ export const wailsPolicyAdapter = {
 		await AppService.PolicySave({
 			requireAudit: policy.requireAudit,
 			maxWorkflowSteps: policy.maxWorkflowSteps,
-			allowedActions: policy.allowedActions ?? null,
+			allowedActions: policy.allowedActions ?? undefined,
 			requireAuth: policy.requireAuth ?? false,
 			allowCustomThemes: policy.allowCustomThemes ?? true,
 		});
@@ -1053,6 +1057,87 @@ export const wailsCollabAdapter = {
 	serve: async (port: number) => {
 		const url = await AppService.CollabServe(port);
 		return url ?? "";
+	},
+};
+
+export const wailsAutomationAdapter = {
+	run: async (yaml: string) => {
+		const r = await AppService.AutomationRun(yaml);
+		if (!r) throw new Error("automation run returned empty");
+		return {
+			workflowName: r.workflowName ?? "",
+			passed: !!r.passed,
+			duration: String(r.duration ?? ""),
+			steps: (r.steps ?? []).map((s) => ({
+				name: s.name ?? "",
+				passed: !!s.passed,
+				requestError: s.requestError ?? undefined,
+			})),
+			// SAFETY: r.extractedVars is nullable map per Wails, coalesced to Record
+			// SAFETY: r.extractedVars is nullable map per Wails, coalesced to Record
+			extractedVars: (r.extractedVars ?? {}) as Record<string, string>,
+		};
+	},
+};
+
+export const wailsWorkflowAdapter = {
+	run: async (yaml: string) => {
+		const r = await AppService.WorkflowRun(yaml);
+		if (!r) throw new Error("workflow run returned empty");
+		return {
+			workflowName: r.workflowName ?? "",
+			passed: !!r.passed,
+			duration: String(r.duration ?? ""),
+			steps: (r.steps ?? []).map((s) => ({
+				name: s.name ?? "",
+				passed: !!s.passed,
+				requestError: s.requestError ?? undefined,
+			})),
+			// SAFETY: r.extractedVars is nullable map per Wails, coalesced to Record
+			extractedVars: (r.extractedVars ?? {}) as Record<string, string>,
+		};
+	},
+};
+
+export const wailsChangelogAdapter = {
+	generate: async (oldPath: string, newPath: string, format: string, failOnBreaking: boolean) => {
+		const res = await AppService.ChangelogGenerate(oldPath, newPath, format, failOnBreaking);
+		if (!res || !res.changelog) throw new Error("changelog generation failed");
+		return {
+			changelog: {
+				// SAFETY: suggested_semver is string per Wails bindings, may be empty
+				suggested_semver: (res.changelog.suggested_semver as string) ?? "none",
+				breaking: (res.changelog.breaking ?? []).map((i) => ({ type: i.type, path: i.path, summary: i.summary, severity: i.severity })),
+				additions: (res.changelog.additions ?? []).map((i) => ({ type: i.type, path: i.path, summary: i.summary, severity: i.severity })),
+				info: (res.changelog.info ?? []).map((i) => ({ type: i.type, path: i.path, summary: i.summary, severity: i.severity })),
+			},
+			markdown: res.markdown ?? "",
+			json: res.json ?? "",
+		};
+	},
+};
+
+export const wailsMonitorAdapter = {
+	check: async (specPath: string) => {
+		const res = await AppService.PerfRun(specPath, 1, 1000, 1);
+		if (!res) throw new Error("perf run returned empty");
+		const r = res.result;
+		const counts = r.statusCounts ?? {};
+		let status = 200;
+		let max = -1;
+		// SAFETY: counts is Record<string,number> per Wails statusCounts, entries are numeric
+		for (const [codeStr, cntRaw] of Object.entries(counts as Record<string, number>)) {
+			const code = Number(codeStr);
+			const cnt = Number(cntRaw);
+			if (cnt > max) {
+				max = cnt;
+				status = code;
+			}
+		}
+		if (max === -1) status = 0;
+		const ok = r.errorRate < 0.05 && status >= 200 && status < 400;
+		const at = new Date().toISOString();
+		return { at, ok, status, latencyMs: Number(r.p50Ms ?? 0) };
 	},
 };
 
@@ -1170,6 +1255,10 @@ export function initRequestBridge(): void {
 	setSSOBridge(wailsSSOAdapter);
 	setSCIMBridge(wailsSCIMAdapter);
 	setCollabBridge(wailsCollabAdapter);
+	setAutomationBridge(wailsAutomationAdapter);
+	setWorkflowBridge(wailsWorkflowAdapter);
+	setChangelogBridge(wailsChangelogAdapter);
+	setMonitorBridge(wailsMonitorAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {

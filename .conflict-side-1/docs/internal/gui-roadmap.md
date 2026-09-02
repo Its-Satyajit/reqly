@@ -103,9 +103,9 @@
 
 > **Gap:** `ai explain|test|docs|diagnose|schema`, `schema validate|inspect|generate`, `plugin list|validate` are CLI-only.
 
-- [ ] **G-10.1 AI assistant panel** — `apps/desktop/backend/ai.go:1` `AiExplain/GenerateTests/GenerateDocs/Diagnose/ExplainSchema` via `internal/ai` + `frontend/src/features/ai-view/AiView.tsx:1` — local heuristics, zero telemetry — 2026-09-02 gap
-- [ ] **G-10.2 JSON Schema workbench** — `apps/desktop/backend/schema.go:1` `SchemaValidate/Inspect/Generate` via `internal/jsonschema` + `frontend/src/features/schema-view/SchemaView.tsx:1` — violation paths, keywords, sample generation — 2026-09-02 gap
-- [ ] **G-10.3 Plugin manager** — `apps/desktop/backend/plugin.go:1` `PluginList/Validate` via `internal/plugin` + `frontend/src/features/plugin-view/PluginView.tsx:1` — `plugins/<name>` table + capabilities — 2026-09-02 gap
+- [x] **G-10.1 AI assistant panel** — `apps/desktop/backend/ai.go:1` `AiExplain/GenerateTests/GenerateDocs/Diagnose/ExplainSchema` via `internal/ai` + `frontend/src/features/ai-view/AiView.tsx:1` — local heuristics, zero telemetry — 2026-09-02
+- [x] **G-10.2 JSON Schema workbench** — `apps/desktop/backend/schema.go:1` `SchemaValidate/Inspect/Generate` via `internal/jsonschema` + `frontend/src/features/schema-view/SchemaView.tsx:1` — violation paths, keywords, sample generation — 2026-09-02
+- [x] **G-10.3 Plugin manager** — `apps/desktop/backend/plugin.go:1` `PluginList/Validate` via `internal/plugin` + `frontend/src/features/plugin-view/PluginView.tsx:1` — `plugins/<name>` table + capabilities — 2026-09-02
 
 ## GUI-11 CLI Parity — Parity Polish — mirrors `ROADMAP.md:UI-17`
 

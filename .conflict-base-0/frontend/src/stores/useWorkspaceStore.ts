@@ -79,6 +79,10 @@ export type WorkspaceView =
 	| 'audit'
 	| 'sso'
 	| 'collab'
+	| 'automation'
+	| 'workflow'
+	| 'monitor'
+	| 'changelog'
 	| 'settings'
 	| 'spec-editor'
 

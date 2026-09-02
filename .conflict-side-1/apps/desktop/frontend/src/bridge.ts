@@ -66,6 +66,9 @@ import {
 	setWorkflowBridge,
 	setChangelogBridge,
 	setMonitorBridge,
+	setAIBridge,
+	setSchemaBridge,
+	setPluginBridge,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
@@ -1141,6 +1144,57 @@ export const wailsMonitorAdapter = {
 	},
 };
 
+export const wailsAIAdapter = {
+	explain: async (responseJson: string) => {
+		const out = await AppService.AiExplain(responseJson);
+		return out ?? "";
+	},
+	generateTests: async (responseJson: string) => {
+		const out = await AppService.AiGenerateTests(responseJson);
+		return out ?? "";
+	},
+	generateDocs: async (requestJson: string, responseJson: string) => {
+		const out = await AppService.AiGenerateDocs(requestJson, responseJson);
+		return out ?? "";
+	},
+	diagnose: async (responseJson: string, errMsg: string) => {
+		const out = await AppService.AiDiagnose(responseJson, errMsg);
+		return out ?? "";
+	},
+	explainSchema: async (schemaJson: string) => {
+		const out = await AppService.AiExplainSchema(schemaJson);
+		return out ?? "";
+	},
+};
+
+export const wailsSchemaAdapter = {
+	validate: async (schemaJson: string, instanceJson: string, draft: string) => {
+		const res = await AppService.SchemaValidate(schemaJson, instanceJson, draft);
+		if (!res) throw new Error("schema validate returned empty");
+		return { valid: !!res.valid, violations: (res.violations ?? []).map((v) => ({ path: v.path ?? "", message: v.message ?? "" })) };
+	},
+	inspect: async (schemaJson: string) => {
+		const out = await AppService.SchemaInspect(schemaJson);
+		return out ?? "";
+	},
+	generate: async (schemaJson: string, seed: number) => {
+		const out = await AppService.SchemaGenerate(schemaJson, seed);
+		return out ?? "";
+	},
+};
+
+export const wailsPluginAdapter = {
+	list: async () => {
+		const list = await AppService.PluginList();
+		return (list ?? []).map((p) => ({ name: p.name, version: p.version ?? "", capabilities: p.capabilities ?? [], valid: !!p.valid, error: p.error ?? undefined, dir: p.dir }));
+	},
+	validate: async (name: string) => {
+		const p = await AppService.PluginValidate(name);
+		if (!p) throw new Error("plugin validate returned empty");
+		return { name: p.name, version: p.version ?? "", capabilities: p.capabilities ?? [], valid: !!p.valid, error: p.error ?? undefined, dir: p.dir };
+	},
+};
+
 export const wailsDocsAdapter: DocsAdapter = {
 	generate: async (input: { collections?: string[]; outName?: string }) => {
 		const res = await AppService.DocsGenerate({
@@ -1259,6 +1313,9 @@ export function initRequestBridge(): void {
 	setWorkflowBridge(wailsWorkflowAdapter);
 	setChangelogBridge(wailsChangelogAdapter);
 	setMonitorBridge(wailsMonitorAdapter);
+	setAIBridge(wailsAIAdapter);
+	setSchemaBridge(wailsSchemaAdapter);
+	setPluginBridge(wailsPluginAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {
