@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.13.0](https://github.com/Its-Satyajit/reqly/compare/v1.12.0...v1.13.0) (2026-09-02)
+
+
+### Features
+
+* **ui:** add FieldList + StatusTable reusable components, migrate EnvironmentEditor ([#416](https://github.com/Its-Satyajit/reqly/issues/416)) ([eab5c60](https://github.com/Its-Satyajit/reqly/commit/eab5c60340de308a7438309537ca5a0eb29d2541))
+* **ui:** git status page — local porcelain, diff, log ([#427](https://github.com/Its-Satyajit/reqly/issues/427)) ([5115866](https://github.com/Its-Satyajit/reqly/commit/51158665cfff7d6b2b6829fbb56d2016b8fbc4ed))
+
 ## [1.12.0](https://github.com/Its-Satyajit/reqly/compare/v1.11.1...v1.12.0) (2026-09-01)
 
 
