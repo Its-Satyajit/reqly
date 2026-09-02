@@ -83,10 +83,6 @@ export type WorkspaceView =
 	| 'workflow'
 	| 'monitor'
 	| 'changelog'
-	| 'ai'
-	| 'schema'
-	| 'plugin'
-	| 'git'
 	| 'settings'
 	| 'spec-editor'
 

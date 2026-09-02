@@ -2,12 +2,10 @@ import {
 	Antenna,
 	ArrowLeftRight,
 	BookText,
-	Braces,
 	Cable,
 	Compass,
 	FileCode2,
 	FileDiff,
-	GitBranch,
 	Hexagon,
 	History,
 	House,
@@ -15,10 +13,8 @@ import {
 	PanelLeftClose,
 	PanelLeftOpen,
 	Play,
-	Puzzle,
 	Radio,
 	Rss,
-	Sparkles,
 	Zap,
 	Database,
 	Shield,
@@ -46,7 +42,6 @@ const WORKSPACE_GROUP: RailItem[] = [
 	{ view: "requests", label: "Requests", icon: Zap },
 	{ view: "environments", label: "Environments", icon: Database },
 	{ view: "history", label: "History", icon: History },
-	{ view: "git", label: "Git", icon: GitBranch },
 ];
 
 const API_TOOLS_GROUP: RailItem[] = [
@@ -92,15 +87,6 @@ const ORCHESTRATION_GROUP: RailItem[] = [
 	{ view: "monitor" as WorkspaceView, label: "Monitor", icon: Activity },
 	// SAFETY: "changelog" is a valid WorkspaceView value
 	{ view: "changelog" as WorkspaceView, label: "Changelog", icon: FileDiff },
-];
-
-const DEVELOPER_GROUP: RailItem[] = [
-	// SAFETY: "ai" is a valid WorkspaceView value
-	{ view: "ai" as WorkspaceView, label: "AI", icon: Sparkles },
-	// SAFETY: "schema" is a valid WorkspaceView value
-	{ view: "schema" as WorkspaceView, label: "Schema", icon: Braces },
-	// SAFETY: "plugin" is a valid WorkspaceView value
-	{ view: "plugin" as WorkspaceView, label: "Plugins", icon: Puzzle },
 ];
 
 interface ToolRailProps {
@@ -152,11 +138,11 @@ export function ToolRail({ collapsed, onToggleCollapse }: ToolRailProps) {
 		<aside
 			aria-label="Tool rail"
 			className={cn(
-				"flex max-h-screen min-h-0 shrink-0 flex-col border-r border-border bg-card/25 p-1.5 transition-[width] duration-150 ease-out",
+				"flex shrink-0 flex-col justify-between border-r border-border bg-card/25 p-1.5 transition-[width] duration-150 ease-out",
 				collapsed ? "w-11" : "w-44",
 			)}
 		>
-			<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pr-0.5 [scrollbar-gutter:stable] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+			<div className="flex flex-col gap-3">
 				<div className="flex flex-col gap-0.5">
 					{!collapsed && (
 						<p className="px-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/70">
@@ -200,15 +186,6 @@ export function ToolRail({ collapsed, onToggleCollapse }: ToolRailProps) {
 						</p>
 					)}
 					{ORCHESTRATION_GROUP.map(railButton)}
-				</div>
-
-				<div className="flex flex-col gap-0.5 border-t border-border/60 pt-2">
-					{!collapsed && (
-						<p className="px-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/70">
-							Developer
-						</p>
-					)}
-					{DEVELOPER_GROUP.map(railButton)}
 				</div>
 			</div>
 
