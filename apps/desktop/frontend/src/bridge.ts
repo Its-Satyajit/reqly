@@ -23,6 +23,7 @@ import type {
 	MockStatus,
 	DocsAdapter,
 	DocsResultView,
+	GitAdapter,
 	GrpcAdapter,
 	GrpcService,
 	RealtimeAdapter,
@@ -52,8 +53,24 @@ import {
 	setEnvToolsBridge,
 	setGqlBridge,
 	setOpenapiBridge,
+	setGitBridge,
 	setRunnerBridge,
 	setJwtBridge,
+	setMqttBridge,
+	setSocketIOBridge,
+	setPolicyBridge,
+	setRBACBridge,
+	setAuditBridge,
+	setSSOBridge,
+	setSCIMBridge,
+	setCollabBridge,
+	setAutomationBridge,
+	setWorkflowBridge,
+	setChangelogBridge,
+	setMonitorBridge,
+	setAIBridge,
+	setSchemaBridge,
+	setPluginBridge,
 	useRequestStore,
 	useWorkspaceBootstrapStore,
 	useWorkspaceStore,
@@ -656,6 +673,10 @@ export const wailsGqlAdapter: GqlAdapter = {
 			),
 		};
 	},
+	parse: async ({ schemaPath, typeFilter }) => {
+		const out = await AppService.GraphqlParse(schemaPath, typeFilter ?? "");
+		return out ?? "";
+	},
 };
 
 // RunnerStepPayload mirrors backend runnerStep JSON.
@@ -751,6 +772,14 @@ export const wailsOpenapiAdapter: OpenapiAdapter = {
 		if (res.warnings) out.warnings = [...res.warnings];
 		return out;
 	},
+	validate: async (specPath) => {
+		const res = await AppService.OpenapiValidate(specPath);
+		return res ?? "Validation passed cleanly.";
+	},
+	convertV2: async (swaggerPath) => {
+		const res = await AppService.OpenapiConvertV2(swaggerPath);
+		return res ?? "";
+	},
 };
 
 export const wailsEnvToolsAdapter: EnvToolsAdapter = {
@@ -795,6 +824,14 @@ export const wailsJwtAdapter: JwtAdapter = {
 				iat: e?.iat ?? undefined,
 			},
 		};
+	},
+	verify: async (token, secret) => {
+		const ok = await AppService.JwtVerify(token, secret);
+		return !!ok;
+	},
+	sign: async (payloadJson, secret, alg) => {
+		const tok = await AppService.JwtSign(payloadJson, secret, alg);
+		return tok ?? "";
 	},
 };
 
@@ -865,6 +902,336 @@ export const wailsRealtimeAdapter: RealtimeAdapter = {
 			if (e?.data) onFrame(e.data);
 		});
 		return () => off();
+	},
+};
+
+export const wailsMqttAdapter = {
+	publish: async (input: { broker: string; topic: string; message: string; qos: number; retain: boolean; username?: string; password?: string; clientId?: string }) => {
+		await AppService.MqttPublish({
+			broker: input.broker,
+			topic: input.topic,
+			message: input.message,
+			qos: input.qos,
+			retain: input.retain,
+			username: input.username,
+			password: input.password,
+			clientId: input.clientId,
+		});
+	},
+	subscribe: async (input: { sessionId: string; broker: string; topic: string; qos: number; username?: string; password?: string; clientId?: string }) => {
+		await AppService.MqttSubscribe({
+			sessionId: input.sessionId,
+			broker: input.broker,
+			topic: input.topic,
+			qos: input.qos,
+			username: input.username,
+			password: input.password,
+			clientId: input.clientId,
+		});
+	},
+	cancel: async (sessionId: string) => {
+		await AppService.MqttCancel(sessionId);
+	},
+	onFrame: (sessionId: string, cb: (f: import("@reqly/frontend").MqttFrameView) => void) => {
+		const off = Events.On(`reqly.mqtt.${sessionId}`, (e: { data?: import("@reqly/frontend").MqttFrameView }) => {
+			if (e?.data) cb(e.data);
+		});
+		return () => off();
+	},
+};
+
+export const wailsSocketIOAdapter = {
+	connect: async (input: { sessionId: string; url: string; namespace?: string }) => {
+		await AppService.SocketIOConnect({ sessionId: input.sessionId, url: input.url, namespace: input.namespace });
+	},
+	emit: async (input: { sessionId: string; url: string; event: string; data?: unknown; namespace?: string }) => {
+		await AppService.SocketIOEmit({ sessionId: input.sessionId, url: input.url, event: input.event, data: input.data, namespace: input.namespace });
+	},
+	close: async (sessionId: string) => {
+		await AppService.SocketIOClose(sessionId);
+	},
+	onFrame: (sessionId: string, cb: (f: import("@reqly/frontend").SocketIOFrameView) => void) => {
+		const off = Events.On(`reqly.socketio.${sessionId}`, (e: { data?: import("@reqly/frontend").SocketIOFrameView }) => {
+			if (e?.data) cb(e.data);
+		});
+		return () => off();
+	},
+};
+
+export const wailsPolicyAdapter = {
+	get: async () => {
+		const p = await AppService.PolicyGet();
+		return {
+			requireAudit: p.requireAudit,
+			maxWorkflowSteps: p.maxWorkflowSteps ?? 0,
+			allowedActions: p.allowedActions ?? null,
+			requireAuth: p.requireAuth ?? false,
+			allowCustomThemes: p.allowCustomThemes ?? true,
+		};
+	},
+	save: async (policy: { requireAudit: boolean; maxWorkflowSteps: number; allowedActions?: string[] | null; requireAuth?: boolean; allowCustomThemes?: boolean }) => {
+		await AppService.PolicySave({
+			requireAudit: policy.requireAudit,
+			maxWorkflowSteps: policy.maxWorkflowSteps,
+			allowedActions: policy.allowedActions ?? undefined,
+			requireAuth: policy.requireAuth ?? false,
+			allowCustomThemes: policy.allowCustomThemes ?? true,
+		});
+	},
+	enforce: async (action: string, resource: string) => {
+		await AppService.PolicyEnforce(action, resource);
+	},
+};
+
+export const wailsRBACAdapter = {
+	get: async () => {
+		const r = await AppService.RBACGet();
+		return {
+			// SAFETY: r.roles is nullable Record<string, Role> per Wails bindings; empty object matches RBAC.roles
+			roles: (r.roles ?? {}) as Record<string, { name: string; permissions: string[] }>,
+			// SAFETY: r.userRoles is nullable map per Wails bindings; coalesced to Record<string,string>
+			userRoles: (r.userRoles ?? {}) as Record<string, string>,
+		};
+	},
+	listRoles: async () => {
+		const roles = await AppService.RBACList();
+		return roles ?? [];
+	},
+	check: async (user: string, action: string, resource: string) => {
+		await AppService.RBACCheck(user, action, resource);
+	},
+};
+
+export const wailsAuditAdapter = {
+	list: async () => {
+		const entries = await AppService.AuditList();
+		return (entries ?? []).map((e) => ({
+			id: e.id,
+			timestamp: e.timestamp,
+			actor: e.actor,
+			action: e.action,
+			resource: e.resource,
+			details: e.details ?? undefined,
+		}));
+	},
+	add: async (action: string, resource: string, details: string) => {
+		const e = await AppService.AuditAdd(action, resource, details);
+		return {
+			id: e.id,
+			timestamp: e.timestamp,
+			actor: e.actor,
+			action: e.action,
+			resource: e.resource,
+			details: e.details ?? undefined,
+		};
+	},
+	clear: async () => {
+		await AppService.AuditClear();
+	},
+	export: async () => {
+		const out = await AppService.AuditExport();
+		return out ?? "";
+	},
+};
+
+export const wailsSSOAdapter = {
+	validate: async (issuer: string, clientId: string, token: string, secret: string) => {
+		await AppService.SSOValidate(issuer, clientId, token, secret);
+	},
+};
+
+export const wailsSCIMAdapter = {
+	createUser: async (userName: string, email: string) => {
+		const u = await AppService.SCIMCreateUser(userName, email);
+		return {
+			id: u.id,
+			userName: u.userName,
+			email: u.email ?? undefined,
+			groups: u.groups ?? undefined,
+			active: u.active,
+		};
+	},
+	listUsers: async () => {
+		const users = await AppService.SCIMListUsers();
+		return (users ?? []).map((u) => ({
+			id: u.id,
+			userName: u.userName,
+			email: u.email ?? undefined,
+			groups: u.groups ?? undefined,
+			active: u.active,
+		}));
+	},
+};
+
+export const wailsCollabAdapter = {
+	list: async () => {
+		const list = await AppService.CollabList();
+		return (list ?? []).map((c) => ({
+			user: c.user,
+			role: c.role,
+			// SAFETY: c.addedAt is already string per Wails bindings (time-type string), fallback to ISO for null
+			addedAt: (c.addedAt as string) ?? new Date().toISOString(),
+		}));
+	},
+	add: async (user: string, role: string) => {
+		await AppService.CollabAdd(user, role);
+	},
+	remove: async (user: string) => {
+		await AppService.CollabRemove(user);
+	},
+	serve: async (port: number) => {
+		const url = await AppService.CollabServe(port);
+		return url ?? "";
+	},
+};
+
+export const wailsAutomationAdapter = {
+	run: async (yaml: string) => {
+		const r = await AppService.AutomationRun(yaml);
+		if (!r) throw new Error("automation run returned empty");
+		return {
+			workflowName: r.workflowName ?? "",
+			passed: !!r.passed,
+			duration: String(r.duration ?? ""),
+			steps: (r.steps ?? []).map((s) => ({
+				name: s.name ?? "",
+				passed: !!s.passed,
+				requestError: s.requestError ?? undefined,
+			})),
+			// SAFETY: r.extractedVars is nullable map per Wails, coalesced to Record
+			// SAFETY: r.extractedVars is nullable map per Wails, coalesced to Record
+			extractedVars: (r.extractedVars ?? {}) as Record<string, string>,
+		};
+	},
+};
+
+export const wailsWorkflowAdapter = {
+	run: async (yaml: string) => {
+		const r = await AppService.WorkflowRun(yaml);
+		if (!r) throw new Error("workflow run returned empty");
+		return {
+			workflowName: r.workflowName ?? "",
+			passed: !!r.passed,
+			duration: String(r.duration ?? ""),
+			steps: (r.steps ?? []).map((s) => ({
+				name: s.name ?? "",
+				passed: !!s.passed,
+				requestError: s.requestError ?? undefined,
+			})),
+			// SAFETY: r.extractedVars is nullable map per Wails, coalesced to Record
+			extractedVars: (r.extractedVars ?? {}) as Record<string, string>,
+		};
+	},
+};
+
+export const wailsChangelogAdapter = {
+	generate: async (oldPath: string, newPath: string, format: string, failOnBreaking: boolean) => {
+		const res = await AppService.ChangelogGenerate(oldPath, newPath, format, failOnBreaking);
+		if (!res || !res.changelog) throw new Error("changelog generation failed");
+		return {
+			changelog: {
+				// SAFETY: suggested_semver is string per Wails bindings, may be empty
+				suggested_semver: (res.changelog.suggested_semver as string) ?? "none",
+				breaking: (res.changelog.breaking ?? []).map((i) => ({ type: i.type, path: i.path, summary: i.summary, severity: i.severity })),
+				additions: (res.changelog.additions ?? []).map((i) => ({ type: i.type, path: i.path, summary: i.summary, severity: i.severity })),
+				info: (res.changelog.info ?? []).map((i) => ({ type: i.type, path: i.path, summary: i.summary, severity: i.severity })),
+			},
+			markdown: res.markdown ?? "",
+			json: res.json ?? "",
+		};
+	},
+};
+
+export const wailsMonitorAdapter = {
+	check: async (specPath: string) => {
+		const res = await AppService.PerfRun(specPath, 1, 1000, 1);
+		if (!res) throw new Error("perf run returned empty");
+		const r = res.result;
+		const counts = r.statusCounts ?? {};
+		let status = 200;
+		let max = -1;
+		// SAFETY: counts is Record<string,number> per Wails statusCounts, entries are numeric
+		for (const [codeStr, cntRaw] of Object.entries(counts as Record<string, number>)) {
+			const code = Number(codeStr);
+			const cnt = Number(cntRaw);
+			if (cnt > max) {
+				max = cnt;
+				status = code;
+			}
+		}
+		if (max === -1) status = 0;
+		const ok = r.errorRate < 0.05 && status >= 200 && status < 400;
+		const at = new Date().toISOString();
+		return { at, ok, status, latencyMs: Number(r.p50Ms ?? 0) };
+	},
+};
+
+export const wailsGitAdapter: GitAdapter = {
+	status: async () => {
+		const res = await AppService.GitStatus();
+		return res ?? [];
+	},
+	diff: async (staged?: boolean) => {
+		const res = await AppService.GitDiff(!!staged);
+		return res ?? "";
+	},
+	log: async (limit?: number, offset?: number) => {
+		const res = await AppService.GitLog(limit ?? 50, offset ?? 0);
+		return res ?? [];
+	},
+	commit: async (message: string, files: string[]) => {
+		await AppService.GitCommit(message, files);
+	},
+};
+
+export const wailsAIAdapter = {
+	explain: async (responseJson: string) => {
+		const out = await AppService.AiExplain(responseJson);
+		return out ?? "";
+	},
+	generateTests: async (responseJson: string) => {
+		const out = await AppService.AiGenerateTests(responseJson);
+		return out ?? "";
+	},
+	generateDocs: async (requestJson: string, responseJson: string) => {
+		const out = await AppService.AiGenerateDocs(requestJson, responseJson);
+		return out ?? "";
+	},
+	diagnose: async (responseJson: string, errMsg: string) => {
+		const out = await AppService.AiDiagnose(responseJson, errMsg);
+		return out ?? "";
+	},
+	explainSchema: async (schemaJson: string) => {
+		const out = await AppService.AiExplainSchema(schemaJson);
+		return out ?? "";
+	},
+};
+
+export const wailsSchemaAdapter = {
+	validate: async (schemaJson: string, instanceJson: string, draft: string) => {
+		const res = await AppService.SchemaValidate(schemaJson, instanceJson, draft);
+		if (!res) throw new Error("schema validate returned empty");
+		return { valid: !!res.valid, violations: (res.violations ?? []).map((v) => ({ path: v.path ?? "", message: v.message ?? "" })) };
+	},
+	inspect: async (schemaJson: string) => {
+		const out = await AppService.SchemaInspect(schemaJson);
+		return out ?? "";
+	},
+	generate: async (schemaJson: string, seed: number) => {
+		const out = await AppService.SchemaGenerate(schemaJson, seed);
+		return out ?? "";
+	},
+};
+
+export const wailsPluginAdapter = {
+	list: async () => {
+		const list = await AppService.PluginList();
+		return (list ?? []).map((p) => ({ name: p.name, version: p.version ?? "", capabilities: p.capabilities ?? [], valid: !!p.valid, error: p.error ?? undefined, dir: p.dir }));
+	},
+	validate: async (name: string) => {
+		const p = await AppService.PluginValidate(name);
+		if (!p) throw new Error("plugin validate returned empty");
+		return { name: p.name, version: p.version ?? "", capabilities: p.capabilities ?? [], valid: !!p.valid, error: p.error ?? undefined, dir: p.dir };
 	},
 };
 
@@ -974,6 +1341,22 @@ export function initRequestBridge(): void {
 	setRunnerBridge(wailsRunnerAdapter);
 	setOpenapiBridge(wailsOpenapiAdapter);
 	setEnvToolsBridge(wailsEnvToolsAdapter);
+	setMqttBridge(wailsMqttAdapter);
+	setSocketIOBridge(wailsSocketIOAdapter);
+	setPolicyBridge(wailsPolicyAdapter);
+	setRBACBridge(wailsRBACAdapter);
+	setAuditBridge(wailsAuditAdapter);
+	setSSOBridge(wailsSSOAdapter);
+	setSCIMBridge(wailsSCIMAdapter);
+	setCollabBridge(wailsCollabAdapter);
+	setAutomationBridge(wailsAutomationAdapter);
+	setWorkflowBridge(wailsWorkflowAdapter);
+	setChangelogBridge(wailsChangelogAdapter);
+	setMonitorBridge(wailsMonitorAdapter);
+	setAIBridge(wailsAIAdapter);
+	setSchemaBridge(wailsSchemaAdapter);
+	setPluginBridge(wailsPluginAdapter);
+	setGitBridge(wailsGitAdapter);
 	useWorkspaceBootstrapStore.getState().setAdapter(wailsWorkspaceBootstrapAdapter);
 
 	Events.On("reqly.golog", (e: { data?: { level?: string; message?: string } }) => {
