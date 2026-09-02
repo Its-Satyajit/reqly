@@ -8,6 +8,7 @@ export type SettingsTabId =
   | "security"
   | "cicd"
   | "shortcuts"
+  | "auth"
   | "about";
 
 interface SettingsState {

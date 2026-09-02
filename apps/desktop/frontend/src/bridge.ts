@@ -671,6 +671,10 @@ export const wailsGqlAdapter: GqlAdapter = {
 			),
 		};
 	},
+	parse: async ({ schemaPath, typeFilter }) => {
+		const out = await AppService.GraphqlParse(schemaPath, typeFilter ?? "");
+		return out ?? "";
+	},
 };
 
 // RunnerStepPayload mirrors backend runnerStep JSON.
@@ -766,6 +770,14 @@ export const wailsOpenapiAdapter: OpenapiAdapter = {
 		if (res.warnings) out.warnings = [...res.warnings];
 		return out;
 	},
+	validate: async (specPath) => {
+		const res = await AppService.OpenapiValidate(specPath);
+		return res ?? "Validation passed cleanly.";
+	},
+	convertV2: async (swaggerPath) => {
+		const res = await AppService.OpenapiConvertV2(swaggerPath);
+		return res ?? "";
+	},
 };
 
 export const wailsEnvToolsAdapter: EnvToolsAdapter = {
@@ -810,6 +822,14 @@ export const wailsJwtAdapter: JwtAdapter = {
 				iat: e?.iat ?? undefined,
 			},
 		};
+	},
+	verify: async (token, secret) => {
+		const ok = await AppService.JwtVerify(token, secret);
+		return !!ok;
+	},
+	sign: async (payloadJson, secret, alg) => {
+		const tok = await AppService.JwtSign(payloadJson, secret, alg);
+		return tok ?? "";
 	},
 };
 

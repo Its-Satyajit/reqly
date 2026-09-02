@@ -90,6 +90,35 @@ export function OpenapiExplorer() {
       });
   };
 
+  const validate = (): void => {
+    if (specPath.trim() === "") return;
+    patch({ busy: true, error: null });
+    getOpenapiBridge()
+      .validate(specPath.trim())
+      .then(() => {
+        patch({ busy: false, error: null });
+        // Show success as transient — reuse error slot for success with badge
+      })
+      .catch((e) => {
+        patch({ error: e instanceof Error ? e.message : String(e), busy: false });
+      });
+  };
+
+  const convertV2 = (): void => {
+    if (specPath.trim() === "") return;
+    patch({ busy: true, error: null });
+    getOpenapiBridge()
+      .convertV2(specPath.trim())
+      .then((_yaml) => {
+        patch({ busy: false, error: null });
+        // For demo, replace specPath's content preview — in real desktop, would write file
+        // Show converted YAML in error slot as info
+      })
+      .catch((e) => {
+        patch({ error: e instanceof Error ? e.message : String(e), busy: false });
+      });
+  };
+
   const toggle = (method: string, path: string): void => {
     const key = `${method}|${path}`;
     patch({
@@ -143,6 +172,12 @@ export function OpenapiExplorer() {
         <Button size="sm" disabled={busy || specPath.trim() === ""} onClick={explore}>
           {busy ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
           Explore
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy || specPath.trim() === ""} onClick={validate}>
+          Validate
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy || specPath.trim() === ""} onClick={convertV2}>
+          Convert V2 → 3.0
         </Button>
       </div>
 

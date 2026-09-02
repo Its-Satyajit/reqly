@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Its-Satyajit/reqly/internal/graphql"
@@ -55,4 +56,21 @@ func headerPairs(headers []RealtimeHeader) [][2]string {
 		}
 	}
 	return out
+}
+
+// GraphqlParse parses a local SDL file and returns a summary.
+func (s *AppService) GraphqlParse(schemaPath string, typeName string) (string, error) {
+	abs, err := s.resolveSpecPath(schemaPath)
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(abs)
+	if err != nil {
+		return "", fmt.Errorf("read schema: %w", err)
+	}
+	schema, err := graphql.ParseSDL(string(data))
+	if err != nil {
+		return "", fmt.Errorf("parse sdl: %w", err)
+	}
+	return schema.Summary(typeName), nil
 }

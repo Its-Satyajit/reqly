@@ -22,6 +22,8 @@ export interface JwtTokenView {
 
 export interface JwtAdapter {
   decode(token: string): Promise<JwtTokenView>;
+  verify(token: string, secret: string): Promise<boolean>;
+  sign(payloadJson: string, secret: string, alg: string): Promise<string>;
 }
 
 // Bridge registry, same pattern as the diff adapter.
@@ -40,6 +42,12 @@ export function getJwtBridge(): JwtAdapter {
 export const fallbackJwtAdapter: JwtAdapter = {
   async decode() {
     throw new Error("jwt inspector is not available in this build");
+  },
+  async verify() {
+    throw new Error("jwt verify is not available in this build");
+  },
+  async sign() {
+    throw new Error("jwt sign is not available in this build");
   },
 };
 
