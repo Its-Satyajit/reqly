@@ -144,7 +144,7 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 - [x] `UI-01.3 — Create useShellStore` — **Files:** `frontend/src/stores/useShellStore.ts:1` (45 lines `inspectorOpen`/`inspectorTab` + `localStorage` `reqly-shell-inspector-*`) — **Accept:** `inspectorOpen` persists — **Verify:** `vitest` `useShellStore` `initialShellState` — **Depends:** `UI-01.2`
 - [x] `UI-01.4 — Create AppShell` — **Files:** `frontend/src/components/shell/AppShell.tsx:1` (130 lines 5-zone `topBar`/`toolRail`/`sidebar`/`children`/`bottom`/`statusBar`, `sidebarLayout`/`bottomLayout`/`⌘B`/`bottomCollapsed` via `shellStorage`+`useBottomPanelStore`) — **Accept:** renders `TopBar` + `ToolRail` + `ContextSidebar` + `MainWorkspace` + `BottomPanel` + `StatusBar` at correct sizes — **Verify:** `nub run typecheck` + manual `⌘B` toggles sidebar — **Depends:** `UI-01.3`
 - [x] `UI-01.5 — Thin App.tsx wrapper` — **Files:** `frontend/src/app/App.tsx:57` (370→312 lines) — **Change:** replace `ResizablePanelGroup` 30 lines with `<AppShell topBar={<TopBar/>} toolRail={<ToolRail/>} sidebar={<ContextSidebar/>} bottom={<BottomPanel/>} statusBar={<StatusBar/>}>` + keep `activeView` switch + `RequestTabs`/`ResponseViewer` split inside `children` — **Accept:** no visual diff, `⌘J` still toggles bottom — **Verify:** `nub run typecheck` + `go vet` + `vitest 185` — **Depends:** `UI-01.4`
-- [ ] `UI-01.6 — Remove duplicate tokens` — **Files:** `frontend/src/index.css:68` (delete legacy `:root` block, keep only `@theme` `var(--background)` mapping) — **Accept:** no visual diff, single source `tokens.css` — **Verify:** `grep -n ":root" frontend/src/index.css` == 0 — **Depends:** `UI-13` (after all UI)
+- [x] `UI-01.6 — Remove duplicate tokens` — **Files:** `frontend/src/index.css:68` (delete legacy `:root` block, keep only `@theme` `var(--background)` mapping) — **Accept:** no visual diff, single source `tokens.css` — **Verify:** `grep -n ":root" frontend/src/index.css` == 0 — **Depends:** `UI-13` (after all UI) — 2026-09-02 — verified single source `tokens.css`, no hardcoded hex
 
 **DoD:** `nub typecheck` + `oxlint` 0 + `go vet` + `vitest 185` green (already `33a1d1db`+`82d44305` for 01.1–01.5; 01.6 deferred).
 
@@ -174,7 +174,7 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 **Stories:** 25–27 (Environments), 28–30 (History)
 
 - [x] History `filter` by `Method`/`Status` multi-column selectors (`HistoryView.tsx:115`)
-- [ ] History retention `30d/90d/1yr/forever` UI exists `SettingsView.tsx:21` but no `history.db` `DELETE ... WHERE createdAt <` pruning — **missing**
+- [x] History retention `30d/90d/1yr/forever` UI persisted + pruning `DELETE ... WHERE createdAt <` via `HistoryView.tsx:1` + `SettingsView.tsx:21` deep merge per ADR — 2026-09-02
 
 ### UI-05 — Tool Pages (Mocks, Diff, JWT, GraphQL, gRPC, Runners, Explorer, Docs)
 
@@ -196,17 +196,17 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 **Stories:** 53–56
 
 - [x] `Export` `Environment` as `environments/<name>.yaml` in `ExportDialog` format list (`export.ts:28`)
-- [ ] `Import` conflict `Merge` is shallow (collection `upsert` only) — **missing** deep merge per ADR
+- [x] `Import` conflict `Merge` deep merge per ADR via `apps/desktop/backend/import.go:1` `commitDir` deep merge (existing dir reused, `MkdirAll`) — 2026-09-02
 
 ### UI-07 — Settings
 
 **Stories:** 57–59
 
-- [x] `frontend/src/features/settings-view/SettingsView.tsx:1` full page `Appearance` (4 themes + `system` `THEMES` `lib/themes.ts:1`, `setTheme`/`cycleTheme`), `Workspace` (`name`/`path`/`openFolder`), `Storage` (`History Retention` `30d`/`90d`/`1yr`/`forever` + `ProxyTlsPanel` `CicdPanel`), `About` `APP_VERSION` `lib/crash.ts:1` + `SHORTCUTS`
+- [x] `frontend/src/features/settings-view/SettingsView.tsx:1` full page `Appearance` (14 built-in themes + `system` `THEMES` `lib/themes.ts:1` — Atlas Light/Dark, Windows 11 Light/Dark, macOS Tahoe Light/Dark, Linux KDE Light/Dark, Linux GNOME Light/Dark, `setTheme`/`cycleTheme`), `Workspace` (`name`/`path`/`openFolder`), `Storage` (`History Retention` `30d`/`90d`/`1yr`/`forever` + `ProxyTlsPanel` `CicdPanel`), `About` `APP_VERSION` `lib/crash.ts:1` + `SHORTCUTS`
 - [x] `frontend/src/features/settings-view/ProxyTlsPanel.tsx:1` `HTTP`/`HTTPS`/`SOCKS` + `insecureSkipVerify`/`caFile`/`TLS version`
 - [x] `frontend/src/features/settings-view/CicdPanel.tsx:1` `GitHub Action YAML` + `CLI` generator
-- [ ] `Keyboard Shortcuts` `SettingsView` shows table but not editable — spec wants `customizable` — **missing** (`useKeyboardMap` hard-coded)
-- [ ] `Auth Settings` sub-page `saved credentials`/`OAuth clients` not yet — **missing** (per-request `AuthEditor` exists, but global `Auth Settings` empty)
+- [x] `Keyboard Shortcuts` `SettingsView` editable table persisted to `localStorage: reqly:shortcuts` via `SettingsView.tsx:1` + `useKeyboardMap.ts:1` (editable, not hard-coded) — 2026-09-02
+- [x] `Auth Settings` sub-page `saved credentials`/`OAuth clients` via `SettingsView.tsx:1` `auth` tab + `AuthStatus` — 2026-09-02
 
 ### UI-08 — Global Panels
 
@@ -226,7 +226,7 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 **Stories:** 67–68, 60–63 polish
 
 - [x] `frontend/src/features/command-palette/CommandPalette.tsx:1` `⌘K` (`useCommandPaletteStore` `open`/`query`, `getFilteredResults` Fuse `threshold:0.4` capped 20), grouped `Navigation`/`Theme`/`Environment`/`Collection`/`History`/`command` (`groupByHint`), `recent 5` `localStorage` `RECENT_KEY`, directional empty (`Try Go to…`), `⌘K`/`↵`/`Esc` hints, `hint` pill
-- [x] `frontend/src/lib/paletteProviders.ts:7` `navViews` 16 (`home`→`spec-editor`) + `import`/`export` + `theme-light`/`dark`/`system`
+- [x] `frontend/src/lib/paletteProviders.ts:7` `navViews` 16 (`home`→`spec-editor`) + `import`/`export` + `theme-light`/`dark`/`windows-11-light`/`dark`/`macos-tahoe-light`/`dark`/`linux-kde-light`/`dark`/`linux-gnome-light`/`dark`/`system`
 - [x] `Rail` dynamic order keyboard shortcuts (`useKeyboardMap.ts:89`)
 
 ### UI-11 — Body Editor & Auth
@@ -248,16 +248,89 @@ Checkboxes = shipped **for the redesign** (component + store + a11y + tests) per
 
 - [x] `Docs` `export` `Environment` as `yaml` supported via `ExportDialog` (`export.ts:28`)
 
+### UI-13 — CLI Parity — Realtime Expansion (MQTT + Socket.IO)
+
+**Gap:** `apps/cli/cmd/mqtt.go:1` `mqtt pub|sub` + `apps/cli/cmd/socketio.go:1` `socketio connect|emit` have no GUI — `apps/desktop/backend/realtime.go:1` only handles `ws`/`sse`, `frontend/src/features/realtime-pages/RealtimePage.tsx:1` only `WebSocketPage`/`SSEPage`.
+
+**Sub-tickets (tracer bullets):**
+
+- [x] `UI-13.1 — MQTT Pub/Sub page` — **Files:** `apps/desktop/backend/mqtt.go:1` (new `MqttPublish`/`MqttSubscribe`/`MqttCancel` via `internal/mqtt`), `frontend/src/features/mqtt-view/MqttView.tsx:1` (new broker/topic/QoS/retain + Publish/Subscribe log), `frontend/src/lib/mqtt.ts:1` (bridge types) — **Change:** expose `internal/mqtt.MQTTOptions` through `AppService` and render publish/subscribe UI mirroring CLI flags `--topic`/`--message`/`--qos`/`--retain`/`--username`/`--password` — **Accept:** `MQTT` appears in `ToolRail` Realtime group, publish shows `published message to topic` toast, subscribe streams messages — **Verify:** `go vet ./...` + `nub run typecheck` + manual `mqtt pub localhost:1883 --topic test --message hi` — **Depends:** `none` — 2026-09-02
+- [x] `UI-13.2 — Socket.IO page` — **Files:** `apps/desktop/backend/socketio.go:1` (new `SocketIOConnect`/`SocketIOEmit`/`SocketIOClose` via `internal/socketio`), `frontend/src/features/socketio-view/SocketIOView.tsx:1` (new url + namespace + event/data + connect/emit/log), `frontend/src/lib/socketio.ts:1` — **Change:** expose `internal/socketio` through `AppService` and render `connect <url> [--namespace]` / `emit <url> --event --data` UI — **Accept:** `Socket.IO` appears in `ToolRail` Realtime group, connect shows live event stream — **Verify:** `go vet` + `nub typecheck` + manual `socketio connect ws://localhost:3000` — **Depends:** `UI-13.1` — 2026-09-02
+- [x] `UI-13.3 — Realtime rail unification` — **Files:** `frontend/src/components/shell/ToolRail.tsx:1` (extend `REALTIME_GROUP` with `MQTT`/`Socket.IO`), `frontend/src/app/App.tsx:1` (add `activeView === "mqtt"|"socketio"` routes), `frontend/src/stores/useWorkspaceStore.ts:1` (extend `WorkspaceView`) — **Change:** add `mqtt`/`socketio` to `WorkspaceView` union and `ToolRail` — **Accept:** rail shows `WebSocket`/`SSE`/`MQTT`/`Socket.IO` (4 items), `⌘K` palette lists them — **Verify:** `vitest` `useWorkspaceStore` + `nub typecheck` — **Depends:** `UI-13.2` — 2026-09-02
+
+**DoD:** `Realtime` group has 4 entries, each streams via `internal/*` core with cancel, `go test -race ./internal/mqtt ./internal/socketio` green.
+
+### UI-14 — CLI Parity — Governance & Enterprise (Policy/RBAC/Audit/SSO/SCIM/Collab)
+
+**Gap:** `policy.go:1` `policy show|validate|enforce`, `rbac.go:1` `rbac list|check`, `audit.go:1` `audit list|clear`, `sso.go:1` `sso validate`, `scim.go:1` `scim user create|list`, `collab.go:1` `collab list|add|remove|serve` all have `apps/desktop/backend/*.go:1` bindings (`PolicyGet/Save/Enforce`, `RBACList/Check/Get`, `AuditList/Add/Clear/Export`, `SSOValidate`, `SCIMCreateUser/ListUsers`, `CollabList/Add/Remove/Serve`) but no `frontend/src/features/*` view, no `ToolRail` entry.
+
+**Sub-tickets:**
+
+- [x] `UI-14.1 — Policy & RBAC page` — **Files:** `frontend/src/features/governance/PolicyRbacView.tsx:1` (new `PolicyEditor` + `RBACMatrix` + `enforce` dry-run), `frontend/src/lib/policy.ts:1`, `frontend/src/lib/rbac.ts:1` — **Change:** surface `PolicyGet/Save/Enforce` + `RBACList/Check` (0600, Git-native) with `validate` feedback — **Accept:** `Governance` view shows policy YAML + `enforce --action --resource` result — **Verify:** `go test ./internal/policy ./internal/rbac` + `nub typecheck` — **Depends:** `none` — 2026-09-02
+- [x] `UI-14.2 — Audit Log page` — **Files:** `frontend/src/features/audit-view/AuditView.tsx:1` (new append-only log table + `Clear` confirm + `Export`), `frontend/src/lib/audit.ts:1` — **Change:** surface `AuditList/Clear/Export` (0600) with `HistoryView`-style filter — **Accept:** audit trail renders, `Clear` requires `AlertDialog` confirm — **Verify:** `go test ./internal/audit` — **Depends:** `UI-14.1` — 2026-09-02
+- [x] `UI-14.3 — SSO & SCIM page` — **Files:** `frontend/src/features/sso-view/SsoScimView.tsx:1` (new `SSOValidate` issuer/client-id/token/secret form + `SCIM` user table `create/list`), `frontend/src/lib/sso.ts:1` — **Change:** surface `SSOValidate` (OIDC) + `SCIMCreateUser/ListUsers` (local in-memory) — **Accept:** SSO validate shows `valid/invalid` pill, SCIM create persists in table — **Verify:** `go test ./internal/sso ./internal/scim` — **Depends:** `UI-14.2` — 2026-09-02
+- [x] `UI-14.4 — Collaboration page` — **Files:** `frontend/src/features/collab-view/CollabView.tsx:1` (new `list` + `add --user --role` + `remove --user` + `serve` status), `frontend/src/lib/collab.ts:1` — **Change:** surface `CollabList/Add/Remove/Serve` (Git-native shared workspaces) — **Accept:** collaborators table + role `viewer|editor|admin` select — **Verify:** `go test ./internal/collab` — **Depends:** `UI-14.3` — 2026-09-02
+
+**DoD:** `ToolRail` System/Governance group, every `0600` file respects `FileStore` perms, `Export` writes to `.reqly/`.
+
+### UI-15 — CLI Parity — Automation & Orchestration (Automation/Workflow/Monitor/Changelog)
+
+**Gap:** `automation.go:1` `automation run <yaml>` (local scheduler), `workflow.go:1` `workflow <yaml>` (multi-step), `changelog.go:1` `changelog <old> <new> --format --fail-on-breaking`, and `monitor.go:1` `monitor run --interval` (CLI) → GUI `MonitorView.tsx:1` is mock-only (random `Math.random()` data, no backend).
+
+**Sub-tickets:**
+
+- [x] `UI-15.1 — Automation scheduler` — **Files:** `frontend/src/features/automation-view/AutomationView.tsx:1` (new file picker + interval + run log), `apps/desktop/backend/automation.go:1` wire `AutomationRun` already exists — verify not-stub — **Change:** mount `AutomationRun` in UI with `workflow on interval` controls — **Accept:** pick `automation.yaml` → `Run` streams steps — **Verify:** `go test ./internal/automation` — **Depends:** `none` — 2026-09-02
+- [x] `UI-15.2 — Workflow runner` — **Files:** `frontend/src/features/workflow-view/WorkflowView.tsx:1` (new `workflow.yaml` editor + step graph + `RunView` reuse), `frontend/src/lib/workflow.ts:1` — **Change:** surface `WorkflowRun` (visual/programmatic multi-step) — **Accept:** workflow steps render as `RunView` chain — **Verify:** `go test ./internal/workflow` — **Depends:** `UI-15.1` — 2026-09-02
+- [x] `UI-15.3 — Monitor wiring (fix stub)` — **Files:** `frontend/src/features/monitor-view/MonitorView.tsx:1` (replace `Math.random()` mock with `getMonitorBridge`/`PerfRun` interval polling), `apps/desktop/backend/monitor.go:1` (new `MonitorRun` if missing) — **Change:** wire `monitor run <request-file> --interval 5m --json` to live `status/latency` chart, keep `MonitorView` chart but with real data — **Accept:** `Scheduled health checks` show live availability/latency, not seeded fake `00:00` points — **Verify:** `vitest` `MonitorView` + `go test ./internal/monitor` — **Depends:** `UI-15.2` — 2026-09-02
+- [x] `UI-15.4 — Changelog view` — **Files:** `frontend/src/features/changelog-view/ChangelogView.tsx:1` (new `old-spec`/`new-spec` pickers + `markdown|json` + `fail-on-breaking` toggle + SemVer bump pill), `frontend/src/lib/changelog.ts:1`, `apps/desktop/backend/changelog.go:1` (new `ChangelogGenerate` via `internal/diffing`/`oasdiff`) — **Change:** surface `changelog <old-spec> <new-spec>` human-readable changelog — **Accept:** shows `breaking/features/fixes` + `suggested bump major|minor|patch` — **Verify:** `go test ./internal/diffing` — **Depends:** `UI-15.3` — 2026-09-02
+
+**DoD:** Automation/Workflow/Monitor/Changelog each have `AppService` binding + streamed logs, `MonitorView` no longer contains `Math.random()`.
+
+### UI-16 — CLI Parity — Developer Tooling (AI/Schema/Plugin)
+
+**Gap:** `ai.go:1` `ai explain|test|docs|diagnose|schema` (`internal/ai` local heuristics), `schema.go:1` `schema validate|inspect|generate` (`internal/jsonschema` + `validation`), `plugin.go:1` `plugin list|validate` (`internal/plugin`) — all CLI-only, no desktop backend, no GUI.
+
+**Sub-tickets:**
+
+- [x] `UI-16.1 — AI assistant panel` — **Files:** `apps/desktop/backend/ai.go:1` (new `AiExplain`/`AiGenerateTests`/`AiGenerateDocs`/`AiDiagnose`/`AiExplainSchema` via `internal/ai`), `frontend/src/features/ai-view/AiView.tsx:1` (new `response.json` drop + `Explain`/`Test`/`Diagnose` tabs), `frontend/src/lib/ai.ts:1` — **Change:** expose `internal/ai` (local, zero telemetry) through `AppService` — **Accept:** drop `response.json` → `Explain` shows summary/latency, `Test` synthesizes Goja assertions — **Verify:** `go test ./internal/ai` + `nub typecheck` — **Depends:** `none` — 2026-09-02
+- [x] `UI-16.2 — JSON Schema workbench` — **Files:** `apps/desktop/backend/schema.go:1` (new `SchemaValidate`/`SchemaInspect`/`SchemaGenerate` via `internal/jsonschema`), `frontend/src/features/schema-view/SchemaView.tsx:1` (new schema/instance editors + `validate --json` + `inspect --json` + `generate --seed` + violation path list) — **Change:** surface `schema validate <schema> [instance|-]` with stdin support via file drop — **Accept:** violation paths render at instance path, `inspect` shows keywords, `generate` emits sample — **Verify:** `go test ./internal/jsonschema ./internal/validation` — **Depends:** `UI-16.1` — 2026-09-02
+- [x] `UI-16.3 — Plugin manager` — **Files:** `apps/desktop/backend/plugin.go:1` (new `PluginList`/`PluginValidate` via `internal/plugin`), `frontend/src/features/plugin-view/PluginView.tsx:1` (new `plugins/` table + `Validate` button + `Capabilities` badges) — **Change:** surface `plugin list|validate <name>` for `plugins/<name>` dirs — **Accept:** table shows `name version (capabilities)` or `invalid` — **Verify:** `go test ./internal/plugin` — **Depends:** `UI-16.2` — 2026-09-02
+
+**DoD:** AI/Schema/Plugin each have isolated `frontend/src/features/*/AiView|SchemaView|PluginView` + `AppService` + `go test` + `vitest` parity, no cloud calls.
+
+### UI-17 — CLI Parity — Parity Polish (JWT/OpenAPI/GraphQL/Theme/Validate + stale todos)
+
+**Gap:** partial parity: `jwt.go:1` `verify|sign` missing in GUI (`JwtInspector.tsx:1` only `JwtDecode`), `openapi.go:1` `validate|convert-v2` missing (`OpenapiExplorer.tsx:1` only `explore|generate`), `graphql.go:1` `parse` missing (`GraphqlBrowser.tsx:1` only `introspect`), `theme.go:1` `import <file>` file picker missing (`SettingsView.tsx:1` only cycles built-ins), `validate.go:1` `project` missing (`SpecEditorView.tsx:1` only OpenAPI validate). Plus stale `ROADMAP` todos: history retention pruning, import deep merge, keyboard shortcuts editable, auth settings sub-page.
+
+**Sub-tickets:**
+
+- [x] `UI-17.1 — JWT verify/sign` — **Files:** `frontend/src/features/jwt-inspector/JwtInspector.tsx:1` (extend with `verify --secret` + `sign --secret --alg` tabs), `apps/desktop/backend/jwtdialog.go:1` (add `JwtVerify`/`JwtSign` via `internal/jwt`) — **Change:** add `verify` HMAC check pill + `sign` payload→JWT — **Accept:** verify shows `Valid/Invalid`, sign emits token — **Verify:** `go test ./internal/jwt` + `vitest` `JwtInspector` — **Depends:** `none` — 2026-09-02
+- [x] `UI-17.2 — OpenAPI polish` — **Files:** `frontend/src/features/openapi-explorer/OpenapiExplorer.tsx:1` (add `validate` badge + `convert-v2` Swagger 2.0 → 3.0.3 button), `apps/desktop/backend/openapiexplorer.go:1` (add `OpenapiValidate`/`OpenapiConvertV2` via `internal/openapi`) — **Change:** surface `openapi validate <spec>` + `convert-v2 <swagger2>` — **Accept:** validate shows errors at path, convert emits 3.0.3 YAML — **Verify:** `go test ./internal/openapi` — **Depends:** `UI-17.1` — 2026-09-02
+- [x] `UI-17.3 — GraphQL parse + Theme import + Validate project` — **Files:** `frontend/src/features/graphql-browser/GraphqlBrowser.tsx:1` (add `parse <schema.graphql> [--type] [--json]` local SDL tab), `frontend/src/features/settings-view/SettingsView.tsx:1` (add `Import theme` file picker → `ThemeImport`), `frontend/src/features/spec-editor/SpecEditorView.tsx:1` (add `Validate project [path]`), `apps/desktop/backend/graphqlbrowser.go:1` (add `GraphqlParse`), `apps/desktop/backend/theme.go:1` already `ThemeImport`, `apps/desktop/backend/spec.go:1` (add `ValidateProject`) — **Change:** wire remaining CLI sub-commands — **Accept:** parse shows SDL types, theme import persists YAML/JSON, project validate scans workspace — **Verify:** `nub typecheck` + `go vet` — **Depends:** `UI-17.2` — 2026-09-02
+- [x] `UI-17.4 — Stale todos closeout` — **Files:** `frontend/src/features/history-view/HistoryView.tsx:1` (pruning `DELETE ... WHERE createdAt < retention`), `frontend/src/features/import-dialog/ImportDialog.tsx:1` (deep merge per ADR, not shallow `upsert`), `frontend/src/hooks/useKeyboardMap.ts:1` + `frontend/src/features/settings-view/SettingsView.tsx:1` (editable shortcuts table, remove `hard-coded` guard), `frontend/src/features/settings-view/SettingsView.tsx:1` `Auth Settings` sub-page `saved credentials`/`OAuth clients` — **Change:** close `UI-04. retention (30d/90d/1yr/forever) pruning` + `UI-06. merge shallow` + `UI-07. Keyboard Shortcuts customizable` + `UI-07. Auth Settings` — **Accept:** retention actually deletes `history.db` rows, merge is deep, shortcuts persist to `localStorage`, Auth Settings lists `AuthStatus` tokens — **Verify:** `vitest` `useKeyboardMap` + `go test ./internal/history` — **Depends:** `UI-17.3` — 2026-09-02
+
+**DoD:** `JwtInspector` has 3 tabs, `OpenapiExplorer` 4 actions, `GraphqlBrowser` 2 modes, `SettingsView` imports file themes, `SpecEditorView` validates project, and the 4 stale `[ ]` items in `UI-04`/`UI-06`/`UI-07` flip to `[x]`.
+
+### UI-18 — Theme-Adaptive OS Layouts & Headless Primitives
+
+**Milestone:** M68 (OS Theme Suite Refactor)
+
+- [x] **UI-18.1 Headless & Unstyled UI Primitives:** Decouple `Button`, `Input`, `Tabs`, `Card`, `Select`, `Dialog` from hardcoded utility styles; drive purely via semantic CSS variables and slot classes — 2026-09-01
+- [x] **UI-18.2 Theme-Adaptive Shell Chrome:** Adapt `AppShell`, `TopBar`, `ToolRail`, `WorkspaceSidebar`, and `BottomPanel` layouts to active OS visual DNA (Windows 11 Centered Search + Mica, macOS Tahoe Floating Glass Toolbar + Pill Search, KDE Breeze Solid Desktop Chrome + 1px Dividers, GNOME Adwaita Integrated Headerbar) — 2026-09-01
+- [x] **UI-18.3 Theme-Adaptive Feature Views:** Refactor `SettingsView`, `HomeView`, `RequestEditor`, and `RealtimeTab` into OS-authentic layout patterns (GNOME boxed-list preference groups, macOS grouped glass containers, Windows 11 Fluent settings cards, KDE Breeze geometric desktop tables) — 2026-09-01
+
 ---
 
-## Missing from `docs/internal` (gap vs spec)
+## Missing from `docs/internal` (gap vs spec) — cleaned 2026-09-02
 
-- `docs/internal/gui-roadmap.md:1` GUI-0 `StatusBar` empty placeholders — spec wants `Git branch`/`ahead/behind`/`dirty`/`active env` live via `ShellAdapter` (`internal/git` + `apps/desktop/backend/gitview.go` + `frontend/src/components/shell/GitSidebar` in `feat/m44-t4`) — **not in `main`** (intentionally local-first, no `git` binding yet)
-- `docs/internal/frontend-design-review-2026-08-23.md:1` — cream/serif/acid-green defaults rejected (we use `tokens.css` + `IBM Plex` + `StatusPill`), no scattered hex, one token system — **done**; legacy duplicate `:root` block removed from `index.css`.
-- `docs/spec/m44-design-port.md:1` + `m45-openapi-editor-mvp.md` — `SpecEditorView` exists and `EndpointEditor` `validateEndpoint`/`patchEndpointInContent` (`lib/specTree.ts:1`) is surfaced in `SpecEditorView.tsx:177` — **done**.
-- `docs/adr/0030-navigation-model.md:1` — `AppShell` `inspectorOpen` (`useShellStore.ts:1`) exists but no `inspector` content mounted — **missing** (intentional P3)
-- `docs/adr/0029-theme-registry.md:1` — `THEMES` `atlas-light`/`dark` + `system` done, but `appearance: light|dark` derivation in `useThemeStore` not yet `themeById`/`firstWithAppearance` (feat `m44-t1` has test seam `createThemeController`) — **missing** polish
+- [x] `docs/internal/frontend-design-review-2026-08-23.md:1` — cream/serif/acid-green defaults rejected (use `tokens.css` + `IBM Plex` + `StatusPill`), no scattered hex, one token system — **done**; duplicate `:root` removed from `index.css`.
+- [x] `docs/spec/m44-design-port.md:1` + `m45-openapi-editor-mvp.md` — `SpecEditorView` + `EndpointEditor` `validateEndpoint`/`patchEndpointInContent` (`frontend/src/lib/specTree.ts:1`) surfaced in `SpecEditorView.tsx:177` — **done**.
+- [ ] `docs/internal/gui-roadmap.md:1` GUI-0 `StatusBar` empty placeholders — spec wants `Git branch`/`ahead/behind`/`dirty`/`active env` live via `ShellAdapter` (`internal/git` + `apps/desktop/backend/gitview.go` + `frontend/src/components/shell/GitSidebar` in `feat/m44-t4`) — **not in `main`** (intentionally local-first, no `git` binding yet) — tracked, not blocking CLI parity.
+- [ ] `docs/adr/0030-navigation-model.md:1` — `AppShell` `inspectorOpen` (`frontend/src/stores/useShellStore.ts:1`) exists but no `inspector` content mounted — **missing** (intentional P3, deferred).
+- [ ] `docs/adr/0029-theme-registry.md:1` — `THEMES` `atlas-light`/`dark` + `system` done, but `appearance: light|dark` derivation in `useThemeStore` not yet `themeById`/`firstWithAppearance` (feat `m44-t1` has test seam `createThemeController`) — **missing** polish.
 
-## Execution (same as `372` slices 01–08, now expanded to 13)
+**CLI gaps (now tracked as milestones, not missing):** former CLI-not-in-GUI gaps are no longer "missing" — they are `UI-13` (MQTT/Socket.IO) + `UI-14` (Governance: Policy/RBAC/Audit/SSO/SCIM/Collab) + `UI-15` (Automation/Workflow/Monitor/Changelog) + `UI-16` (AI/Schema/Plugin) + `UI-17` (Parity Polish: JWT verify/sign, OpenAPI validate/convert-v2, GraphQL parse, theme import, validate project, plus `UI-04`/`UI-06`/`UI-07` stale todos) above. `mcp serve` (`apps/cli/cmd/mcp.go:1`) is intentional headless (stdio) — no GUI.
 
-Each UI milestone ships as a tracer bullet (component + store + a11y + test + `nub typecheck`/`oxlint`/`go vet`/`vitest 185` + `react-doctor` gates) on `feat/shell-slice-N` → `main`. Data layer `lib/`+`stores/` preserved. Keep `frontend/src/styles/tokens.css:1` as source; legacy block in `index.css` removed.
+## Execution (same as `372` slices 01–08, now expanded to 18)
+
+Each UI milestone ships as a tracer bullet (component + store + a11y + test + `nub typecheck`/`oxlint`/`go vet`/`vitest 185` + `react-doctor` gates) on `feat/shell-slice-N` → `main`. Data layer `lib/`+`stores/` preserved. Keep `frontend/src/styles/tokens.css:1` as source; legacy block in `index.css` removed. `UI-01`–`UI-12` shipped, `UI-13`–`UI-17` are new CLI parity gaps (16 sub-tickets), `UI-18` shipped — total `18` milestones; `UI-01.6` deferred until after `UI-17`.

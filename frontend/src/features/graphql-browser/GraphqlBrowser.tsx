@@ -90,8 +90,12 @@ function TypeSection({
 }
 
 export function GraphqlBrowser() {
+  const [mode, setMode] = useState<"introspect" | "parse">("introspect");
   const [endpoint, setEndpoint] = useState("");
   const [authHeader, setAuthHeader] = useState("");
+  const [sdlPath, setSdlPath] = useState("schema.graphql");
+  const [sdlType, setSdlType] = useState("");
+  const [parseResult, setParseResult] = useState<string | null>(null);
   const [schema, setSchema] = useState<GqlSchema | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +121,23 @@ export function GraphqlBrowser() {
       });
   };
 
+  const parse = (): void => {
+    if (sdlPath.trim() === "") return;
+    setBusy(true);
+    setError(null);
+    setParseResult(null);
+    getGqlBridge()
+      .parse({ schemaPath: sdlPath.trim(), typeFilter: sdlType.trim() || undefined })
+      .then((out) => {
+        setParseResult(out);
+        setBusy(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : String(err));
+        setBusy(false);
+      });
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
 
   const navigate = (typeName: string) => setSelected(typeName);
@@ -136,38 +157,84 @@ export function GraphqlBrowser() {
       <PageHeader
         icon={Hexagon}
         title="GraphQL Schema Browser"
-        description="Introspect a GraphQL endpoint or parse SDL schemas to browse and search types"
+        description="Introspect a GraphQL endpoint or parse local SDL schemas to browse and search types"
       />
       <div className="flex flex-col gap-3 p-4">
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="flex min-w-64 flex-1 flex-col gap-1">
-          <label htmlFor="gql-endpoint" className="text-xs font-medium">Endpoint</label>
-          <Input
-            id="gql-endpoint"
-            value={endpoint}
-            onChange={(e) => setEndpoint(e.target.value)}
-            placeholder="https://api.example.com/graphql"
-            spellCheck={false}
-            className="font-mono text-xs"
-          />
+        <div className="flex gap-1.5 border-b border-border pb-2">
+          <button
+            type="button"
+            onClick={() => setMode("introspect")}
+            className={mode === "introspect" ? "rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground" : "rounded border border-border px-3 py-1 text-xs hover:bg-muted"}
+          >
+            Introspect
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("parse")}
+            className={mode === "parse" ? "rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground" : "rounded border border-border px-3 py-1 text-xs hover:bg-muted"}
+          >
+            Parse SDL
+          </button>
         </div>
-        <div className="flex min-w-48 flex-col gap-1">
-          <label htmlFor="gql-auth" className="text-xs font-medium">Bearer token (optional)</label>
-          <Input
-            id="gql-auth"
-            value={authHeader}
-            onChange={(e) => setAuthHeader(e.target.value)}
-            placeholder="eyJ…"
-            spellCheck={false}
-            type="password"
-            className="font-mono text-xs"
-          />
-        </div>
-        <Button size="sm" disabled={busy || endpoint.trim() === ""} onClick={introspect}>
-          {busy ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
-          Introspect
-        </Button>
-      </div>
+
+        {mode === "introspect" ? (
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex min-w-64 flex-1 flex-col gap-1">
+              <label htmlFor="gql-endpoint" className="text-xs font-medium">
+                Endpoint
+              </label>
+              <Input
+                id="gql-endpoint"
+                value={endpoint}
+                onChange={(e) => setEndpoint(e.target.value)}
+                placeholder="https://api.example.com/graphql"
+                spellCheck={false}
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="flex min-w-48 flex-col gap-1">
+              <label htmlFor="gql-auth" className="text-xs font-medium">
+                Bearer token (optional)
+              </label>
+              <Input
+                id="gql-auth"
+                value={authHeader}
+                onChange={(e) => setAuthHeader(e.target.value)}
+                placeholder="eyJ…"
+                spellCheck={false}
+                type="password"
+                className="font-mono text-xs"
+              />
+            </div>
+            <Button size="sm" disabled={busy || endpoint.trim() === ""} onClick={introspect}>
+              {busy ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+              Introspect
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex min-w-64 flex-1 flex-col gap-1">
+              <label htmlFor="gql-sdl" className="text-xs font-medium">
+                SDL file (workspace-relative)
+              </label>
+              <Input id="gql-sdl" value={sdlPath} onChange={(e) => setSdlPath(e.target.value)} placeholder="schema.graphql" spellCheck={false} className="font-mono text-xs" />
+            </div>
+            <div className="flex min-w-40 flex-col gap-1">
+              <label htmlFor="gql-type" className="text-xs font-medium">
+                Type filter (optional)
+              </label>
+              <Input id="gql-type" value={sdlType} onChange={(e) => setSdlType(e.target.value)} placeholder="User" spellCheck={false} className="font-mono text-xs" />
+            </div>
+            <Button size="sm" disabled={busy || sdlPath.trim() === ""} onClick={parse}>
+              {busy ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+              Parse
+            </Button>
+          </div>
+        )}
+
+        {mode === "parse" && parseResult && (
+          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded border bg-muted/40 p-2 font-mono text-xs">{parseResult}</pre>
+        )}
 
       {schema && (
         <div className="flex items-center gap-2">
