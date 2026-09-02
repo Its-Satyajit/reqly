@@ -26,14 +26,6 @@ const RAIL_VIEWS = [
   "audit",
   "sso",
   "collab",
-  "automation",
-  "workflow",
-  "monitor",
-  "changelog",
-  "ai",
-  "schema",
-  "plugin",
-  "git",
 ] as const;
 
 function isTypingTarget(target: HTMLElement | null): boolean {
