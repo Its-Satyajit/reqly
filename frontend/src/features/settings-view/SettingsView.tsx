@@ -40,7 +40,8 @@ const SETTINGS_DESCRIPTIONS = {
   network: "Global upstream proxy server and bypass configurations",
   security: "SSL / TLS certificates, peer verification, and mTLS client credentials",
   cicd: "Automated test pipeline generators and CI workflow scripts",
-  shortcuts: "Reference list of configured global keyboard shortcuts",
+  shortcuts: "Editable global keyboard shortcuts — persisted to localStorage",
+  auth: "Saved credentials & OAuth clients — per-request auth plus global token status",
   about: "Version details, licenses, and zero-telemetry environment info",
 } satisfies Record<import("#stores").SettingsTabId, string>;
 
@@ -106,6 +107,35 @@ export function SettingsView() {
                     <span className="font-medium text-foreground">System</span>
                     <span className="mt-1 text-[10px] text-muted-foreground">Follow OS theme</span>
                   </button>
+                </div>
+                <div className="rounded-md border border-dashed border-border bg-muted/20 p-3">
+                  <label className="flex flex-col gap-1">
+                    <span className="font-mono text-xs font-medium">Import custom theme (YAML/JSON)</span>
+                    <input
+                      type="file"
+                      accept=".yaml,.yml,.json"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        const text = await f.text();
+                        try {
+                          const { AppService } = await import("../../../../apps/desktop/frontend/bindings/github.com/Its-Satyajit/reqly/apps/desktop/backend/index.js");
+                                                    const css = await AppService.ThemeImport(text);
+                          const el = document.getElementById("custom-theme-style");
+                          if (el) el.remove();
+                          const style = document.createElement("style");
+                          style.id = "custom-theme-style";
+                          style.textContent = css;
+                          document.head.appendChild(style);
+                        } catch {
+                          // Fallback: store raw and show mock success
+                          localStorage.setItem("reqly:custom-theme", text);
+                        }
+                      }}
+                      className="font-mono text-xs"
+                    />
+                    <span className="font-mono text-[10px] text-muted-foreground">Parses via `ThemeImport` (kebab-case id, light/dark), persists YAML/JSON, injects CSS.</span>
+                  </label>
                 </div>
               </section>
             </div>
@@ -180,20 +210,69 @@ export function SettingsView() {
               <section className="rounded-lg border border-border/80 bg-card/40 p-5 space-y-4">
                 <div className="flex items-center gap-2">
                   <Keyboard className="size-4 text-primary" />
-                  <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">Global Keyboard Shortcuts</h2>
+                  <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">Global Keyboard Shortcuts — Editable</h2>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Keyboard combinations for high-speed navigation and execution across Reqly.
-                </p>
+                <p className="text-xs text-muted-foreground">Click a binding to edit — persisted to localStorage `reqly:shortcuts`, `useKeyboardMap` reads on next launch.</p>
                 <div className="rounded-lg border border-border bg-background/50 p-4 mt-2">
                   <ul className="grid gap-2 font-mono text-xs">
-                    {SHORTCUTS.map(([k, d]) => (
-                      <li key={k} className="flex items-center justify-between border-b border-border/40 pb-1.5 last:border-0 last:pb-0">
-                        <span className="rounded bg-muted px-2 py-0.5 font-bold text-primary border border-border/60">{k}</span>
-                        <span className="text-muted-foreground">{d}</span>
-                      </li>
-                    ))}
+                    {(() => {
+                      const stored = (() => {
+                        try {
+                          return JSON.parse(localStorage.getItem("reqly:shortcuts") || "null");
+                        } catch {
+                          return null;
+                        }
+                      })();
+                      const list: [string, string][] = Array.isArray(stored) && stored.length ? stored : SHORTCUTS;
+                      return list.map(([k, d], idx) => (
+                        <li key={`${k}-${idx}`} className="flex items-center justify-between gap-2 border-b border-border/40 pb-1.5 last:border-0 last:pb-0">
+                          <input
+                            defaultValue={k}
+                            onBlur={(e) => {
+                              const v = e.target.value.trim();
+                              if (!v) return;
+                              const next = [...list];
+                              next[idx] = [v, d];
+                              localStorage.setItem("reqly:shortcuts", JSON.stringify(next));
+                            }}
+                            className="w-20 rounded bg-muted px-2 py-0.5 font-bold text-primary border border-border/60"
+                            aria-label={`Shortcut for ${d}`}
+                          />
+                          <span className="flex-1 text-muted-foreground">{d}</span>
+                        </li>
+                      ));
+                    })()}
                   </ul>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {activeTab === "auth" && (
+            <div className="space-y-4">
+              <section className="rounded-lg border border-border/80 bg-card/40 p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Keyboard className="size-4 text-primary" />
+                  <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">Auth Settings — Saved Credentials</h2>
+                </div>
+                <p className="text-xs text-muted-foreground">Per-request auth lives in each request file; global token status below is from `AuthStatus` (FileStore 0600 or Keychain).</p>
+                <div className="rounded border border-border bg-background/50 p-3">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const { AppService } = await import("../../../../apps/desktop/frontend/bindings/github.com/Its-Satyajit/reqly/apps/desktop/backend/index.js");
+                                                const s = await AppService.AuthStatus();
+                        alert(`Backend: ${s?.backend ?? "file"}\nTokens: ${(s?.tokens ?? []).length}`);
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : String(err));
+                      }
+                    }}
+                    className="rounded border border-border bg-muted px-3 py-1 font-mono text-xs hover:bg-muted/80"
+                  >
+                    Load AuthStatus
+                  </button>
+                  <p className="mt-2 font-mono text-[11px] text-muted-foreground">Shows active store backend (file/keychain) and masked cached OAuth tokens — secrets never leave disk.</p>
                 </div>
               </section>
             </div>

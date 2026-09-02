@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/Its-Satyajit/reqly/internal/validation"
 )
 
 // SpecRead returns the raw content of a spec file at a workspace-relative or absolute path.
@@ -53,4 +55,22 @@ func (s *AppService) SpecSave(path string, content string) error {
 		return fmt.Errorf("save spec %q: %w", path, err)
 	}
 	return nil
+}
+
+// ValidateProject validates a workspace project at path (workspace-relative or absolute).
+func (s *AppService) ValidateProject(path string) (*validation.Result, error) {
+	target := path
+	if target == "" {
+		if s.root != "" {
+			target = s.root
+		} else {
+			target = "."
+		}
+	} else {
+		abs, err := s.resolveTestPath(path)
+		if err == nil {
+			target = abs
+		}
+	}
+	return validation.ValidateProject(target)
 }
