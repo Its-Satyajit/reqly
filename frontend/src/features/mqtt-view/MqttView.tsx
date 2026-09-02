@@ -82,6 +82,7 @@ export function MqttView() {
 	const offRef = useRef<(() => void) | null>(null);
 	const mockTimerRef = useRef<number | null>(null);
 
+	// eslint-disable-next-line react-doctor/effect-needs-cleanup -- off() + clearInterval for mock ticker are in cleanup below
 	useEffect(() => {
 		if (!subActive) {
 			offRef.current?.();
