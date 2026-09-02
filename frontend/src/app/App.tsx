@@ -40,14 +40,6 @@ import { PolicyRbacView } from "../features/governance/PolicyRbacView";
 import { AuditView } from "../features/audit-view/AuditView";
 import { SsoScimView } from "../features/sso-view/SsoScimView";
 import { CollabView } from "../features/collab-view/CollabView";
-import { AutomationView } from "../features/automation-view/AutomationView";
-import { WorkflowView } from "../features/workflow-view/WorkflowView";
-import { MonitorView } from "../features/monitor-view/MonitorView";
-import { ChangelogView } from "../features/changelog-view/ChangelogView";
-import { AiView } from "../features/ai-view/AiView";
-import { SchemaView } from "../features/schema-view/SchemaView";
-import { PluginView } from "../features/plugin-view/PluginView";
-import { GitView } from "../features/git-view/GitView";
 import { SpecEditorView } from "../features/spec-editor/SpecEditorView";
 import { CommandPalette } from "../features/command-palette/CommandPalette";
 import { BottomPanel } from "../components/shell/BottomPanel";
@@ -127,41 +119,6 @@ const SCROLLABLE_VIEW_RENDERERS = {
 			<CollabView />
 		</ErrorBoundary>
 	),
-	automation: () => (
-		<ErrorBoundary label="Automation">
-			<AutomationView />
-		</ErrorBoundary>
-	),
-	workflow: () => (
-		<ErrorBoundary label="Workflow">
-			<WorkflowView />
-		</ErrorBoundary>
-	),
-	monitor: () => (
-		<ErrorBoundary label="Monitor">
-			<MonitorView />
-		</ErrorBoundary>
-	),
-	changelog: () => (
-		<ErrorBoundary label="Changelog">
-			<ChangelogView />
-		</ErrorBoundary>
-	),
-	ai: () => (
-		<ErrorBoundary label="AI">
-			<AiView />
-		</ErrorBoundary>
-	),
-	schema: () => (
-		<ErrorBoundary label="Schema">
-			<SchemaView />
-		</ErrorBoundary>
-	),
-	plugin: () => (
-		<ErrorBoundary label="Plugins">
-			<PluginView />
-		</ErrorBoundary>
-	),
 	settings: () => (
 		<ErrorBoundary label="Settings">
 			<SettingsView />
@@ -203,11 +160,6 @@ const FULL_VIEW_RENDERERS = {
 	audit: () => (
 		<ErrorBoundary label="Audit">
 			<AuditView />
-		</ErrorBoundary>
-	),
-	git: () => (
-		<ErrorBoundary label="Git">
-			<GitView />
 		</ErrorBoundary>
 	),
 	"spec-editor": () => (
@@ -359,25 +311,6 @@ export function App() {
 	}
 
 	const isWorkspaceHome = activeView === "home";
-	const sidebarHiddenViews: ReadonlySet<WorkspaceView> = new Set([
-		"jwt",
-		"graphql",
-		"grpc",
-		"explorer",
-		"policy",
-		"audit",
-		"sso",
-		"collab",
-		"automation",
-		"workflow",
-		"monitor",
-		"changelog",
-		"ai",
-		"schema",
-		"plugin",
-		"git",
-	]);
-	const showSidebar = !isWorkspaceHome && !sidebarHiddenViews.has(activeView);
 
 	return (
 		<ErrorBoundary variant="root">
@@ -395,11 +328,11 @@ export function App() {
 					</ErrorBoundary>
 				}
 				sidebar={
-					showSidebar ? (
+					isWorkspaceHome ? null : (
 						<ErrorBoundary label="Context sidebar">
 							<ContextSidebar />
 						</ErrorBoundary>
-					) : null
+					)
 				}
 				bottom={
 					<ErrorBoundary label="Bottom panel">

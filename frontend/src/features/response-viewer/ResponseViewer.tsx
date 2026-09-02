@@ -35,7 +35,7 @@ const views: { id: View; label: string }[] = [
 	{ id: "cookies", label: "Cookies" },
 	{ id: "tree", label: "Tree" },
 	{ id: "table", label: "Table" },
-	{ id: "tests", label: "Test Results" },
+	{ id: "tests", label: "Tests" },
 	{ id: "timeline", label: "Timeline" },
 ];
 
@@ -62,7 +62,7 @@ export function ResponseViewer() {
 	const parsed = useMemo(() => {
 		if (!response) return null;
 		try {
-			// SAFETY: JSON response body parsed at I/O boundary; validated as JsonValue via isRecord/Array checks in viewers
+			// SAFETY: response.body is JSON text from the execution pipeline; parsed as JsonValue for tree/table rendering.
 			return JSON.parse(response.body) as JsonValue;
 		} catch {
 			return null;
@@ -140,51 +140,182 @@ export function ResponseViewer() {
 			: cookies;
 
 	return (
-		<div className="flex h-full min-h-0 flex-col bg-background">
-			<div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-card/20 px-3 select-none">
-				<div className="flex items-center gap-2">
-					<span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-						Response
-					</span>
-					{cancelled ? (
-						<span className="font-mono text-xs text-status-warn">Request cancelled</span>
-					) : response ? (
-						<StatusPill status={response.statusCode} />
-					) : null}
+		<div className="flex h-full min-h-0 flex-col bg-card">
+			{/* Unified header — status + view rail, no double bar */}
+			<div className="flex shrink-0 flex-col border-b border-border bg-card">
+				<div className="flex h-9 items-center justify-between gap-2 px-3">
+					<div className="flex min-w-0 items-center gap-2">
+						<span className="hidden font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:inline">
+							Response
+						</span>
+						{cancelled ? (
+							<span className="rounded-md bg-status-warn/10 px-1.5 py-0.5 font-mono text-xs text-status-warn">Cancelled</span>
+						) : response ? (
+							<StatusPill status={response.statusCode} />
+						) : (
+							<span className="font-mono text-xs text-muted-foreground">No response</span>
+						)}
+						{response && (
+							<span className="hidden items-center gap-1.5 font-mono text-xs tabular-nums text-muted-foreground sm:inline-flex">
+								<span className="text-foreground/80">{response.statusText}</span>
+								<span className="text-border">·</span>
+								<span>{response.durationMs}ms</span>
+								<span className="text-border">·</span>
+								<span>{formatBytes(response.size)}</span>
+								{ct && (
+									<>
+										<span className="text-border">·</span>
+										<span className="max-w-28 truncate">{ct.split(";")[0]}</span>
+									</>
+								)}
+							</span>
+						)}
+					</div>
+
+					{response && (
+						<div className="flex shrink-0 items-center gap-1">
+							<Button
+								size="xs"
+								variant="ghost"
+								className="h-7 px-2 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+								onClick={() => {
+									const text =
+										view === "headers"
+											? headersText
+											: view === "cookies"
+												? cookiesText
+												: bodyView;
+									void copyText(text).then((ok) => {
+										if (!ok) {
+											notifyError("Copy failed", "Clipboard access was denied.");
+											return;
+										}
+										setCopied(true);
+										setTimeout(() => setCopied(false), 1500);
+									});
+								}}
+							>
+								{copied ? "Copied" : "Copy"}
+							</Button>
+							<Button
+								size="xs"
+								variant="ghost"
+								className="h-7 px-2 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+								onClick={() => {
+									const blob = new Blob([raw], {
+										type: ct || "application/octet-stream",
+									});
+									const url = URL.createObjectURL(blob);
+									const a = document.createElement("a");
+									a.href = url;
+									a.download = filename;
+									a.click();
+									URL.revokeObjectURL(url);
+								}}
+							>
+								Download
+							</Button>
+						</div>
+					)}
 				</div>
 
 				{response && (
-					<div className="flex items-center gap-2.5 font-mono text-[11px] tabular-nums text-muted-foreground">
-						<span className="text-foreground/80">{response.statusText}</span>
-						<span className="text-border">|</span>
-						<span>{response.durationMs}ms</span>
-						<span className="text-border">|</span>
-						<span>{formatBytes(response.size)}</span>
-						{ct && (
-							<>
-								<span className="text-border">|</span>
-								<span className="truncate max-w-32">{ct.split(";")[0]}</span>
-							</>
-						)}
+					<div
+						className="flex items-center justify-between gap-2 border-t border-border/50 bg-muted/20 px-2 py-1"
+						role="tablist"
+						aria-label="Response views"
+						onKeyDown={(e) => handleTabArrowKeys(e)}
+					>
+						<div className="flex items-center gap-0.5 overflow-x-auto">
+							{views.map((v) => (
+								<button
+									key={v.id}
+									type="button"
+									role="tab"
+									aria-selected={view === v.id}
+									tabIndex={view === v.id ? 0 : -1}
+									onClick={() => setView(v.id)}
+									disabled={v.id === "table" && !tabular}
+									title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
+									className={cn(
+										"shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+										view === v.id
+											? "bg-background text-foreground shadow-sm"
+											: "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+										v.id === "table" && !tabular ? "cursor-not-allowed opacity-40" : "",
+									)}
+								>
+									{v.label}
+								</button>
+							))}
+						</div>
+
+						<div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+							{parsed !== null && (
+								<input
+									value={jsonPath}
+									onChange={(e) => setJsonPath(e.target.value)}
+									placeholder="$.data[*]"
+									aria-label="JSONPath query"
+									spellCheck={false}
+									className="h-7 w-32 rounded-md border border-input bg-background px-2 font-mono text-xs placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none lg:w-40"
+								/>
+							)}
+							<input
+								value={query}
+								onChange={(e) => setQuery(e.target.value)}
+								placeholder="Filter…"
+								aria-label="Search response"
+								className="h-7 w-28 rounded-md border border-input bg-background px-2 font-mono text-xs placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none lg:w-32"
+							/>
+							{searchResult && searchResult.count > 0 ? (
+								<span className="font-mono text-[11px] font-medium tabular-nums text-primary">
+									{searchResult.count}
+								</span>
+							) : null}
+						</div>
 					</div>
 				)}
 			</div>
 
+			{/* mobile filter row — hidden on desktop where it lives in header */}
+			{response && (
+				<div className="flex items-center gap-1.5 border-b border-border/50 bg-muted/10 px-2 py-1.5 sm:hidden">
+					{parsed !== null && (
+						<input
+							value={jsonPath}
+							onChange={(e) => setJsonPath(e.target.value)}
+							placeholder="JSONPath $.data"
+							aria-label="JSONPath query"
+							spellCheck={false}
+							className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 font-mono text-xs focus:border-ring focus:outline-none"
+						/>
+					)}
+					<input
+						value={query}
+						onChange={(e) => setQuery(e.target.value)}
+						placeholder="Filter…"
+						aria-label="Search response"
+						className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 font-mono text-xs focus:border-ring focus:outline-none"
+					/>
+				</div>
+			)}
+
 			{response && binaryType !== "none" ? (
-				<div className="mx-2 my-1 shrink-0 rounded border border-border bg-muted/20 px-2 py-1 text-xs">
+				<div className="mx-2 mt-2 shrink-0 rounded-md border border-border bg-muted/15 px-2.5 py-2">
 					{binaryType === "image" ? (
-						<div className="flex flex-col gap-1">
-							<p className="text-muted-foreground font-mono text-[11px]">Image preview</p>
-							<img src={imageDataUrl} alt="response" className="max-h-64 rounded border border-border/50" />
+						<div className="flex flex-col gap-2">
+							<p className="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Image preview</p>
+							<img src={imageDataUrl} alt="response" className="max-h-64 self-start rounded-md border border-border" />
 						</div>
 					) : binaryType === "pdf" ? (
-						<p className="text-muted-foreground font-mono text-[11px]">PDF response — use Download.</p>
+						<p className="font-mono text-xs text-muted-foreground">PDF response — use Download.</p>
 					) : (
-						<div className="flex flex-col gap-1">
-							<p className="text-muted-foreground font-mono text-[11px]">
-								Binary ({formatBytes(response.size)}) — first 4KB + Download.
+						<div className="flex flex-col gap-1.5">
+							<p className="font-mono text-xs text-muted-foreground">
+								Binary · {formatBytes(response.size)} — first 4 KB
 							</p>
-							<pre className="max-h-40 overflow-auto whitespace-pre rounded bg-background p-2 font-mono text-[11px] leading-snug text-muted-foreground border border-border/50">
+							<pre className="max-h-36 overflow-auto whitespace-pre rounded-md border border-border/50 bg-background p-2 font-mono text-[11px] leading-snug text-muted-foreground">
 								{hexPreview}
 							</pre>
 						</div>
@@ -192,132 +323,28 @@ export function ResponseViewer() {
 				</div>
 			) : null}
 
-			{response ? (
-				<div
-					className="flex shrink-0 items-center justify-between border-b border-border/70 bg-muted/10 px-2.5 py-1 select-none"
-					role="tablist"
-					aria-label="Response views"
-					onKeyDown={(e) => handleTabArrowKeys(e)}
-				>
-					<div className="flex items-center gap-1">
-						{views.map((v) => (
-							<button
-								key={v.id}
-								type="button"
-								role="tab"
-								aria-selected={view === v.id}
-								tabIndex={view === v.id ? 0 : -1}
-								onClick={() => setView(v.id)}
-								disabled={v.id === "table" && !tabular}
-								title={v.id === "table" && !tabular ? "Not tabular — need JSON array or CSV" : undefined}
-								className={cn(
-									"rounded px-2 py-0.5 font-mono text-[11px] transition-colors",
-									view === v.id
-										? "bg-background font-semibold text-primary shadow-xs"
-										: "text-muted-foreground hover:bg-muted hover:text-foreground",
-									v.id === "table" && !tabular ? "opacity-40 cursor-not-allowed" : "",
-								)}
-							>
-								{v.label}
-							</button>
-						))}
-					</div>
-
-					<div className="flex items-center gap-1.5">
-						{parsed !== null && (
-							<input
-								value={jsonPath}
-								onChange={(e) => setJsonPath(e.target.value)}
-								placeholder="JSONPath (e.g. $.data[*])"
-								aria-label="JSONPath query"
-								spellCheck={false}
-								className="h-6 w-32 lg:w-44 rounded border border-input bg-background px-2 font-mono text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none"
-							/>
-						)}
-						<input
-							value={query}
-							onChange={(e) => setQuery(e.target.value)}
-							placeholder="Filter body…"
-							aria-label="Search response"
-							className="h-6 w-24 lg:w-32 rounded border border-input bg-background px-2 font-mono text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none"
-						/>
-						{searchResult && searchResult.count > 0 ? (
-							<span className="font-mono text-[10px] tabular-nums text-primary font-medium">
-								{searchResult.count}
-							</span>
-						) : null}
-
-						<div className="h-3.5 w-px bg-border/80 mx-0.5" />
-
-						<Button
-							size="xs"
-							variant="ghost"
-							className="h-6 px-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground"
-							onClick={() => {
-								const text =
-									view === "headers"
-										? headersText
-										: view === "cookies"
-											? cookiesText
-											: bodyView;
-								void copyText(text).then((ok) => {
-									if (!ok) {
-										notifyError("Copy failed", "Clipboard access was denied.");
-										return;
-									}
-									setCopied(true);
-									setTimeout(() => setCopied(false), 1500);
-								});
-							}}
-						>
-							{copied ? "Copied" : "Copy"}
-						</Button>
-						<Button
-							size="xs"
-							variant="ghost"
-							className="h-6 px-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground"
-							onClick={() => {
-								const blob = new Blob([raw], {
-									type: ct || "application/octet-stream",
-								});
-								const url = URL.createObjectURL(blob);
-								const a = document.createElement("a");
-								a.href = url;
-								a.download = filename;
-								a.click();
-								URL.revokeObjectURL(url);
-							}}
-						>
-							Download
-						</Button>
-					</div>
-				</div>
-			) : null}
-
 			{parsed === null && response && jsonPath.trim() ? (
-				<p className="shrink-0 border-t border-border/50 px-2 py-1 text-xs text-muted-foreground">
-					This response is not JSON — JSONPath queries need a JSON body.
+				<p className="shrink-0 border-b border-border/50 bg-status-warn/5 px-3 py-1.5 text-xs leading-snug text-muted-foreground">
+					This response is not JSON — JSONPath needs a JSON body.
 				</p>
 			) : null}
 
-			<div className="min-h-0 flex-1 p-2 pt-0">
+			<div className="min-h-0 flex-1 p-2">
 				{jsonPathResult &&
 				!jsonPathResult.error &&
 				jsonPathResult.matches.length > 0 ? (
-					<div className="flex h-full flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background p-2">
+					<div className="flex h-full flex-col gap-1.5 overflow-y-auto rounded-md border border-border bg-background p-2">
 						{jsonPathResult.matches.map((m) => (
 							<JsonPathMatchRow key={m.path} match={m} />
 						))}
 					</div>
 				) : jsonPathResult?.error ? (
-					<div className="flex h-full items-start rounded-md border border-border bg-background p-2">
-						<p className="text-xs text-destructive">{jsonPathResult.error}</p>
+					<div className="flex h-full items-start rounded-md border border-destructive/30 bg-destructive/5 p-3">
+						<p className="font-mono text-xs text-destructive">{jsonPathResult.error}</p>
 					</div>
 				) : jsonPathResult ? (
-					<div className="flex h-full items-start rounded-md border border-border bg-background p-2">
-						<p className="text-xs text-muted-foreground">
-							No matches for this path.
-						</p>
+					<div className="flex h-full items-center justify-center rounded-md border border-dashed border-border bg-muted/10 p-6">
+						<p className="text-xs text-muted-foreground">No matches for this path.</p>
 					</div>
 				) : loading ? (
 					<div
@@ -347,8 +374,8 @@ export function ResponseViewer() {
 					</div>
 				) : view === "tree" && treeFallback ? (
 					<div className="flex h-full min-h-0 flex-col rounded-md border border-border">
-						<p className="shrink-0 px-2 pt-2 text-xs text-muted-foreground">
-							This response is not JSON — showing the raw body.
+						<p className="shrink-0 px-2.5 pt-2 font-mono text-xs text-muted-foreground">
+							Not JSON — showing raw body.
 						</p>
 						<CodeMirrorEditor
 							value={raw}
@@ -360,7 +387,9 @@ export function ResponseViewer() {
 				) : view === "table" ? (
 					<div className="flex h-full min-h-0 flex-col">
 						{!tabular ? (
-							<p className="text-xs text-muted-foreground">Not tabular — need JSON array or CSV.</p>
+							<div className="flex h-full items-center justify-center rounded-md border border-dashed border-border bg-muted/10 p-6">
+								<p className="text-xs text-muted-foreground">Not tabular — need JSON array or CSV.</p>
+							</div>
 						) : !tableData || tableData.columns.length === 0 ? (
 							<p className="text-xs text-muted-foreground">No tabular data.</p>
 						) : (
@@ -371,7 +400,7 @@ export function ResponseViewer() {
 											{tableData.columns.map((c) => (
 												<th
 													key={c}
-													className="sticky top-0 z-10 border-b border-border bg-background px-2 py-1 font-medium"
+													className="sticky top-0 z-10 border-b border-border bg-muted/40 px-2.5 py-1.5 text-left font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
 												>
 													{c}
 												</th>
@@ -380,11 +409,11 @@ export function ResponseViewer() {
 									</thead>
 									<tbody>
 										{tableData.rows.map((row, i) => (
-											<tr key={`row-${row[0] ?? ''}-${i}`}>
+											<tr key={`row-${row[0] ?? ''}-${i}`} className="hover:bg-muted/30">
 												{row.map((cell, j) => (
 													<td
 														key={`cell-${tableData.columns[j] ?? j}-${j}`}
-														className="break-all border-b border-border/50 px-2 py-1 font-mono"
+														className="break-all border-b border-border/50 px-2.5 py-1.5 font-mono text-xs"
 													>
 														{cell}
 													</td>
@@ -393,25 +422,22 @@ export function ResponseViewer() {
 										))}
 									</tbody>
 								</table>
-								{tableData.rows.length >= 1000 ? <p className="p-2 text-xs text-muted-foreground">Showing first 1000 rows.</p> : null}
+								{tableData.rows.length >= 1000 ? <p className="border-t border-border bg-muted/20 p-2 font-mono text-xs text-muted-foreground">Showing first 1000 rows.</p> : null}
 							</div>
 						)}
 					</div>
 				) : view === "cookies" ? (
-					<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
+					<div className="h-full overflow-y-auto rounded-md border border-border bg-background">
 						{filteredCookies.length === 0 ? (
-							<div className="flex h-full flex-col items-start justify-center gap-2 px-4">
-								<p className="text-sm font-medium text-foreground">
+							<div className="flex h-full flex-col items-center justify-center gap-1.5 p-6 text-center">
+								<p className="text-sm font-medium">
 									{cookies.length === 0
 										? "No cookies set by this response."
 										: "No cookies match your search."}
 								</p>
 								{cookies.length === 0 ? (
-									<p className="max-w-sm text-xs text-muted-foreground">
-										Servers set cookies via{" "}
-										<code className="font-mono">Set-Cookie</code> response
-										headers. Send a request to an endpoint that sets a cookie to
-										see it here — persistence is a separate roadmap item.
+									<p className="max-w-sm font-mono text-xs leading-relaxed text-muted-foreground">
+										Servers set cookies via <code>Set-Cookie</code>. Send a request to an endpoint that sets one.
 									</p>
 								) : null}
 							</div>
@@ -421,24 +447,20 @@ export function ResponseViewer() {
 									{filteredCookies.map((c) => (
 										<tr
 											key={`${c.name}-${c.value}-${c.domain ?? ""}`}
-											className="border-b border-border/50 last:border-0"
+											className="border-b border-border/50 last:border-0 hover:bg-muted/20"
 										>
-											<td className="py-1 pr-3 align-top font-mono text-foreground">
-												{c.name}
-											</td>
-											<td className="py-1 pr-3 font-mono text-muted-foreground break-all">
+											<td className="px-2.5 py-1.5 font-mono font-medium">{c.name}</td>
+											<td className="max-w-[20ch] break-all px-2.5 py-1.5 font-mono text-muted-foreground">
 												{c.value}
 											</td>
-											<td className="py-1 pr-3 align-top text-muted-foreground">
-												{c.domain ?? "—"}
-											</td>
-											<td className="py-1 pr-3 align-top font-mono text-muted-foreground">
+											<td className="px-2.5 py-1.5 text-muted-foreground">{c.domain ?? "—"}</td>
+											<td className="px-2.5 py-1.5 font-mono text-muted-foreground">
 												{c.path ?? "/"}
 											</td>
-											<td className="py-1 pr-3 align-top text-muted-foreground">
+											<td className="px-2.5 py-1.5 text-muted-foreground">
 												{cookieExpiry(c) ?? "Session"}
 											</td>
-											<td className="py-1 align-top whitespace-nowrap text-muted-foreground">
+											<td className="px-2.5 py-1.5 whitespace-nowrap text-muted-foreground">
 												{[
 													c.secure ? "Secure" : "",
 													c.httpOnly ? "HttpOnly" : "",
@@ -454,25 +476,25 @@ export function ResponseViewer() {
 						)}
 					</div>
 				) : view === "headers" ? (
-					<div className="h-full overflow-y-auto rounded-md border border-border bg-background p-2">
+					<div className="h-full overflow-y-auto rounded-md border border-border bg-background">
 						{filteredHeaders.length === 0 ? (
-							<p className="text-xs text-muted-foreground">
-								{query
-									? "No headers match your search."
-									: "No response headers."}
-							</p>
+							<div className="flex h-full items-center justify-center p-6">
+								<p className="font-mono text-xs text-muted-foreground">
+									{query ? "No headers match your search." : "No response headers."}
+								</p>
+							</div>
 						) : (
 							<table className="w-full text-left text-xs">
 								<tbody>
 									{filteredHeaders.map((h) => (
 										<tr
 											key={`${h.key}-${h.value}`}
-											className="border-b border-border/50 last:border-0"
+											className="border-b border-border/50 last:border-0 hover:bg-muted/20"
 										>
-											<td className="py-1 pr-3 align-top font-mono text-muted-foreground">
+											<td className="w-40 shrink-0 px-2.5 py-1.5 font-mono text-muted-foreground">
 												{h.key}
 											</td>
-											<td className="py-1 font-mono text-foreground break-all">
+											<td className="break-all px-2.5 py-1.5 font-mono text-foreground">
 												{h.value}
 											</td>
 										</tr>
@@ -482,16 +504,16 @@ export function ResponseViewer() {
 						)}
 					</div>
 				) : view === "tests" ? (
-					<div className="flex h-full items-center justify-center p-4">
-						<p className="text-xs text-muted-foreground">No test results — run pre-request/tests scripts to see output.</p>
+					<div className="flex h-full items-center justify-center rounded-md border border-dashed border-border bg-muted/10 p-6">
+						<p className="font-mono text-xs text-muted-foreground">No test results — run scripts to see output.</p>
 					</div>
 				) : view === "timeline" ? (
-					<div className="flex h-full flex-col gap-2 p-2">
+					<div className="flex h-full flex-col gap-2 overflow-y-auto">
 						{response ? (
-							<div className="rounded-md border border-border bg-background p-2 text-xs">
-								<p className="text-muted-foreground">Timeline — request took {response.durationMs}ms · {formatBytes(response.size)} · {response.statusCode} {response.statusText}</p>
+							<div className="rounded-md border border-border bg-background p-3">
+								<p className="font-mono text-xs text-muted-foreground">Timeline — {response.durationMs}ms · {formatBytes(response.size)} · {response.statusCode} {response.statusText}</p>
 								{response.timings ? (
-									<div className="mt-2 flex flex-col gap-1">
+									<div className="mt-3 flex flex-col gap-1.5">
 										{[
 											{ label: "DNS", value: response.timings.dns, color: "bg-status-info" },
 											{ label: "Connect", value: response.timings.connect, color: "bg-status-info" },
@@ -501,21 +523,23 @@ export function ResponseViewer() {
 											{ label: "Response", value: response.timings.response, color: "bg-primary" },
 											{ label: "Transfer", value: response.timings.transfer, color: "bg-muted-foreground" },
 										].map((p) => (
-											<div key={p.label} className="flex items-center gap-2">
+											<div key={p.label} className="flex items-center gap-2 font-mono text-xs">
 												<span className="w-16 text-muted-foreground">{p.label}</span>
-												<div className="h-2 flex-1 rounded bg-muted">
-													<div className={`h-2 rounded ${p.color}`} style={{ width: `${Math.min(100, (p.value / Math.max(1, response.durationMs)) * 100)}%` }} />
+												<div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+													<div className={cn("h-1.5 rounded-full", p.color)} style={{ width: `${Math.min(100, (p.value / Math.max(1, response.durationMs)) * 100)}%` }} />
 												</div>
-												<span className="w-12 text-right tabular-nums">{p.value}ms</span>
+												<span className="w-12 text-right tabular-nums text-muted-foreground">{p.value}ms</span>
 											</div>
 										))}
 									</div>
 								) : (
-									<p className="mt-1 text-muted-foreground/70">Detailed waterfall coming soon.</p>
+									<p className="mt-2 font-mono text-xs text-muted-foreground/70">Detailed waterfall coming soon.</p>
 								)}
 							</div>
 						) : (
-							<p className="text-xs text-muted-foreground">No timeline — send a request.</p>
+							<div className="flex h-full items-center justify-center rounded-md border border-dashed border-border bg-muted/10 p-6">
+								<p className="font-mono text-xs text-muted-foreground">No timeline — send a request.</p>
+							</div>
 						)}
 					</div>
 				) : response ? (
@@ -542,7 +566,7 @@ export function ResponseViewer() {
 			query &&
 			searchResult &&
 			searchResult.count === 0 ? (
-				<p className="shrink-0 px-2 pb-1 text-xs text-muted-foreground">
+				<p className="shrink-0 border-t border-border/50 bg-muted/10 px-3 py-1.5 font-mono text-xs text-muted-foreground">
 					No matches in the response body.
 				</p>
 			) : null}
@@ -561,9 +585,9 @@ function JsonPathMatchRow({ match }: { match: JSONPathMatch }) {
 		[match.value],
 	);
 	return (
-		<div className="flex flex-col gap-0.5 rounded-md border border-border/50 bg-background px-2 py-1">
+		<div className="flex flex-col gap-1 rounded-md border border-border bg-muted/10 px-2.5 py-2">
 			<p className="font-mono text-xs text-muted-foreground">{match.path}</p>
-			<pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs text-foreground">
+			<pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-snug text-foreground">
 				{text}
 			</pre>
 		</div>

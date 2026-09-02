@@ -62,10 +62,10 @@ function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; on
 				if (!Number.isNaN(from) && from !== index) onReorder(from, index);
 			}}
 			className={cn(
-				"group relative flex h-7 shrink-0 items-center gap-1.5 rounded-t border-t border-x px-2.5 text-xs transition-colors select-none",
+				"group relative flex h-8 shrink-0 items-center gap-1 border-b-2 px-2.5 text-xs transition-colors select-none",
 				active
-					? "border-border bg-background font-medium text-foreground -mb-px z-10"
-					: "border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+					? "border-primary bg-card text-foreground"
+					: "border-transparent bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground",
 			)}
 		>
 			<button
@@ -74,7 +74,7 @@ function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; on
 				aria-selected={active}
 				tabIndex={active ? 0 : -1}
 				onClick={() => setActiveTab(tab.id)}
-				className="flex items-center max-w-44 truncate text-left font-mono text-[11px]"
+				className="flex max-w-40 items-center truncate text-left font-mono text-xs"
 				title={tab.title}
 			>
 				{pinned && <Pin className="mr-1 size-2.5 shrink-0 text-muted-foreground" aria-label="Pinned" />}
@@ -87,35 +87,50 @@ function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; on
 				)}
 				<span className="truncate">{tab.title}</span>
 			</button>
-			<div className="flex items-center gap-0.5 ml-1">
+			<div className="ml-1 hidden items-center gap-0.5 group-hover:flex sm:flex">
 				<button
 					type="button"
 					onClick={() => setPinned((v) => !v)}
 					title={pinned ? "Unpin" : "Pin"}
 					aria-label={pinned ? "Unpin tab" : "Pin tab"}
-					className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
+					className={cn(
+						"rounded p-1 transition-colors hover:bg-muted",
+						pinned ? "text-foreground opacity-100" : "text-muted-foreground/60 opacity-60 hover:text-foreground hover:opacity-100",
+					)}
 				>
-					<Pin className="size-2.5" aria-hidden />
+					<Pin className="size-3" aria-hidden />
 				</button>
 				<button
 					type="button"
 					onClick={duplicate}
 					title="Duplicate tab"
 					aria-label={`Duplicate ${tab.title}`}
-					className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-foreground"
+					className="rounded p-1 text-muted-foreground/60 opacity-60 transition-colors hover:bg-muted hover:text-foreground hover:opacity-100"
 				>
-					<Copy className="size-2.5" aria-hidden />
+					<Copy className="size-3" aria-hidden />
 				</button>
 				<button
 					type="button"
 					onClick={requestClose}
 					title="Close tab"
 					aria-label={`Close ${tab.title}`}
-					className="rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-destructive"
+					className="rounded p-1 text-muted-foreground/60 opacity-60 transition-colors hover:bg-muted hover:text-destructive hover:opacity-100"
 				>
 					<X className="size-3" aria-hidden />
 				</button>
 			</div>
+			{/* mobile close always visible when active */}
+			<button
+				type="button"
+				onClick={requestClose}
+				className={cn(
+					"ml-1 rounded p-1 sm:hidden",
+					active ? "text-muted-foreground hover:text-destructive" : "hidden",
+				)}
+				aria-label={`Close ${tab.title}`}
+			>
+				<X className="size-3" aria-hidden />
+			</button>
 			<AlertDialog open={confirming} onOpenChange={setConfirming}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
@@ -155,9 +170,8 @@ function TabItem({ tab, index, onReorder }: { tab: RequestTab; index: number; on
 }
 
 /**
- * The request tab bar: one tab per open request (deduplicated by id) plus a
- * "+ New request" action that focuses the persistent scratchpad tab. A dot
- * marks file-backed tabs with unsaved edits.
+ * Request tab bar — one tab per open request, quiet underline indicator,
+ * no double chrome. Overlap with editor border removed.
  */
 export function RequestTabs() {
 	const openTabs = useWorkspaceStore((s) => s.openTabs);
@@ -174,7 +188,7 @@ export function RequestTabs() {
 		try {
 			const raw = localStorage.getItem("reqly:tabs:v1") ?? localStorage.getItem("reqly:tabs");
 			if (raw) {
-				// SAFETY: JSON parsed at I/O boundary from localStorage; shape validated via Array.isArray check below
+				// SAFETY: raw is JSON from localStorage written by this app; parsed shape validated by Array.isArray check below.
 				const parsed = JSON.parse(raw) as { openTabs: typeof openTabs; activeTabId: string | null };
 				if (Array.isArray(parsed.openTabs) && parsed.openTabs.length) {
 					useWorkspaceStore.setState({ openTabs: parsed.openTabs, activeTabId: parsed.activeTabId });
@@ -192,7 +206,7 @@ export function RequestTabs() {
 			role="tablist"
 			aria-label="Open requests"
 			onKeyDown={(e) => handleTabArrowKeys(e)}
-			className="flex h-9 shrink-0 items-end gap-1 overflow-x-auto border-b border-border bg-card/20 px-2 pt-1"
+			className="flex h-8 shrink-0 items-center gap-0 overflow-x-auto border-b border-border bg-card px-1"
 		>
 			{openTabs.map((t, i) => (
 				<TabItem key={t.id} tab={t} index={i} onReorder={reorder} />
@@ -203,7 +217,7 @@ export function RequestTabs() {
 					openTab({ id: NEW_REQUEST_TAB_ID, title: "New Request" })
 				}
 				title="New request"
-				className="mb-1 shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+				className="ml-1 shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 			>
 				<Plus className="size-3.5" aria-hidden />
 				<span className="sr-only">New request</span>
