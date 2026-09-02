@@ -32,51 +32,13 @@
 - [x] Context menu — Rename/Move/Duplicate/Delete/Run/Import/Export/Generate — 2026-08-27
 - [x] New Collection/Folder/Request buttons — 2026-08-27
 
-### §2.1 TopBar (always visible)
-
-- [ ] Logo
-- [ ] Workspace Switcher
-- [ ] Global Search ⌘K
-- [ ] Import / Export buttons
-- [ ] Active Environment selector
-- [ ] Sync Status indicator
-- [ ] Notifications
-- [ ] Settings
-- [ ] User Menu
-
-### §2.2 Tool Rail (48–56px, left-most)
-
-- [ ] Workspace group: Home, Requests, Environments, History
-- [ ] API Tools group: Mocks, Diff, JWT, GraphQL, gRPC, Runners, Explorer, Docs
-- [ ] Realtime group: WebSocket, SSE
-- [ ] System group: Settings
-- [ ] Icon-based routing (top-level navigation)
-
-### §2.3 Context Sidebar (220–280px)
-
-- [ ] Collapsible/resizable (drag handle)
-- [ ] Changes per active tool
-- [ ] Tree navigation
-- [ ] Search within tool
-- [ ] Contextual actions
-- [ ] Recent/pinned items
-- [ ] `⌘B` toggle
-
-### §2.4 Main Workspace
-
-- [ ] Tab-based content area
-- [ ] Page routing per active tool
-- [ ] Full pages vs context panels (§62 rules)
-
-### §2.5 Bottom Utility Panel
-
-- [ ] Console tab
-- [ ] Network tab
-- [ ] Tests tab
-- [ ] Variables tab
-- [ ] Cookies tab
-- [ ] `⌘J` toggle
-- [ ] Resizable height
+> **Cleanup 2026-09-02:** §2.1–2.5 were granular spec §2 checklists duplicated by GUI-0.1/0.2/0.3 above (TopBar/ToolRail/Sidebar/Workspace/BottomPanel). Archived here as collapsed reference — source is GUI-0.1/0.2/0.3 `[x]` shipped 2026-08-27, not these `[ ]` items.
+>
+> - §2.1 TopBar: Logo, Workspace Switcher, Global Search ⌘K, Import/Export, Active Environment, Sync, Notifications, Settings, User Menu — **covered by GUI-0.1**
+> - §2.2 Tool Rail (48–56px): Workspace (Home/Requests/Environments/History), API Tools (Mocks/Diff/JWT/GraphQL/gRPC/Runners/Explorer/Docs), Realtime (WebSocket/SSE), System (Settings) — **covered by GUI-0.1** (CLI parity adds MQTT/Socket.IO via GUI-7)
+> - §2.3 Context Sidebar (220–280px): collapsible/resizable, per-tool tree, search, actions, recent/pinned, `⌘B` — **covered by GUI-0.1/0.3**
+> - §2.4 Main Workspace: tab-based routing, full pages vs panels (§62) — **covered by GUI-0.2**
+> - §2.5 Bottom Utility Panel: Console/Network/Tests/Variables/Cookies, `⌘J`, resizable — **covered by GUI-0.1** (`BottomPanel.tsx`)
 
 ## GUI-1 Design System (spec §3) — ✅ shipped 2026-08-27
 
@@ -104,3 +66,55 @@
 - [x] **G-5.4** CI/CD integration — zustand store + pure lib (CLI gen, GitHub Action YAML, report parse) + 13 tests — 2026-08-26
 - [x] **G-5.5** Mock server GUI data — extended zustand store + pure lib (scenarios, fault injection, matchers, logs) + 20 tests — 2026-08-26
 - [x] **G-5.6** GraphQL/gRPC docs — zustand store + pure lib (SDL parse, search, Markdown render) + 16 tests — 2026-08-26
+
+## GUI-6 Theme-Adaptive OS Layouts & Headless Primitives (spec §3, M68)
+
+- [x] **G-6.1** Headless & Unstyled UI Primitives — decouple `Button`, `Input`, `Tabs`, `Card`, `Select`, `Dialog` from hardcoded utility styles; drive purely via semantic CSS variables and slot classes — 2026-09-01
+- [x] **G-6.2** Theme-Adaptive Shell Chrome — adapt `AppShell`, `TopBar`, `ToolRail`, `WorkspaceSidebar`, and `BottomPanel` layouts to active OS visual DNA (Windows 11 Centered Search + Mica, macOS Tahoe Floating Glass Toolbar + Pill Search, KDE Breeze Solid Desktop Chrome + 1px Dividers, GNOME Adwaita Integrated Headerbar) — 2026-09-01
+- [x] **G-6.3** Theme-Adaptive Feature Views — refactor `SettingsView`, `HomeView`, `RequestEditor`, and `RealtimeTab` into OS-authentic layout patterns (GNOME boxed-list preference groups, macOS grouped glass containers, Windows 11 Fluent settings cards, KDE Breeze geometric desktop tables) — 2026-09-01
+
+## GUI-7 CLI Parity — Realtime Expansion (MQTT + Socket.IO) — mirrors `ROADMAP.md:UI-13`
+
+> **Gap:** `apps/cli/cmd/mqtt.go:1` `mqtt pub|sub` + `apps/cli/cmd/socketio.go:1` `socketio connect|emit` have no GUI. `apps/desktop/backend/realtime.go:1` only `ws`/`sse`.
+
+- [x] **G-7.1 MQTT Pub/Sub page** — `apps/desktop/backend/mqtt.go:1` `MqttPublish/Subscribe/Cancel` via `internal/mqtt` + `frontend/src/features/mqtt-view/MqttView.tsx:1` (broker/topic/QoS/retain + Publish/Subscribe log) + `frontend/src/lib/mqtt.ts:1` — mirrors CLI flags `--topic`/`--message`/`--qos`/`--retain`/`--username`/`--password` — 2026-09-02
+- [x] **G-7.2 Socket.IO page** — `apps/desktop/backend/socketio.go:1` `SocketIOConnect/Emit/Close` via `internal/socketio` + `frontend/src/features/socketio-view/SocketIOView.tsx:1` (url + namespace + event/data) — mirrors `socketio connect <url> [--namespace]` / `emit <url> --event --data` — 2026-09-02
+- [x] **G-7.3 Realtime rail unification** — `frontend/src/components/shell/ToolRail.tsx:1` `REALTIME_GROUP` + `frontend/src/app/App.tsx:1` `activeView` + `frontend/src/stores/useWorkspaceStore.ts:1` `WorkspaceView` `mqtt|socketio` — rail shows 4 entries (WS/SSE/MQTT/Socket.IO) — 2026-09-02
+
+## GUI-8 CLI Parity — Governance & Enterprise — mirrors `ROADMAP.md:UI-14`
+
+> **Gap:** `policy`/`rbac`/`audit`/`sso`/`scim`/`collab` have `apps/desktop/backend/*.go:1` bindings but no frontend view.
+
+- [x] **G-8.1 Policy & RBAC page** — `frontend/src/features/governance/PolicyRbacView.tsx:1` + `frontend/src/lib/policy.ts:1`/`rbac.ts:1` — `PolicyGet/Save/Enforce` + `RBACList/Check/Get` (0600, Git-native) — 2026-09-02
+- [x] **G-8.2 Audit Log page** — `frontend/src/features/audit-view/AuditView.tsx:1` + `frontend/src/lib/audit.ts:1` — `AuditList/Clear/Export` (append-only, 0600) — 2026-09-02
+- [x] **G-8.3 SSO & SCIM page** — `frontend/src/features/sso-view/SsoScimView.tsx:1` + `frontend/src/lib/sso.ts:1` — `SSOValidate` (OIDC) + `SCIMCreateUser/ListUsers` — 2026-09-02
+- [x] **G-8.4 Collaboration page** — `frontend/src/features/collab-view/CollabView.tsx:1` + `frontend/src/lib/collab.ts:1` — `CollabList/Add/Remove/Serve` (Git-native shared workspaces) — 2026-09-02
+
+## GUI-9 CLI Parity — Automation & Orchestration — mirrors `ROADMAP.md:UI-15`
+
+> **Gap:** `automation run`, `workflow <yaml>`, `changelog <old> <new>`, and `monitor run --interval` (CLI) → GUI `MonitorView.tsx:1` is mock-only.
+
+- [x] **G-9.1 Automation scheduler** — `frontend/src/features/automation-view/AutomationView.tsx:1` — mounts existing `AutomationRun` (`apps/desktop/backend/automation.go:1`) — 2026-09-02
+- [x] **G-9.2 Workflow runner** — `frontend/src/features/workflow-view/WorkflowView.tsx:1` + `frontend/src/lib/workflow.ts:1` — `WorkflowRun` multi-step via `RunView` — 2026-09-02
+- [x] **G-9.3 Monitor wiring (fix stub)** — `frontend/src/features/monitor-view/MonitorView.tsx:1` replace `Math.random()` with `MonitorRun` + `apps/desktop/backend/monitor.go:1` `MonitorRun` — live availability/latency chart — 2026-09-02
+- [x] **G-9.4 Changelog view** — `frontend/src/features/changelog-view/ChangelogView.tsx:1` + `apps/desktop/backend/changelog.go:1` `ChangelogGenerate` — `changelog <old> <new> --format --fail-on-breaking` + SemVer bump — 2026-09-02
+
+## GUI-10 CLI Parity — Developer Tooling — mirrors `ROADMAP.md:UI-16`
+
+> **Gap:** `ai explain|test|docs|diagnose|schema`, `schema validate|inspect|generate`, `plugin list|validate` are CLI-only.
+
+- [x] **G-10.1 AI assistant panel** — `apps/desktop/backend/ai.go:1` `AiExplain/GenerateTests/GenerateDocs/Diagnose/ExplainSchema` via `internal/ai` + `frontend/src/features/ai-view/AiView.tsx:1` — local heuristics, zero telemetry — 2026-09-02
+- [x] **G-10.2 JSON Schema workbench** — `apps/desktop/backend/schema.go:1` `SchemaValidate/Inspect/Generate` via `internal/jsonschema` + `frontend/src/features/schema-view/SchemaView.tsx:1` — violation paths, keywords, sample generation — 2026-09-02
+- [x] **G-10.3 Plugin manager** — `apps/desktop/backend/plugin.go:1` `PluginList/Validate` via `internal/plugin` + `frontend/src/features/plugin-view/PluginView.tsx:1` — `plugins/<name>` table + capabilities — 2026-09-02
+
+## GUI-11 CLI Parity — Parity Polish — mirrors `ROADMAP.md:UI-17`
+
+> **Gap:** partial parity — `jwt verify|sign`, `openapi validate|convert-v2`, `graphql parse`, `theme import`, `validate project`, plus stale `ROADMAP` todos.
+
+- [ ] **G-11.1 JWT verify/sign** — `frontend/src/features/jwt-inspector/JwtInspector.tsx:1` extend + `apps/desktop/backend/jwtdialog.go:1` `JwtVerify/JwtSign` via `internal/jwt` — 2026-09-02 gap
+- [ ] **G-11.2 OpenAPI polish** — `frontend/src/features/openapi-explorer/OpenapiExplorer.tsx:1` + `apps/desktop/backend/openapiexplorer.go:1` `OpenapiValidate/ConvertV2` via `internal/openapi` — 2026-09-02 gap
+- [ ] **G-11.3 GraphQL parse + Theme import + Validate project** — `frontend/src/features/graphql-browser/GraphqlBrowser.tsx:1` `GraphqlParse` + `frontend/src/features/settings-view/SettingsView.tsx:1` `ThemeImport` file picker + `frontend/src/features/spec-editor/SpecEditorView.tsx:1` `ValidateProject` — 2026-09-02 gap
+- [ ] **G-11.4 Stale todos closeout** — `frontend/src/features/history-view/HistoryView.tsx:1` retention pruning `DELETE WHERE createdAt <`, `frontend/src/features/import-dialog/ImportDialog.tsx:1` deep merge, `frontend/src/hooks/useKeyboardMap.ts:1` editable shortcuts, `frontend/src/features/settings-view/SettingsView.tsx:1` Auth Settings sub-page — closes `UI-04`/`UI-06`/`UI-07` `[ ]` — 2026-09-02 gap
+
+> **Intentional gap (no GUI):** `apps/cli/cmd/mcp.go:1` `mcp serve` (stdio MCP) — headless, no GUI expected — not tracked as milestone.
+

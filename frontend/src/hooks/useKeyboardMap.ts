@@ -33,7 +33,6 @@ const RAIL_VIEWS = [
   "ai",
   "schema",
   "plugin",
-  "git",
 ] as const;
 
 function isTypingTarget(target: HTMLElement | null): boolean {

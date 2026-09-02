@@ -7,7 +7,6 @@ import {
 	Compass,
 	FileCode2,
 	FileDiff,
-	GitBranch,
 	Hexagon,
 	History,
 	House,
@@ -46,7 +45,6 @@ const WORKSPACE_GROUP: RailItem[] = [
 	{ view: "requests", label: "Requests", icon: Zap },
 	{ view: "environments", label: "Environments", icon: Database },
 	{ view: "history", label: "History", icon: History },
-	{ view: "git", label: "Git", icon: GitBranch },
 ];
 
 const API_TOOLS_GROUP: RailItem[] = [
@@ -152,11 +150,11 @@ export function ToolRail({ collapsed, onToggleCollapse }: ToolRailProps) {
 		<aside
 			aria-label="Tool rail"
 			className={cn(
-				"flex max-h-screen min-h-0 shrink-0 flex-col border-r border-border bg-card/25 p-1.5 transition-[width] duration-150 ease-out",
+				"flex shrink-0 flex-col justify-between border-r border-border bg-card/25 p-1.5 transition-[width] duration-150 ease-out",
 				collapsed ? "w-11" : "w-44",
 			)}
 		>
-			<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pr-0.5 [scrollbar-gutter:stable] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+			<div className="flex flex-col gap-3">
 				<div className="flex flex-col gap-0.5">
 					{!collapsed && (
 						<p className="px-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/70">
