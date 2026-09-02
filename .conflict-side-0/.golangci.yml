@@ -1,0 +1,36 @@
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - errcheck
+    - errorlint
+    - revive
+    - dupl
+    - cyclop
+    - gocognit
+    - maintidx
+    - funlen
+    - nestif
+
+linters-settings:
+  dupl:
+    threshold: 100
+  cyclop:
+    max-complexity: 15
+    package-average: 0.0
+  gocognit:
+    min-complexity: 15
+  maintidx:
+    under: 20
+  funlen:
+    lines: 100
+    statements: 50
+    ignore-comments: true
+  nestif:
+    min-complexity: 5
+
+run:
+  timeout: 5m
+  tests: true

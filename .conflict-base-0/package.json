@@ -1,0 +1,76 @@
+{
+  "name": "api-client",
+  "version": "1.2.0",
+  "private": true,
+  "description": "A local-first, Git-native API development environment",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "frontend",
+    "apps/desktop/frontend"
+  ],
+  "scripts": {
+    "dev": "nub run --filter @reqly/desktop dev",
+    "dev:all": "cd apps/desktop/backend && wails3 dev",
+    "build": "nub run --filter @reqly/desktop build",
+    "build:all": "cd apps/desktop/backend && wails3 build",
+    "build:dev": "nub run --filter @reqly/desktop build:dev",
+    "preview": "nub run --filter @reqly/desktop preview",
+    "typecheck": "nub run --recursive --if-present typecheck",
+    "lint": "oxlint && staticcheck ./...",
+    "lint:all": "nub run typecheck && oxlint && staticcheck ./...",
+    "lint:extreme": "./scripts/lint-extreme.sh",
+    "lint:frontend": "oxlint",
+    "lint:go": "staticcheck ./...",
+    "test": "go test ./...",
+    "test:race": "go test -race ./...",
+    "test:bench": "go test -bench=. ./...",
+    "vet": "go vet ./...",
+    "check": "go build ./... && go vet ./... && go test ./... && staticcheck ./...",
+    "deadcode": "deadcode ./...",
+    "fix": "go fix ./...",
+    "fix:diff": "go fix -diff ./...",
+    "fallow": "nubx -y fallow",
+    "fallow:deadcode": "nubx -y fallow dead-code",
+    "fallow:dupes": "nubx -y fallow dupes",
+    "fallow:health": "nubx -y fallow health",
+    "fallow:review": "nubx -y fallow review",
+    "fallow:fix:dry": "nubx -y fallow fix --dry-run",
+    "fallow:fix": "nubx -y fallow fix --yes",
+    "react:doctor": "nubx -y react-doctor@latest",
+    "wails:doctor": "wails3 doctor",
+    "cli:build": "go build -o reqly ./apps/cli",
+    "cli:install": "rm -f \"$HOME/.local/bin/reqly\" 2>/dev/null; sudo rm -f /usr/local/bin/reqly /usr/bin/reqly 2>/dev/null; hash -r 2>/dev/null; COMMIT=$(git rev-parse --short HEAD) && go build -ldflags \"-X github.com/Its-Satyajit/reqly/internal/version.Commit=$COMMIT\" -o /tmp/reqly ./apps/cli && sudo install -Dm755 /tmp/reqly /usr/local/bin/reqly && /tmp/reqly version --verbose && echo \"installed to /usr/local/bin/reqly (which reqly: $(which reqly 2>/dev/null || echo not-in-PATH))\" && echo \"cleaned old: ~/.local/bin/reqly, /usr/local/bin/reqly, /usr/bin/reqly\"",
+    "cli:install:local": "rm -f \"$HOME/.local/bin/reqly\" 2>/dev/null; sudo rm -f /usr/local/bin/reqly /usr/bin/reqly 2>/dev/null || true; hash -r 2>/dev/null; COMMIT=$(git rev-parse --short HEAD) && go build -ldflags \"-X github.com/Its-Satyajit/reqly/internal/version.Commit=$COMMIT\" -o /tmp/reqly ./apps/cli && install -Dm755 /tmp/reqly \"$HOME/.local/bin/reqly\" && /tmp/reqly version --verbose && echo \"installed to $HOME/.local/bin/reqly\" && hash -r 2>/dev/null; \"$HOME/.local/bin/reqly\" version --verbose && echo \"cleaned old: ~/.local/bin/reqly, /usr/local/bin/reqly\"",
+    "cli:clean": "rm -f \"$HOME/.local/bin/reqly\" 2>/dev/null; rm -f \"$HOME/bin/reqly\" 2>/dev/null; sudo rm -f /usr/local/bin/reqly /usr/bin/reqly 2>/dev/null || true; hash -r 2>/dev/null; echo \"cleaned old CLI binaries\"; which -a reqly 2>/dev/null || echo \"no reqly in PATH\"",
+    "desktop:bindings": "cd apps/desktop/backend && wails3 generate bindings -d ../frontend/bindings -i -ts",
+    "desktop:build": "cd apps/desktop/backend && wails3 build",
+    "desktop:install": "rm -f \"$HOME/.local/bin/reqly-desktop\" 2>/dev/null; sudo rm -f /usr/local/bin/reqly-desktop /usr/bin/reqly-desktop 2>/dev/null; hash -r 2>/dev/null; cd apps/desktop/backend && wails3 build && sudo install -Dm755 bin/reqly /usr/local/bin/reqly-desktop && echo \"installed to /usr/local/bin/reqly-desktop\" && echo \"cleaned old: ~/.local/bin/reqly-desktop, /usr/local/bin/reqly-desktop\"",
+    "desktop:install:local": "rm -f \"$HOME/.local/bin/reqly-desktop\" 2>/dev/null; sudo rm -f /usr/local/bin/reqly-desktop 2>/dev/null || true; hash -r 2>/dev/null; cd apps/desktop/backend && wails3 build && install -Dm755 bin/reqly \"$HOME/.local/bin/reqly-desktop\" && echo \"installed to $HOME/.local/bin/reqly-desktop\" && hash -r 2>/dev/null; \"$HOME/.local/bin/reqly-desktop\" --help 2>&1 | head -n 5 || true; echo \"cleaned old: ~/.local/bin/reqly-desktop\"",
+    "desktop:clean": "rm -f \"$HOME/.local/bin/reqly-desktop\" 2>/dev/null; rm -f \"$HOME/bin/reqly-desktop\" 2>/dev/null; sudo rm -f /usr/local/bin/reqly-desktop /usr/bin/reqly-desktop 2>/dev/null || true; hash -r 2>/dev/null; echo \"cleaned old desktop binaries\"; which -a reqly-desktop 2>/dev/null || echo \"no reqly-desktop in PATH\"",
+    "gui:install": "nub run desktop:install",
+    "gui:install:local": "nub run desktop:install:local",
+    "install:all": "nub run cli:clean && nub run desktop:clean; nub run cli:install && nub run desktop:install",
+    "install:all:local": "nub run cli:install:local && nub run desktop:install:local",
+    "clean:all": "nub run cli:clean; nub run desktop:clean; echo \"cleaned all old binaries\""
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.81.0",
+    "oxlint": "1.81.0"
+  },
+  "allowBuilds": {
+    "esbuild": true
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "nub",
+      "version": "^0.7.5",
+      "onFail": "ignore"
+    }
+  }
+}
