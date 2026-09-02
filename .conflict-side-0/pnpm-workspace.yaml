@@ -1,6 +1,0 @@
-packages:
-  - 'frontend'
-  - 'apps/desktop/frontend'
-
-minimumReleaseAge: 10080
-trustPolicy: no-downgrade

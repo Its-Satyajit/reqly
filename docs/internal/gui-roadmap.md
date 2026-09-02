@@ -103,18 +103,18 @@
 
 > **Gap:** `ai explain|test|docs|diagnose|schema`, `schema validate|inspect|generate`, `plugin list|validate` are CLI-only.
 
-- [ ] **G-10.1 AI assistant panel** — `apps/desktop/backend/ai.go:1` `AiExplain/GenerateTests/GenerateDocs/Diagnose/ExplainSchema` via `internal/ai` + `frontend/src/features/ai-view/AiView.tsx:1` — local heuristics, zero telemetry — 2026-09-02 gap
-- [ ] **G-10.2 JSON Schema workbench** — `apps/desktop/backend/schema.go:1` `SchemaValidate/Inspect/Generate` via `internal/jsonschema` + `frontend/src/features/schema-view/SchemaView.tsx:1` — violation paths, keywords, sample generation — 2026-09-02 gap
-- [ ] **G-10.3 Plugin manager** — `apps/desktop/backend/plugin.go:1` `PluginList/Validate` via `internal/plugin` + `frontend/src/features/plugin-view/PluginView.tsx:1` — `plugins/<name>` table + capabilities — 2026-09-02 gap
+- [x] **G-10.1 AI assistant panel** — `apps/desktop/backend/ai.go:1` `AiExplain/GenerateTests/GenerateDocs/Diagnose/ExplainSchema` via `internal/ai` + `frontend/src/features/ai-view/AiView.tsx:1` — local heuristics, zero telemetry — 2026-09-02
+- [x] **G-10.2 JSON Schema workbench** — `apps/desktop/backend/schema.go:1` `SchemaValidate/Inspect/Generate` via `internal/jsonschema` + `frontend/src/features/schema-view/SchemaView.tsx:1` — violation paths, keywords, sample generation — 2026-09-02
+- [x] **G-10.3 Plugin manager** — `apps/desktop/backend/plugin.go:1` `PluginList/Validate` via `internal/plugin` + `frontend/src/features/plugin-view/PluginView.tsx:1` — `plugins/<name>` table + capabilities — 2026-09-02
 
 ## GUI-11 CLI Parity — Parity Polish — mirrors `ROADMAP.md:UI-17`
 
 > **Gap:** partial parity — `jwt verify|sign`, `openapi validate|convert-v2`, `graphql parse`, `theme import`, `validate project`, plus stale `ROADMAP` todos.
 
-- [ ] **G-11.1 JWT verify/sign** — `frontend/src/features/jwt-inspector/JwtInspector.tsx:1` extend + `apps/desktop/backend/jwtdialog.go:1` `JwtVerify/JwtSign` via `internal/jwt` — 2026-09-02 gap
-- [ ] **G-11.2 OpenAPI polish** — `frontend/src/features/openapi-explorer/OpenapiExplorer.tsx:1` + `apps/desktop/backend/openapiexplorer.go:1` `OpenapiValidate/ConvertV2` via `internal/openapi` — 2026-09-02 gap
-- [ ] **G-11.3 GraphQL parse + Theme import + Validate project** — `frontend/src/features/graphql-browser/GraphqlBrowser.tsx:1` `GraphqlParse` + `frontend/src/features/settings-view/SettingsView.tsx:1` `ThemeImport` file picker + `frontend/src/features/spec-editor/SpecEditorView.tsx:1` `ValidateProject` — 2026-09-02 gap
-- [ ] **G-11.4 Stale todos closeout** — `frontend/src/features/history-view/HistoryView.tsx:1` retention pruning `DELETE WHERE createdAt <`, `frontend/src/features/import-dialog/ImportDialog.tsx:1` deep merge, `frontend/src/hooks/useKeyboardMap.ts:1` editable shortcuts, `frontend/src/features/settings-view/SettingsView.tsx:1` Auth Settings sub-page — closes `UI-04`/`UI-06`/`UI-07` `[ ]` — 2026-09-02 gap
+- [x] **G-11.1 JWT verify/sign** — `frontend/src/features/jwt-inspector/JwtInspector.tsx:1` extend + `apps/desktop/backend/jwtdialog.go:1` `JwtVerify/JwtSign` via `internal/jwt` — 2026-09-02
+- [x] **G-11.2 OpenAPI polish** — `frontend/src/features/openapi-explorer/OpenapiExplorer.tsx:1` + `apps/desktop/backend/openapiexplorer.go:1` `OpenapiValidate/ConvertV2` via `internal/openapi` — 2026-09-02
+- [x] **G-11.3 GraphQL parse + Theme import + Validate project** — `frontend/src/features/graphql-browser/GraphqlBrowser.tsx:1` `GraphqlParse` + `frontend/src/features/settings-view/SettingsView.tsx:1` `ThemeImport` file picker + `frontend/src/features/spec-editor/SpecEditorView.tsx:1` `ValidateProject` — 2026-09-02
+- [x] **G-11.4 Stale todos closeout** — `frontend/src/features/history-view/HistoryView.tsx:1` retention pruning `DELETE WHERE createdAt <`, `frontend/src/features/import-dialog/ImportDialog.tsx:1` deep merge, `frontend/src/hooks/useKeyboardMap.ts:1` editable shortcuts, `frontend/src/features/settings-view/SettingsView.tsx:1` Auth Settings sub-page — closes `UI-04`/`UI-06`/`UI-07` `[ ]` — 2026-09-02
 
 > **Intentional gap (no GUI):** `apps/cli/cmd/mcp.go:1` `mcp serve` (stdio MCP) — headless, no GUI expected — not tracked as milestone.
 
