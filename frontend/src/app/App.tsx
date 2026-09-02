@@ -40,6 +40,10 @@ import { PolicyRbacView } from "../features/governance/PolicyRbacView";
 import { AuditView } from "../features/audit-view/AuditView";
 import { SsoScimView } from "../features/sso-view/SsoScimView";
 import { CollabView } from "../features/collab-view/CollabView";
+import { AutomationView } from "../features/automation-view/AutomationView";
+import { WorkflowView } from "../features/workflow-view/WorkflowView";
+import { MonitorView } from "../features/monitor-view/MonitorView";
+import { ChangelogView } from "../features/changelog-view/ChangelogView";
 import { SpecEditorView } from "../features/spec-editor/SpecEditorView";
 import { CommandPalette } from "../features/command-palette/CommandPalette";
 import { BottomPanel } from "../components/shell/BottomPanel";
@@ -117,6 +121,26 @@ const SCROLLABLE_VIEW_RENDERERS = {
 	collab: () => (
 		<ErrorBoundary label="Collaboration">
 			<CollabView />
+		</ErrorBoundary>
+	),
+	automation: () => (
+		<ErrorBoundary label="Automation">
+			<AutomationView />
+		</ErrorBoundary>
+	),
+	workflow: () => (
+		<ErrorBoundary label="Workflow">
+			<WorkflowView />
+		</ErrorBoundary>
+	),
+	monitor: () => (
+		<ErrorBoundary label="Monitor">
+			<MonitorView />
+		</ErrorBoundary>
+	),
+	changelog: () => (
+		<ErrorBoundary label="Changelog">
+			<ChangelogView />
 		</ErrorBoundary>
 	),
 	settings: () => (
