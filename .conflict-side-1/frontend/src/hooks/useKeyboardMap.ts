@@ -15,6 +15,21 @@ const RAIL_VIEWS = [
   "jwt",
   "graphql",
   "runners",
+  "explorer",
+  "docs",
+  "grpc",
+  "websocket",
+  "sse",
+  "mqtt",
+  "socketio",
+  "policy",
+  "audit",
+  "sso",
+  "collab",
+  "automation",
+  "workflow",
+  "monitor",
+  "changelog",
 ] as const;
 
 function isTypingTarget(target: HTMLElement | null): boolean {

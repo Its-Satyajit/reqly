@@ -5,6 +5,7 @@ import {
 	Cable,
 	Compass,
 	FileCode2,
+	FileDiff,
 	Hexagon,
 	History,
 	House,
@@ -16,6 +17,13 @@ import {
 	Rss,
 	Zap,
 	Database,
+	Shield,
+	ScrollText,
+	Fingerprint,
+	Users,
+	Clock,
+	Workflow,
+	Activity,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "#lib/utils";
@@ -53,6 +61,32 @@ const REALTIME_GROUP: RailItem[] = [
 	{ view: "websocket" as WorkspaceView, label: "WebSocket", icon: Radio },
 	// SAFETY: "sse" is a valid WorkspaceView value
 	{ view: "sse" as WorkspaceView, label: "SSE", icon: Rss },
+	// SAFETY: "mqtt" is a valid WorkspaceView value
+	{ view: "mqtt" as WorkspaceView, label: "MQTT", icon: Antenna },
+	// SAFETY: "socketio" is a valid WorkspaceView value
+	{ view: "socketio" as WorkspaceView, label: "Socket.IO", icon: Cable },
+];
+
+const GOVERNANCE_GROUP: RailItem[] = [
+	// SAFETY: "policy" is a valid WorkspaceView value
+	{ view: "policy" as WorkspaceView, label: "Policy & RBAC", icon: Shield },
+	// SAFETY: "audit" is a valid WorkspaceView value
+	{ view: "audit" as WorkspaceView, label: "Audit Log", icon: ScrollText },
+	// SAFETY: "sso" is a valid WorkspaceView value
+	{ view: "sso" as WorkspaceView, label: "SSO & SCIM", icon: Fingerprint },
+	// SAFETY: "collab" is a valid WorkspaceView value
+	{ view: "collab" as WorkspaceView, label: "Collaboration", icon: Users },
+];
+
+const ORCHESTRATION_GROUP: RailItem[] = [
+	// SAFETY: "automation" is a valid WorkspaceView value
+	{ view: "automation" as WorkspaceView, label: "Automation", icon: Clock },
+	// SAFETY: "workflow" is a valid WorkspaceView value
+	{ view: "workflow" as WorkspaceView, label: "Workflow", icon: Workflow },
+	// SAFETY: "monitor" is a valid WorkspaceView value
+	{ view: "monitor" as WorkspaceView, label: "Monitor", icon: Activity },
+	// SAFETY: "changelog" is a valid WorkspaceView value
+	{ view: "changelog" as WorkspaceView, label: "Changelog", icon: FileDiff },
 ];
 
 interface ToolRailProps {
@@ -134,6 +168,24 @@ export function ToolRail({ collapsed, onToggleCollapse }: ToolRailProps) {
 						</p>
 					)}
 					{REALTIME_GROUP.map(railButton)}
+				</div>
+
+				<div className="flex flex-col gap-0.5 border-t border-border/60 pt-2">
+					{!collapsed && (
+						<p className="px-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/70">
+							Governance
+						</p>
+					)}
+					{GOVERNANCE_GROUP.map(railButton)}
+				</div>
+
+				<div className="flex flex-col gap-0.5 border-t border-border/60 pt-2">
+					{!collapsed && (
+						<p className="px-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/70">
+							Orchestration
+						</p>
+					)}
+					{ORCHESTRATION_GROUP.map(railButton)}
 				</div>
 			</div>
 

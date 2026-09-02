@@ -34,6 +34,16 @@ import { HistoryView } from "../features/history-view/HistoryView";
 import { HomeView } from "../features/workspace-home/HomeView";
 import { SettingsView } from "../features/settings-view/SettingsView";
 import { WebSocketPage, SSEPage } from "../features/realtime-pages/RealtimePage";
+import { MqttView } from "../features/mqtt-view/MqttView";
+import { SocketIOView } from "../features/socketio-view/SocketIOView";
+import { PolicyRbacView } from "../features/governance/PolicyRbacView";
+import { AuditView } from "../features/audit-view/AuditView";
+import { SsoScimView } from "../features/sso-view/SsoScimView";
+import { CollabView } from "../features/collab-view/CollabView";
+import { AutomationView } from "../features/automation-view/AutomationView";
+import { WorkflowView } from "../features/workflow-view/WorkflowView";
+import { MonitorView } from "../features/monitor-view/MonitorView";
+import { ChangelogView } from "../features/changelog-view/ChangelogView";
 import { SpecEditorView } from "../features/spec-editor/SpecEditorView";
 import { CommandPalette } from "../features/command-palette/CommandPalette";
 import { BottomPanel } from "../components/shell/BottomPanel";
@@ -53,6 +63,218 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "../components/ui/resizable";
+
+type WorkspaceView = ReturnType<typeof useWorkspaceStore.getState>["activeView"];
+type RequestTab = ReturnType<typeof useWorkspaceStore.getState>["openTabs"][number];
+
+const SCROLLABLE_VIEW_RENDERERS = {
+	environments: () => (
+		<ErrorBoundary label="Environments">
+			<EnvironmentsView />
+		</ErrorBoundary>
+	),
+	mocks: () => (
+		<ErrorBoundary label="Mock server">
+			<MocksView />
+		</ErrorBoundary>
+	),
+	diff: () => (
+		<ErrorBoundary label="API diff">
+			<DiffView />
+		</ErrorBoundary>
+	),
+	jwt: () => (
+		<ErrorBoundary label="JWT inspector">
+			<JwtInspector />
+		</ErrorBoundary>
+	),
+	graphql: () => (
+		<ErrorBoundary label="GraphQL browser">
+			<GraphqlBrowser />
+		</ErrorBoundary>
+	),
+	runners: () => (
+		<ErrorBoundary label="Runners">
+			<RunnersPanel />
+		</ErrorBoundary>
+	),
+	explorer: () => (
+		<ErrorBoundary label="OpenAPI explorer">
+			<OpenapiExplorer />
+		</ErrorBoundary>
+	),
+	docs: () => (
+		<ErrorBoundary label="Docs generator">
+			<DocsView />
+		</ErrorBoundary>
+	),
+	policy: () => (
+		<ErrorBoundary label="Policy">
+			<PolicyRbacView />
+		</ErrorBoundary>
+	),
+	sso: () => (
+		<ErrorBoundary label="SSO">
+			<SsoScimView />
+		</ErrorBoundary>
+	),
+	collab: () => (
+		<ErrorBoundary label="Collaboration">
+			<CollabView />
+		</ErrorBoundary>
+	),
+	automation: () => (
+		<ErrorBoundary label="Automation">
+			<AutomationView />
+		</ErrorBoundary>
+	),
+	workflow: () => (
+		<ErrorBoundary label="Workflow">
+			<WorkflowView />
+		</ErrorBoundary>
+	),
+	monitor: () => (
+		<ErrorBoundary label="Monitor">
+			<MonitorView />
+		</ErrorBoundary>
+	),
+	changelog: () => (
+		<ErrorBoundary label="Changelog">
+			<ChangelogView />
+		</ErrorBoundary>
+	),
+	settings: () => (
+		<ErrorBoundary label="Settings">
+			<SettingsView />
+		</ErrorBoundary>
+	),
+} satisfies Record<string, () => React.ReactNode>;
+
+const FULL_VIEW_RENDERERS = {
+	history: () => (
+		<ErrorBoundary label="History">
+			<HistoryView />
+		</ErrorBoundary>
+	),
+	grpc: () => (
+		<ErrorBoundary label="gRPC client">
+			<GrpcTab tabId="grpc" />
+		</ErrorBoundary>
+	),
+	websocket: () => (
+		<ErrorBoundary label="WebSocket">
+			<WebSocketPage />
+		</ErrorBoundary>
+	),
+	sse: () => (
+		<ErrorBoundary label="SSE">
+			<SSEPage />
+		</ErrorBoundary>
+	),
+	mqtt: () => (
+		<ErrorBoundary label="MQTT">
+			<MqttView />
+		</ErrorBoundary>
+	),
+	socketio: () => (
+		<ErrorBoundary label="Socket.IO">
+			<SocketIOView />
+		</ErrorBoundary>
+	),
+	audit: () => (
+		<ErrorBoundary label="Audit">
+			<AuditView />
+		</ErrorBoundary>
+	),
+	"spec-editor": () => (
+		<ErrorBoundary label="Spec Editor">
+			<SpecEditorView />
+		</ErrorBoundary>
+	),
+} satisfies Record<string, () => React.ReactNode>;
+
+function WorkspaceMain({
+	activeView,
+	activeTab,
+	splitOrientation,
+	splitLayout,
+}: {
+	activeView: WorkspaceView;
+	activeTab: RequestTab | undefined;
+	splitOrientation: "horizontal" | "vertical";
+	splitLayout: ReturnType<typeof useDefaultLayout>;
+}) {
+	if (activeView === "home") {
+		return (
+			<ErrorBoundary label="Workspace home">
+				<HomeView />
+			</ErrorBoundary>
+		);
+	}
+
+	if (activeView in SCROLLABLE_VIEW_RENDERERS) {
+		// SAFETY: in operator narrows activeView to known scrollable keys, validated by satisfies Record
+		const scrollable = SCROLLABLE_VIEW_RENDERERS[activeView as keyof typeof SCROLLABLE_VIEW_RENDERERS];
+		return <section className="h-full min-h-0 overflow-y-auto">{scrollable()}</section>;
+	}
+
+	if (activeView in FULL_VIEW_RENDERERS) {
+		// SAFETY: in operator narrows activeView to known full keys
+		const full = FULL_VIEW_RENDERERS[activeView as keyof typeof FULL_VIEW_RENDERERS];
+		return <section className="h-full min-h-0">{full()}</section>;
+	}
+
+	return (
+		<section className="flex h-full min-h-0 flex-col">
+			<ErrorBoundary label="Request tabs">
+				<RequestTabs />
+			</ErrorBoundary>
+			{activeTab?.kind === "test" ? (
+				<div className="min-h-0 min-w-0 flex-1">
+					<ErrorBoundary label="Test runner">
+						<TestTab tabId={activeTab.id} />
+					</ErrorBoundary>
+				</div>
+			) : activeTab?.kind === "realtime" ? (
+				<div className="min-h-0 min-w-0 flex-1">
+					<ErrorBoundary label="Realtime client">
+						<RealtimeTab tabId={activeTab.id} />
+					</ErrorBoundary>
+				</div>
+			) : activeTab?.kind === "run" ? (
+				<div className="min-h-0 min-w-0 flex-1">
+					<ErrorBoundary label="Run view">
+						<RunView />
+					</ErrorBoundary>
+				</div>
+			) : (
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+					<ResizablePanelGroup
+						orientation={splitOrientation}
+						defaultLayout={splitLayout.defaultLayout}
+						onLayoutChanged={splitLayout.onLayoutChanged}
+					>
+						<ResizablePanel id="editor" defaultSize="50%" minSize="25%">
+							<div className="h-full min-h-0 min-w-0 border-r border-border">
+								<ErrorBoundary label="Request editor">
+									<RequestEditor />
+								</ErrorBoundary>
+							</div>
+						</ResizablePanel>
+						<ResizableHandle withHandle />
+						<ResizablePanel id="viewer" defaultSize="50%" minSize="25%">
+							<div className="h-full min-h-0 min-w-0">
+								<ErrorBoundary label="Response viewer">
+									<ResponseViewer />
+								</ErrorBoundary>
+							</div>
+						</ResizablePanel>
+					</ResizablePanelGroup>
+				</div>
+			)}
+		</section>
+	);
+}
 
 export function App() {
 	const bootChecked = useWorkspaceBootstrapStore((s) => s.checked);
@@ -148,144 +370,7 @@ export function App() {
 				}
 			>
 				<div className="h-full min-h-0 overflow-hidden">
-					{activeView === "home" ? (
-						<ErrorBoundary label="Workspace home">
-							<HomeView />
-						</ErrorBoundary>
-					) : activeView === "environments" ? (
-						<section className="h-full min-h-0 overflow-y-auto">
-							<ErrorBoundary label="Environments">
-								<EnvironmentsView />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "history" ? (
-						<section className="h-full min-h-0">
-							<ErrorBoundary label="History">
-								<HistoryView />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "mocks" ? (
-						<section className="h-full min-h-0 overflow-y-auto">
-							<ErrorBoundary label="Mock server">
-								<MocksView />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "diff" ? (
-						<section className="h-full min-h-0 overflow-y-auto">
-							<ErrorBoundary label="API diff">
-								<DiffView />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "jwt" ? (
-						<section className="h-full min-h-0 overflow-y-auto">
-							<ErrorBoundary label="JWT inspector">
-								<JwtInspector />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "graphql" ? (
-						<section className="h-full min-h-0 overflow-y-auto">
-							<ErrorBoundary label="GraphQL browser">
-								<GraphqlBrowser />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "runners" ? (
-						<section className="h-full min-h-0 overflow-y-auto">
-							<ErrorBoundary label="Runners">
-								<RunnersPanel />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "explorer" ? (
-						<section className="h-full min-h-0 overflow-y-auto">
-							<ErrorBoundary label="OpenAPI explorer">
-								<OpenapiExplorer />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "grpc" ? (
-						<section className="h-full min-h-0">
-							<ErrorBoundary label="gRPC client">
-								<GrpcTab tabId="grpc" />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "docs" ? (
-						<section className="h-full min-h-0 overflow-y-auto">
-							<ErrorBoundary label="Docs generator">
-								<DocsView />
-							</ErrorBoundary>
-						</section>
-					) : activeView === "websocket" ? (
-						<section className="h-full min-h-0">
-							<ErrorBoundary label="WebSocket"><WebSocketPage /></ErrorBoundary>
-						</section>
-					) : activeView === "sse" ? (
-						<section className="h-full min-h-0">
-							<ErrorBoundary label="SSE"><SSEPage /></ErrorBoundary>
-						</section>
-					) : activeView === "settings" ? (
-						<section className="h-full min-h-0 overflow-y-auto">
-							<ErrorBoundary label="Settings"><SettingsView /></ErrorBoundary>
-						</section>
-					) : activeView === "spec-editor" ? (
-						<section className="h-full min-h-0">
-							<ErrorBoundary label="Spec Editor"><SpecEditorView /></ErrorBoundary>
-						</section>
-					) : (
-						<section className="flex h-full min-h-0 flex-col">
-							<ErrorBoundary label="Request tabs">
-								<RequestTabs />
-							</ErrorBoundary>
-							{activeTab?.kind === "test" ? (
-								<div className="min-h-0 min-w-0 flex-1">
-									<ErrorBoundary label="Test runner">
-										<TestTab tabId={activeTab.id} />
-									</ErrorBoundary>
-								</div>
-							) : activeTab?.kind === "realtime" ? (
-								<div className="min-h-0 min-w-0 flex-1">
-									<ErrorBoundary label="Realtime client">
-										<RealtimeTab tabId={activeTab.id} />
-									</ErrorBoundary>
-								</div>
-							) : activeTab?.kind === "run" ? (
-								<div className="min-h-0 min-w-0 flex-1">
-									<ErrorBoundary label="Run view">
-										<RunView />
-									</ErrorBoundary>
-								</div>
-							) : (
-								<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-									<ResizablePanelGroup
-										orientation={splitOrientation}
-										defaultLayout={splitLayout.defaultLayout}
-										onLayoutChanged={splitLayout.onLayoutChanged}
-									>
-										<ResizablePanel
-											id="editor"
-											defaultSize="50%"
-											minSize="25%"
-										>
-											<div className="h-full min-h-0 min-w-0 border-r border-border">
-												<ErrorBoundary label="Request editor">
-													<RequestEditor />
-												</ErrorBoundary>
-											</div>
-										</ResizablePanel>
-										<ResizableHandle withHandle />
-										<ResizablePanel
-											id="viewer"
-											defaultSize="50%"
-											minSize="25%"
-										>
-											<div className="h-full min-h-0 min-w-0">
-												<ErrorBoundary label="Response viewer">
-													<ResponseViewer />
-												</ErrorBoundary>
-											</div>
-										</ResizablePanel>
-									</ResizablePanelGroup>
-								</div>
-							)}
-						</section>
-					)}
+					<WorkspaceMain activeView={activeView} activeTab={activeTab} splitOrientation={splitOrientation} splitLayout={splitLayout} />
 				</div>
 			</AppShell>
 			<ErrorBoundary label="Command palette">
@@ -300,15 +385,11 @@ export function App() {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Discard unsaved environment changes?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Switching views discards edits that were never saved.
-						</AlertDialogDescription>
+						<AlertDialogDescription>Switching views discards edits that were never saved.</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Keep editing</AlertDialogCancel>
-						<AlertDialogAction onClick={confirmPendingView}>
-							Discard changes
-						</AlertDialogAction>
+						<AlertDialogAction onClick={confirmPendingView}>Discard changes</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

@@ -314,6 +314,7 @@ export function HomeView() {
 												<span
 													className={cn(
 														"w-[3.25rem] shrink-0 text-right font-mono text-[11px] font-semibold tracking-wide",
+														// SAFETY: entry.method is a known HTTP method string from history; keyof check narrows to methodTint map.
 														methodTint[entry.method as keyof typeof methodTint] ?? "text-muted-foreground",
 													)}
 												>

@@ -12,7 +12,7 @@ import { shellStorage } from "./storage";
 export interface AppShellProps {
 	topBar?: ReactNode;
 	toolRail?: ReactNode;
-	sidebar: ReactNode;
+	sidebar?: ReactNode | null;
 	children: ReactNode;
 	bottom?: ReactNode;
 	statusBar?: ReactNode;
@@ -41,8 +41,10 @@ export function AppShell({
 		storage: shellStorage,
 	});
 	const bottomPanelRef = usePanelRef();
+	const hideSidebar = !sidebar;
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const toggleSidebar = () => {
+		if (hideSidebar) return;
 		if (sidebarCollapsed) sidebarPanel.current?.expand();
 		else sidebarPanel.current?.collapse();
 	};
@@ -60,54 +62,86 @@ export function AppShell({
 			<div className="flex min-h-0 flex-1">
 				{toolRail}
 				<div className="min-w-0 flex-1">
-					<ResizablePanelGroup
-						orientation="horizontal"
-						defaultLayout={sidebarLayout.defaultLayout}
-						onLayoutChanged={sidebarLayout.onLayoutChanged}
-					>
-						<ResizablePanel
-							id="sidebar"
-							panelRef={sidebarPanel}
-							collapsible
-							collapsedSize={0}
-							defaultSize="17%"
-							minSize={200}
-							maxSize="42%"
-							onResize={(size) => setSidebarCollapsed(size.inPixels <= 1)}
+					{hideSidebar ? (
+						<ResizablePanelGroup
+							orientation="vertical"
+							defaultLayout={bottomLayout.defaultLayout}
+							onLayoutChanged={bottomLayout.onLayoutChanged}
 						>
-							{sidebar}
-						</ResizablePanel>
-						<ResizableHandle />
-						<ResizablePanel id="main" minSize="35%">
-							<ResizablePanelGroup
-								orientation="vertical"
-								defaultLayout={bottomLayout.defaultLayout}
-								onLayoutChanged={bottomLayout.onLayoutChanged}
+							<ResizablePanel id="main-content" minSize="40%">
+								<div className="h-full min-h-0 overflow-hidden">{children}</div>
+							</ResizablePanel>
+							<ResizableHandle />
+							<ResizablePanel
+								id="bottom"
+								panelRef={bottomPanelRef}
+								collapsible
+								collapsedSize={0}
+								minSize={6}
+								defaultSize="28%"
+								onResize={(s) => {
+									if (s.inPixels <= 1)
+										queueMicrotask(() => {
+											if (!useBottomPanelStore.getState().collapsed)
+												useBottomPanelStore.getState().setCollapsed(true);
+										});
+								}}
 							>
-								<ResizablePanel id="main-content" minSize="40%">
-									<div className="h-full min-h-0 overflow-hidden">{children}</div>
-								</ResizablePanel>
-								<ResizableHandle />
-								<ResizablePanel
-									id="bottom"
-									panelRef={bottomPanelRef}
-									collapsible
-									collapsedSize={0}
-									minSize={6}
-									defaultSize="28%"
-									onResize={(s) => {
-										if (s.inPixels <= 1)
-											queueMicrotask(() => {
-												if (!useBottomPanelStore.getState().collapsed)
-													useBottomPanelStore.getState().setCollapsed(true);
-											});
-									}}
+								{bottom}
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					) : (
+						<ResizablePanelGroup
+							orientation="horizontal"
+							defaultLayout={sidebarLayout.defaultLayout}
+							onLayoutChanged={sidebarLayout.onLayoutChanged}
+						>
+							<ResizablePanel
+								id="sidebar"
+								panelRef={sidebarPanel}
+								collapsible
+								collapsedSize={0}
+								defaultSize="17%"
+								minSize={200}
+								maxSize="42%"
+								onResize={(size) => setSidebarCollapsed(size.inPixels <= 1)}
+							>
+								<div className="flex h-full w-full flex-col overflow-hidden">
+									{sidebar}
+								</div>
+							</ResizablePanel>
+							<ResizableHandle />
+							<ResizablePanel id="main" minSize="35%">
+								<ResizablePanelGroup
+									orientation="vertical"
+									defaultLayout={bottomLayout.defaultLayout}
+									onLayoutChanged={bottomLayout.onLayoutChanged}
 								>
-									{bottom}
-								</ResizablePanel>
-							</ResizablePanelGroup>
-						</ResizablePanel>
-					</ResizablePanelGroup>
+									<ResizablePanel id="main-content" minSize="40%">
+										<div className="h-full min-h-0 overflow-hidden">{children}</div>
+									</ResizablePanel>
+									<ResizableHandle />
+									<ResizablePanel
+										id="bottom"
+										panelRef={bottomPanelRef}
+										collapsible
+										collapsedSize={0}
+										minSize={6}
+										defaultSize="28%"
+										onResize={(s) => {
+											if (s.inPixels <= 1)
+												queueMicrotask(() => {
+													if (!useBottomPanelStore.getState().collapsed)
+														useBottomPanelStore.getState().setCollapsed(true);
+												});
+										}}
+									>
+										{bottom}
+									</ResizablePanel>
+								</ResizablePanelGroup>
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					)}
 				</div>
 			</div>
 			{statusBar}

@@ -186,7 +186,10 @@
 
 [data-theme='windows-11-light'],
 [data-theme='windows-11-dark'],
-[data-theme='windows-11'],
+[data-theme='windows-11'] {
+  font-family: var(--theme-font-sans);
+}
+
 [data-theme='windows-11-light'] body,
 [data-theme='windows-11-dark'] body,
 [data-theme='windows-11'] body {
@@ -364,7 +367,8 @@
 }
 
 [data-theme^='windows-11'] input,
-[data-theme^='windows-11'] [data-slot='input'] {
+[data-theme^='windows-11'] [data-slot='input'],
+[data-theme^='windows-11'] [data-slot='select-trigger'] {
   border-radius: 4px !important;
 }
 
