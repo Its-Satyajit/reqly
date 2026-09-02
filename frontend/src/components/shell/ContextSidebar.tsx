@@ -9,6 +9,7 @@ import {
 	Terminal,
 	Keyboard,
 	Info,
+	KeyRound,
 } from "lucide-react";
 import { AuthPanel } from "../../features/auth-panel/AuthPanel";
 import { CollectionTree } from "../CollectionTree";
@@ -414,6 +415,7 @@ function SettingsContext() {
 		{ id: "security", label: "TLS & Security", icon: Lock },
 		{ id: "cicd", label: "CI / CD", icon: Terminal },
 		{ id: "shortcuts", label: "Shortcuts", icon: Keyboard },
+		{ id: "auth", label: "Auth", icon: KeyRound },
 		{ id: "about", label: "About", icon: Info },
 	];
 
