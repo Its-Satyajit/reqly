@@ -24,6 +24,12 @@ export function registerDefaultPaletteProviders() {
     "grpc",
     "websocket",
     "sse",
+    "mqtt",
+    "socketio",
+    "policy",
+    "audit",
+    "sso",
+    "collab",
     "settings",
     "spec-editor",
   ];
