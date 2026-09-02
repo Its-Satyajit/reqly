@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/ui/button";
+import { FieldList } from "../../components/reusable/FieldList";
 import { useWorkspaceStore, type Environment } from "../../stores/useWorkspaceStore";
 import { inputClass } from "../../lib/ui";
 
@@ -135,14 +136,15 @@ export function EnvironmentEditor({
 
 			<div className="flex flex-col gap-1">
 				<p className="text-xs text-muted-foreground">Variables</p>
-				{rows.length === 0 && (
-					<p className="text-xs text-muted-foreground">
-						No variables yet — add one below.
-					</p>
-				)}
-				<div className="flex flex-col gap-1.5">
-					{rows.map((row, i) => (
-						<div key={`${row.key || 'var'}-${i}`} className="flex items-center gap-1.5">
+				<FieldList
+					rows={rows}
+					onChange={setRows}
+					getId={(row, i) => `${row.key || 'var'}-${i}`}
+					addLabel="Add variable"
+					onAdd={() => ({ key: "", value: "" })}
+					emptyMessage="No variables yet — add one below."
+					renderRow={(row, i) => (
+						<div className="flex items-center gap-1.5">
 							<input
 								value={row.key}
 								onChange={(e) => setRow(i, { key: e.target.value })}
@@ -159,26 +161,9 @@ export function EnvironmentEditor({
 								aria-label={`variable ${i + 1} value`}
 								className={`${inputClass} flex-1 font-mono`}
 							/>
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								aria-label={`remove variable ${i + 1}`}
-								onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}
-							>
-								×
-							</Button>
 						</div>
-					))}
-				</div>
-				<div>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => setRows((rs) => [...rs, { key: "", value: "" }])}
-					>
-						Add variable
-					</Button>
-				</div>
+					)}
+				/>
 				{secretLikeWarnings.length > 0 && (
 					<p className="text-xs text-status-warn">
 						{secretLikeWarnings.join(", ")} look
