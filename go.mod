@@ -5,7 +5,7 @@ go 1.27
 require (
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/coder/websocket v1.8.15
-	github.com/dop251/goja v0.0.0-20260901132549-43234fa61381
+	github.com/dop251/goja v0.0.0-20260903201622-f87b40ad7341
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/r3labs/diff/v3 v3.0.2
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
